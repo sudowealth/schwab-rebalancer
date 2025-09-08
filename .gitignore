@@ -1,0 +1,38 @@
+node_modules
+package-lock.json
+yarn.lock
+
+.DS_Store
+.cache
+.env
+.env.*
+!.env.example
+.vercel
+.output
+.nitro
+/build/
+/api/
+/server/build
+/public/build# Sentry Config File
+.env.sentry-build-plugin
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+.tanstack
+.env.local
+
+127.0.0.1-key.pem
+127.0.0.1.pem
+
+# Local databases & Cloudflare Wrangler state
+local.db
+*.db
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+.wrangler/
+
+# Logs
+*.log
+server.log

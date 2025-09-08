@@ -1,0 +1,38 @@
+name: Yahoo Security Sync
+
+on:
+  schedule:
+    # Runs daily at 02:00 UTC (7 PM PDT / 6 PM PST)
+    - cron: '0 2 * * *'
+  workflow_dispatch: {}
+
+jobs:
+  run-sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Trigger Yahoo fundamentals sync
+        env:
+          CRON_KEY: ${{ secrets.CRON_KEY }}
+        run: |
+          if [ -z "${CRON_KEY}" ]; then
+            echo "CRON_KEY secret not set" >&2
+            exit 1
+          fi
+          # Determine base URL: use GitHub Pages/Workers URL if provided via secret; fallback to preview URL if set
+          BASE_URL="${{ secrets.CRON_BASE_URL }}"
+          if [ -z "$BASE_URL" ]; then
+            echo "CRON_BASE_URL not set. Provide your deployed base URL (e.g., https://your-app.example.com) as a repo secret." >&2
+            exit 1
+          fi
+          # Call secured endpoint
+          HTTP_STATUS=$(curl -s -o response.json -w "%{http_code}" \
+            -H "x-cron-key: ${CRON_KEY}" \
+            "$BASE_URL/api/workers/yahoo-sync")
+          echo "HTTP status: $HTTP_STATUS"
+          cat response.json || true
+          test "$HTTP_STATUS" -ge 200 -a "$HTTP_STATUS" -lt 300
+
+

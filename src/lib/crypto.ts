@@ -1,0 +1,153 @@
+import { createCipheriv, createDecipheriv, randomBytes, scrypt } from "crypto";
+import { promisify } from "util";
+
+const algorithm = "aes-256-gcm";
+const scryptAsync = promisify(scrypt);
+
+/**
+ * Encrypt plaintext using AES-256-GCM
+ * Returns a base64 string containing: salt(16) + iv(16) + authTag(16) + encrypted
+ */
+export async function encrypt(plaintext: string): Promise<string> {
+  const password = process.env.ENCRYPTION_KEY;
+
+  // Fallback to base64 for development if no key is set
+  if (!password) {
+    console.warn(
+      "⚠️ ENCRYPTION_KEY not set - using weak encoding for development only"
+    );
+    return Buffer.from(plaintext, "utf-8").toString("base64");
+  }
+
+  // Generate salt and derive key
+  const salt = randomBytes(16);
+  const key = (await scryptAsync(password, salt, 32)) as Buffer;
+
+  // Generate initialization vector
+  const iv = randomBytes(16);
+
+  // Create cipher
+  const cipher = createCipheriv(algorithm, key, iv);
+
+  // Encrypt the plaintext
+  const encrypted = Buffer.concat([
+    cipher.update(plaintext, "utf8"),
+    cipher.final(),
+  ]);
+
+  // Get the authentication tag
+  const authTag = cipher.getAuthTag();
+
+  // Combine salt + iv + authTag + encrypted data
+  const combined = Buffer.concat([salt, iv, authTag, encrypted]);
+
+  // Return as base64
+  return combined.toString("base64");
+}
+
+/**
+ * Decrypt data encrypted with encrypt()
+ * Expects a base64 string containing: salt(16) + iv(16) + authTag(16) + encrypted
+ */
+export async function decrypt(encryptedData: string): Promise<string> {
+  const password = process.env.ENCRYPTION_KEY;
+
+  // Fallback to base64 for development if no key is set
+  if (!password) {
+    console.warn(
+      "⚠️ ENCRYPTION_KEY not set - using weak decoding for development only"
+    );
+    return Buffer.from(encryptedData, "base64").toString("utf-8");
+  }
+
+  // Decode from base64
+  const combined = Buffer.from(encryptedData, "base64");
+
+  // Check minimum size (salt + iv + authTag = 48 bytes)
+  if (combined.length < 48) {
+    // Might be old base64-only data, try to decode it
+    try {
+      return combined.toString("utf-8");
+    } catch {
+      throw new Error("Invalid encrypted data format");
+    }
+  }
+
+  // Extract components
+  const salt = combined.subarray(0, 16);
+  const iv = combined.subarray(16, 32);
+  const authTag = combined.subarray(32, 48);
+  const encrypted = combined.subarray(48);
+
+  // Derive key from password and salt
+  const key = (await scryptAsync(password, salt, 32)) as Buffer;
+
+  // Create decipher
+  const decipher = createDecipheriv(algorithm, key, iv);
+  decipher.setAuthTag(authTag);
+
+  // Decrypt
+  try {
+    const decrypted = Buffer.concat([
+      decipher.update(encrypted),
+      decipher.final(),
+    ]);
+
+    return decrypted.toString("utf8");
+  } catch {
+    // If decryption fails, might be old base64 data
+    // Try to decode the original as base64 (backward compatibility)
+    try {
+      const decoded = Buffer.from(encryptedData, "base64").toString("utf-8");
+      // Check if it looks like valid text (has printable characters)
+      if (/^[\x20-\x7E\r\n\t]+$/.test(decoded)) {
+        console.warn(
+          "⚠️ Decrypted legacy base64-encoded data - please re-encrypt"
+        );
+        return decoded;
+      }
+    } catch {
+      // Ignore and throw original error
+    }
+    throw new Error("Decryption failed - invalid key or corrupted data");
+  }
+}
+
+/**
+ * Generate a cryptographically secure encryption key
+ * Run this once to generate a key for your environment
+ */
+export async function generateEncryptionKey(): Promise<string> {
+  // Generate 32 random bytes (256 bits) for AES-256
+  const key = randomBytes(32);
+  // Return as base64 for easy storage in environment variables
+  return key.toString("base64");
+}
+
+/**
+ * Utility function to check if encryption is properly configured
+ */
+export function isEncryptionConfigured(): boolean {
+  return !!process.env.ENCRYPTION_KEY;
+}
+
+/**
+ * Migrate old base64-encoded data to proper encryption
+ * Call this when upgrading existing data
+ */
+export async function migrateToEncryption(base64Data: string): Promise<string> {
+  if (!process.env.ENCRYPTION_KEY) {
+    // Can't migrate without encryption key
+    return base64Data;
+  }
+
+  try {
+    // Try to decode as base64
+    const plaintext = Buffer.from(base64Data, "base64").toString("utf-8");
+    // Re-encrypt with proper encryption
+    return await encrypt(plaintext);
+  } catch {
+    // If it fails, assume it's already encrypted
+    return base64Data;
+  }
+}
