@@ -1,8 +1,8 @@
-import * as React from "react";
-import { useVirtualizer } from "@tanstack/react-virtual";
-import { Check, ChevronsUpDown } from "lucide-react";
-import { cn } from "../../lib/utils";
-import { Button } from "./button";
+import { useVirtualizer } from '@tanstack/react-virtual';
+import { Check, ChevronsUpDown } from 'lucide-react';
+import * as React from 'react';
+import { cn } from '../../lib/utils';
+import { Button } from './button';
 import {
   Command,
   CommandEmpty,
@@ -10,8 +10,8 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
-} from "./command";
-import { Popover, PopoverContent, PopoverTrigger } from "./popover";
+} from './command';
+import { Popover, PopoverContent, PopoverTrigger } from './popover';
 
 export interface Option {
   value: string;
@@ -32,13 +32,13 @@ export function VirtualizedSelect({
   options,
   value,
   onValueChange,
-  placeholder = "Select an option...",
-  searchPlaceholder = "Search...",
-  emptyMessage = "No option found.",
+  placeholder = 'Select an option...',
+  searchPlaceholder = 'Search...',
+  emptyMessage = 'No option found.',
   className,
 }: VirtualizedSelectProps) {
   const [open, setOpen] = React.useState(false);
-  const [searchValue, setSearchValue] = React.useState("");
+  const [searchValue, setSearchValue] = React.useState('');
 
   // Always show some options, even with empty search
   const filteredOptions = React.useMemo(() => {
@@ -51,8 +51,7 @@ export function VirtualizedSelect({
 
     return options.filter(
       (option) =>
-        option.value.toLowerCase().includes(search) ||
-        option.label.toLowerCase().includes(search),
+        option.value.toLowerCase().includes(search) || option.label.toLowerCase().includes(search),
     );
   }, [options, searchValue]);
 
@@ -74,16 +73,13 @@ export function VirtualizedSelect({
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          className={cn("w-full justify-between", className)}
+          className={cn('w-full justify-between', className)}
         >
           {selectedOption ? selectedOption.label : placeholder}
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent
-        className="w-[--radix-popover-trigger-width] p-0"
-        align="start"
-      >
+      <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
         <Command shouldFilter={false}>
           <CommandInput
             placeholder={searchPlaceholder}
@@ -99,8 +95,8 @@ export function VirtualizedSelect({
                   <div
                     style={{
                       height: `${virtualizer.getTotalSize()}px`,
-                      width: "100%",
-                      position: "relative",
+                      width: '100%',
+                      position: 'relative',
                     }}
                   >
                     {virtualizer.getVirtualItems().map((virtualItem) => {
@@ -109,10 +105,10 @@ export function VirtualizedSelect({
                         <div
                           key={option.value}
                           style={{
-                            position: "absolute",
+                            position: 'absolute',
                             top: 0,
                             left: 0,
-                            width: "100%",
+                            width: '100%',
                             height: `${virtualItem.size}px`,
                             transform: `translateY(${virtualItem.start}px)`,
                           }}
@@ -122,16 +118,14 @@ export function VirtualizedSelect({
                             onSelect={(currentValue) => {
                               onValueChange?.(currentValue);
                               setOpen(false);
-                              setSearchValue(""); // Reset to empty
+                              setSearchValue(''); // Reset to empty
                             }}
                             className="relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none aria-selected:bg-accent aria-selected:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50"
                           >
                             <Check
                               className={cn(
-                                "mr-2 h-4 w-4",
-                                value === option.value
-                                  ? "opacity-100"
-                                  : "opacity-0",
+                                'mr-2 h-4 w-4',
+                                value === option.value ? 'opacity-100' : 'opacity-0',
                               )}
                             />
                             {option.label}

@@ -319,8 +319,10 @@ Pre-defined allocation templates that can be applied to rebalancing groups:
 ### Code Quality
 
 - `npm run typecheck` - Run TypeScript type checking
-- `npm run lint` - Run ESLint
-- `npm run format` - Format code with Prettier
+- `npm run lint` - Lint with Biome
+- `npm run format` - Format code with Biome
+- `npm run check` - Lint + format check (no writes)
+- `npm run fix` - Lint + format and apply fixes
 
 ### Database Management
 

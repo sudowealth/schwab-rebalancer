@@ -1,24 +1,18 @@
 import {
-  useReactTable,
-  getCoreRowModel,
-  getSortedRowModel,
-  getFilteredRowModel,
-  flexRender,
   type ColumnDef,
-  type SortingState,
   type ColumnFiltersState,
-} from "@tanstack/react-table";
-import {
-  ChevronUp,
-  ChevronDown,
-  ChevronsUpDown,
-  Flame,
-  AlertTriangle,
-} from "lucide-react";
-import type { Position, Trade } from "../../lib/schemas";
-import { formatQuantity } from "../../lib/utils";
-import { SimpleTooltip } from "../../components/ui/simple-tooltip";
-import { useMemo, useState } from "react";
+  flexRender,
+  getCoreRowModel,
+  getFilteredRowModel,
+  getSortedRowModel,
+  type SortingState,
+  useReactTable,
+} from '@tanstack/react-table';
+import { AlertTriangle, ChevronDown, ChevronsUpDown, ChevronUp, Flame } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { SimpleTooltip } from '../../components/ui/simple-tooltip';
+import type { Position, Trade } from '../../lib/schemas';
+import { formatQuantity } from '../../lib/utils';
 
 interface PositionsTableProps {
   positions: Position[];
@@ -33,49 +27,41 @@ export function PositionsTable({
   onTickerClick,
   onSleeveClick,
 }: PositionsTableProps) {
-  const [sorting, setSorting] = useState<SortingState>([
-    { id: "account", desc: false },
-  ]);
+  const [sorting, setSorting] = useState<SortingState>([{ id: 'account', desc: false }]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
 
   const columns = useMemo<ColumnDef<Position>[]>(
     () => [
       {
-        id: "account",
-        accessorKey: "accountName",
-        header: "Account",
+        id: 'account',
+        accessorKey: 'accountName',
+        header: 'Account',
         cell: ({ row }) => row.original.accountName,
       },
       {
-        id: "accountNumber",
-        header: "Account #",
-        cell: ({ row }) => row.original.accountNumber || "N/A",
+        id: 'accountNumber',
+        header: 'Account #',
+        cell: ({ row }) => row.original.accountNumber || 'N/A',
       },
       {
-        accessorKey: "ticker",
-        header: "Ticker",
+        accessorKey: 'ticker',
+        header: 'Ticker',
         cell: ({ getValue, row }) => {
           const ticker = getValue() as string;
           const position = row.original;
-          const dollarGainLoss = parseFloat(
-            position.dollarGainLoss.replace(/[$,]/g, "")
-          );
-          const percentLoss = parseFloat(
-            position.percentGainLoss.replace(/%/g, "")
-          );
+          const dollarGainLoss = parseFloat(position.dollarGainLoss.replace(/[$,]/g, ''));
+          const percentLoss = parseFloat(position.percentGainLoss.replace(/%/g, ''));
           const isHarvestable =
-            dollarGainLoss < 0 &&
-            (percentLoss <= -5 || Math.abs(dollarGainLoss) >= 2500);
+            dollarGainLoss < 0 && (percentLoss <= -5 || Math.abs(dollarGainLoss) >= 2500);
           const blockedTrade = proposedTrades?.find(
             (trade) =>
-              trade.type === "SELL" &&
-              trade.ticker === position.ticker &&
-              !trade.canExecute
+              trade.type === 'SELL' && trade.ticker === position.ticker && !trade.canExecute,
           );
 
           return (
             <div className="flex items-center space-x-2">
               <button
+                type="button"
                 onClick={() => onTickerClick(ticker)}
                 className="text-blue-600 hover:text-blue-800 hover:underline font-medium"
               >
@@ -92,19 +78,20 @@ export function PositionsTable({
         },
       },
       {
-        accessorKey: "sleeveName",
-        header: "Sleeve",
+        accessorKey: 'sleeveName',
+        header: 'Sleeve',
         cell: ({ row }) => {
           const sleeveId = row.original.sleeveId;
           const sleeveName = row.original.sleeveName;
 
           // Check if there's no sleeve (either "No Sleeve" or empty)
-          if (!sleeveName || sleeveName === "No Sleeve") {
+          if (!sleeveName || sleeveName === 'No Sleeve') {
             return <span className="text-gray-500">None</span>;
           }
 
           return (
             <button
+              type="button"
               onClick={() => onSleeveClick(sleeveId)}
               className="text-blue-600 hover:text-blue-800 hover:underline"
             >
@@ -114,8 +101,8 @@ export function PositionsTable({
         },
       },
       {
-        accessorKey: "qty",
-        header: "Qty",
+        accessorKey: 'qty',
+        header: 'Qty',
         cell: ({ getValue }) => {
           const value = getValue() as number;
           return formatQuantity(value);
@@ -127,8 +114,8 @@ export function PositionsTable({
         },
       },
       {
-        accessorKey: "currentPrice",
-        header: "Price",
+        accessorKey: 'currentPrice',
+        header: 'Price',
         cell: ({ getValue }) => {
           const value = getValue() as number;
           return `$${value.toFixed(2)}`;
@@ -140,30 +127,23 @@ export function PositionsTable({
         },
       },
       {
-        accessorKey: "marketValue",
-        header: "Market Value",
+        accessorKey: 'marketValue',
+        header: 'Market Value',
         cell: ({ getValue }) => getValue() as string,
         sortingFn: (rowA, rowB, columnId) => {
-          const a = parseFloat(
-            (rowA.getValue(columnId) as string).replace(/[$,]/g, "")
-          );
-          const b = parseFloat(
-            (rowB.getValue(columnId) as string).replace(/[$,]/g, "")
-          );
+          const a = parseFloat((rowA.getValue(columnId) as string).replace(/[$,]/g, ''));
+          const b = parseFloat((rowB.getValue(columnId) as string).replace(/[$,]/g, ''));
           return a - b;
         },
       },
       {
-        id: "costBasis",
-        header: "Cost Basis",
+        id: 'costBasis',
+        header: 'Cost Basis',
         cell: ({ row }) => {
           const position = row.original;
-          return `$${(position.qty * position.costBasis).toLocaleString(
-            "en-US",
-            {
-              minimumFractionDigits: 2,
-            }
-          )}`;
+          return `$${(position.qty * position.costBasis).toLocaleString('en-US', {
+            minimumFractionDigits: 2,
+          })}`;
         },
         sortingFn: (rowA, rowB, _columnId) => {
           const a = rowA.original.qty * rowA.original.costBasis;
@@ -172,16 +152,14 @@ export function PositionsTable({
         },
       },
       {
-        id: "gainLoss",
-        header: "Gain/Loss",
+        id: 'gainLoss',
+        header: 'Gain/Loss',
         cell: ({ row }) => {
           const position = row.original;
           return (
             <span
               className={
-                position.dollarGainLoss.startsWith("-")
-                  ? "text-red-600"
-                  : "text-green-600"
+                position.dollarGainLoss.startsWith('-') ? 'text-red-600' : 'text-green-600'
               }
             >
               {position.dollarGainLoss} ({position.percentGainLoss})
@@ -189,22 +167,18 @@ export function PositionsTable({
           );
         },
         sortingFn: (rowA, rowB, _columnId) => {
-          const a = parseFloat(
-            rowA.original.dollarGainLoss.replace(/[$,]/g, "")
-          );
-          const b = parseFloat(
-            rowB.original.dollarGainLoss.replace(/[$,]/g, "")
-          );
+          const a = parseFloat(rowA.original.dollarGainLoss.replace(/[$,]/g, ''));
+          const b = parseFloat(rowB.original.dollarGainLoss.replace(/[$,]/g, ''));
           return a - b;
         },
       },
       {
-        accessorKey: "daysHeld",
-        header: "Days Held",
+        accessorKey: 'daysHeld',
+        header: 'Days Held',
         cell: ({ getValue }) => getValue() as number,
       },
     ],
-    [proposedTrades, onTickerClick, onSleeveClick]
+    [proposedTrades, onTickerClick, onSleeveClick],
   );
 
   const table = useReactTable({
@@ -222,11 +196,7 @@ export function PositionsTable({
   });
 
   if (!positions || positions.length === 0) {
-    return (
-      <p className="text-gray-500">
-        No positions found. Consider seeding demo data.
-      </p>
-    );
+    return <p className="text-gray-500">No positions found. Consider seeding demo data.</p>;
   }
 
   return (
@@ -242,25 +212,19 @@ export function PositionsTable({
                   onClick={header.column.getToggleSortingHandler()}
                 >
                   <div className="flex items-center space-x-1">
-                    <span>
-                      {flexRender(
-                        header.column.columnDef.header,
-                        header.getContext()
-                      )}
-                    </span>
+                    <span>{flexRender(header.column.columnDef.header, header.getContext())}</span>
                     {header.column.getIsSorted() && (
                       <span>
-                        {header.column.getIsSorted() === "desc" ? (
+                        {header.column.getIsSorted() === 'desc' ? (
                           <ChevronDown className="w-4 h-4" />
                         ) : (
                           <ChevronUp className="w-4 h-4" />
                         )}
                       </span>
                     )}
-                    {!header.column.getIsSorted() &&
-                      header.column.getCanSort() && (
-                        <ChevronsUpDown className="w-4 h-4 text-gray-400" />
-                      )}
+                    {!header.column.getIsSorted() && header.column.getCanSort() && (
+                      <ChevronsUpDown className="w-4 h-4 text-gray-400" />
+                    )}
                   </div>
                 </th>
               ))}
@@ -271,10 +235,7 @@ export function PositionsTable({
           {table.getRowModel().rows.map((row) => (
             <tr key={row.id}>
               {row.getVisibleCells().map((cell) => (
-                <td
-                  key={cell.id}
-                  className="px-6 py-4 whitespace-nowrap text-sm"
-                >
+                <td key={cell.id} className="px-6 py-4 whitespace-nowrap text-sm">
                   {flexRender(cell.column.columnDef.cell, cell.getContext())}
                 </td>
               ))}

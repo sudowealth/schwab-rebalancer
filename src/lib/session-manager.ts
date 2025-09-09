@@ -1,6 +1,6 @@
-import { getDatabase } from "./db-config";
-import * as schema from "../db/schema";
-import { eq, lt } from "drizzle-orm";
+import { eq, lt } from 'drizzle-orm';
+import * as schema from '../db/schema';
+import { getDatabase } from './db-config';
 
 export interface SessionInvalidationOptions {
   userId?: string;
@@ -15,7 +15,7 @@ export interface SessionInvalidationOptions {
 async function logSessionAuditEvent(
   userId: string,
   action: string,
-  details: Record<string, unknown>
+  details: Record<string, unknown>,
 ): Promise<void> {
   try {
     const db = getDatabase();
@@ -38,6 +38,7 @@ async function logSessionAuditEvent(
 /**
  * Enhanced session management utilities for security events
  */
+// biome-ignore lint/complexity/noStaticOnlyClass: Utility class pattern used intentionally
 export class SessionManager {
   /**
    * Invalidate user sessions based on criteria
@@ -65,7 +66,7 @@ export class SessionManager {
           if (options.excludeCurrentSession && session.id === options.excludeCurrentSession) {
             continue; // Skip current session if requested
           }
-          
+
           await db
             .update(schema.session)
             .set({ expiresAt: new Date(Date.now() - 1000) })
@@ -94,7 +95,7 @@ export class SessionManager {
    * Force logout all sessions for a user (typically after password change)
    */
   static async logoutAllSessions(userId: string, currentSessionId?: string): Promise<void> {
-    await this.invalidateSessions({
+    await SessionManager.invalidateSessions({
       userId,
       reason: 'password_change',
       excludeCurrentSession: currentSessionId,
@@ -105,7 +106,7 @@ export class SessionManager {
    * Invalidate sessions due to suspicious activity
    */
   static async invalidateSuspiciousSessions(userId: string): Promise<void> {
-    await this.invalidateSessions({
+    await SessionManager.invalidateSessions({
       userId,
       reason: 'suspicious_activity',
     });
@@ -114,15 +115,17 @@ export class SessionManager {
   /**
    * Get active session information for a user
    */
-  static async getActiveSessions(userId: string): Promise<Array<{
-    id: string;
-    createdAt: Date;
-    updatedAt: Date;
-    expiresAt: Date;
-    ipAddress: string | null;
-    userAgent: string | null;
-    isActive: boolean;
-  }>> {
+  static async getActiveSessions(userId: string): Promise<
+    Array<{
+      id: string;
+      createdAt: Date;
+      updatedAt: Date;
+      expiresAt: Date;
+      ipAddress: string | null;
+      userAgent: string | null;
+      isActive: boolean;
+    }>
+  > {
     try {
       const db = getDatabase();
       const sessions = await db
@@ -130,7 +133,7 @@ export class SessionManager {
         .from(schema.session)
         .where(eq(schema.session.userId, userId));
 
-      return sessions.map(session => ({
+      return sessions.map((session) => ({
         id: session.id,
         createdAt: session.createdAt,
         updatedAt: session.updatedAt,
@@ -154,7 +157,7 @@ export class SessionManager {
       const result = await db
         .delete(schema.session)
         .where(lt(schema.session.expiresAt, new Date()));
-      
+
       const expiredCount = result.changes || 0;
       console.log(`Cleaned up ${expiredCount} expired sessions`);
       return expiredCount;
@@ -168,9 +171,9 @@ export class SessionManager {
    * Validate session security based on IP and User Agent changes
    */
   static async validateSessionSecurity(
-    sessionId: string, 
-    currentIp: string, 
-    currentUserAgent: string
+    sessionId: string,
+    currentIp: string,
+    currentUserAgent: string,
   ): Promise<{ valid: boolean; reason?: string }> {
     try {
       const db = getDatabase();
@@ -179,7 +182,7 @@ export class SessionManager {
         .from(schema.session)
         .where(eq(schema.session.id, sessionId))
         .limit(1);
-      
+
       const session = sessions[0];
       if (!session) {
         return { valid: false, reason: 'Session not found' };
@@ -192,7 +195,9 @@ export class SessionManager {
 
       // Check for IP address changes (basic security check)
       if (session.ipAddress && session.ipAddress !== currentIp) {
-        console.warn(`IP address changed for session ${sessionId}: ${session.ipAddress} -> ${currentIp}`);
+        console.warn(
+          `IP address changed for session ${sessionId}: ${session.ipAddress} -> ${currentIp}`,
+        );
         // For a financial app, we might want to invalidate on IP change
         // For now, just log it
       }
@@ -216,15 +221,14 @@ export class SessionManager {
  */
 export async function validateSessionSecurity(
   sessionId: string,
-  request: globalThis.Request
+  request: globalThis.Request,
 ): Promise<boolean> {
-  const ip = request.headers.get('cf-connecting-ip') || 
-             request.headers.get('x-forwarded-for') || 
-             'unknown';
+  const ip =
+    request.headers.get('cf-connecting-ip') || request.headers.get('x-forwarded-for') || 'unknown';
   const userAgent = request.headers.get('user-agent') || 'unknown';
 
   const validation = await SessionManager.validateSessionSecurity(sessionId, ip, userAgent);
-  
+
   if (!validation.valid) {
     console.warn(`Session security validation failed: ${validation.reason}`);
     return false;

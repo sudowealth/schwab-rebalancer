@@ -1,5 +1,5 @@
-import { getEnv } from "./env";
-import type { SecurityConfig } from "../middleware/security";
+import type { SecurityConfig } from '../middleware/security';
+import { getEnv } from './env';
 
 /**
  * Get security configuration based on environment
@@ -7,16 +7,19 @@ import type { SecurityConfig } from "../middleware/security";
 export function getSecurityConfig(): SecurityConfig {
   const env = getEnv();
   const nodeEnv = env.NODE_ENV || process.env.NODE_ENV || 'development';
-  
+
   // Parse allowed origins from environment variable
   const getAllowedOrigins = (): string[] => {
     const envOrigins = env.ALLOWED_ORIGINS;
-    
+
     if (envOrigins) {
       // Parse comma-separated origins from environment
-      return envOrigins.split(',').map(origin => origin.trim()).filter(Boolean);
+      return envOrigins
+        .split(',')
+        .map((origin) => origin.trim())
+        .filter(Boolean);
     }
-    
+
     // Default origins based on environment
     if (nodeEnv === 'production') {
       return [
@@ -43,7 +46,9 @@ export function getSecurityConfig(): SecurityConfig {
 
   // Only log in development and keep it minimal
   if (nodeEnv === 'development') {
-    console.log(`🔒 Security: ${allowedOrigins.length} origins, CSP: ${enableStrictCSP ? 'strict' : 'permissive'}`);
+    console.log(
+      `🔒 Security: ${allowedOrigins.length} origins, CSP: ${enableStrictCSP ? 'strict' : 'permissive'}`,
+    );
   }
 
   return {
@@ -58,35 +63,40 @@ export function getSecurityConfig(): SecurityConfig {
  */
 export function validateSecurityConfig(): void {
   const config = getSecurityConfig();
-  
+
   if (config.environment === 'production') {
     // Production-specific validations
     if (config.allowedOrigins.length === 0) {
       throw new Error('🚨 SECURITY: No allowed origins configured for production');
     }
-    
+
     // Check for localhost origins in production (should not exist)
     const localhostOrigins = config.allowedOrigins.filter(
-      origin => origin.includes('localhost') || origin.includes('127.0.0.1')
+      (origin) => origin.includes('localhost') || origin.includes('127.0.0.1'),
     );
-    
+
     if (localhostOrigins.length > 0) {
-      console.warn('⚠️ SECURITY WARNING: Localhost origins found in production config:', localhostOrigins);
+      console.warn(
+        '⚠️ SECURITY WARNING: Localhost origins found in production config:',
+        localhostOrigins,
+      );
     }
-    
+
     // Ensure HTTPS origins in production
     const httpOrigins = config.allowedOrigins.filter(
-      origin => origin.startsWith('http://') && !origin.includes('localhost')
+      (origin) => origin.startsWith('http://') && !origin.includes('localhost'),
     );
-    
+
     if (httpOrigins.length > 0) {
-      throw new Error(`🚨 SECURITY: HTTP origins not allowed in production: ${httpOrigins.join(', ')}`);
+      throw new Error(
+        `🚨 SECURITY: HTTP origins not allowed in production: ${httpOrigins.join(', ')}`,
+      );
     }
-    
+
     if (!config.enableStrictCSP) {
       console.warn('⚠️ SECURITY WARNING: Strict CSP disabled in production');
     }
   }
-  
+
   // Security configuration validated
 }

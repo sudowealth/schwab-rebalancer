@@ -1,22 +1,15 @@
 import type {
-  Trade,
   HoldingPost,
-  SleeveSummary,
   RebalanceMethod,
-  WashSaleRestriction,
   SecurityReplacement,
-} from "../types/rebalance";
-import type { Transaction } from "./restrictions-utils";
-import { CASH_TICKER } from "./constants";
-import {
-  createRestrictionChecker,
-  validateTradeAgainstRestrictions,
-} from "./restrictions-utils";
-import { 
-  logError, 
-  ValidationError, 
-  RebalanceError 
-} from "./error-handler";
+  SleeveSummary,
+  Trade,
+  WashSaleRestriction,
+} from '../types/rebalance';
+import { CASH_TICKER } from './constants';
+import { logError, RebalanceError, ValidationError } from './error-handler';
+import type { Transaction } from './restrictions-utils';
+import { createRestrictionChecker, validateTradeAgainstRestrictions } from './restrictions-utils';
 
 export interface RebalanceSecurityData {
   securityId: string;
@@ -51,79 +44,75 @@ export function executeRebalance(
   allowOverinvestment: boolean = false,
   maxOverinvestmentPercent: number = 5.0,
   transactions: Transaction[] = [],
-  cashAmount?: number
+  cashAmount?: number,
 ) {
   try {
     // Validate inputs
     if (!portfolioId?.trim()) {
-      throw new ValidationError("Portfolio ID is required", "portfolioId");
+      throw new ValidationError('Portfolio ID is required', 'portfolioId');
     }
 
     if (!sleeves || sleeves.length === 0) {
-      throw new ValidationError("At least one sleeve is required", "sleeves");
+      throw new ValidationError('At least one sleeve is required', 'sleeves');
     }
 
     if (maxOverinvestmentPercent < 0 || maxOverinvestmentPercent > 100) {
-      throw new ValidationError("Overinvestment percentage must be between 0 and 100", "maxOverinvestmentPercent");
+      throw new ValidationError(
+        'Overinvestment percentage must be between 0 and 100',
+        'maxOverinvestmentPercent',
+      );
     }
 
-    if (method === "investCash" && (!cashAmount || cashAmount <= 0)) {
-      throw new ValidationError("Cash amount must be positive for investCash method", "cashAmount");
+    if (method === 'investCash' && (!cashAmount || cashAmount <= 0)) {
+      throw new ValidationError('Cash amount must be positive for investCash method', 'cashAmount');
     }
 
-    logError(null, `Starting rebalance for portfolio ${portfolioId}`, { 
-      method, 
-      sleevesCount: sleeves.length, 
-      allowOverinvestment, 
+    logError(null, `Starting rebalance for portfolio ${portfolioId}`, {
+      method,
+      sleevesCount: sleeves.length,
+      allowOverinvestment,
       maxOverinvestmentPercent,
-      cashAmount 
+      cashAmount,
     });
 
     let trades: Trade[] = [];
 
     switch (method) {
-      case "allocation":
+      case 'allocation':
         trades = calculateSleeveBasedAllocationRebalance(
           sleeves,
           washSaleRestrictions,
           allowOverinvestment,
           maxOverinvestmentPercent,
-          transactions
+          transactions,
         );
         break;
-      case "tlhSwap": {
+      case 'tlhSwap': {
         const allSecurities = sleeves.flatMap((sleeve) => sleeve.securities);
         trades = calculateTLHSwap(
           allSecurities,
           washSaleRestrictions,
           replacementCandidates,
-          transactions
+          transactions,
         );
         break;
       }
-      case "tlhRebalance": {
-        const allSecuritiesForTLH = sleeves.flatMap(
-          (sleeve) => sleeve.securities
-        );
+      case 'tlhRebalance': {
+        const allSecuritiesForTLH = sleeves.flatMap((sleeve) => sleeve.securities);
         trades = calculateTLHAndRebalance(
           allSecuritiesForTLH,
           washSaleRestrictions,
           replacementCandidates,
-          transactions
+          transactions,
         );
         break;
       }
-      case "investCash": {
-        trades = calculateInvestCash(
-          sleeves,
-          cashAmount || 0,
-          washSaleRestrictions,
-          transactions
-        );
+      case 'investCash': {
+        trades = calculateInvestCash(sleeves, cashAmount || 0, washSaleRestrictions, transactions);
         break;
       }
       default:
-        throw new ValidationError(`Unknown rebalance method: ${method}`, "method");
+        throw new ValidationError(`Unknown rebalance method: ${method}`, 'method');
     }
 
     const allSecuritiesForPost = sleeves.flatMap((sleeve) => sleeve.securities);
@@ -133,15 +122,11 @@ export function executeRebalance(
       sleeveId: sleeve.sleeveId,
       securities: sleeve.securities,
     }));
-    const sleeveSummaries = calculateSleeveSummaries(
-      oldFormatSleeves,
-      trades,
-      postHoldings
-    );
+    const sleeveSummaries = calculateSleeveSummaries(oldFormatSleeves, trades, postHoldings);
 
     logError(null, `Rebalance completed for portfolio ${portfolioId}`, {
       tradesGenerated: trades.length,
-      totalValue: trades.reduce((sum, t) => sum + Math.abs(t.estValue), 0)
+      totalValue: trades.reduce((sum, t) => sum + Math.abs(t.estValue), 0),
     });
 
     return {
@@ -150,28 +135,22 @@ export function executeRebalance(
       sleeves: sleeveSummaries,
     };
   } catch (error) {
-    logError(error, "Rebalance execution failed", { portfolioId, method });
+    logError(error, 'Rebalance execution failed', { portfolioId, method });
     if (error instanceof ValidationError) throw error;
-    throw new RebalanceError("Failed to execute rebalance", portfolioId, error);
+    throw new RebalanceError('Failed to execute rebalance', portfolioId, error);
   }
 }
 
 export function calculateAllocationRebalance(
   securities: RebalanceSecurityData[],
   washSaleRestrictions: WashSaleRestriction[] = [],
-  transactions: Transaction[] = []
+  transactions: Transaction[] = [],
 ): Trade[] {
   const trades: Trade[] = [];
-  const restrictionChecker = createRestrictionChecker(
-    washSaleRestrictions,
-    transactions
-  );
+  const restrictionChecker = createRestrictionChecker(washSaleRestrictions, transactions);
 
   // Calculate portfolio MV
-  const portfolioMV = securities.reduce(
-    (sum, sec) => sum + sec.currentQty * sec.price,
-    0
-  );
+  const portfolioMV = securities.reduce((sum, sec) => sum + sec.currentQty * sec.price, 0);
 
   if (portfolioMV === 0) return trades;
 
@@ -202,7 +181,7 @@ export function calculateAllocationRebalance(
         trades.push({
           accountId: sec.accountId,
           securityId: sec.securityId,
-          action: "SELL",
+          action: 'SELL',
           qty: -qtyToSell, // Negative for sells
           estPrice: sec.price,
           estValue: -sellValue, // Negative for sells
@@ -215,10 +194,7 @@ export function calculateAllocationRebalance(
   });
 
   // PASS 2: BUY underweight positions
-  const postSellMV = workingSecurities.reduce(
-    (sum, sec) => sum + sec.workingQty * sec.price,
-    0
-  );
+  const postSellMV = workingSecurities.reduce((sum, sec) => sum + sec.workingQty * sec.price, 0);
 
   // Calculate shortfalls and rank by amount
   const underweights = workingSecurities
@@ -241,8 +217,8 @@ export function calculateAllocationRebalance(
         // Validate trade against wash sale restrictions
         const validation = validateTradeAgainstRestrictions(
           sec.securityId,
-          "BUY",
-          restrictionChecker
+          'BUY',
+          restrictionChecker,
         );
 
         if (!validation.isAllowed) {
@@ -255,7 +231,7 @@ export function calculateAllocationRebalance(
         trades.push({
           accountId: sec.accountId,
           securityId: sec.securityId,
-          action: "BUY",
+          action: 'BUY',
           qty: buyQty, // Positive for buys
           estPrice: sec.price,
           estValue: actualBuyVal, // Positive for buys
@@ -276,13 +252,10 @@ function deployCashOverinvestment(
   accountCashMap: Map<string, number>,
   washSaleRestrictions: WashSaleRestriction[] = [],
   maxOverinvestmentPercent: number = 5.0,
-  transactions: Transaction[] = []
+  transactions: Transaction[] = [],
 ): Trade[] {
   const additionalTrades: Trade[] = [];
-  const restrictionChecker = createRestrictionChecker(
-    washSaleRestrictions,
-    transactions
-  );
+  const restrictionChecker = createRestrictionChecker(washSaleRestrictions, transactions);
 
   // Check total available cash across all accounts
   let totalAvailableCash = 0;
@@ -291,22 +264,18 @@ function deployCashOverinvestment(
   }
 
   if (totalAvailableCash < 1.0) {
-    console.log(
-      "💰 Less than $1 remaining cash, skipping overinvestment deployment"
-    );
+    console.log('💰 Less than $1 remaining cash, skipping overinvestment deployment');
     return additionalTrades;
   }
 
   console.log(
-    `💰 Deploying ${totalAvailableCash.toFixed(2)} remaining cash with max ${maxOverinvestmentPercent}% overinvestment`
+    `💰 Deploying ${totalAvailableCash.toFixed(2)} remaining cash with max ${maxOverinvestmentPercent}% overinvestment`,
   );
 
   // Filter eligible sleeves (non-cash, has securities)
   const eligibleSleeves = sleeves.filter(
     (sleeve) =>
-      sleeve.sleeveId !== "cash" &&
-      sleeve.securities.length > 0 &&
-      sleeve.targetValue > 0
+      sleeve.sleeveId !== 'cash' && sleeve.securities.length > 0 && sleeve.targetValue > 0,
   );
 
   if (eligibleSleeves.length === 0) {
@@ -319,9 +288,7 @@ function deployCashOverinvestment(
     let currentValue = sleeve.currentValue;
     // Add value from existing trades
     existingTrades.forEach((trade) => {
-      const sleeveSecurity = sleeve.securities.find(
-        (s) => s.securityId === trade.securityId
-      );
+      const sleeveSecurity = sleeve.securities.find((s) => s.securityId === trade.securityId);
       if (sleeveSecurity) {
         currentValue += trade.estValue;
       }
@@ -365,8 +332,7 @@ function deployCashOverinvestment(
       // Consider buying the highest priority (lowest rank) security that's not wash sale restricted
       const security = sortedSecurities.find(
         (s) =>
-          !restrictionChecker.isSecurityRestricted(s.securityId).isRestricted &&
-          s.targetPct > 0
+          !restrictionChecker.isSecurityRestricted(s.securityId).isRestricted && s.targetPct > 0,
       );
 
       // console.log(`💰 [CASH DEPLOYMENT DEBUG] Selected security for sleeve ${sleeve.sleeveId}:`,
@@ -390,16 +356,13 @@ function deployCashOverinvestment(
       // Calculate TOTAL portfolio deviation after this purchase
       let totalSquaredDeviation = 0;
       for (const evalSleeve of eligibleSleeves) {
-        const evalCurrentValue =
-          sleeveCurrentValues.get(evalSleeve.sleeveId) || 0;
+        const evalCurrentValue = sleeveCurrentValues.get(evalSleeve.sleeveId) || 0;
         const evalValueAfterPurchase =
           evalSleeve.sleeveId === sleeve.sleeveId
             ? evalCurrentValue + security.price
             : evalCurrentValue;
         const deviationPercent =
-          ((evalValueAfterPurchase - evalSleeve.targetValue) /
-            evalSleeve.targetValue) *
-          100;
+          ((evalValueAfterPurchase - evalSleeve.targetValue) / evalSleeve.targetValue) * 100;
         totalSquaredDeviation += deviationPercent * deviationPercent;
       }
 
@@ -415,23 +378,19 @@ function deployCashOverinvestment(
 
     // Step 2: No valid purchases available
     if (possiblePurchases.length === 0) {
-      console.log(
-        "💰 No valid purchases remaining within overinvestment limits"
-      );
+      console.log('💰 No valid purchases remaining within overinvestment limits');
       break;
     }
 
     // Step 3: Sort by total deviation (lower is better) and execute the best one
-    possiblePurchases.sort(
-      (a, b) => a.totalDeviationAfter - b.totalDeviationAfter
-    );
+    possiblePurchases.sort((a, b) => a.totalDeviationAfter - b.totalDeviationAfter);
     const bestPurchase = possiblePurchases[0];
 
     // Validate trade against wash sale restrictions
     const validation = validateTradeAgainstRestrictions(
       bestPurchase.securityId,
-      "BUY",
-      restrictionChecker
+      'BUY',
+      restrictionChecker,
     );
 
     if (!validation.isAllowed) {
@@ -443,7 +402,7 @@ function deployCashOverinvestment(
     additionalTrades.push({
       accountId: bestPurchase.accountId,
       securityId: bestPurchase.securityId,
-      action: "BUY",
+      action: 'BUY',
       qty: 1,
       estPrice: bestPurchase.price,
       estValue: bestPurchase.price,
@@ -452,25 +411,19 @@ function deployCashOverinvestment(
     // Update tracking
     totalAvailableCash -= bestPurchase.price;
     const currentValue = sleeveCurrentValues.get(bestPurchase.sleeveId) || 0;
-    sleeveCurrentValues.set(
-      bestPurchase.sleeveId,
-      currentValue + bestPurchase.price
-    );
+    sleeveCurrentValues.set(bestPurchase.sleeveId, currentValue + bestPurchase.price);
 
     // Update account cash tracking
     const accountCash = accountCashMap.get(bestPurchase.accountId) || 0;
-    accountCashMap.set(
-      bestPurchase.accountId,
-      accountCash - bestPurchase.price
-    );
+    accountCashMap.set(bestPurchase.accountId, accountCash - bestPurchase.price);
 
     console.log(
-      `💰 [CASH DEPLOYMENT] Deployed $${bestPurchase.price.toFixed(2)} to ${bestPurchase.securityId} (${bestPurchase.overinvestmentAfter.toFixed(2)}% overinvestment, deviation score: ${bestPurchase.totalDeviationAfter.toFixed(2)})`
+      `💰 [CASH DEPLOYMENT] Deployed $${bestPurchase.price.toFixed(2)} to ${bestPurchase.securityId} (${bestPurchase.overinvestmentAfter.toFixed(2)}% overinvestment, deviation score: ${bestPurchase.totalDeviationAfter.toFixed(2)})`,
     );
   }
 
   console.log(
-    `💰 Cash deployment complete. Remaining: $${totalAvailableCash.toFixed(2)}, Additional trades: ${additionalTrades.length}`
+    `💰 Cash deployment complete. Remaining: $${totalAvailableCash.toFixed(2)}, Additional trades: ${additionalTrades.length}`,
   );
 
   return additionalTrades;
@@ -481,35 +434,27 @@ export function calculateSleeveBasedAllocationRebalance(
   washSaleRestrictions: WashSaleRestriction[] = [],
   allowOverinvestment: boolean = false,
   maxOverinvestmentPercent: number = 5.0,
-  transactions: Transaction[] = []
+  transactions: Transaction[] = [],
 ): Trade[] {
   const trades: Trade[] = [];
-  const restrictionChecker = createRestrictionChecker(
-    washSaleRestrictions,
-    transactions
-  );
+  const restrictionChecker = createRestrictionChecker(washSaleRestrictions, transactions);
 
-  console.log("🎯 Sleeve-Based Allocation Rebalance Debug:");
+  console.log('🎯 Sleeve-Based Allocation Rebalance Debug:');
   const restrictedTickers = restrictionChecker.getRestrictedTickers();
   if (restrictedTickers.size > 0) {
-    console.log(
-      "🚫 Wash sale restricted tickers:",
-      Array.from(restrictedTickers)
-    );
+    console.log('🚫 Wash sale restricted tickers:', Array.from(restrictedTickers));
   }
 
   // Initialize cash tracking for this operation
   // Allocation method should only use proceeds from sells, not pre-existing cash
   const accountCashMap = new Map<string, number>();
-  console.log("💰 Starting account cash map at $0 for all accounts (allocation method)");
+  console.log('💰 Starting account cash map at $0 for all accounts (allocation method)');
 
   // Handle sells first (overweight sleeves)
   for (const sleeve of sleeves) {
     // Skip Cash sleeve - it will be updated automatically based on other trades
-    if (sleeve.sleeveId === "cash") {
-      console.log(
-        "💰 Skipping Cash sleeve - will be updated based on trade flows"
-      );
+    if (sleeve.sleeveId === 'cash') {
+      console.log('💰 Skipping Cash sleeve - will be updated based on trade flows');
       continue;
     }
 
@@ -543,18 +488,14 @@ export function calculateSleeveBasedAllocationRebalance(
           const targetSleeveValue = sleeve.targetValue;
 
           // Calculate deviation from target if we sell maxSellQty shares
-          const valueAfterMaxSell =
-            currentSleeveValue - maxSellQty * security.price;
+          const valueAfterMaxSell = currentSleeveValue - maxSellQty * security.price;
           let bestDeviation = Math.abs(valueAfterMaxSell - targetSleeveValue);
 
           // Also consider selling one more share if it gets us closer to target
           if (maxSellQty < security.currentQty) {
             const altSellQty = maxSellQty + 1;
-            const valueAfterAltSell =
-              currentSleeveValue - altSellQty * security.price;
-            const altDeviation = Math.abs(
-              valueAfterAltSell - targetSleeveValue
-            );
+            const valueAfterAltSell = currentSleeveValue - altSellQty * security.price;
+            const altDeviation = Math.abs(valueAfterAltSell - targetSleeveValue);
 
             if (altDeviation < bestDeviation) {
               bestSellQty = altSellQty;
@@ -565,11 +506,8 @@ export function calculateSleeveBasedAllocationRebalance(
           // Also consider selling one less share if it gets us closer to target
           if (maxSellQty > 1) {
             const altSellQty = maxSellQty - 1;
-            const valueAfterAltSell =
-              currentSleeveValue - altSellQty * security.price;
-            const altDeviation = Math.abs(
-              valueAfterAltSell - targetSleeveValue
-            );
+            const valueAfterAltSell = currentSleeveValue - altSellQty * security.price;
+            const altDeviation = Math.abs(valueAfterAltSell - targetSleeveValue);
 
             if (altDeviation < bestDeviation) {
               bestSellQty = altSellQty;
@@ -582,7 +520,7 @@ export function calculateSleeveBasedAllocationRebalance(
           trades.push({
             accountId: security.accountId,
             securityId: security.securityId,
-            action: "SELL",
+            action: 'SELL',
             qty: -bestSellQty,
             estPrice: security.price,
             estValue: -actualSellValue,
@@ -593,7 +531,7 @@ export function calculateSleeveBasedAllocationRebalance(
           const newCash = currentCash + actualSellValue;
           accountCashMap.set(security.accountId, newCash);
           console.log(
-            `💰 [SELL] Account ${security.accountId}: $${currentCash.toFixed(2)} + $${actualSellValue.toFixed(2)} = $${newCash.toFixed(2)}`
+            `💰 [SELL] Account ${security.accountId}: $${currentCash.toFixed(2)} + $${actualSellValue.toFixed(2)} = $${newCash.toFixed(2)}`,
           );
 
           remainingSellValue -= actualSellValue;
@@ -603,21 +541,17 @@ export function calculateSleeveBasedAllocationRebalance(
   }
 
   // Phase 1: Buy lowest ranked security per sleeve up to target (accounting for wash sale restrictions)
-  console.log(
-    `🔺 Phase 1: Buying lowest ranked securities for each underweight sleeve`
-  );
+  console.log(`🔺 Phase 1: Buying lowest ranked securities for each underweight sleeve`);
 
   // Track sleeve current values after sells but before buys
   const sleeveCurrentValues = new Map<string, number>();
   sleeves.forEach((sleeve) => {
-    if (sleeve.sleeveId !== "cash") {
+    if (sleeve.sleeveId !== 'cash') {
       // Calculate current value after sells
       let currentValue = sleeve.currentValue;
       trades.forEach((trade) => {
-        const sleeveSecurity = sleeve.securities.find(
-          (s) => s.securityId === trade.securityId
-        );
-        if (sleeveSecurity && trade.action === "SELL") {
+        const sleeveSecurity = sleeve.securities.find((s) => s.securityId === trade.securityId);
+        if (sleeveSecurity && trade.action === 'SELL') {
           currentValue += trade.estValue; // estValue is negative for sells
         }
       });
@@ -626,18 +560,17 @@ export function calculateSleeveBasedAllocationRebalance(
   });
 
   for (const sleeve of sleeves) {
-    if (sleeve.sleeveId === "cash") continue;
+    if (sleeve.sleeveId === 'cash') continue;
 
     // Skip sleeves with zero target percentage (like "Unassigned")
     if (sleeve.targetPct <= 0) {
       console.log(
-        `🚫 [PHASE 1] Skipping sleeve ${sleeve.sleeveId} with targetPct: ${sleeve.targetPct}%`
+        `🚫 [PHASE 1] Skipping sleeve ${sleeve.sleeveId} with targetPct: ${sleeve.targetPct}%`,
       );
       continue;
     }
 
-    const currentValue =
-      sleeveCurrentValues.get(sleeve.sleeveId) || sleeve.currentValue;
+    const currentValue = sleeveCurrentValues.get(sleeve.sleeveId) || sleeve.currentValue;
     if (currentValue >= sleeve.targetValue - 0.01) continue; // Not underweight
 
     const targetAmount = sleeve.targetValue - currentValue;
@@ -655,12 +588,10 @@ export function calculateSleeveBasedAllocationRebalance(
 
     // Find the lowest ranked security that's not wash sale restricted
     // and that can be purchased using cash from ANY account with sufficient balance
-    let selectedSecurity = null as (typeof sortedSecurities[number]) | null;
+    let selectedSecurity = null as (typeof sortedSecurities)[number] | null;
     let purchaseAccountId: string | null = null;
     for (const sec of sortedSecurities) {
-      const restriction = restrictionChecker.isSecurityRestricted(
-        sec.securityId
-      );
+      const restriction = restrictionChecker.isSecurityRestricted(sec.securityId);
       if (restriction.isRestricted) continue;
       // Prefer buying in the security's own account if it has cash
       const ownCash = accountCashMap.get(sec.accountId) || 0;
@@ -703,8 +634,8 @@ export function calculateSleeveBasedAllocationRebalance(
       // Validate trade against wash sale restrictions
       const validation = validateTradeAgainstRestrictions(
         selectedSecurity.securityId,
-        "BUY",
-        restrictionChecker
+        'BUY',
+        restrictionChecker,
       );
 
       if (!validation.isAllowed) {
@@ -720,7 +651,7 @@ export function calculateSleeveBasedAllocationRebalance(
       trades.push({
         accountId: purchaseAccountId,
         securityId: selectedSecurity.securityId,
-        action: "BUY",
+        action: 'BUY',
         qty: buyQty,
         estPrice: selectedSecurity.price,
         estValue: actualBuyValue,
@@ -740,9 +671,7 @@ export function calculateSleeveBasedAllocationRebalance(
   }
 
   // Phase 2: Apply existing buy logic for least absolute deviation across ALL sleeves
-  console.log(
-    `🔺 Phase 2: Applying optimal buy logic for least absolute deviation`
-  );
+  console.log(`🔺 Phase 2: Applying optimal buy logic for least absolute deviation`);
 
   // Continue buying while we have cash, optimizing for least absolute deviation
   let totalAvailableCash = 0;
@@ -750,9 +679,7 @@ export function calculateSleeveBasedAllocationRebalance(
     totalAvailableCash += Math.max(0, cashAmount);
   }
 
-  console.log(
-    `🔺 [PHASE 2] Total available cash: $${totalAvailableCash.toFixed(2)}`
-  );
+  console.log(`🔺 [PHASE 2] Total available cash: $${totalAvailableCash.toFixed(2)}`);
 
   while (totalAvailableCash >= 1.0) {
     // Generate all possible purchases (one share each) and calculate their impact on total deviation
@@ -766,12 +693,12 @@ export function calculateSleeveBasedAllocationRebalance(
 
     // Consider all non-cash sleeves with positive targets for purchases
     for (const sleeve of sleeves) {
-      if (sleeve.sleeveId === "cash") continue;
+      if (sleeve.sleeveId === 'cash') continue;
 
       // Skip sleeves with zero target percentage (like "Unassigned")
       if (sleeve.targetPct <= 0) {
         console.log(
-          `🚫 [PHASE 2] Skipping sleeve ${sleeve.sleeveId} with targetPct: ${sleeve.targetPct}%`
+          `🚫 [PHASE 2] Skipping sleeve ${sleeve.sleeveId} with targetPct: ${sleeve.targetPct}%`,
         );
         continue;
       }
@@ -785,12 +712,10 @@ export function calculateSleeveBasedAllocationRebalance(
 
       // Find the lowest ranked security that's not wash sale restricted
       // and that can be purchased using cash from ANY account with sufficient balance
-      let selectedSecurity = null as (typeof sortedSecurities[number]) | null;
+      let selectedSecurity = null as (typeof sortedSecurities)[number] | null;
       let purchaseAccountId: string | null = null;
       for (const sec of sortedSecurities) {
-        const restriction = restrictionChecker.isSecurityRestricted(
-          sec.securityId
-        );
+        const restriction = restrictionChecker.isSecurityRestricted(sec.securityId);
         if (restriction.isRestricted) continue;
         const ownCash = accountCashMap.get(sec.accountId) || 0;
         if (ownCash >= sec.price) {
@@ -813,18 +738,15 @@ export function calculateSleeveBasedAllocationRebalance(
       // Calculate TOTAL portfolio deviation after this purchase
       let totalSquaredDeviation = 0;
       for (const evalSleeve of sleeves) {
-        if (evalSleeve.sleeveId === "cash") continue;
+        if (evalSleeve.sleeveId === 'cash') continue;
 
         const evalCurrentValue =
-          sleeveCurrentValues.get(evalSleeve.sleeveId) ||
-          evalSleeve.currentValue;
+          sleeveCurrentValues.get(evalSleeve.sleeveId) || evalSleeve.currentValue;
         const evalValueAfterPurchase =
           evalSleeve.sleeveId === sleeve.sleeveId
             ? evalCurrentValue + selectedSecurity.price
             : evalCurrentValue;
-        const deviationDollars = Math.abs(
-          evalValueAfterPurchase - evalSleeve.targetValue
-        );
+        const deviationDollars = Math.abs(evalValueAfterPurchase - evalSleeve.targetValue);
         totalSquaredDeviation += deviationDollars * deviationDollars;
       }
 
@@ -839,21 +761,19 @@ export function calculateSleeveBasedAllocationRebalance(
 
     // No valid purchases available
     if (possiblePurchases.length === 0) {
-      console.log("🔺 [PHASE 2] No valid purchases remaining");
+      console.log('🔺 [PHASE 2] No valid purchases remaining');
       break;
     }
 
     // Sort by total deviation (lower is better) and execute the best one
-    possiblePurchases.sort(
-      (a, b) => a.totalDeviationAfter - b.totalDeviationAfter
-    );
+    possiblePurchases.sort((a, b) => a.totalDeviationAfter - b.totalDeviationAfter);
     const bestPurchase = possiblePurchases[0];
 
     // Validate trade against wash sale restrictions
     const validation = validateTradeAgainstRestrictions(
       bestPurchase.securityId,
-      "BUY",
-      restrictionChecker
+      'BUY',
+      restrictionChecker,
     );
 
     if (!validation.isAllowed) {
@@ -864,7 +784,7 @@ export function calculateSleeveBasedAllocationRebalance(
     trades.push({
       accountId: bestPurchase.accountId,
       securityId: bestPurchase.securityId,
-      action: "BUY",
+      action: 'BUY',
       qty: 1,
       estPrice: bestPurchase.price,
       estValue: bestPurchase.price,
@@ -872,31 +792,22 @@ export function calculateSleeveBasedAllocationRebalance(
 
     // Update tracking
     totalAvailableCash -= bestPurchase.price;
-    const currentSleeveValue =
-      sleeveCurrentValues.get(bestPurchase.sleeveId) || 0;
-    sleeveCurrentValues.set(
-      bestPurchase.sleeveId,
-      currentSleeveValue + bestPurchase.price
-    );
+    const currentSleeveValue = sleeveCurrentValues.get(bestPurchase.sleeveId) || 0;
+    sleeveCurrentValues.set(bestPurchase.sleeveId, currentSleeveValue + bestPurchase.price);
 
     // Update account cash tracking
     const accountCash = accountCashMap.get(bestPurchase.accountId) || 0;
-    accountCashMap.set(
-      bestPurchase.accountId,
-      accountCash - bestPurchase.price
-    );
+    accountCashMap.set(bestPurchase.accountId, accountCash - bestPurchase.price);
   }
 
-  console.log(
-    `🔺 [PHASE 2] Complete. Remaining cash: $${totalAvailableCash.toFixed(2)}`
-  );
+  console.log(`🔺 [PHASE 2] Complete. Remaining cash: $${totalAvailableCash.toFixed(2)}`);
 
   // Debug: Show remaining cash by account after Phase 2
   console.log(
-    "💰 [PHASE 2] Remaining cash by account:",
+    '💰 [PHASE 2] Remaining cash by account:',
     Array.from(accountCashMap.entries()).map(
-      ([accountId, cash]) => `${accountId}: $${cash.toFixed(2)}`
-    )
+      ([accountId, cash]) => `${accountId}: $${cash.toFixed(2)}`,
+    ),
   );
 
   let totalTradeValue = trades.reduce((sum, t) => sum + t.estValue, 0);
@@ -909,7 +820,7 @@ export function calculateSleeveBasedAllocationRebalance(
       accountCashMap,
       washSaleRestrictions,
       maxOverinvestmentPercent,
-      transactions
+      transactions,
     );
     trades.push(...additionalTrades);
 
@@ -922,12 +833,12 @@ export function calculateSleeveBasedAllocationRebalance(
   // Negative totalTradeValue means we underbought (have excess cash remaining)
   // Positive totalTradeValue means we overbought (need more cash than we have)
   if (Math.abs(totalTradeValue) > 0.01) {
-    const cashSleeve = sleeves.find((s) => s.sleeveId === "cash");
+    const cashSleeve = sleeves.find((s) => s.sleeveId === 'cash');
     if (cashSleeve && cashSleeve.securities.length > 0) {
       trades.push({
         accountId: cashSleeve.securities[0].accountId,
         securityId: CASH_TICKER,
-        action: totalTradeValue < 0 ? "BUY" : "SELL", // If underbought (negative), we "buy"/accumulate cash
+        action: totalTradeValue < 0 ? 'BUY' : 'SELL', // If underbought (negative), we "buy"/accumulate cash
         qty: totalTradeValue < 0 ? 1 : -1, // Virtual quantity
         estPrice: Math.abs(totalTradeValue),
         estValue: -totalTradeValue, // Opposite sign: negative total = positive cash gain
@@ -950,13 +861,10 @@ export function calculateTLHSwap(
   securities: RebalanceSecurityData[],
   washSaleRestrictions: WashSaleRestriction[],
   replacementCandidates: SecurityReplacement[],
-  transactions: Transaction[] = []
+  transactions: Transaction[] = [],
 ): Trade[] {
   const trades: Trade[] = [];
-  const restrictionChecker = createRestrictionChecker(
-    washSaleRestrictions,
-    transactions
-  );
+  const restrictionChecker = createRestrictionChecker(washSaleRestrictions, transactions);
 
   // Create a map for quick security price lookup
   const securityPriceMap = new Map<string, number>();
@@ -970,15 +878,13 @@ export function calculateTLHSwap(
       sec.isTaxable &&
       sec.unrealizedGain &&
       sec.unrealizedGain < 0 &&
-      !restrictionChecker.isSecurityRestricted(sec.securityId).isRestricted
+      !restrictionChecker.isSecurityRestricted(sec.securityId).isRestricted,
   );
 
   // Create replacement map
   const replacementMap = new Map<string, SecurityReplacement>();
   replacementCandidates.forEach((r) => {
-    if (
-      !restrictionChecker.isSecurityRestricted(r.replacementTicker).isRestricted
-    ) {
+    if (!restrictionChecker.isSecurityRestricted(r.replacementTicker).isRestricted) {
       replacementMap.set(r.originalTicker, r);
     }
   });
@@ -993,16 +899,14 @@ export function calculateTLHSwap(
       trades.push({
         accountId: sec.accountId,
         securityId: sec.securityId,
-        action: "SELL",
+        action: 'SELL',
         qty: -sec.currentQty, // Negative for sells
         estPrice: sec.price,
         estValue: -sellValue, // Negative for sells
       });
 
       // Get the actual price of the replacement security
-      const replacementPrice = securityPriceMap.get(
-        replacement.replacementTicker
-      );
+      const replacementPrice = securityPriceMap.get(replacement.replacementTicker);
 
       if (replacementPrice && replacementPrice > 0) {
         // Calculate buy quantity based on sell proceeds and replacement price
@@ -1012,28 +916,26 @@ export function calculateTLHSwap(
           // Validate replacement purchase against wash sale restrictions
           const validation = validateTradeAgainstRestrictions(
             replacement.replacementTicker,
-            "BUY",
-            restrictionChecker
+            'BUY',
+            restrictionChecker,
           );
 
           if (validation.isAllowed) {
             trades.push({
               accountId: sec.accountId,
               securityId: replacement.replacementTicker,
-              action: "BUY",
+              action: 'BUY',
               qty: buyQty, // Positive for buys
               estPrice: replacementPrice,
               estValue: buyQty * replacementPrice, // Positive for buys
             });
           } else {
-            console.log(
-              `🚫 [TLH] Replacement trade blocked: ${validation.reason}`
-            );
+            console.log(`🚫 [TLH] Replacement trade blocked: ${validation.reason}`);
           }
         }
       } else {
         console.log(
-          `⚠️ [TLH] No price found for replacement security ${replacement.replacementTicker}`
+          `⚠️ [TLH] No price found for replacement security ${replacement.replacementTicker}`,
         );
       }
     }
@@ -1046,14 +948,14 @@ export function calculateTLHAndRebalance(
   securities: RebalanceSecurityData[],
   washSaleRestrictions: WashSaleRestriction[],
   replacementCandidates: SecurityReplacement[],
-  transactions: Transaction[] = []
+  transactions: Transaction[] = [],
 ): Trade[] {
   // Step 1: Perform TLH swaps
   const tlhTrades = calculateTLHSwap(
     securities,
     washSaleRestrictions,
     replacementCandidates,
-    transactions
+    transactions,
   );
 
   // Step 2: Apply TLH trades to get updated security positions
@@ -1063,7 +965,7 @@ export function calculateTLHAndRebalance(
   const rebalanceTrades = calculateAllocationRebalanceWithConstraints(
     updatedSecurities,
     washSaleRestrictions,
-    transactions
+    transactions,
   );
 
   return [...tlhTrades, ...rebalanceTrades];
@@ -1072,42 +974,36 @@ export function calculateTLHAndRebalance(
 function calculateAllocationRebalanceWithConstraints(
   securities: RebalanceSecurityData[],
   washSaleRestrictions: WashSaleRestriction[],
-  transactions: Transaction[] = []
+  transactions: Transaction[] = [],
 ): Trade[] {
-  const restrictionChecker = createRestrictionChecker(
-    washSaleRestrictions,
-    transactions
-  );
+  const restrictionChecker = createRestrictionChecker(washSaleRestrictions, transactions);
 
   // Filter out wash-sale restricted securities for new buys/sells
   const tradableSecurities = securities.filter(
-    (sec) =>
-      !restrictionChecker.isSecurityRestricted(sec.securityId).isRestricted
+    (sec) => !restrictionChecker.isSecurityRestricted(sec.securityId).isRestricted,
   );
 
-  return calculateAllocationRebalance(
-    tradableSecurities,
-    washSaleRestrictions,
-    transactions
-  );
+  return calculateAllocationRebalance(tradableSecurities, washSaleRestrictions, transactions);
 }
 
 function applyTradesToSecurities(
   securities: RebalanceSecurityData[],
-  trades: Trade[]
+  trades: Trade[],
 ): RebalanceSecurityData[] {
   const securitiesMap = new Map<string, RebalanceSecurityData>();
-  securities.forEach((sec) => securitiesMap.set(sec.securityId, { ...sec }));
+  for (const sec of securities) {
+    securitiesMap.set(sec.securityId, { ...sec });
+  }
 
   trades.forEach((trade) => {
     const sec = securitiesMap.get(trade.securityId);
     if (sec) {
-      if (trade.action === "BUY") {
+      if (trade.action === 'BUY') {
         sec.currentQty += trade.qty;
       } else {
         sec.currentQty += trade.qty; // qty is already negative for sells
       }
-    } else if (trade.action === "BUY") {
+    } else if (trade.action === 'BUY') {
       // New position from TLH replacement
       securitiesMap.set(trade.securityId, {
         securityId: trade.securityId,
@@ -1125,7 +1021,7 @@ function applyTradesToSecurities(
 
 function calculatePostHoldings(
   securities: RebalanceSecurityData[],
-  trades: Trade[]
+  trades: Trade[],
 ): HoldingPost[] {
   const holdingsMap = new Map<string, number>();
 
@@ -1155,39 +1051,31 @@ function calculatePostHoldings(
 function calculateSleeveSummaries(
   sleeves: InternalRebalanceSleeveData[],
   trades: Trade[],
-  postHoldings: HoldingPost[]
+  postHoldings: HoldingPost[],
 ): SleeveSummary[] {
   return sleeves.map((sleeve) => {
     // Calculate sleeve's trade totals
     const sleeveTrades = trades.filter((trade) =>
-      sleeve.securities.some((sec) => sec.securityId === trade.securityId)
+      sleeve.securities.some((sec) => sec.securityId === trade.securityId),
     );
 
     const tradeQty = sleeveTrades.reduce((sum, trade) => sum + trade.qty, 0);
-    const tradeUSD = sleeveTrades.reduce(
-      (sum, trade) => sum + trade.estValue,
-      0
-    );
+    const tradeUSD = sleeveTrades.reduce((sum, trade) => sum + trade.estValue, 0);
 
     // Calculate post-trade percentage
     const sleevePostValue = sleeve.securities.reduce((sum, sec) => {
-      const postHolding = postHoldings.find(
-        (h) => h.securityId === sec.securityId
-      );
+      const postHolding = postHoldings.find((h) => h.securityId === sec.securityId);
       const postQty = postHolding?.qty || 0;
       return sum + postQty * sec.price;
     }, 0);
 
     const totalPostValue = postHoldings.reduce((sum, holding) => {
-      const sec = sleeve.securities.find(
-        (s) => s.securityId === holding.securityId
-      );
+      const sec = sleeve.securities.find((s) => s.securityId === holding.securityId);
       const price = sec?.price || 0;
       return sum + holding.qty * price;
     }, 0);
 
-    const postPct =
-      totalPostValue > 0 ? (sleevePostValue / totalPostValue) * 100 : 0;
+    const postPct = totalPostValue > 0 ? (sleevePostValue / totalPostValue) * 100 : 0;
 
     return {
       sleeveId: sleeve.sleeveId,
@@ -1208,20 +1096,17 @@ interface SleeveWithFillRatio {
 // Helper function to calculate fill ratios for sleeves
 function calculateSleevesFillRatios(
   sleeves: RebalanceSleeveDataNew[],
-  washSaleRestrictions: WashSaleRestriction[] = []
+  washSaleRestrictions: WashSaleRestriction[] = [],
 ): SleeveWithFillRatio[] {
   return sleeves.map((sleeve) => {
-    const fillRatio =
-      sleeve.targetValue > 0 ? sleeve.currentValue / sleeve.targetValue : 0;
+    const fillRatio = sleeve.targetValue > 0 ? sleeve.currentValue / sleeve.targetValue : 0;
     const deficit = Math.max(0, sleeve.targetValue - sleeve.currentValue);
 
     // Find the best available security in this sleeve
     let selectedSecurity = null;
-    for (const security of sleeve.securities.sort(
-      (a, b) => (a.rank || 999) - (b.rank || 999)
-    )) {
+    for (const security of sleeve.securities.sort((a, b) => (a.rank || 999) - (b.rank || 999))) {
       const isRestricted = washSaleRestrictions.some(
-        (restriction) => restriction.ticker === security.securityId
+        (restriction) => restriction.ticker === security.securityId,
       );
 
       if (!isRestricted && security.price > 0) {
@@ -1243,7 +1128,7 @@ function calculateInvestCash(
   sleeves: RebalanceSleeveDataNew[],
   cashAmount: number,
   washSaleRestrictions: WashSaleRestriction[] = [],
-  _transactions: Transaction[] = []
+  _transactions: Transaction[] = [],
 ): Trade[] {
   console.log(`🚀 INVEST CASH DEBUG: Starting with cashAmount: $${cashAmount}`);
   console.log(`🚀 INVEST CASH DEBUG: Sleeves count: ${sleeves.length}`);
@@ -1256,15 +1141,15 @@ function calculateInvestCash(
   // Focus only on model sleeves that have target allocations > 0
   const investableSleeves = sleeves.filter(
     (sleeve) =>
-      sleeve.sleeveId !== "cash" &&
-      sleeve.sleeveId !== "orphan-securities" &&
+      sleeve.sleeveId !== 'cash' &&
+      sleeve.sleeveId !== 'orphan-securities' &&
       sleeve.targetPct > 0 &&
-      sleeve.securities.length > 0
+      sleeve.securities.length > 0,
   );
 
   // For round-robin investment, use ALL investable sleeves to achieve better balance
   // The round-robin approach can efficiently handle many sleeves by buying one share at a time
-  let processedSleeves = investableSleeves;
+  const processedSleeves = investableSleeves;
 
   if (processedSleeves.length === 0) {
     return [];
@@ -1273,7 +1158,7 @@ function calculateInvestCash(
   // Calculate total portfolio value for processed sleeves only
   const totalPortfolioValue = processedSleeves.reduce(
     (sum, sleeve) => sum + sleeve.currentValue,
-    0
+    0,
   );
 
   // Calculate how much each sleeve should have after cash injection
@@ -1284,9 +1169,7 @@ function calculateInvestCash(
     const newTargetValue = (sleeve.targetPct / 100) * newTotalPortfolioValue;
     const deficit = newTargetValue - sleeve.currentValue;
     const currentPct =
-      totalPortfolioValue > 0
-        ? (sleeve.currentValue / totalPortfolioValue) * 100
-        : 0;
+      totalPortfolioValue > 0 ? (sleeve.currentValue / totalPortfolioValue) * 100 : 0;
 
     return {
       sleeveId: sleeve.sleeveId,
@@ -1301,14 +1184,11 @@ function calculateInvestCash(
 
   // For micro-sleeve models, we need to be more aggressive about cash deployment
   // If total deficits are much smaller than available cash, distribute more evenly
-  const totalDeficit = sleeveDrifts.reduce(
-    (sum, sleeve) => sum + sleeve.deficit,
-    0
-  );
+  const totalDeficit = sleeveDrifts.reduce((sum, sleeve) => sum + sleeve.deficit, 0);
   const shouldDistributeEvenly = totalDeficit < cashAmount * 0.5; // If deficits are less than 50% of cash
 
   console.log(
-    `🚀 INVEST CASH DEBUG: Total deficit: $${totalDeficit.toFixed(2)}, Available cash: $${cashAmount}, Should distribute evenly: ${shouldDistributeEvenly}`
+    `🚀 INVEST CASH DEBUG: Total deficit: $${totalDeficit.toFixed(2)}, Available cash: $${cashAmount}, Should distribute evenly: ${shouldDistributeEvenly}`,
   );
   console.log(
     `🚀 INVEST CASH DEBUG: Sleeve deficits:`,
@@ -1316,7 +1196,7 @@ function calculateInvestCash(
       sleeveId: s.sleeveId,
       deficit: s.deficit.toFixed(2),
       targetPct: s.targetPct.toFixed(2),
-    }))
+    })),
   );
 
   // Sort by deficit (largest deficit first to prioritize most underweight sleeves)
@@ -1326,7 +1206,7 @@ function calculateInvestCash(
   // For micro-sleeve models, the sophisticated leveling approach is too complex
   // Instead, buy one share of each security in price order to achieve balance
   console.log(
-    `🚀 INVEST CASH DEBUG: Starting balanced investment with ${processedSleeves.length} sleeves`
+    `🚀 INVEST CASH DEBUG: Starting balanced investment with ${processedSleeves.length} sleeves`,
   );
 
   const trades: Trade[] = [];
@@ -1337,7 +1217,7 @@ function calculateInvestCash(
     .map((sleeve) => {
       const selectedSecurity = sleeve.securities.find((sec) => {
         const isRestricted = washSaleRestrictions.some(
-          (restriction) => restriction.ticker === sec.securityId
+          (restriction) => restriction.ticker === sec.securityId,
         );
         return !isRestricted && sec.price > 0;
       });
@@ -1351,13 +1231,11 @@ function calculateInvestCash(
         : null;
     })
     .filter((item) => item !== null)
-    .sort((a, b) => a!.security.price - b!.security.price);
+    .sort((a, b) => a?.security.price - b?.security.price);
 
+  console.log(`🚀 INVEST CASH DEBUG: Found ${availableInvestments.length} investable securities`);
   console.log(
-    `🚀 INVEST CASH DEBUG: Found ${availableInvestments.length} investable securities`
-  );
-  console.log(
-    `🚀 INVEST CASH DEBUG: Price range: $${availableInvestments[0]?.security.price.toFixed(2)} - $${availableInvestments[availableInvestments.length - 1]?.security.price.toFixed(2)}`
+    `🚀 INVEST CASH DEBUG: Price range: $${availableInvestments[0]?.security.price.toFixed(2)} - $${availableInvestments[availableInvestments.length - 1]?.security.price.toFixed(2)}`,
   );
 
   // Round-robin investment: keep buying one share of the cheapest available securities
@@ -1369,20 +1247,20 @@ function calculateInvestCash(
     let investmentsThisRound = 0;
 
     console.log(
-      `🚀 INVEST CASH DEBUG: Round ${round} - remaining cash: $${remainingCash.toFixed(2)}`
+      `🚀 INVEST CASH DEBUG: Round ${round} - remaining cash: $${remainingCash.toFixed(2)}`,
     );
 
     // Try to buy one share of each security we can afford, starting with cheapest
     for (const investment of availableInvestments) {
       if (remainingCash >= investment.security.price) {
         console.log(
-          `🚀 INVEST CASH DEBUG: Round ${round} - Buying 1 share of ${investment.security.securityId} for $${investment.security.price.toFixed(2)}`
+          `🚀 INVEST CASH DEBUG: Round ${round} - Buying 1 share of ${investment.security.securityId} for $${investment.security.price.toFixed(2)}`,
         );
 
         trades.push({
           accountId: investment.security.accountId,
           securityId: investment.security.securityId,
-          action: "BUY",
+          action: 'BUY',
           qty: 1,
           estPrice: investment.security.price,
           estValue: investment.security.price,
@@ -1397,41 +1275,31 @@ function calculateInvestCash(
 
     // If we couldn't buy any securities this round, we're done
     if (investmentsThisRound === 0) {
-      console.log(
-        `🚀 INVEST CASH DEBUG: No affordable securities in round ${round}, stopping`
-      );
+      console.log(`🚀 INVEST CASH DEBUG: No affordable securities in round ${round}, stopping`);
       break;
     }
 
     console.log(
-      `🚀 INVEST CASH DEBUG: Round ${round} complete - bought ${investmentsThisRound} shares`
+      `🚀 INVEST CASH DEBUG: Round ${round} complete - bought ${investmentsThisRound} shares`,
     );
   }
 
   // Calculate final fill ratios and statistics
-  const finalSleevesWithRatios = calculateSleevesFillRatios(
-    processedSleeves,
-    washSaleRestrictions
-  );
+  const finalSleevesWithRatios = calculateSleevesFillRatios(processedSleeves, washSaleRestrictions);
   const finalFillRatios = finalSleevesWithRatios.map((s) => s.fillRatio);
   const avgFillRatio =
-    finalFillRatios.reduce((sum, ratio) => sum + ratio, 0) /
-    finalFillRatios.length;
+    finalFillRatios.reduce((sum, ratio) => sum + ratio, 0) / finalFillRatios.length;
   const fillRatioStdDev = Math.sqrt(
-    finalFillRatios.reduce(
-      (sum, ratio) => sum + Math.pow(ratio - avgFillRatio, 2),
-      0
-    ) / finalFillRatios.length
+    finalFillRatios.reduce((sum, ratio) => sum + (ratio - avgFillRatio) ** 2, 0) /
+      finalFillRatios.length,
   );
 
   console.log(
-    `🚀 INVEST CASH DEBUG: Generated ${trades.length} trades over ${round} rounds, remaining cash: $${remainingCash.toFixed(2)}`
+    `🚀 INVEST CASH DEBUG: Generated ${trades.length} trades over ${round} rounds, remaining cash: $${remainingCash.toFixed(2)}`,
   );
+  console.log(`🚀 INVEST CASH DEBUG: Total invested: $${(cashAmount - remainingCash).toFixed(2)}`);
   console.log(
-    `🚀 INVEST CASH DEBUG: Total invested: $${(cashAmount - remainingCash).toFixed(2)}`
-  );
-  console.log(
-    `🚀 INVEST CASH DEBUG: Final fill ratio stats - Avg: ${avgFillRatio.toFixed(3)}, StdDev: ${fillRatioStdDev.toFixed(3)}`
+    `🚀 INVEST CASH DEBUG: Final fill ratio stats - Avg: ${avgFillRatio.toFixed(3)}, StdDev: ${fillRatioStdDev.toFixed(3)}`,
   );
 
   // Show final fill ratios for first 10 sleeves
@@ -1440,10 +1308,7 @@ function calculateInvestCash(
     fillRatio: s.fillRatio.toFixed(3),
     currentValue: s.sleeve.currentValue.toFixed(2),
   }));
-  console.log(
-    `🚀 INVEST CASH DEBUG: Final fill ratios (first 10):`,
-    finalRatioSummary
-  );
+  console.log(`🚀 INVEST CASH DEBUG: Final fill ratios (first 10):`, finalRatioSummary);
 
   return consolidateTrades(trades);
 }
@@ -1456,45 +1321,35 @@ function consolidateTrades(trades: Trade[]): Trade[] {
     const key = `${trade.securityId}_${trade.accountId}_${trade.action}`;
 
     if (consolidatedMap.has(key)) {
-      const existing = consolidatedMap.get(key)!;
-      // Combine quantities and values
-      existing.qty += trade.qty;
-      existing.estValue += trade.estValue;
-      // Keep the price as weighted average
-      existing.estPrice = Math.abs(existing.estValue / existing.qty);
+      const existing = consolidatedMap.get(key);
+      if (existing) {
+        // Combine quantities and values
+        existing.qty += trade.qty;
+        existing.estValue += trade.estValue;
+        // Keep the price as weighted average
+        existing.estPrice = Math.abs(existing.estValue / existing.qty);
+      }
     } else {
       consolidatedMap.set(key, { ...trade });
     }
   });
 
   // Filter out trades with zero quantity (shouldn't happen but good safety check)
-  return Array.from(consolidatedMap.values()).filter(
-    (trade) => Math.abs(trade.qty) > 0.001
-  );
+  return Array.from(consolidatedMap.values()).filter((trade) => Math.abs(trade.qty) > 0.001);
 }
 
 // Export parameter types and return types for better type safety
-export type ExecuteRebalancePortfolioId = Parameters<
-  typeof executeRebalance
->[0];
+export type ExecuteRebalancePortfolioId = Parameters<typeof executeRebalance>[0];
 export type ExecuteRebalanceMethod = Parameters<typeof executeRebalance>[1];
 export type ExecuteRebalanceSleeves = Parameters<typeof executeRebalance>[2];
-export type ExecuteRebalanceWashSaleRestrictions = Parameters<
-  typeof executeRebalance
->[3];
-export type ExecuteRebalanceReplacementCandidates = Parameters<
-  typeof executeRebalance
->[4];
+export type ExecuteRebalanceWashSaleRestrictions = Parameters<typeof executeRebalance>[3];
+export type ExecuteRebalanceReplacementCandidates = Parameters<typeof executeRebalance>[4];
 export type ExecuteRebalanceResult = ReturnType<typeof executeRebalance>;
 
 // Export return types for other rebalance functions
-export type CalculateAllocationRebalanceResult = ReturnType<
-  typeof calculateAllocationRebalance
->;
+export type CalculateAllocationRebalanceResult = ReturnType<typeof calculateAllocationRebalance>;
 export type CalculateSleeveBasedAllocationRebalanceResult = ReturnType<
   typeof calculateSleeveBasedAllocationRebalance
 >;
 export type CalculateTLHSwapResult = ReturnType<typeof calculateTLHSwap>;
-export type CalculateTLHAndRebalanceResult = ReturnType<
-  typeof calculateTLHAndRebalance
->;
+export type CalculateTLHAndRebalanceResult = ReturnType<typeof calculateTLHAndRebalance>;

@@ -1,7 +1,7 @@
-import { useMemo, useState } from "react";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "../../ui/dialog";
-import { Input } from "../../ui/input";
-import { Button } from "../../ui/button";
+import { useId, useMemo, useState } from 'react';
+import { Button } from '../../ui/button';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '../../ui/dialog';
+import { Input } from '../../ui/input';
 
 type Props = {
   open: boolean;
@@ -11,8 +11,16 @@ type Props = {
   basisLabel?: string; // e.g., "Market" | "Limit"
 };
 
-export function QuantityCalculatorModal({ open, onOpenChange, marketPrice, onApply, basisLabel = "Market" }: Props) {
+export function QuantityCalculatorModal({
+  open,
+  onOpenChange,
+  marketPrice,
+  onApply,
+  basisLabel = 'Market',
+}: Props) {
   const [dollars, setDollars] = useState<number>(0);
+  const amountId = `${useId()}-amount`;
+  const basisId = `${useId()}-basis`;
 
   const estShares = useMemo(() => {
     if (!marketPrice || marketPrice <= 0) return 0;
@@ -20,7 +28,7 @@ export function QuantityCalculatorModal({ open, onOpenChange, marketPrice, onApp
     return Math.floor(dollars / marketPrice) || 0;
   }, [dollars, marketPrice]);
 
-  const estAmount = useMemo(() => (estShares * marketPrice) || 0, [estShares, marketPrice]);
+  const estAmount = useMemo(() => estShares * marketPrice || 0, [estShares, marketPrice]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -30,18 +38,29 @@ export function QuantityCalculatorModal({ open, onOpenChange, marketPrice, onApp
         </DialogHeader>
         <div className="space-y-4">
           <div>
-            <label className="text-sm font-medium">Enter $ amount you want to invest</label>
+            <label className="text-sm font-medium" htmlFor={amountId}>
+              Enter $ amount you want to invest
+            </label>
             <Input
+              id={amountId}
               type="number"
               className="mt-1"
-              value={Number.isFinite(dollars) ? String(dollars) : ""}
+              value={Number.isFinite(dollars) ? String(dollars) : ''}
               onChange={(e) => setDollars(parseFloat(e.target.value) || 0)}
               min={0}
             />
           </div>
           <div>
-            <label className="text-sm font-medium">Based on price ({basisLabel})</label>
-            <Input className="mt-1" value={marketPrice ? marketPrice.toFixed(2) : "-"} readOnly disabled />
+            <label className="text-sm font-medium" htmlFor={basisId}>
+              Based on price ({basisLabel})
+            </label>
+            <Input
+              id={basisId}
+              className="mt-1"
+              value={marketPrice ? marketPrice.toFixed(2) : '-'}
+              readOnly
+              disabled
+            />
           </div>
           <div className="text-sm">
             <div className="flex items-center justify-between py-1">
@@ -50,12 +69,22 @@ export function QuantityCalculatorModal({ open, onOpenChange, marketPrice, onApp
             </div>
             <div className="flex items-center justify-between py-1">
               <span>Estimated amount:</span>
-              <span className="font-medium">${estAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+              <span className="font-medium">
+                $
+                {estAmount.toLocaleString(undefined, {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}
+              </span>
             </div>
           </div>
         </div>
         <DialogFooter>
-          <Button variant="ghost" className="h-8 px-3 py-1 text-xs" onClick={() => onOpenChange(false)}>
+          <Button
+            variant="ghost"
+            className="h-8 px-3 py-1 text-xs"
+            onClick={() => onOpenChange(false)}
+          >
             Cancel
           </Button>
           <Button
@@ -73,5 +102,3 @@ export function QuantityCalculatorModal({ open, onOpenChange, marketPrice, onApp
     </Dialog>
   );
 }
-
-

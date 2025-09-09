@@ -38,7 +38,7 @@ export interface TaxBrackets {
   standardDeductions?: StandardDeductions;
 }
 
-export type FilingStatus = "single" | "married_filing_jointly" | "head_of_household";
+export type FilingStatus = 'single' | 'married_filing_jointly' | 'head_of_household';
 
 export interface TaxCalculationInput {
   ordinaryIncome: number;
@@ -92,11 +92,10 @@ export interface TaxCalculationDetail {
   };
 }
 
-
 function calculateProgressiveTax(income: number, brackets: TaxBracket[]): number {
   // Sort brackets by minimum income to ensure proper order
   const sortedBrackets = [...brackets].sort((a, b) => a.minIncome - b.minIncome);
-  
+
   let tax = 0;
   let previousMax = 0;
 
@@ -124,30 +123,33 @@ function calculateProgressiveTax(income: number, brackets: TaxBracket[]): number
 function calculateQualifiedDividendsAndCapitalGainsTax(
   totalTaxableIncome: number,
   qualifiedDividendsAndCapitalGains: number,
-  capitalGainsBrackets: TaxBracket[]
+  capitalGainsBrackets: TaxBracket[],
 ): number {
   if (qualifiedDividendsAndCapitalGains <= 0) return 0;
-  
+
   // Sort brackets by minimum income
   const sortedBrackets = [...capitalGainsBrackets].sort((a, b) => a.minIncome - b.minIncome);
-  
+
   let tax = 0;
   let remainingAmount = qualifiedDividendsAndCapitalGains;
 
   for (const bracket of sortedBrackets) {
     if (remainingAmount <= 0) break;
-    
+
     const bracketStart = bracket.minIncome;
     const bracketEnd = bracket.maxIncome ?? Infinity;
-    
+
     // Check if total taxable income reaches this bracket
     if (totalTaxableIncome > bracketStart) {
       // The amount of qualified dividends/capital gains that gets this rate
       // is the overlap between the bracket and the portion of total income that consists of qualified dividends/capital gains
       const maxIncomeInBracket = Math.min(totalTaxableIncome, bracketEnd);
-      const minIncomeInBracket = Math.max(bracketStart, totalTaxableIncome - qualifiedDividendsAndCapitalGains);
+      const minIncomeInBracket = Math.max(
+        bracketStart,
+        totalTaxableIncome - qualifiedDividendsAndCapitalGains,
+      );
       const qualifiedIncomeInBracket = Math.max(0, maxIncomeInBracket - minIncomeInBracket);
-      
+
       if (qualifiedIncomeInBracket > 0) {
         const amountAtThisRate = Math.min(remainingAmount, qualifiedIncomeInBracket);
         tax += amountAtThisRate * (bracket.rate / 100);
@@ -165,10 +167,18 @@ function calculateQualifiedDividendsAndCapitalGainsTaxWithDetails(
   qualifiedDividendsAndCapitalGains: number,
   brackets: TaxBracket[],
   taxType: string,
-  inputs: { ordinaryIncome: number; capitalGains: number; dividends: number; filingStatus: FilingStatus; displayAmount?: number; isPartOfCombined?: boolean; federalStandardDeduction?: number; }
+  inputs: {
+    ordinaryIncome: number;
+    capitalGains: number;
+    dividends: number;
+    filingStatus: FilingStatus;
+    displayAmount?: number;
+    isPartOfCombined?: boolean;
+    federalStandardDeduction?: number;
+  },
 ): TaxCalculationDetail {
   const sortedBrackets = [...brackets].sort((a, b) => a.minIncome - b.minIncome);
-  
+
   let tax = 0;
   let remainingAmount = qualifiedDividendsAndCapitalGains;
   const bracketDetails: Array<{
@@ -181,22 +191,25 @@ function calculateQualifiedDividendsAndCapitalGainsTaxWithDetails(
 
   for (const bracket of sortedBrackets) {
     if (remainingAmount <= 0) break;
-    
+
     const bracketStart = bracket.minIncome;
     const bracketEnd = bracket.maxIncome ?? Infinity;
-    
+
     // Check if total taxable income reaches this bracket
     if (totalTaxableIncome > bracketStart) {
       // The amount of qualified dividends/capital gains that gets this rate
       const maxIncomeInBracket = Math.min(totalTaxableIncome, bracketEnd);
-      const minIncomeInBracket = Math.max(bracketStart, totalTaxableIncome - qualifiedDividendsAndCapitalGains);
+      const minIncomeInBracket = Math.max(
+        bracketStart,
+        totalTaxableIncome - qualifiedDividendsAndCapitalGains,
+      );
       const qualifiedIncomeInBracket = Math.max(0, maxIncomeInBracket - minIncomeInBracket);
-      
+
       if (qualifiedIncomeInBracket > 0) {
         const amountAtThisRate = Math.min(remainingAmount, qualifiedIncomeInBracket);
         const taxOwed = amountAtThisRate * (bracket.rate / 100);
         tax += taxOwed;
-        
+
         bracketDetails.push({
           minIncome: bracket.minIncome,
           maxIncome: bracket.maxIncome,
@@ -204,7 +217,7 @@ function calculateQualifiedDividendsAndCapitalGainsTaxWithDetails(
           taxableAmount: amountAtThisRate,
           taxOwed: taxOwed,
         });
-        
+
         remainingAmount -= amountAtThisRate;
       }
     }
@@ -213,18 +226,19 @@ function calculateQualifiedDividendsAndCapitalGainsTaxWithDetails(
   // If this is part of a combined calculation, calculate proportional values for display
   const displayAmount = inputs.displayAmount || qualifiedDividendsAndCapitalGains;
   const isPartOfCombined = inputs.isPartOfCombined || false;
-  
+
   let displayTax = tax;
-  let displayEffectiveRate = qualifiedDividendsAndCapitalGains > 0 ? (tax / qualifiedDividendsAndCapitalGains) * 100 : 0;
+  let displayEffectiveRate =
+    qualifiedDividendsAndCapitalGains > 0 ? (tax / qualifiedDividendsAndCapitalGains) * 100 : 0;
   let displayBracketDetails = bracketDetails;
-  
+
   if (isPartOfCombined && qualifiedDividendsAndCapitalGains > 0) {
     const proportion = displayAmount / qualifiedDividendsAndCapitalGains;
     displayTax = tax * proportion;
     displayEffectiveRate = displayAmount > 0 ? (displayTax / displayAmount) * 100 : 0;
-    
+
     // Scale bracket details proportionally
-    displayBracketDetails = bracketDetails.map(bracket => ({
+    displayBracketDetails = bracketDetails.map((bracket) => ({
       ...bracket,
       taxableAmount: bracket.taxableAmount * proportion,
       taxOwed: bracket.taxOwed * proportion,
@@ -235,8 +249,10 @@ function calculateQualifiedDividendsAndCapitalGainsTaxWithDetails(
 
   return {
     taxType: isPartOfCombined ? `${taxType}` : taxType,
-    income: isPartOfCombined ? qualifiedDividendsAndCapitalGains + inputs.ordinaryIncome : displayAmount,
-    standardDeduction: isPartOfCombined ? (inputs.federalStandardDeduction || 0) : 0,
+    income: isPartOfCombined
+      ? qualifiedDividendsAndCapitalGains + inputs.ordinaryIncome
+      : displayAmount,
+    standardDeduction: isPartOfCombined ? inputs.federalStandardDeduction || 0 : 0,
     taxableIncome: isPartOfCombined ? totalTaxableIncome : displayAmount,
     totalTax: displayTax,
     effectiveRate: displayEffectiveRate,
@@ -250,25 +266,30 @@ function calculateQualifiedDividendsAndCapitalGainsTaxWithDetails(
         totalTaxableIncome: totalTaxableIncome,
         combinedTotalTax: tax,
         componentShare: displayAmount,
-        isShowingFullCalculation: true
-      })
+        isShowingFullCalculation: true,
+      }),
     },
   };
 }
 
 function calculateProgressiveTaxWithDetails(
-  income: number, 
-  brackets: TaxBracket[], 
+  income: number,
+  brackets: TaxBracket[],
   taxType: string,
-  inputs: { ordinaryIncome: number; capitalGains: number; dividends: number; filingStatus: FilingStatus; },
-  standardDeduction: number = 0
+  inputs: {
+    ordinaryIncome: number;
+    capitalGains: number;
+    dividends: number;
+    filingStatus: FilingStatus;
+  },
+  standardDeduction: number = 0,
 ): TaxCalculationDetail {
   // Apply standard deduction
   const taxableIncome = Math.max(0, income - standardDeduction);
-  
+
   // Sort brackets by minimum income to ensure proper order
   const sortedBrackets = [...brackets].sort((a, b) => a.minIncome - b.minIncome);
-  
+
   let tax = 0;
   let previousMax = 0;
   const bracketDetails: Array<{
@@ -289,7 +310,7 @@ function calculateProgressiveTaxWithDetails(
     if (taxableInBracket > 0) {
       const taxOwed = taxableInBracket * (bracket.rate / 100);
       tax += taxOwed;
-      
+
       bracketDetails.push({
         minIncome: bracket.minIncome,
         maxIncome: bracket.maxIncome,
@@ -319,24 +340,28 @@ function calculateProgressiveTaxWithDetails(
   };
 }
 
-export function calculateTaxes(input: TaxCalculationInput, includeDetails: boolean = false, inflationRate: number = 2.0): TaxCalculationResult {
+export function calculateTaxes(
+  input: TaxCalculationInput,
+  includeDetails: boolean = false,
+  inflationRate: number = 2.0,
+): TaxCalculationResult {
   const { ordinaryIncome, capitalGains, dividends, filingStatus, taxBrackets, year = 2025 } = input;
 
   // Get standard deductions (with inflation adjustment if applicable)
   const standardDeductions = taxBrackets.standardDeductions || DEFAULT_STANDARD_DEDUCTIONS_2025;
   const federalStandardDeduction = getStandardDeduction(
-    filingStatus, 
-    standardDeductions, 
-    year, 
+    filingStatus,
+    standardDeductions,
+    year,
     inflationRate,
-    'federal'
+    'federal',
   );
   const californiaStandardDeduction = getStandardDeduction(
-    filingStatus, 
-    standardDeductions, 
-    year, 
+    filingStatus,
+    standardDeductions,
+    year,
     inflationRate,
-    'california'
+    'california',
   );
 
   // Total income and total taxable income calculations
@@ -350,13 +375,13 @@ export function calculateTaxes(input: TaxCalculationInput, includeDetails: boole
   const federalOrdinaryTaxableIncome = Math.max(0, ordinaryIncome - federalStandardDeduction);
   const federalIncomeTax = calculateProgressiveTax(
     federalOrdinaryTaxableIncome,
-    taxBrackets.federal_income[filingStatus]
+    taxBrackets.federal_income[filingStatus],
   );
 
   // California Income Tax (on all income with standard deduction)
   const californiaIncomeTax = calculateProgressiveTax(
     californiaTotalTaxableIncome,
-    taxBrackets.california_income[filingStatus]
+    taxBrackets.california_income[filingStatus],
   );
 
   // Federal Qualified Dividends and Capital Gains Tax using IRS worksheet methodology
@@ -365,71 +390,83 @@ export function calculateTaxes(input: TaxCalculationInput, includeDetails: boole
   const federalQualifiedTax = calculateQualifiedDividendsAndCapitalGainsTax(
     federalTotalTaxableIncome,
     qualifiedDividendsAndCapitalGains,
-    taxBrackets.federal_capital_gains[filingStatus]
+    taxBrackets.federal_capital_gains[filingStatus],
   );
 
   // Split the federal qualified tax proportionally between capital gains and dividends for display
   const totalQualified = qualifiedDividendsAndCapitalGains;
-  const federalCapitalGainsTax = totalQualified > 0 ? (federalQualifiedTax * capitalGains / totalQualified) : 0;
-  const federalDividendTax = totalQualified > 0 ? (federalQualifiedTax * dividends / totalQualified) : 0;
+  const federalCapitalGainsTax =
+    totalQualified > 0 ? (federalQualifiedTax * capitalGains) / totalQualified : 0;
+  const federalDividendTax =
+    totalQualified > 0 ? (federalQualifiedTax * dividends) / totalQualified : 0;
 
   // California Capital Gains and Dividend Tax (included in CA income tax calculation above, so $0 here)
   const californiaCapitalGainsTax = 0;
   const californiaDividendTax = 0;
 
-  const totalTaxes = 
-    federalIncomeTax + 
-    californiaIncomeTax + 
-    federalCapitalGainsTax + 
-    californiaCapitalGainsTax + 
-    federalDividendTax + 
+  const totalTaxes =
+    federalIncomeTax +
+    californiaIncomeTax +
+    federalCapitalGainsTax +
+    californiaCapitalGainsTax +
+    federalDividendTax +
     californiaDividendTax;
 
   let details: TaxCalculationDetails | undefined;
-  
+
   if (includeDetails) {
     details = {
       federalIncome: calculateProgressiveTaxWithDetails(
         ordinaryIncome,
         taxBrackets.federal_income[filingStatus],
-        "Federal Income Tax",
+        'Federal Income Tax',
         inputDetails,
-        federalStandardDeduction
+        federalStandardDeduction,
       ),
       californiaIncome: calculateProgressiveTaxWithDetails(
         totalIncome,
         taxBrackets.california_income[filingStatus],
-        "California Income Tax",
+        'California Income Tax',
         inputDetails,
-        californiaStandardDeduction
+        californiaStandardDeduction,
       ),
       federalCapitalGains: calculateQualifiedDividendsAndCapitalGainsTaxWithDetails(
         federalTotalTaxableIncome,
         qualifiedDividendsAndCapitalGains,
         taxBrackets.federal_capital_gains[filingStatus],
-        "Federal Capital Gains Tax",
-        {...inputDetails, displayAmount: capitalGains, isPartOfCombined: true, federalStandardDeduction}
+        'Federal Capital Gains Tax',
+        {
+          ...inputDetails,
+          displayAmount: capitalGains,
+          isPartOfCombined: true,
+          federalStandardDeduction,
+        },
       ),
       californiaCapitalGains: calculateProgressiveTaxWithDetails(
         0, // California capital gains included in income tax
         taxBrackets.california_income[filingStatus],
-        "California Capital Gains Tax",
+        'California Capital Gains Tax',
         inputDetails,
-        0
+        0,
       ),
       federalDividend: calculateQualifiedDividendsAndCapitalGainsTaxWithDetails(
         federalTotalTaxableIncome,
         qualifiedDividendsAndCapitalGains,
         taxBrackets.federal_capital_gains[filingStatus],
-        "Federal Dividend Tax",
-        {...inputDetails, displayAmount: dividends, isPartOfCombined: true, federalStandardDeduction}
+        'Federal Dividend Tax',
+        {
+          ...inputDetails,
+          displayAmount: dividends,
+          isPartOfCombined: true,
+          federalStandardDeduction,
+        },
       ),
       californiaDividend: calculateProgressiveTaxWithDetails(
         0, // California dividends included in income tax
         taxBrackets.california_income[filingStatus],
-        "California Dividend Tax",
+        'California Dividend Tax',
         inputDetails,
-        0
+        0,
       ),
     };
   }
@@ -449,12 +486,12 @@ export function calculateTaxes(input: TaxCalculationInput, includeDetails: boole
 // Default 2025 standard deductions (IRS projected values)
 export const DEFAULT_STANDARD_DEDUCTIONS_2025: StandardDeductions = {
   federal: {
-    single: 15750,      // 2025 updated values
-    married_filing_jointly: 31500,  // 2025 updated values
-    head_of_household: 23625,       // 2025 updated values
+    single: 15750, // 2025 updated values
+    married_filing_jointly: 31500, // 2025 updated values
+    head_of_household: 23625, // 2025 updated values
   },
   california: {
-    single: 5202,       // 2024 CA amounts
+    single: 5202, // 2024 CA amounts
     married_filing_jointly: 10404,
     head_of_household: 10404,
   },
@@ -467,11 +504,11 @@ function calculateInflationAdjustedStandardDeduction(
   baseYear: number,
   currentYear: number,
   inflationRate: number,
-  isInflationAdjusted: boolean
+  isInflationAdjusted: boolean,
 ): number {
   if (!isInflationAdjusted || currentYear <= baseYear) return baseAmount;
   const yearsDiff = currentYear - baseYear;
-  return Math.round(baseAmount * Math.pow(1 + inflationRate / 100, yearsDiff));
+  return Math.round(baseAmount * (1 + inflationRate / 100) ** yearsDiff);
 }
 
 function getStandardDeduction(
@@ -479,7 +516,7 @@ function getStandardDeduction(
   standardDeductions: StandardDeductions,
   year: number = 2025,
   inflationRate: number = 2.0,
-  taxType: 'federal' | 'california' = 'federal'
+  taxType: 'federal' | 'california' = 'federal',
 ): number {
   const baseAmount = standardDeductions[taxType][filingStatus];
   return calculateInflationAdjustedStandardDeduction(
@@ -487,7 +524,7 @@ function getStandardDeduction(
     standardDeductions.year,
     year,
     inflationRate,
-    standardDeductions.inflationAdjusted
+    standardDeductions.inflationAdjusted,
   );
 }
 
@@ -581,26 +618,23 @@ export const DEFAULT_TAX_BRACKETS_2025: TaxBrackets = {
 };
 
 // Utility function to calculate effective tax rate
-export function calculateEffectiveTaxRate(
-  totalIncome: number,
-  totalTaxes: number
-): number {
+export function calculateEffectiveTaxRate(totalIncome: number, totalTaxes: number): number {
   if (totalIncome === 0) return 0;
   return (totalTaxes / totalIncome) * 100;
 }
 
 // Utility function to calculate marginal tax rate
-export function calculateMarginalTaxRate(
-  income: number,
-  brackets: TaxBracket[]
-): number {
+export function calculateMarginalTaxRate(income: number, brackets: TaxBracket[]): number {
   const sortedBrackets = [...brackets].sort((a, b) => a.minIncome - b.minIncome);
-  
+
   for (const bracket of sortedBrackets) {
-    if (income >= bracket.minIncome && (bracket.maxIncome === null || income <= bracket.maxIncome)) {
+    if (
+      income >= bracket.minIncome &&
+      (bracket.maxIncome === null || income <= bracket.maxIncome)
+    ) {
       return bracket.rate;
     }
   }
-  
+
   return 0;
 }

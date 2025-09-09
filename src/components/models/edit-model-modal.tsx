@@ -1,5 +1,7 @@
-import { useState, useEffect } from "react";
-import { X, Plus } from "lucide-react";
+import { useRouter } from '@tanstack/react-router';
+import { Plus, X } from 'lucide-react';
+import { useEffect, useId, useState } from 'react';
+import { Button } from '../../components/ui/button';
 import {
   Dialog,
   DialogContent,
@@ -7,25 +9,18 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "../../components/ui/dialog";
-import { Button } from "../../components/ui/button";
-import { Input } from "../../components/ui/input";
-import {
-  VirtualizedSelect,
-  type Option,
-} from "../../components/ui/virtualized-select-fixed";
-import {
-  updateModelServerFn,
-  getAvailableSleevesServerFn,
-} from "../../lib/server-functions";
-import { useRouter } from "@tanstack/react-router";
-import type { Model } from "../../lib/schemas";
-import { cn } from "../../lib/utils";
+} from '../../components/ui/dialog';
+import { Input } from '../../components/ui/input';
+import { type Option, VirtualizedSelect } from '../../components/ui/virtualized-select-fixed';
+import type { Model } from '../../lib/schemas';
+import { getAvailableSleevesServerFn, updateModelServerFn } from '../../lib/server-functions';
+import { cn } from '../../lib/utils';
 
 // Use function return types instead of manual interfaces
 type Sleeve = Awaited<ReturnType<typeof getAvailableSleevesServerFn>>[number];
 
 interface ModelMember {
+  id: string;
   sleeveId: string;
   targetWeight: number;
 }
@@ -37,17 +32,12 @@ interface EditModelModalProps {
   onClose: () => void;
 }
 
-export function EditModelModal({
-  model,
-  open,
-  onOpenChange,
-  onClose,
-}: EditModelModalProps) {
-  const [modelName, setModelName] = useState("");
-  const [description, setDescription] = useState("");
+export function EditModelModal({ model, open, onOpenChange, onClose }: EditModelModalProps) {
+  const [modelName, setModelName] = useState('');
+  const [description, setDescription] = useState('');
   const [members, setMembers] = useState<ModelMember[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState('');
   const [, setSleeves] = useState<Sleeve[]>([]);
   const [sleeveOptions, setSleeveOptions] = useState<Option[]>([]);
   const router = useRouter();
@@ -65,7 +55,7 @@ export function EditModelModal({
         }));
         setSleeveOptions(options);
       } catch (err) {
-        console.error("Failed to load sleeves:", err);
+        console.error('Failed to load sleeves:', err);
       }
     };
     loadSleeves();
@@ -75,48 +65,42 @@ export function EditModelModal({
   useEffect(() => {
     if (model) {
       setModelName(model.name);
-      setDescription(model.description || "");
+      setDescription(model.description || '');
       setMembers(
         model.members.map((member) => ({
+          id: member.id,
           sleeveId: member.sleeveId,
           targetWeight: member.targetWeight,
-        }))
+        })),
       );
-      setError("");
+      setError('');
     }
   }, [model]);
 
   const resetForm = () => {
-    setModelName("");
-    setDescription("");
+    setModelName('');
+    setDescription('');
     setMembers([]);
-    setError("");
+    setError('');
   };
 
   const validateMembers = (membersToValidate: ModelMember[]) => {
     const errors: string[] = [];
 
     if (membersToValidate.length === 0) {
-      errors.push("At least one member is required");
+      errors.push('At least one member is required');
     }
 
-    const sleeveIds = membersToValidate
-      .map((m) => m.sleeveId)
-      .filter((id) => id.length > 0);
+    const sleeveIds = membersToValidate.map((m) => m.sleeveId).filter((id) => id.length > 0);
     const uniqueSleeveIds = [...new Set(sleeveIds)];
     if (sleeveIds.length !== uniqueSleeveIds.length) {
-      errors.push("All members must have unique sleeves");
+      errors.push('All members must have unique sleeves');
     }
 
-    const totalWeight = membersToValidate.reduce(
-      (sum, member) => sum + member.targetWeight,
-      0
-    );
+    const totalWeight = membersToValidate.reduce((sum, member) => sum + member.targetWeight, 0);
     if (Math.abs(totalWeight - 10000) > 1) {
       // Allow for tiny floating-point rounding errors
-      errors.push(
-        `Target weights must sum to 100%, currently ${(totalWeight / 100).toFixed(2)}%`
-      );
+      errors.push(`Target weights must sum to 100%, currently ${(totalWeight / 100).toFixed(2)}%`);
     }
 
     membersToValidate.forEach((member, index) => {
@@ -128,30 +112,23 @@ export function EditModelModal({
     return errors;
   };
 
+  const genId = () => Math.random().toString(36).slice(2);
+
   const addMember = () => {
-    const nextWeight = Math.max(
-      0,
-      10000 - members.reduce((sum, m) => sum + m.targetWeight, 0)
-    );
-    setMembers([...members, { sleeveId: "", targetWeight: nextWeight }]);
+    const nextWeight = Math.max(0, 10000 - members.reduce((sum, m) => sum + m.targetWeight, 0));
+    setMembers([...members, { id: genId(), sleeveId: '', targetWeight: nextWeight }]);
   };
 
   const removeMember = (index: number) => {
     setMembers(members.filter((_, i) => i !== index));
   };
 
-  const updateMember = (
-    index: number,
-    field: keyof ModelMember,
-    value: string | number
-  ) => {
+  const updateMember = (index: number, field: keyof ModelMember, value: string | number) => {
     const updatedMembers = [...members];
-    if (field === "targetWeight") {
+    if (field === 'targetWeight') {
       // Convert percentage to basis points
       const percentage = parseFloat(value as string);
-      updatedMembers[index][field] = isNaN(percentage)
-        ? 0
-        : Math.round(percentage * 100);
+      updatedMembers[index][field] = Number.isNaN(percentage) ? 0 : Math.round(percentage * 100);
     } else {
       updatedMembers[index][field] = value as string;
     }
@@ -169,9 +146,7 @@ export function EditModelModal({
       if (member.sleeveId.length === 0) {
         return { ...member, targetWeight: 0 };
       }
-      const validIndex = validMembers.findIndex(
-        (vm) => vm.sleeveId === member.sleeveId
-      );
+      const validIndex = validMembers.findIndex((vm) => vm.sleeveId === member.sleeveId);
       return {
         ...member,
         targetWeight: weightPerMember + (validIndex < remainder ? 1 : 0),
@@ -182,31 +157,29 @@ export function EditModelModal({
   };
 
   const handleSubmit = async () => {
-    setError("");
+    setError('');
     setIsLoading(true);
 
     try {
       if (!model) {
-        throw new Error("No model selected");
+        throw new Error('No model selected');
       }
 
       if (!modelName.trim()) {
-        throw new Error("Model name is required");
+        throw new Error('Model name is required');
       }
 
-      const membersWithSleeves = members.filter(
-        (member) => member.sleeveId.length > 0
-      );
+      const membersWithSleeves = members.filter((member) => member.sleeveId.length > 0);
 
       if (membersWithSleeves.length === 0) {
-        throw new Error("At least one sleeve must be selected");
+        throw new Error('At least one sleeve must be selected');
       }
 
       // Validate ALL members (including those without sleeves selected)
       // This ensures the total weight validation is consistent with the UI display
       const validationErrors = validateMembers(members);
       if (validationErrors.length > 0) {
-        throw new Error(validationErrors.join(", "));
+        throw new Error(validationErrors.join(', '));
       }
 
       await updateModelServerFn({
@@ -222,7 +195,7 @@ export function EditModelModal({
       onClose();
       router.invalidate();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "An error occurred");
+      setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
       setIsLoading(false);
     }
@@ -254,6 +227,9 @@ export function EditModelModal({
   //     sleeveOptions.find((opt) => opt.value === sleeveId)?.label || sleeveId
   // );
 
+  const modelNameId = `${useId()}-model-name`;
+  const descriptionId = `${useId()}-description`;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
@@ -266,14 +242,11 @@ export function EditModelModal({
 
         <div className="space-y-4">
           <div>
-            <label
-              htmlFor="model-name"
-              className="block text-sm font-medium mb-2"
-            >
+            <label htmlFor={modelNameId} className="block text-sm font-medium mb-2">
               Model Name *
             </label>
             <Input
-              id="model-name"
+              id={modelNameId}
               value={modelName}
               onChange={(e) => setModelName(e.target.value)}
               placeholder="Enter model name"
@@ -281,14 +254,11 @@ export function EditModelModal({
           </div>
 
           <div>
-            <label
-              htmlFor="description"
-              className="block text-sm font-medium mb-2"
-            >
+            <label htmlFor={descriptionId} className="block text-sm font-medium mb-2">
               Description
             </label>
             <Input
-              id="description"
+              id={descriptionId}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Enter description (optional)"
@@ -297,24 +267,12 @@ export function EditModelModal({
 
           <div>
             <div className="flex items-center justify-between mb-2">
-              <label className="block text-sm font-medium">
-                Model Members *
-              </label>
+              <div className="block text-sm font-medium">Model Members *</div>
               <div className="flex space-x-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={distributeEqually}
-                >
+                <Button type="button" variant="outline" size="sm" onClick={distributeEqually}>
                   Distribute Equally
                 </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={addMember}
-                >
+                <Button type="button" variant="outline" size="sm" onClick={addMember}>
                   <Plus className="h-4 w-4" />
                 </Button>
               </div>
@@ -322,14 +280,12 @@ export function EditModelModal({
 
             <div className="space-y-2">
               {members.map((member, index) => (
-                <div key={index} className="flex items-center space-x-2">
+                <div key={member.id || `member-${index}`} className="flex items-center space-x-2">
                   <div className="flex-1">
                     <VirtualizedSelect
                       options={sleeveOptions}
                       value={member.sleeveId}
-                      onValueChange={(value) =>
-                        updateMember(index, "sleeveId", value)
-                      }
+                      onValueChange={(value) => updateMember(index, 'sleeveId', value)}
                       placeholder="Select sleeve"
                     />
                   </div>
@@ -340,9 +296,7 @@ export function EditModelModal({
                       min="0"
                       max="100"
                       value={member.targetWeight / 100}
-                      onChange={(e) =>
-                        updateMember(index, "targetWeight", e.target.value)
-                      }
+                      onChange={(e) => updateMember(index, 'targetWeight', e.target.value)}
                       placeholder="Weight %"
                     />
                   </div>
@@ -364,8 +318,8 @@ export function EditModelModal({
               <div className="flex-1"></div>
               <div
                 className={cn(
-                  "text-base font-medium w-24",
-                  isValidTotal ? "text-green-600" : "text-red-600"
+                  'text-base font-medium w-24',
+                  isValidTotal ? 'text-green-600' : 'text-red-600',
                 )}
               >
                 {totalPercentage}%
@@ -375,18 +329,14 @@ export function EditModelModal({
           </div>
         </div>
 
-        {error && (
-          <div className="text-sm text-red-600 bg-red-50 p-3 rounded-md">
-            {error}
-          </div>
-        )}
+        {error && <div className="text-sm text-red-600 bg-red-50 p-3 rounded-md">{error}</div>}
 
         <DialogFooter>
           <Button type="button" variant="outline" onClick={handleClose}>
             Cancel
           </Button>
           <Button type="button" onClick={handleSubmit} disabled={isLoading}>
-            {isLoading ? "Updating..." : "Update Model"}
+            {isLoading ? 'Updating...' : 'Update Model'}
           </Button>
         </DialogFooter>
       </DialogContent>

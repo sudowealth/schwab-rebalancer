@@ -1,4 +1,4 @@
-import { BarChart3 } from "lucide-react";
+import { BarChart3 } from 'lucide-react';
 
 interface SleeveMember {
   id: string;
@@ -38,35 +38,43 @@ export function SleeveModal({ isOpen, onClose, sleeve }: SleeveModalProps) {
   if (!isOpen || !sleeve) return null;
 
   return (
-    <div
-      className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50"
+    <button
+      type="button"
+      className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 text-left"
+      aria-label="Close sleeve details"
       onClick={onClose}
+      onKeyDown={(e) => {
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          onClose();
+        }
+      }}
     >
       <div
         className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Sleeve details"
         onClick={(e) => e.stopPropagation()}
+        onKeyDown={(e) => e.stopPropagation()}
       >
         <div className="mt-3 text-center">
           <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-blue-100 mb-4">
             <BarChart3 className="h-6 w-6 text-blue-600" />
           </div>
           <h3 className="text-lg font-medium text-gray-900 mb-4">
-            {sleeve.name || "Sleeve Details"}
+            {sleeve.name || 'Sleeve Details'}
           </h3>
 
           <div className="text-left">
             {/* Current Position */}
             {sleeve.position && (
               <div className="mb-4 p-3 bg-blue-50 rounded-md">
-                <h4 className="text-sm font-medium text-blue-900 mb-2">
-                  Current Position
-                </h4>
+                <h4 className="text-sm font-medium text-blue-900 mb-2">Current Position</h4>
                 <div className="space-y-1 text-sm">
                   <div className="flex justify-between">
                     <span className="text-blue-600">Ticker:</span>
-                    <span className="text-blue-900 font-medium">
-                      {sleeve.position.ticker}
-                    </span>
+                    <span className="text-blue-900 font-medium">{sleeve.position.ticker}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-blue-600">Quantity:</span>
@@ -82,34 +90,30 @@ export function SleeveModal({ isOpen, onClose, sleeve }: SleeveModalProps) {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-blue-600">Cost Basis:</span>
-                    <span className="text-blue-900">
-                      ${sleeve.position.costBasis.toFixed(2)}
-                    </span>
+                    <span className="text-blue-900">${sleeve.position.costBasis.toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-blue-600">Market Value:</span>
                     <span className="text-blue-900 font-medium">
-                      ${sleeve.position.marketValue.toLocaleString("en-US", {
+                      $
+                      {sleeve.position.marketValue.toLocaleString('en-US', {
                         minimumFractionDigits: 2,
                       })}
                     </span>
                   </div>
                   <div className="flex justify-between">
                     <span
-                      className={`${sleeve.position.dollarGainLoss >= 0 ? "text-green-600" : "text-red-600"}`}
+                      className={`${sleeve.position.dollarGainLoss >= 0 ? 'text-green-600' : 'text-red-600'}`}
                     >
-                      {sleeve.position.dollarGainLoss >= 0 ? "Gain:" : "Loss:"}
+                      {sleeve.position.dollarGainLoss >= 0 ? 'Gain:' : 'Loss:'}
                     </span>
                     <span
                       className={`font-medium ${
-                        sleeve.position.dollarGainLoss >= 0
-                          ? "text-green-700"
-                          : "text-red-700"
+                        sleeve.position.dollarGainLoss >= 0 ? 'text-green-700' : 'text-red-700'
                       }`}
                     >
-                      $
-                      {Math.abs(sleeve.position.dollarGainLoss).toLocaleString()}{" "}
-                      ({Math.abs(sleeve.position.percentGainLoss).toFixed(2)}%)
+                      ${Math.abs(sleeve.position.dollarGainLoss).toLocaleString()} (
+                      {Math.abs(sleeve.position.percentGainLoss).toFixed(2)}%)
                     </span>
                   </div>
                 </div>
@@ -118,9 +122,7 @@ export function SleeveModal({ isOpen, onClose, sleeve }: SleeveModalProps) {
 
             {/* Sleeve Members */}
             <div className="mb-4">
-              <h4 className="text-sm font-medium text-gray-700 mb-2">
-                Sleeve Members
-              </h4>
+              <h4 className="text-sm font-medium text-gray-700 mb-2">Sleeve Members</h4>
               <div className="space-y-2">
                 {sleeve.members
                   ?.sort((a, b) => a.rank - b.rank)
@@ -135,9 +137,7 @@ export function SleeveModal({ isOpen, onClose, sleeve }: SleeveModalProps) {
                         </span>
                         <span
                           className={`${
-                            !member.isActive
-                              ? "text-gray-400 line-through"
-                              : "text-gray-900"
+                            !member.isActive ? 'text-gray-400 line-through' : 'text-gray-900'
                           }`}
                         >
                           {member.ticker}
@@ -163,6 +163,7 @@ export function SleeveModal({ isOpen, onClose, sleeve }: SleeveModalProps) {
 
           <div className="items-center px-4 py-3">
             <button
+              type="button"
               onClick={onClose}
               className="px-4 py-2 bg-blue-500 text-white text-base font-medium rounded-md w-full shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-300"
             >
@@ -171,6 +172,6 @@ export function SleeveModal({ isOpen, onClose, sleeve }: SleeveModalProps) {
           </div>
         </div>
       </div>
-    </div>
+    </button>
   );
 }

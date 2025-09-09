@@ -3,22 +3,22 @@
 // database operations on the server side only
 
 import type {
-  Position,
-  Transaction,
-  SP500Stock,
-  Sleeve,
-  RestrictedSecurity,
-  Trade,
   PortfolioMetrics,
-} from "./schemas";
+  Position,
+  RestrictedSecurity,
+  Sleeve,
+  SP500Stock,
+  Trade,
+  Transaction,
+} from './schemas';
 
 // Check if we're running on the server
-const isServer = typeof window === "undefined";
+const isServer = typeof window === 'undefined';
 
 // Server-side functions that can be called from client
 export const getPositions = async (): Promise<Position[]> => {
   if (isServer) {
-    const { getPositions } = await import("./db-api");
+    const { getPositions } = await import('./db-api');
     return getPositions();
   }
   // For client-side, we'll need to implement proper API calls
@@ -28,7 +28,7 @@ export const getPositions = async (): Promise<Position[]> => {
 
 export const getTransactions = async (): Promise<Transaction[]> => {
   if (isServer) {
-    const { getTransactions } = await import("./db-api");
+    const { getTransactions } = await import('./db-api');
     return getTransactions();
   }
   return [];
@@ -36,7 +36,7 @@ export const getTransactions = async (): Promise<Transaction[]> => {
 
 export const getPortfolioMetrics = async (): Promise<PortfolioMetrics> => {
   if (isServer) {
-    const { getPortfolioMetrics } = await import("./db-api");
+    const { getPortfolioMetrics } = await import('./db-api');
     return getPortfolioMetrics();
   }
   return {
@@ -60,17 +60,15 @@ export const getPortfolioMetrics = async (): Promise<PortfolioMetrics> => {
 
 export const getSleeves = async (): Promise<Sleeve[]> => {
   if (isServer) {
-    const { getSleeves } = await import("./db-api");
+    const { getSleeves } = await import('./db-api');
     return getSleeves();
   }
   return [];
 };
 
-export const getRestrictedSecurities = async (): Promise<
-  RestrictedSecurity[]
-> => {
+export const getRestrictedSecurities = async (): Promise<RestrictedSecurity[]> => {
   if (isServer) {
-    const { getRestrictedSecurities } = await import("./db-api");
+    const { getRestrictedSecurities } = await import('./db-api');
     return getRestrictedSecurities();
   }
   return [];
@@ -78,7 +76,7 @@ export const getRestrictedSecurities = async (): Promise<
 
 export const getProposedTrades = async (): Promise<Trade[]> => {
   if (isServer) {
-    const { getProposedTrades } = await import("./db-api");
+    const { getProposedTrades } = await import('./db-api');
     return getProposedTrades();
   }
   return [];
@@ -86,7 +84,7 @@ export const getProposedTrades = async (): Promise<Trade[]> => {
 
 export const getSnP500Data = async (): Promise<SP500Stock[]> => {
   if (isServer) {
-    const { getSnP500Data } = await import("./db-api");
+    const { getSnP500Data } = await import('./db-api');
     return getSnP500Data();
   }
   return [];
@@ -95,16 +93,16 @@ export const getSnP500Data = async (): Promise<SP500Stock[]> => {
 // Demo data seeding function
 export const seedDemoData = async () => {
   if (isServer) {
-    console.log("🌱 Demo data seeding is handled by the database seed script");
-    console.log("Run: npx tsx src/lib/seed.ts");
+    console.log('🌱 Demo data seeding is handled by the database seed script');
+    console.log('Run: npx tsx src/lib/seed.ts');
     return true;
   }
   return false;
 };
 
-export const getIndices = async (): Promise<Array<{id: string, name: string}>> => {
+export const getIndices = async (): Promise<Array<{ id: string; name: string }>> => {
   if (isServer) {
-    const { getIndices } = await import("./db-api");
+    const { getIndices } = await import('./db-api');
     return getIndices();
   }
   return [];
@@ -112,15 +110,17 @@ export const getIndices = async (): Promise<Array<{id: string, name: string}>> =
 
 export const getSecuritiesByIndex = async (indexId?: string): Promise<SP500Stock[]> => {
   if (isServer) {
-    const { getSecuritiesByIndex } = await import("./db-api");
+    const { getSecuritiesByIndex } = await import('./db-api');
     return getSecuritiesByIndex(indexId);
   }
   return [];
 };
 
-export const getIndexMembers = async (): Promise<Array<{indexId: string, securityId: string}>> => {
+export const getIndexMembers = async (): Promise<
+  Array<{ indexId: string; securityId: string }>
+> => {
   if (isServer) {
-    const { getIndexMembers } = await import("./db-api");
+    const { getIndexMembers } = await import('./db-api');
     return getIndexMembers();
   }
   return [];

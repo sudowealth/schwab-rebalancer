@@ -1,26 +1,20 @@
-import { Target } from "lucide-react";
-import { useState } from "react";
-import { CardHeader, CardTitle, CardDescription } from "../../ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "../../ui/select";
-import { Button } from "../../ui/button";
-import { ExportButton } from "../../ui/export-button";
-import { ColumnManagementModal, ColumnConfig } from "./column-management-modal";
+import { Target } from 'lucide-react';
+import { useState } from 'react';
+import { Button } from '../../ui/button';
+import { CardDescription, CardHeader, CardTitle } from '../../ui/card';
+import { ExportButton } from '../../ui/export-button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../ui/select';
+import { type ColumnConfig, ColumnManagementModal } from './column-management-modal';
 
 interface SleeveAllocationHeaderProps {
   selectedAccountFilter: string;
-  groupingMode: "sleeve" | "account";
+  groupingMode: 'sleeve' | 'account';
   groupMembers: {
     accountId: string;
     accountName: string;
   }[];
   onAccountFilterChange: (value: string) => void;
-  onGroupingModeChange: (mode: "sleeve" | "account") => void;
+  onGroupingModeChange: (mode: 'sleeve' | 'account') => void;
   onRebalance?: () => void;
   onExportToExcel: () => Promise<void> | void;
   columns?: ColumnConfig[];
@@ -65,33 +59,27 @@ export const SleeveAllocationHeader: React.FC<SleeveAllocationHeaderProps> = ({
             Current vs Target Allocation
           </CardTitle>
           <CardDescription>
-            Compare current allocations with target percentages{" "}
-            {selectedAccountFilter !== "all" &&
+            Compare current allocations with target percentages{' '}
+            {selectedAccountFilter !== 'all' &&
               `for ${groupMembers.find((m) => m.accountId === selectedAccountFilter)?.accountName || selectedAccountFilter}`}
           </CardDescription>
         </div>
 
         <div className="flex items-center gap-2 ml-4">
           {columns && onColumnsChange && (
-            <ColumnManagementModal
-              columns={columns}
-              onColumnsChange={onColumnsChange}
-            />
+            <ColumnManagementModal columns={columns} onColumnsChange={onColumnsChange} />
           )}
 
           <ExportButton onExport={handleExportClick} isLoading={isExporting} />
 
           {onRebalance && <Button onClick={onRebalance}>Rebalance</Button>}
           {addToBlotter?.visible && (
-            <Button
-              onClick={addToBlotter.onClick}
-              disabled={!!addToBlotter.disabled}
-            >
+            <Button onClick={addToBlotter.onClick} disabled={!!addToBlotter.disabled}>
               {addToBlotter.disabled
-                ? "Adding..."
+                ? 'Adding...'
                 : addToBlotter.count && addToBlotter.count > 0
                   ? `Add ${addToBlotter.count} to Blotter`
-                  : "Add to Blotter"}
+                  : 'Add to Blotter'}
             </Button>
           )}
         </div>
@@ -102,11 +90,8 @@ export const SleeveAllocationHeader: React.FC<SleeveAllocationHeaderProps> = ({
         <div className="flex items-center gap-4 mt-4">
           {/* Account Filter */}
           <div className="flex items-center gap-2">
-            <label className="text-sm font-medium">Account:</label>
-            <Select
-              value={selectedAccountFilter}
-              onValueChange={onAccountFilterChange}
-            >
+            <div className="text-sm font-medium">Account:</div>
+            <Select value={selectedAccountFilter} onValueChange={onAccountFilterChange}>
               <SelectTrigger className="w-[180px]">
                 <SelectValue placeholder="Select account" />
               </SelectTrigger>
@@ -122,22 +107,22 @@ export const SleeveAllocationHeader: React.FC<SleeveAllocationHeaderProps> = ({
           </div>
 
           {/* Group by toggle - only when viewing all accounts */}
-          {selectedAccountFilter === "all" && (
+          {selectedAccountFilter === 'all' && (
             <div className="flex items-center gap-2">
-              <label className="text-sm font-medium">Group by:</label>
+              <div className="text-sm font-medium">Group by:</div>
               <div className="flex items-center">
                 <Button
-                  variant={groupingMode === "sleeve" ? "default" : "outline"}
+                  variant={groupingMode === 'sleeve' ? 'default' : 'outline'}
                   size="sm"
-                  onClick={() => onGroupingModeChange("sleeve")}
+                  onClick={() => onGroupingModeChange('sleeve')}
                   className="rounded-r-none"
                 >
                   By Sleeve
                 </Button>
                 <Button
-                  variant={groupingMode === "account" ? "default" : "outline"}
+                  variant={groupingMode === 'account' ? 'default' : 'outline'}
                   size="sm"
-                  onClick={() => onGroupingModeChange("account")}
+                  onClick={() => onGroupingModeChange('account')}
                   className="rounded-l-none border-l-0"
                 >
                   By Account

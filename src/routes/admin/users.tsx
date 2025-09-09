@@ -1,20 +1,23 @@
-import { createFileRoute, redirect } from "@tanstack/react-router";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { createFileRoute, redirect } from '@tanstack/react-router';
 import {
-  getAllUsersServerFn,
-  updateUserRoleServerFn,
   deleteUserServerFn,
+  getAllUsersServerFn,
   getUserDataServerFn,
+  updateUserRoleServerFn,
   verifyAdminAccessServerFn,
-} from "~/lib/server-functions";
+} from '~/lib/server-functions';
 
 type AdminUser = Awaited<ReturnType<typeof getAllUsersServerFn>>[number];
 type UserData = Awaited<ReturnType<typeof getUserDataServerFn>>;
-type Account = UserData["accounts"][number];
-type Model = UserData["models"][number];
-type RebalancingGroup = UserData["rebalancingGroups"][number];
-import { useState } from "react";
-import { Button } from "~/components/ui/button";
+type Account = UserData['accounts'][number];
+type Model = UserData['models'][number];
+type RebalancingGroup = UserData['rebalancingGroups'][number];
+
+import { Eye, Shield, Trash2, User } from 'lucide-react';
+import { useState } from 'react';
+import { Badge } from '~/components/ui/badge';
+import { Button } from '~/components/ui/button';
 import {
   Dialog,
   DialogContent,
@@ -22,7 +25,15 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "~/components/ui/dialog";
+} from '~/components/ui/dialog';
+import { Input } from '~/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '~/components/ui/select';
 import {
   Table,
   TableBody,
@@ -30,19 +41,9 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "~/components/ui/table";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "~/components/ui/select";
-import { Badge } from "~/components/ui/badge";
-import { Input } from "~/components/ui/input";
-import { Trash2, Eye, Shield, User } from "lucide-react";
+} from '~/components/ui/table';
 
-export const Route = createFileRoute("/admin/users")({
+export const Route = createFileRoute('/admin/users')({
   component: UserManagement,
   loader: async () => {
     try {
@@ -54,11 +55,11 @@ export const Route = createFileRoute("/admin/users")({
     } catch (error) {
       // If not admin or not authenticated, redirect
       if (error instanceof Error) {
-        if (error.message.includes("Admin access required")) {
-          throw redirect({ to: "/" });
+        if (error.message.includes('Admin access required')) {
+          throw redirect({ to: '/' });
         }
-        if (error.message.includes("Authentication required")) {
-          throw redirect({ to: "/login", search: { reset: "" } });
+        if (error.message.includes('Authentication required')) {
+          throw redirect({ to: '/login', search: { reset: '' } });
         }
       }
       throw error;
@@ -73,29 +74,27 @@ function UserManagement() {
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showUserDataDialog, setShowUserDataDialog] = useState(false);
-  const [deleteConfirmation, setDeleteConfirmation] = useState("");
+  const [deleteConfirmation, setDeleteConfirmation] = useState('');
   const queryClient = useQueryClient();
 
   const { data: users, isPending: usersPending } = useQuery({
-    queryKey: ["admin", "users"],
+    queryKey: ['admin', 'users'],
     queryFn: () => getAllUsersServerFn(),
     initialData: loaderData, // Use loader data as initial data
   });
 
   const { data: userData, isPending: userDataPending } = useQuery({
-    queryKey: ["admin", "userData", selectedUserId],
+    queryKey: ['admin', 'userData', selectedUserId],
     queryFn: () =>
-      selectedUserId
-        ? getUserDataServerFn({ data: { userId: selectedUserId } })
-        : null,
+      selectedUserId ? getUserDataServerFn({ data: { userId: selectedUserId } }) : null,
     enabled: !!selectedUserId && showUserDataDialog,
   });
 
   const updateRoleMutation = useMutation({
-    mutationFn: (variables: { userId: string; role: "user" | "admin" }) =>
+    mutationFn: (variables: { userId: string; role: 'user' | 'admin' }) =>
       updateUserRoleServerFn({ data: variables }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin", "users"] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'users'] });
     },
   });
 
@@ -103,10 +102,10 @@ function UserManagement() {
     mutationFn: (variables: { userId: string; confirmation: string }) =>
       deleteUserServerFn({ data: variables }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin", "users"] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'users'] });
       setShowDeleteDialog(false);
       setSelectedUserId(null);
-      setDeleteConfirmation("");
+      setDeleteConfirmation('');
     },
   });
 
@@ -114,12 +113,12 @@ function UserManagement() {
     return <div>Loading...</div>;
   }
 
-  const handleRoleChange = (userId: string, role: "user" | "admin") => {
+  const handleRoleChange = (userId: string, role: 'user' | 'admin') => {
     updateRoleMutation.mutate({ userId, role });
   };
 
   const handleDeleteUser = () => {
-    if (selectedUserId && deleteConfirmation === "DELETE_USER_DATA") {
+    if (selectedUserId && deleteConfirmation === 'DELETE_USER_DATA') {
       deleteUserMutation.mutate({
         userId: selectedUserId,
         confirmation: deleteConfirmation,
@@ -132,9 +131,7 @@ function UserManagement() {
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">User Management</h1>
-          <p className="mt-2 text-sm text-gray-600">
-            Manage user accounts and permissions
-          </p>
+          <p className="mt-2 text-sm text-gray-600">Manage user accounts and permissions</p>
         </div>
         <Button onClick={() => window.history.back()}>Back to Admin</Button>
       </div>
@@ -155,13 +152,11 @@ function UserManagement() {
             {users?.map((user: AdminUser) => (
               <TableRow key={user.id}>
                 <TableCell className="font-medium">{user.email}</TableCell>
-                <TableCell>{user.name || "—"}</TableCell>
+                <TableCell>{user.name || '—'}</TableCell>
                 <TableCell>
                   <Select
-                    value={user.role || "user"}
-                    onValueChange={(role: "user" | "admin") =>
-                      handleRoleChange(user.id, role)
-                    }
+                    value={user.role || 'user'}
+                    onValueChange={(role: 'user' | 'admin') => handleRoleChange(user.id, role)}
                   >
                     <SelectTrigger className="w-32">
                       <SelectValue />
@@ -183,13 +178,11 @@ function UserManagement() {
                   </Select>
                 </TableCell>
                 <TableCell>
-                  <Badge variant={user.emailVerified ? "default" : "secondary"}>
-                    {user.emailVerified ? "Verified" : "Unverified"}
+                  <Badge variant={user.emailVerified ? 'default' : 'secondary'}>
+                    {user.emailVerified ? 'Verified' : 'Unverified'}
                   </Badge>
                 </TableCell>
-                <TableCell>
-                  {new Date(user.createdAt).toLocaleDateString()}
-                </TableCell>
+                <TableCell>{new Date(user.createdAt).toLocaleDateString()}</TableCell>
                 <TableCell>
                   <div className="flex gap-2">
                     <Button
@@ -226,9 +219,8 @@ function UserManagement() {
           <DialogHeader>
             <DialogTitle>Delete User</DialogTitle>
             <DialogDescription>
-              This action cannot be undone. This will permanently delete the
-              user and all associated data including accounts, sleeves, models,
-              and transactions.
+              This action cannot be undone. This will permanently delete the user and all associated
+              data including accounts, sleeves, models, and transactions.
             </DialogDescription>
           </DialogHeader>
           <div className="py-4">
@@ -244,21 +236,15 @@ function UserManagement() {
             />
           </div>
           <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setShowDeleteDialog(false)}
-            >
+            <Button variant="outline" onClick={() => setShowDeleteDialog(false)}>
               Cancel
             </Button>
             <Button
               variant="destructive"
               onClick={handleDeleteUser}
-              disabled={
-                deleteConfirmation !== "DELETE_USER_DATA" ||
-                deleteUserMutation.isPending
-              }
+              disabled={deleteConfirmation !== 'DELETE_USER_DATA' || deleteUserMutation.isPending}
             >
-              {deleteUserMutation.isPending ? "Deleting..." : "Delete User"}
+              {deleteUserMutation.isPending ? 'Deleting...' : 'Delete User'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -269,9 +255,7 @@ function UserManagement() {
         <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>User Data</DialogTitle>
-            <DialogDescription>
-              Complete data overview for the selected user
-            </DialogDescription>
+            <DialogDescription>Complete data overview for the selected user</DialogDescription>
           </DialogHeader>
           {userDataPending ? (
             <div>Loading user data...</div>
@@ -284,14 +268,13 @@ function UserManagement() {
                     <strong>Email:</strong> {userData.user.email}
                   </p>
                   <p>
-                    <strong>Name:</strong> {userData.user.name || "—"}
+                    <strong>Name:</strong> {userData.user.name || '—'}
                   </p>
                   <p>
                     <strong>Role:</strong> {userData.user.role}
                   </p>
                   <p>
-                    <strong>Created:</strong>{" "}
-                    {new Date(userData.user.createdAt).toLocaleString()}
+                    <strong>Created:</strong> {new Date(userData.user.createdAt).toLocaleString()}
                   </p>
                 </div>
               </div>
@@ -319,8 +302,7 @@ function UserManagement() {
 
               <div>
                 <h3 className="text-lg font-semibold mb-2">
-                  Models ({userData.models.length} with{" "}
-                  {userData.sleeves.length} sleeves)
+                  Models ({userData.models.length} with {userData.sleeves.length} sleeves)
                 </h3>
                 <div className="space-y-2">
                   {userData.models.map((model: Model) => (
@@ -329,7 +311,7 @@ function UserManagement() {
                         <strong>Name:</strong> {model.name}
                       </p>
                       <p>
-                        <strong>Active:</strong> {model.isActive ? "Yes" : "No"}
+                        <strong>Active:</strong> {model.isActive ? 'Yes' : 'No'}
                       </p>
                     </div>
                   ))}
@@ -347,7 +329,7 @@ function UserManagement() {
                         <strong>Name:</strong> {group.name}
                       </p>
                       <p>
-                        <strong>Active:</strong> {group.isActive ? "Yes" : "No"}
+                        <strong>Active:</strong> {group.isActive ? 'Yes' : 'No'}
                       </p>
                     </div>
                   ))}

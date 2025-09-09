@@ -1,25 +1,25 @@
 import {
-  useReactTable,
-  getCoreRowModel,
-  getSortedRowModel,
-  getFilteredRowModel,
-  flexRender,
   type ColumnDef,
-  type SortingState,
   type ColumnFiltersState,
-} from "@tanstack/react-table";
+  flexRender,
+  getCoreRowModel,
+  getFilteredRowModel,
+  getSortedRowModel,
+  type SortingState,
+  useReactTable,
+} from '@tanstack/react-table';
 import {
-  ArrowUpRight,
   ArrowDownLeft,
-  ChevronUp,
+  ArrowUpRight,
   ChevronDown,
   ChevronsUpDown,
+  ChevronUp,
   Info,
-} from "lucide-react";
-import type { Trade } from "../../lib/schemas";
-import { formatQuantity } from "../../lib/utils";
-import { WashSaleRestrictionIndicator } from "../../components/ui/wash-sale-tooltip";
-import { useMemo, useState } from "react";
+} from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { WashSaleRestrictionIndicator } from '../../components/ui/wash-sale-tooltip';
+import type { Trade } from '../../lib/schemas';
+import { formatQuantity } from '../../lib/utils';
 
 interface TradesTableProps {
   trades: Trade[];
@@ -27,43 +27,35 @@ interface TradesTableProps {
   onSleeveClick: (sleeveId: string) => void;
 }
 
-export function TradesTable({
-  trades,
-  onTickerClick,
-  onSleeveClick,
-}: TradesTableProps) {
-  const [sorting, setSorting] = useState<SortingState>([
-    { id: "account", desc: false },
-  ]);
+export function TradesTable({ trades, onTickerClick, onSleeveClick }: TradesTableProps) {
+  const [sorting, setSorting] = useState<SortingState>([{ id: 'account', desc: false }]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
 
   const columns = useMemo<ColumnDef<Trade>[]>(
     () => [
       {
-        id: "account",
-        accessorKey: "accountName",
-        header: "Account",
+        id: 'account',
+        accessorKey: 'accountName',
+        header: 'Account',
         cell: ({ row }) => row.original.accountName,
       },
       {
-        id: "accountNumber",
-        header: "Account #",
-        cell: ({ row }) => row.original.accountNumber || "N/A",
+        id: 'accountNumber',
+        header: 'Account #',
+        cell: ({ row }) => row.original.accountNumber || 'N/A',
       },
       {
-        accessorKey: "type",
-        header: "Type",
+        accessorKey: 'type',
+        header: 'Type',
         cell: ({ getValue }) => {
           const type = getValue() as string;
           return (
             <span
               className={`inline-flex items-center space-x-1 px-2 py-1 text-xs font-semibold rounded-full ${
-                type === "SELL"
-                  ? "bg-red-100 text-red-800"
-                  : "bg-green-100 text-green-800"
+                type === 'SELL' ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'
               }`}
             >
-              {type === "SELL" ? (
+              {type === 'SELL' ? (
                 <ArrowDownLeft className="w-3 h-3" />
               ) : (
                 <ArrowUpRight className="w-3 h-3" />
@@ -74,12 +66,13 @@ export function TradesTable({
         },
       },
       {
-        accessorKey: "ticker",
-        header: "Ticker",
+        accessorKey: 'ticker',
+        header: 'Ticker',
         cell: ({ getValue }) => {
           const ticker = getValue() as string;
           return (
             <button
+              type="button"
               onClick={() => onTickerClick(ticker)}
               className="text-blue-600 hover:text-blue-800 hover:underline font-medium"
             >
@@ -89,19 +82,20 @@ export function TradesTable({
         },
       },
       {
-        accessorKey: "sleeveName",
-        header: "Sleeve",
+        accessorKey: 'sleeveName',
+        header: 'Sleeve',
         cell: ({ row }) => {
           const sleeveId = row.original.sleeveId;
           const sleeveName = row.original.sleeveName;
 
           // Check if there's no sleeve (either "No Sleeve" or empty)
-          if (!sleeveName || sleeveName === "No Sleeve") {
+          if (!sleeveName || sleeveName === 'No Sleeve') {
             return <span className="text-gray-500">None</span>;
           }
 
           return (
             <button
+              type="button"
               onClick={() => onSleeveClick(sleeveId)}
               className="text-blue-600 hover:text-blue-800 hover:underline"
             >
@@ -111,8 +105,8 @@ export function TradesTable({
         },
       },
       {
-        accessorKey: "qty",
-        header: "Qty",
+        accessorKey: 'qty',
+        header: 'Qty',
         cell: ({ getValue }) => {
           const value = getValue() as number;
           return formatQuantity(value);
@@ -124,30 +118,28 @@ export function TradesTable({
         },
       },
       {
-        accessorKey: "estimatedValue",
-        header: "Est. Value",
+        accessorKey: 'estimatedValue',
+        header: 'Est. Value',
         cell: ({ getValue }) =>
-          `$${(getValue() as number).toLocaleString("en-US", {
+          `$${(getValue() as number).toLocaleString('en-US', {
             minimumFractionDigits: 2,
           })}`,
       },
       {
-        id: "reason",
-        header: "Reason",
+        id: 'reason',
+        header: 'Reason',
         cell: ({ row }) => {
           const trade = row.original;
           return !trade.canExecute ? (
-            <WashSaleRestrictionIndicator
-              blockingReason={trade.blockingReason}
-            />
+            <WashSaleRestrictionIndicator blockingReason={trade.blockingReason} />
           ) : (
             <span>{trade.reason}</span>
           );
         },
       },
       {
-        accessorKey: "canExecute",
-        header: "Status",
+        accessorKey: 'canExecute',
+        header: 'Status',
         cell: ({ getValue }) => {
           const canExecute = getValue() as boolean;
           return canExecute ? (
@@ -162,7 +154,7 @@ export function TradesTable({
         },
       },
     ],
-    [onTickerClick, onSleeveClick]
+    [onTickerClick, onSleeveClick],
   );
 
   const table = useReactTable({
@@ -182,8 +174,8 @@ export function TradesTable({
   if (!trades || trades.length === 0) {
     return (
       <p className="text-gray-500">
-        No trades proposed. No positions meet the harvesting criteria or all
-        potential trades are blocked.
+        No trades proposed. No positions meet the harvesting criteria or all potential trades are
+        blocked.
       </p>
     );
   }
@@ -201,9 +193,9 @@ export function TradesTable({
             </h3>
             <div className="mt-2 text-sm text-blue-700">
               <p>
-                These trades would harvest losses from positions meeting the -5%
-                or -$2,500 threshold. Only executable trades have replacement
-                securities available in their sleeves.
+                These trades would harvest losses from positions meeting the -5% or -$2,500
+                threshold. Only executable trades have replacement securities available in their
+                sleeves.
               </p>
             </div>
           </div>
@@ -221,25 +213,19 @@ export function TradesTable({
                     onClick={header.column.getToggleSortingHandler()}
                   >
                     <div className="flex items-center space-x-1">
-                      <span>
-                        {flexRender(
-                          header.column.columnDef.header,
-                          header.getContext()
-                        )}
-                      </span>
+                      <span>{flexRender(header.column.columnDef.header, header.getContext())}</span>
                       {header.column.getIsSorted() && (
                         <span>
-                          {header.column.getIsSorted() === "desc" ? (
+                          {header.column.getIsSorted() === 'desc' ? (
                             <ChevronDown className="w-4 h-4" />
                           ) : (
                             <ChevronUp className="w-4 h-4" />
                           )}
                         </span>
                       )}
-                      {!header.column.getIsSorted() &&
-                        header.column.getCanSort() && (
-                          <ChevronsUpDown className="w-4 h-4 text-gray-400" />
-                        )}
+                      {!header.column.getIsSorted() && header.column.getCanSort() && (
+                        <ChevronsUpDown className="w-4 h-4 text-gray-400" />
+                      )}
                     </div>
                   </th>
                 ))}
@@ -248,15 +234,9 @@ export function TradesTable({
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {table.getRowModel().rows.map((row) => (
-              <tr
-                key={row.id}
-                className={row.original.canExecute ? "" : "bg-red-50"}
-              >
+              <tr key={row.id} className={row.original.canExecute ? '' : 'bg-red-50'}>
                 {row.getVisibleCells().map((cell) => (
-                  <td
-                    key={cell.id}
-                    className="px-6 py-4 whitespace-nowrap text-sm"
-                  >
+                  <td key={cell.id} className="px-6 py-4 whitespace-nowrap text-sm">
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
                   </td>
                 ))}

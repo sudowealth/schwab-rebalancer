@@ -1,7 +1,7 @@
 interface TradeData {
   securityId?: string;
   ticker?: string;
-  action: "BUY" | "SELL";
+  action: 'BUY' | 'SELL';
   qty: number;
   estValue: number;
 }
@@ -9,17 +9,13 @@ interface TradeData {
 export const calculateTradeMetrics = {
   // Calculate net quantity for a security/sleeve
   getNetQty: (trades: TradeData[], tickers: string[]): number => {
-    const relevantTrades = trades.filter((t) =>
-      tickers.includes(t.securityId || t.ticker || "")
-    );
+    const relevantTrades = trades.filter((t) => tickers.includes(t.securityId || t.ticker || ''));
     return relevantTrades.reduce((sum, t) => sum + t.qty, 0);
   },
 
   // Calculate net value for a security/sleeve
   getNetValue: (trades: TradeData[], tickers: string[]): number => {
-    const relevantTrades = trades.filter((t) =>
-      tickers.includes(t.securityId || t.ticker || "")
-    );
+    const relevantTrades = trades.filter((t) => tickers.includes(t.securityId || t.ticker || ''));
     return relevantTrades.reduce((sum, t) => sum + t.estValue, 0);
   },
 
@@ -31,29 +27,27 @@ export const calculateTradeMetrics = {
     totalCurrentValue: number,
     totalTradeValue?: number,
     isCashSleeve?: boolean,
-    totalCashValue?: number
+    totalCashValue?: number,
   ): { postTradeValue: number; postTradePercent: number } => {
     let postTradeValue: number;
 
     if (isCashSleeve) {
       // For cash sleeve or individual cash securities
       const nonCashTrades = trades.filter((t) => {
-        const id = t.securityId || t.ticker || "";
-        return id !== "$$$" && id !== "MCASH";
+        const id = t.securityId || t.ticker || '';
+        return id !== '$$$' && id !== 'MCASH';
       });
       const totalBuys = nonCashTrades
-        .filter((t) => t.action === "BUY")
+        .filter((t) => t.action === 'BUY')
         .reduce((sum, t) => sum + t.estValue, 0);
       const totalSells = Math.abs(
-        nonCashTrades
-          .filter((t) => t.action === "SELL")
-          .reduce((sum, t) => sum + t.estValue, 0)
+        nonCashTrades.filter((t) => t.action === 'SELL').reduce((sum, t) => sum + t.estValue, 0),
       );
 
       // If this is an individual cash security, calculate its proportional share
       if (
         tickers.length === 1 &&
-        (tickers[0] === "$$$" || tickers[0] === "MCASH") &&
+        (tickers[0] === '$$$' || tickers[0] === 'MCASH') &&
         totalCashValue
       ) {
         const totalRemainingCash = totalCashValue + totalSells - totalBuys;
@@ -69,8 +63,7 @@ export const calculateTradeMetrics = {
     }
 
     const totalValue = totalCurrentValue + (totalTradeValue || 0);
-    const postTradePercent =
-      totalValue > 0 ? (postTradeValue / totalValue) * 100 : 0;
+    const postTradePercent = totalValue > 0 ? (postTradeValue / totalValue) * 100 : 0;
 
     return { postTradeValue, postTradePercent };
   },
@@ -82,29 +75,27 @@ export const calculateTradeMetrics = {
     trades: TradeData[],
     tickers: string[],
     isCashSleeve?: boolean,
-    totalCashValue?: number
+    totalCashValue?: number,
   ): number => {
     let postTradeValue: number;
 
     if (isCashSleeve) {
       // For cash sleeve or individual cash securities
       const nonCashTrades = trades.filter((t) => {
-        const id = t.securityId || t.ticker || "";
-        return id !== "$$$" && id !== "MCASH";
+        const id = t.securityId || t.ticker || '';
+        return id !== '$$$' && id !== 'MCASH';
       });
       const totalBuys = nonCashTrades
-        .filter((t) => t.action === "BUY")
+        .filter((t) => t.action === 'BUY')
         .reduce((sum, t) => sum + t.estValue, 0);
       const totalSells = Math.abs(
-        nonCashTrades
-          .filter((t) => t.action === "SELL")
-          .reduce((sum, t) => sum + t.estValue, 0)
+        nonCashTrades.filter((t) => t.action === 'SELL').reduce((sum, t) => sum + t.estValue, 0),
       );
 
       // If this is an individual cash security, calculate its proportional share
       if (
         tickers.length === 1 &&
-        (tickers[0] === "$$$" || tickers[0] === "MCASH") &&
+        (tickers[0] === '$$$' || tickers[0] === 'MCASH') &&
         totalCashValue
       ) {
         const totalRemainingCash = totalCashValue + totalSells - totalBuys;
@@ -125,10 +116,7 @@ export const calculateTradeMetrics = {
   },
 
   // Calculate percentage distance from target
-  getPercentDistanceFromTarget: (
-    currentPercent: number,
-    targetPercent: number
-  ): number => {
+  getPercentDistanceFromTarget: (currentPercent: number, targetPercent: number): number => {
     return targetPercent > 0 ? Math.abs(currentPercent - targetPercent) : 0;
   },
 
@@ -138,30 +126,25 @@ export const calculateTradeMetrics = {
   },
 
   // Get sleeve-specific trades
-  getSleeveTradesFromTickers: (
-    trades: TradeData[],
-    tickers: string[]
-  ): TradeData[] => {
-    return trades.filter((t) =>
-      tickers.includes(t.securityId || t.ticker || "")
-    );
+  getSleeveTradesFromTickers: (trades: TradeData[], tickers: string[]): TradeData[] => {
+    return trades.filter((t) => tickers.includes(t.securityId || t.ticker || ''));
   },
 };
 
 export const formatDistanceColor = (
   percentDistance: number,
-  thresholds = { warning: 2, danger: 5 }
+  thresholds = { warning: 2, danger: 5 },
 ): string => {
-  if (percentDistance > thresholds.danger) return "text-red-600";
-  if (percentDistance > thresholds.warning) return "text-yellow-600";
-  return "text-green-600";
+  if (percentDistance > thresholds.danger) return 'text-red-600';
+  if (percentDistance > thresholds.warning) return 'text-yellow-600';
+  return 'text-green-600';
 };
 
 export const getBadgeVariant = (
   percentDistance: number,
-  thresholds = { warning: 2, danger: 5 }
-): "default" | "secondary" | "destructive" => {
-  if (percentDistance > thresholds.danger) return "destructive";
-  if (percentDistance > thresholds.warning) return "secondary";
-  return "default";
+  thresholds = { warning: 2, danger: 5 },
+): 'default' | 'secondary' | 'destructive' => {
+  if (percentDistance > thresholds.danger) return 'destructive';
+  if (percentDistance > thresholds.warning) return 'secondary';
+  return 'default';
 };

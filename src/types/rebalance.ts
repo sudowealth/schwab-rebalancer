@@ -1,4 +1,4 @@
-export type RebalanceMethod = "allocation" | "tlhSwap" | "tlhRebalance" | "investCash";
+export type RebalanceMethod = 'allocation' | 'tlhSwap' | 'tlhRebalance' | 'investCash';
 
 export interface RebalanceRequest {
   portfolioId: string;
@@ -11,7 +11,7 @@ export interface RebalanceRequest {
 export interface Trade {
   accountId: string;
   securityId: string;
-  action: "BUY" | "SELL";
+  action: 'BUY' | 'SELL';
   qty: number;
   estPrice: number;
   estValue: number;
@@ -37,7 +37,7 @@ export interface RebalanceSummary {
 }
 
 // Use function return type instead of manual interface
-export type { ExecuteRebalanceResult as RebalanceResponse } from "../lib/rebalance-logic";
+export type { ExecuteRebalanceResult as RebalanceResponse } from '../lib/rebalance-logic';
 
 export interface SleeveTarget {
   ticker: string;

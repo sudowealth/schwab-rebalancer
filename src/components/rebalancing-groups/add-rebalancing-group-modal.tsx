@@ -1,5 +1,14 @@
-import { useState, useEffect } from "react";
-import { Plus, X } from "lucide-react";
+import { useRouter } from '@tanstack/react-router';
+import { Plus, X } from 'lucide-react';
+import { useCallback, useEffect, useId, useState } from 'react';
+import {
+  assignModelToGroupServerFn,
+  createRebalancingGroupServerFn,
+  getAccountsForRebalancingGroupsServerFn,
+  getModelsServerFn,
+} from '../../lib/server-functions';
+import { Badge } from '../ui/badge';
+import { Button } from '../ui/button';
 import {
   Dialog,
   DialogContent,
@@ -7,26 +16,11 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "../ui/dialog";
-import { Button } from "../ui/button";
-import { Input } from "../ui/input";
-import { Label } from "../ui/label";
-import { Badge } from "../ui/badge";
-import { VirtualizedSelect } from "../ui/virtualized-select-fixed";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "../ui/select";
-import {
-  createRebalancingGroupServerFn,
-  getAccountsForRebalancingGroupsServerFn,
-  getModelsServerFn,
-  assignModelToGroupServerFn,
-} from "../../lib/server-functions";
-import { useRouter } from "@tanstack/react-router";
+} from '../ui/dialog';
+import { Input } from '../ui/input';
+import { Label } from '../ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import { VirtualizedSelect } from '../ui/virtualized-select-fixed';
 
 interface Account {
   id: string;
@@ -50,26 +44,18 @@ interface GroupMember {
 }
 
 export function AddRebalancingGroupModal() {
+  const groupNameInputId = useId();
   const [isOpen, setIsOpen] = useState(false);
-  const [groupName, setGroupName] = useState("");
-  const [selectedAccounts, setSelectedAccounts] = useState<Set<string>>(
-    new Set()
-  );
-  const [selectedModelId, setSelectedModelId] = useState<string>("");
+  const [groupName, setGroupName] = useState('');
+  const [selectedAccounts, setSelectedAccounts] = useState<Set<string>>(new Set());
+  const [selectedModelId, setSelectedModelId] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState('');
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [models, setModels] = useState<Model[]>([]);
   const router = useRouter();
 
-  // Load data when modal opens
-  useEffect(() => {
-    if (isOpen) {
-      loadData();
-    }
-  }, [isOpen]);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       const [accountsData, modelsData] = await Promise.all([
         getAccountsForRebalancingGroupsServerFn({ data: {} }),
@@ -78,15 +64,22 @@ export function AddRebalancingGroupModal() {
       setAccounts(
         accountsData.map((account) => ({
           ...account,
-          type: account.type || "",
-        }))
+          type: account.type || '',
+        })),
       );
       setModels(modelsData);
     } catch (err) {
-      console.error("Failed to load data:", err);
-      setError("Failed to load data");
+      console.error('Failed to load data:', err);
+      setError('Failed to load data');
     }
-  };
+  }, []);
+
+  // Load data when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      loadData();
+    }
+  }, [isOpen, loadData]);
 
   const handleAccountToggle = (accountId: string) => {
     const newSelection = new Set(selectedAccounts);
@@ -100,29 +93,27 @@ export function AddRebalancingGroupModal() {
 
   const handleSubmit = async () => {
     if (!groupName.trim()) {
-      setError("Group name is required");
+      setError('Group name is required');
       return;
     }
 
     if (selectedAccounts.size === 0) {
-      setError("Please select at least one account");
+      setError('Please select at least one account');
       return;
     }
 
     if (!selectedModelId) {
-      setError("Please select a model for this group");
+      setError('Please select a model for this group');
       return;
     }
 
     setIsLoading(true);
-    setError("");
+    setError('');
 
     try {
-      const members: GroupMember[] = Array.from(selectedAccounts).map(
-        (accountId) => ({
-          accountId,
-        })
-      );
+      const members: GroupMember[] = Array.from(selectedAccounts).map((accountId) => ({
+        accountId,
+      }));
 
       const result = await createRebalancingGroupServerFn({
         data: {
@@ -142,39 +133,35 @@ export function AddRebalancingGroupModal() {
       }
 
       // Reset form
-      setGroupName("");
+      setGroupName('');
       setSelectedAccounts(new Set());
-      setSelectedModelId("");
+      setSelectedModelId('');
       setIsOpen(false);
 
       // Refresh the page
       router.invalidate();
     } catch (err: unknown) {
-      console.error("Failed to create rebalancing group:", err);
-      setError(
-        err instanceof Error
-          ? err.message
-          : "Failed to create rebalancing group"
-      );
+      console.error('Failed to create rebalancing group:', err);
+      setError(err instanceof Error ? err.message : 'Failed to create rebalancing group');
     } finally {
       setIsLoading(false);
     }
   };
 
   const formatBalance = (balance: number): string => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
     }).format(balance);
   };
 
   const resetForm = () => {
-    setGroupName("");
+    setGroupName('');
     setSelectedAccounts(new Set());
-    setSelectedModelId("");
-    setError("");
+    setSelectedModelId('');
+    setError('');
   };
 
   const handleOpenChange = (open: boolean) => {
@@ -198,9 +185,9 @@ export function AddRebalancingGroupModal() {
         </DialogHeader>
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="group-name">Name</Label>
+            <Label htmlFor={groupNameInputId}>Name</Label>
             <Input
-              id="group-name"
+              id={groupNameInputId}
               value={groupName}
               onChange={(e) => setGroupName(e.target.value)}
               placeholder="e.g., Miller, John and Jane - Retirement"
@@ -217,29 +204,17 @@ export function AddRebalancingGroupModal() {
                   const account = accounts.find((a) => a.id === accountId);
                   if (!account) return null;
                   return (
-                    <Badge
-                      key={accountId}
-                      variant="secondary"
-                      className="flex items-center gap-2"
-                    >
+                    <Badge key={accountId} variant="secondary" className="flex items-center gap-2">
                       <div className="flex items-center gap-2">
                         <span>{account.name}</span>
                         {account.accountNumber && (
-                          <span className="text-xs text-gray-500">
-                            ({account.accountNumber})
-                          </span>
+                          <span className="text-xs text-gray-500">({account.accountNumber})</span>
                         )}
                         <Badge
-                          variant={
-                            account.dataSource === "SCHWAB"
-                              ? "default"
-                              : "outline"
-                          }
+                          variant={account.dataSource === 'SCHWAB' ? 'default' : 'outline'}
                           className="text-xs px-1 py-0"
                         >
-                          {account.dataSource === "SCHWAB"
-                            ? "Schwab"
-                            : "Manual"}
+                          {account.dataSource === 'SCHWAB' ? 'Schwab' : 'Manual'}
                         </Badge>
                       </div>
                       <button
@@ -262,7 +237,7 @@ export function AddRebalancingGroupModal() {
                 .filter((account) => !selectedAccounts.has(account.id))
                 .map((account) => ({
                   value: account.id,
-                  label: `${account.name}${account.accountNumber ? ` (${account.accountNumber})` : ""} • ${account.dataSource === "SCHWAB" ? "Schwab" : "Manual"} - ${formatBalance(account.balance)}`,
+                  label: `${account.name}${account.accountNumber ? ` (${account.accountNumber})` : ''} • ${account.dataSource === 'SCHWAB' ? 'Schwab' : 'Manual'} - ${formatBalance(account.balance)}`,
                   disabled: account.isAssigned,
                   disabledReason: account.isAssigned
                     ? `This account is unavailable as it is already used in the '${account.assignedGroupName}' rebalancing group`
@@ -280,11 +255,7 @@ export function AddRebalancingGroupModal() {
           </div>
           <div className="space-y-2">
             <Label htmlFor="model-select">Model</Label>
-            <Select
-              value={selectedModelId}
-              onValueChange={setSelectedModelId}
-              disabled={isLoading}
-            >
+            <Select value={selectedModelId} onValueChange={setSelectedModelId} disabled={isLoading}>
               <SelectTrigger>
                 <SelectValue placeholder="Select a model for this group" />
               </SelectTrigger>
@@ -294,9 +265,7 @@ export function AddRebalancingGroupModal() {
                     <div className="flex flex-col items-start">
                       <span className="font-medium">{model.name}</span>
                       {model.description && (
-                        <span className="text-xs text-gray-500">
-                          {model.description}
-                        </span>
+                        <span className="text-xs text-gray-500">{model.description}</span>
                       )}
                     </div>
                   </SelectItem>
@@ -304,22 +273,14 @@ export function AddRebalancingGroupModal() {
               </SelectContent>
             </Select>
           </div>
-          {error && (
-            <div className="text-sm text-red-600 bg-red-50 p-2 rounded">
-              {error}
-            </div>
-          )}
+          {error && <div className="text-sm text-red-600 bg-red-50 p-2 rounded">{error}</div>}
         </div>
         <DialogFooter>
-          <Button
-            variant="outline"
-            onClick={() => setIsOpen(false)}
-            disabled={isLoading}
-          >
+          <Button variant="outline" onClick={() => setIsOpen(false)} disabled={isLoading}>
             Cancel
           </Button>
           <Button onClick={handleSubmit} disabled={isLoading}>
-            {isLoading ? "Creating..." : "Create Group"}
+            {isLoading ? 'Creating...' : 'Create Group'}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -1,8 +1,8 @@
-import { useSession } from "~/lib/auth-client";
-import { useRouter } from "@tanstack/react-router";
-import { useEffect } from "react";
+import { useRouter } from '@tanstack/react-router';
+import { useEffect } from 'react';
+import { useSession } from '~/lib/auth-client';
 
-export type UserRole = "user" | "admin";
+export type UserRole = 'user' | 'admin';
 
 export interface User {
   id: string;
@@ -15,18 +15,20 @@ export interface User {
 export function useAuth() {
   const { data: session, isPending, error } = useSession();
 
-  const user = session?.user ? {
-    id: session.user.id,
-    email: session.user.email,
-    name: session.user.name,
-    role: (session.user as { role?: string }).role as UserRole || "user",
-    emailVerified: session.user.emailVerified,
-  } : null;
+  const user = session?.user
+    ? {
+        id: session.user.id,
+        email: session.user.email,
+        name: session.user.name,
+        role: ((session.user as { role?: string }).role as UserRole) || 'user',
+        emailVerified: session.user.emailVerified,
+      }
+    : null;
 
   return {
     user,
     isAuthenticated: !!user,
-    isAdmin: user?.role === "admin",
+    isAdmin: user?.role === 'admin',
     isPending,
     error,
   };
@@ -38,7 +40,7 @@ export function useRequireAuth() {
 
   useEffect(() => {
     if (!isPending && !user) {
-      router.navigate({ to: "/login", search: { reset: "" } });
+      router.navigate({ to: '/login', search: { reset: '' } });
     }
   }, [user, isPending, router]);
 
@@ -52,9 +54,9 @@ export function useRequireAdmin() {
   useEffect(() => {
     if (!isPending) {
       if (!user) {
-        router.navigate({ to: "/login", search: { reset: "" } });
+        router.navigate({ to: '/login', search: { reset: '' } });
       } else if (!isAdmin) {
-        router.navigate({ to: "/" }); // Redirect to dashboard if not admin
+        router.navigate({ to: '/' }); // Redirect to dashboard if not admin
       }
     }
   }, [user, isAdmin, isPending, router]);

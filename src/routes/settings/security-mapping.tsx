@@ -1,7 +1,7 @@
-import { createFileRoute, redirect } from "@tanstack/react-router";
-import { getDashboardDataServerFn } from "../../lib/server-functions";
+import { createFileRoute, redirect } from '@tanstack/react-router';
+import { getDashboardDataServerFn } from '../../lib/server-functions';
 
-export const Route = createFileRoute("/settings/security-mapping")({
+export const Route = createFileRoute('/settings/security-mapping')({
   component: RouteComponent,
   loader: async () => {
     try {
@@ -11,11 +11,8 @@ export const Route = createFileRoute("/settings/security-mapping")({
       return { authenticated: true };
     } catch (error) {
       // If authentication error, redirect to login
-      if (
-        error instanceof Error &&
-        error.message.includes("Authentication required")
-      ) {
-        throw redirect({ to: "/login", search: { reset: "" } });
+      if (error instanceof Error && error.message.includes('Authentication required')) {
+        throw redirect({ to: '/login', search: { reset: '' } });
       }
       // Re-throw other errors
       throw error;
@@ -29,9 +26,7 @@ function RouteComponent() {
       <div className="mb-8">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">
-              Security Mapping
-            </h1>
+            <h1 className="text-2xl font-bold text-gray-900">Security Mapping</h1>
             <p className="mt-2 text-sm text-gray-600">
               Manage security symbol mappings and data sources.
             </p>
@@ -40,9 +35,7 @@ function RouteComponent() {
       </div>
 
       <div className="bg-white shadow rounded-lg p-6">
-        <p className="text-gray-600">
-          Security mapping functionality coming soon...
-        </p>
+        <p className="text-gray-600">Security mapping functionality coming soon...</p>
       </div>
     </div>
   );

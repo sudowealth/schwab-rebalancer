@@ -1,6 +1,6 @@
-import fs from "fs/promises";
-import path from "path";
-import yahooFinance from "yahoo-finance2";
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import yahooFinance from 'yahoo-finance2';
 
 interface Security {
   ticker: string;
@@ -16,12 +16,7 @@ async function getFinancialData(ticker: string) {
   try {
     // Use yahoo-finance2's quoteSummary method to get comprehensive data
     const result = await yahooFinance.quoteSummary(ticker, {
-      modules: [
-        "assetProfile",
-        "price",
-        "summaryDetail",
-        "defaultKeyStatistics",
-      ],
+      modules: ['assetProfile', 'price', 'summaryDetail', 'defaultKeyStatistics'],
     });
 
     const assetProfile = result.assetProfile;
@@ -49,9 +44,7 @@ async function getFinancialData(ticker: string) {
 
     // Extract PE ratio
     const peRatio =
-      keyStats?.trailingEps?.toFixed(2) ||
-      summaryDetail?.trailingPE?.toFixed(2) ||
-      null;
+      keyStats?.trailingEps?.toFixed(2) || summaryDetail?.trailingPE?.toFixed(2) || null;
 
     // Extract sector and industry
     const sector = assetProfile?.sector || null;
@@ -81,9 +74,9 @@ async function getFinancialData(ticker: string) {
 
 async function main() {
   try {
-    const sp500Path = path.resolve(process.cwd(), "src", "lib", "sp500.json");
-    const sp500Data = await fs.readFile(sp500Path, "utf-8");
-    let securities: Security[] = JSON.parse(sp500Data);
+    const sp500Path = path.resolve(process.cwd(), 'src', 'lib', 'sp500.json');
+    const sp500Data = await fs.readFile(sp500Path, 'utf-8');
+    const securities: Security[] = JSON.parse(sp500Data);
 
     console.log(`Total companies: ${securities.length}`);
 
@@ -97,12 +90,10 @@ async function main() {
         !security.sector,
     );
 
-    console.log(
-      `Companies missing financial data: ${companiesNeedingData.length}`,
-    );
+    console.log(`Companies missing financial data: ${companiesNeedingData.length}`);
 
     if (companiesNeedingData.length === 0) {
-      console.log("✅ All companies already have financial data!");
+      console.log('✅ All companies already have financial data!');
       return;
     }
 
@@ -110,15 +101,8 @@ async function main() {
     let totalUpdated = 0;
 
     // Process in batches of 50
-    for (
-      let batchStart = 0;
-      batchStart < companiesNeedingData.length;
-      batchStart += BATCH_SIZE
-    ) {
-      const batch = companiesNeedingData.slice(
-        batchStart,
-        batchStart + BATCH_SIZE,
-      );
+    for (let batchStart = 0; batchStart < companiesNeedingData.length; batchStart += BATCH_SIZE) {
+      const batch = companiesNeedingData.slice(batchStart, batchStart + BATCH_SIZE);
       const batchNumber = Math.floor(batchStart / BATCH_SIZE) + 1;
       const totalBatches = Math.ceil(companiesNeedingData.length / BATCH_SIZE);
 
@@ -130,13 +114,12 @@ async function main() {
 
       for (const security of batch) {
         try {
-          const { price, marketCap, peRatio, sector, industry } =
-            await getFinancialData(security.ticker);
+          const { price, marketCap, peRatio, sector, industry } = await getFinancialData(
+            security.ticker,
+          );
 
           // Update the security in the main array
-          const securityIndex = securities.findIndex(
-            (s) => s.ticker === security.ticker,
-          );
+          const securityIndex = securities.findIndex((s) => s.ticker === security.ticker);
           if (securityIndex !== -1) {
             securities[securityIndex] = {
               ...securities[securityIndex],
@@ -152,7 +135,7 @@ async function main() {
           totalUpdated++;
 
           console.log(
-            `${security.ticker} (${totalUpdated}/${companiesNeedingData.length}): $${price || "n/a"} | ${marketCap || "n/a"} | PE: ${peRatio || "n/a"} | ${sector || "n/a"} / ${industry || "n/a"}`,
+            `${security.ticker} (${totalUpdated}/${companiesNeedingData.length}): $${price || 'n/a'} | ${marketCap || 'n/a'} | PE: ${peRatio || 'n/a'} | ${sector || 'n/a'} / ${industry || 'n/a'}`,
           );
         } catch (err) {
           console.error(`Failed for ${security.ticker}:`, err);
@@ -172,18 +155,16 @@ async function main() {
 
       // Add a longer delay between batches
       if (batchStart + BATCH_SIZE < companiesNeedingData.length) {
-        console.log("⏳ Waiting 2 seconds before next batch...");
+        console.log('⏳ Waiting 2 seconds before next batch...');
         await new Promise((resolve) => setTimeout(resolve, 2000));
       }
     }
 
     console.log(`\n🎉 All batches completed!`);
-    console.log(
-      `📊 Total companies updated: ${totalUpdated}/${companiesNeedingData.length}`,
-    );
-    console.log("✅ Final SP500 data saved to sp500.json");
+    console.log(`📊 Total companies updated: ${totalUpdated}/${companiesNeedingData.length}`);
+    console.log('✅ Final SP500 data saved to sp500.json');
   } catch (error) {
-    console.error("Error updating sp500.json:", error);
+    console.error('Error updating sp500.json:', error);
   }
 }
 

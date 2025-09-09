@@ -1,10 +1,10 @@
-import ExcelJS from "exceljs";
+import ExcelJS from 'exceljs';
 import type {
   PositionsResult,
-  TransactionsResult,
   ProposedTradesResult,
   SP500DataResult,
-} from "./db-api";
+  TransactionsResult,
+} from './db-api';
 
 export interface ExcelExportOptions {
   filename?: string;
@@ -51,7 +51,7 @@ interface SleeveAllocationData {
 interface TradeData {
   securityId?: string;
   ticker?: string;
-  action?: "BUY" | "SELL";
+  action?: 'BUY' | 'SELL';
   qty: number;
   estValue: number;
 }
@@ -60,10 +60,10 @@ interface TradeData {
 async function downloadExcelFile(workbook: ExcelJS.Workbook, filename: string) {
   const buffer = await workbook.xlsx.writeBuffer();
   const blob = new globalThis.Blob([buffer], {
-    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
   });
   const url = globalThis.URL.createObjectURL(blob);
-  const link = globalThis.document.createElement("a");
+  const link = globalThis.document.createElement('a');
   link.href = url;
   link.download = filename;
   link.click();
@@ -77,13 +77,9 @@ export async function exportTableToExcel<T extends Record<string, unknown>>(
     accessor: keyof T | ((row: T) => unknown);
     formatter?: (value: unknown) => string;
   }>,
-  options: ExcelExportOptions = {}
+  options: ExcelExportOptions = {},
 ) {
-  const {
-    filename = "table-export",
-    sheetName = "Sheet1",
-    includeHeaders = true,
-  } = options;
+  const { filename = 'table-export', sheetName = 'Sheet1', includeHeaders = true } = options;
 
   const workbook = new ExcelJS.Workbook();
   const worksheet = workbook.addWorksheet(sheetName);
@@ -100,7 +96,7 @@ export async function exportTableToExcel<T extends Record<string, unknown>>(
     const rowData = columns.map((col) => {
       let value: unknown;
 
-      if (typeof col.accessor === "function") {
+      if (typeof col.accessor === 'function') {
         value = col.accessor(row);
       } else {
         value = row[col.accessor];
@@ -110,7 +106,7 @@ export async function exportTableToExcel<T extends Record<string, unknown>>(
         return col.formatter(value);
       }
 
-      return value !== null && value !== undefined ? value : "";
+      return value !== null && value !== undefined ? value : '';
     });
 
     worksheet.addRow(rowData);
@@ -128,123 +124,109 @@ export async function exportTableToExcel<T extends Record<string, unknown>>(
     column.width = maxLength < 10 ? 10 : maxLength + 2;
   });
 
-  const timestamp = new Date().toISOString().split("T")[0];
+  const timestamp = new Date().toISOString().split('T')[0];
   const fullFilename = `${filename}-${timestamp}.xlsx`;
 
   await downloadExcelFile(workbook, fullFilename);
 }
 
-export async function exportPositionsToExcel(
-  positions: Position[],
-  filename = "positions"
-) {
+export async function exportPositionsToExcel(positions: Position[], filename = 'positions') {
   const columns = [
-    { header: "Ticker", accessor: "ticker" as const },
-    { header: "Sleeve", accessor: "sleeveName" as const },
-    { header: "Quantity", accessor: "qty" as const },
-    { header: "Cost Basis", accessor: "costBasis" as const },
-    { header: "Current Price", accessor: "currentPrice" as const },
-    { header: "Market Value", accessor: "marketValue" as const },
-    { header: "Dollar Gain/Loss", accessor: "dollarGainLoss" as const },
-    { header: "Percent Gain/Loss", accessor: "percentGainLoss" as const },
-    { header: "Days Held", accessor: "daysHeld" as const },
+    { header: 'Ticker', accessor: 'ticker' as const },
+    { header: 'Sleeve', accessor: 'sleeveName' as const },
+    { header: 'Quantity', accessor: 'qty' as const },
+    { header: 'Cost Basis', accessor: 'costBasis' as const },
+    { header: 'Current Price', accessor: 'currentPrice' as const },
+    { header: 'Market Value', accessor: 'marketValue' as const },
+    { header: 'Dollar Gain/Loss', accessor: 'dollarGainLoss' as const },
+    { header: 'Percent Gain/Loss', accessor: 'percentGainLoss' as const },
+    { header: 'Days Held', accessor: 'daysHeld' as const },
     {
-      header: "Opened At",
+      header: 'Opened At',
       accessor: (row: Position) => new Date(row.openedAt).toLocaleDateString(),
     },
   ];
 
   await exportTableToExcel(positions, columns, {
     filename,
-    sheetName: "Positions",
+    sheetName: 'Positions',
   });
 }
 
 export async function exportTransactionsToExcel(
   transactions: Transaction[],
-  filename = "transactions"
+  filename = 'transactions',
 ) {
   const columns = [
-    { header: "Type", accessor: "type" as const },
-    { header: "Ticker", accessor: "ticker" as const },
-    { header: "Sleeve", accessor: "sleeveName" as const },
-    { header: "Quantity", accessor: "qty" as const },
-    { header: "Price", accessor: "price" as const },
-    { header: "Realized Gain/Loss", accessor: "realizedGainLoss" as const },
+    { header: 'Type', accessor: 'type' as const },
+    { header: 'Ticker', accessor: 'ticker' as const },
+    { header: 'Sleeve', accessor: 'sleeveName' as const },
+    { header: 'Quantity', accessor: 'qty' as const },
+    { header: 'Price', accessor: 'price' as const },
+    { header: 'Realized Gain/Loss', accessor: 'realizedGainLoss' as const },
     {
-      header: "Executed At",
-      accessor: (row: Transaction) =>
-        new Date(row.executedAt).toLocaleDateString(),
+      header: 'Executed At',
+      accessor: (row: Transaction) => new Date(row.executedAt).toLocaleDateString(),
     },
   ];
 
   await exportTableToExcel(transactions, columns, {
     filename,
-    sheetName: "Transactions",
+    sheetName: 'Transactions',
   });
 }
 
-export async function exportTradestoExcel(
-  trades: Trade[],
-  filename = "trades"
-) {
+export async function exportTradestoExcel(trades: Trade[], filename = 'trades') {
   const columns = [
-    { header: "Action", accessor: "type" as const },
-    { header: "Ticker", accessor: "ticker" as const },
-    { header: "Sleeve", accessor: "sleeveName" as const },
-    { header: "Quantity", accessor: "qty" as const },
-    { header: "Current Price", accessor: "currentPrice" as const },
-    { header: "Estimated Value", accessor: "estimatedValue" as const },
-    { header: "Reason", accessor: "reason" as const },
+    { header: 'Action', accessor: 'type' as const },
+    { header: 'Ticker', accessor: 'ticker' as const },
+    { header: 'Sleeve', accessor: 'sleeveName' as const },
+    { header: 'Quantity', accessor: 'qty' as const },
+    { header: 'Current Price', accessor: 'currentPrice' as const },
+    { header: 'Estimated Value', accessor: 'estimatedValue' as const },
+    { header: 'Reason', accessor: 'reason' as const },
     {
-      header: "Can Execute",
-      accessor: (row: Trade) => (row.canExecute ? "Yes" : "No"),
+      header: 'Can Execute',
+      accessor: (row: Trade) => (row.canExecute ? 'Yes' : 'No'),
     },
-    { header: "Blocking Reason", accessor: "blockingReason" as const },
+    { header: 'Blocking Reason', accessor: 'blockingReason' as const },
   ];
 
-  await exportTableToExcel(trades, columns, { filename, sheetName: "Trades" });
+  await exportTableToExcel(trades, columns, { filename, sheetName: 'Trades' });
 }
 
-export async function exportSP500ToExcel(
-  stocks: Stock[],
-  filename = "sp500-stocks"
-) {
+export async function exportSP500ToExcel(stocks: Stock[], filename = 'sp500-stocks') {
   const columns = [
-    { header: "Ticker", accessor: "ticker" as const },
-    { header: "Company Name", accessor: "name" as const },
-    { header: "Market Cap", accessor: "marketCap" as const },
-    { header: "P/E Ratio", accessor: "peRatio" as const },
-    { header: "Industry", accessor: "industry" as const },
-    { header: "Sector", accessor: "sector" as const },
+    { header: 'Ticker', accessor: 'ticker' as const },
+    { header: 'Company Name', accessor: 'name' as const },
+    { header: 'Market Cap', accessor: 'marketCap' as const },
+    { header: 'P/E Ratio', accessor: 'peRatio' as const },
+    { header: 'Industry', accessor: 'industry' as const },
+    { header: 'Sector', accessor: 'sector' as const },
   ];
 
-  await exportTableToExcel(stocks, columns, { filename, sheetName: "S&P 500" });
+  await exportTableToExcel(stocks, columns, { filename, sheetName: 'S&P 500' });
 }
 
 export async function exportSleeveAllocationToExcel(
   sleeveTableData: ExcelSleeveData[],
   sleeveAllocationData: SleeveAllocationData[],
-  groupingMode: "sleeve" | "account",
-  filename = "sleeve-allocation",
-  trades: TradeData[] = []
+  groupingMode: 'sleeve' | 'account',
+  filename = 'sleeve-allocation',
+  trades: TradeData[] = [],
 ) {
   const exportData: unknown[] = [];
 
   // Helper functions for trade calculations
   const getTradeQtyForSecurity = (ticker: string) => {
-    const securityTrades = trades.filter(
-      (t) => (t.securityId || t.ticker) === ticker
-    );
+    const securityTrades = trades.filter((t) => (t.securityId || t.ticker) === ticker);
     if (securityTrades.length === 0) return 0;
     const netQty = securityTrades.reduce((sum, t) => sum + t.qty, 0);
     return netQty;
   };
 
   const getTradeValueForSecurity = (ticker: string) => {
-    const securityTrades = trades.filter(
-      (t) => (t.securityId || t.ticker) === ticker
-    );
+    const securityTrades = trades.filter((t) => (t.securityId || t.ticker) === ticker);
     if (securityTrades.length === 0) return 0;
     const netValue = securityTrades.reduce((sum, t) => sum + t.estValue, 0);
     return netValue;
@@ -254,7 +236,7 @@ export async function exportSleeveAllocationToExcel(
     if (trades.length === 0) return 0;
     const sleeveTickers = securities.map((s) => s.ticker);
     const sleeveTrades = trades.filter((t) =>
-      sleeveTickers.includes(t.securityId || t.ticker || "")
+      sleeveTickers.includes(t.securityId || t.ticker || ''),
     );
     if (sleeveTrades.length === 0) return 0;
     const netQty = sleeveTrades.reduce((sum, t) => sum + t.qty, 0);
@@ -265,7 +247,7 @@ export async function exportSleeveAllocationToExcel(
     if (trades.length === 0) return 0;
     const sleeveTickers = securities.map((s) => s.ticker);
     const sleeveTrades = trades.filter((t) =>
-      sleeveTickers.includes(t.securityId || t.ticker || "")
+      sleeveTickers.includes(t.securityId || t.ticker || ''),
     );
     if (sleeveTrades.length === 0) return 0;
     const netValue = sleeveTrades.reduce((sum, t) => sum + t.estValue, 0);
@@ -273,25 +255,21 @@ export async function exportSleeveAllocationToExcel(
   };
 
   const getActionForQty = (qty: number) => {
-    if (qty > 0) return "BUY";
-    if (qty < 0) return "SELL";
-    return "NONE";
+    if (qty > 0) return 'BUY';
+    if (qty < 0) return 'SELL';
+    return 'NONE';
   };
 
   const getPostTradePercent = (
     currentValue: number,
     tradeValue: number,
-    totalCurrentValue: number
+    totalCurrentValue: number,
   ) => {
     const postTradeValue = currentValue + tradeValue;
     return (postTradeValue / totalCurrentValue) * 100;
   };
 
-  const getPostTradeDiff = (
-    currentValue: number,
-    tradeValue: number,
-    targetValue: number
-  ) => {
+  const getPostTradeDiff = (currentValue: number, tradeValue: number, targetValue: number) => {
     return currentValue + tradeValue - targetValue;
   };
 
@@ -299,7 +277,7 @@ export async function exportSleeveAllocationToExcel(
     currentValue: number,
     tradeValue: number,
     targetPercent: number,
-    totalCurrentValue: number
+    totalCurrentValue: number,
   ) => {
     const postTradeValue = currentValue + tradeValue;
     const postTradePercent = (postTradeValue / totalCurrentValue) * 100;
@@ -314,95 +292,66 @@ export async function exportSleeveAllocationToExcel(
   const getDiffPercent = (currentPercent: number, targetPercent: number) => {
     // Calculate % distance from target: (current - target) / target * 100
     const percentDistanceFromTarget =
-      targetPercent > 0
-        ? ((currentPercent - targetPercent) / targetPercent) * 100
-        : currentPercent;
+      targetPercent > 0 ? ((currentPercent - targetPercent) / targetPercent) * 100 : currentPercent;
     return percentDistanceFromTarget;
   };
 
   // Determine account label - if only one account, use its name
   const accountLabel =
-    sleeveAllocationData.length === 1
-      ? sleeveAllocationData[0].accountName
-      : "All Accounts";
+    sleeveAllocationData.length === 1 ? sleeveAllocationData[0].accountName : 'All Accounts';
 
   // Determine account number - if only one account, use its number
   const accountNumber =
-    sleeveAllocationData.length === 1
-      ? sleeveAllocationData[0].accountNumber
-      : "";
+    sleeveAllocationData.length === 1 ? sleeveAllocationData[0].accountNumber : '';
 
   // Calculate total current value for percentage calculations
-  const totalCurrentValue = sleeveTableData.reduce(
-    (sum, s) => sum + s.currentValue,
-    0
-  );
+  const totalCurrentValue = sleeveTableData.reduce((sum, s) => sum + s.currentValue, 0);
 
-  if (groupingMode === "sleeve") {
+  if (groupingMode === 'sleeve') {
     sleeveTableData.forEach((sleeve) => {
-      const tradeValue =
-        sleeve.sleeveId === "cash"
-          ? 0
-          : getTradeValueForSleeve(sleeve.securities);
-      const tradeQty =
-        sleeve.sleeveId === "cash"
-          ? 0
-          : getTradeQtyForSleeve(sleeve.securities);
-      const action =
-        sleeve.sleeveId === "cash" ? "NONE" : getActionForQty(tradeQty);
+      const tradeValue = sleeve.sleeveId === 'cash' ? 0 : getTradeValueForSleeve(sleeve.securities);
+      const tradeQty = sleeve.sleeveId === 'cash' ? 0 : getTradeQtyForSleeve(sleeve.securities);
+      const action = sleeve.sleeveId === 'cash' ? 'NONE' : getActionForQty(tradeQty);
       const postTradePercent = getPostTradePercent(
         sleeve.currentValue,
         tradeValue,
-        totalCurrentValue
+        totalCurrentValue,
       );
-      const postTradeDiff = getPostTradeDiff(
-        sleeve.currentValue,
-        tradeValue,
-        sleeve.targetValue
-      );
+      const postTradeDiff = getPostTradeDiff(sleeve.currentValue, tradeValue, sleeve.targetValue);
       const postTradeDiffPercent = getPostTradeDiffPercent(
         sleeve.currentValue,
         tradeValue,
         sleeve.targetPercent || 0,
-        totalCurrentValue
+        totalCurrentValue,
       );
 
       exportData.push({
-        type: "Sleeve",
-        name: sleeve.sleeveId === "cash" ? "Cash" : sleeve.sleeveName,
-        sleeve: sleeve.sleeveId === "cash" ? "Cash" : sleeve.sleeveName,
+        type: 'Sleeve',
+        name: sleeve.sleeveId === 'cash' ? 'Cash' : sleeve.sleeveName,
+        sleeve: sleeve.sleeveId === 'cash' ? 'Cash' : sleeve.sleeveName,
         account: accountLabel,
         accountNumber: accountNumber,
         currentValue: sleeve.currentValue,
         currentPercent: sleeve.currentPercent || 0,
         currentQty:
-          sleeve.sleeveId === "cash"
+          sleeve.sleeveId === 'cash'
             ? 0
-            : sleeve.securities.reduce(
-                (total: number, security) => total + (security.qty || 0),
-                0
-              ),
+            : sleeve.securities.reduce((total: number, security) => total + (security.qty || 0), 0),
         price: 0,
         targetValue: sleeve.targetValue,
         targetPercent: sleeve.targetPercent || 0,
         targetQty:
-          sleeve.sleeveId === "cash"
+          sleeve.sleeveId === 'cash'
             ? 0
             : sleeve.securities.reduce((total: number, security) => {
                 const targetQty =
                   (security.currentPrice || 0) > 0
-                    ? Math.round(
-                        (security.targetValue || 0) /
-                          (security.currentPrice || 1)
-                      )
+                    ? Math.round((security.targetValue || 0) / (security.currentPrice || 1))
                     : 0;
                 return total + targetQty;
               }, 0),
         difference: sleeve.difference,
-        differencePercent: getDiffPercent(
-          sleeve.currentPercent || 0,
-          sleeve.targetPercent || 0
-        ),
+        differencePercent: getDiffPercent(sleeve.currentPercent || 0, sleeve.targetPercent || 0),
         action: action,
         tradeQty: tradeQty,
         tradeValue: tradeValue,
@@ -419,24 +368,24 @@ export async function exportSleeveAllocationToExcel(
         const securityPostTradePercent = getPostTradePercent(
           security.currentValue || 0,
           securityTradeValue,
-          totalCurrentValue
+          totalCurrentValue,
         );
         const securityPostTradeDiff = getPostTradeDiff(
           security.currentValue || 0,
           securityTradeValue,
-          security.targetValue || 0
+          security.targetValue || 0,
         );
         const securityPostTradeDiffPercent = getPostTradeDiffPercent(
           security.currentValue || 0,
           securityTradeValue,
           security.targetPercent || 0,
-          totalCurrentValue
+          totalCurrentValue,
         );
 
         exportData.push({
-          type: "Security",
+          type: 'Security',
           name: security.ticker,
-          sleeve: sleeve.sleeveId === "cash" ? "Cash" : sleeve.sleeveName,
+          sleeve: sleeve.sleeveId === 'cash' ? 'Cash' : sleeve.sleeveName,
           account: accountLabel,
           accountNumber: accountNumber,
           currentValue: security.currentValue || 0,
@@ -447,14 +396,12 @@ export async function exportSleeveAllocationToExcel(
           targetPercent: security.targetPercent || 0,
           targetQty:
             (security.currentPrice || 0) > 0
-              ? Math.round(
-                  (security.targetValue || 0) / (security.currentPrice || 1)
-                )
+              ? Math.round((security.targetValue || 0) / (security.currentPrice || 1))
               : 0,
           difference: security.difference || 0,
           differencePercent: getDiffPercent(
             security.currentPercent || 0,
-            security.targetPercent || 0
+            security.targetPercent || 0,
           ),
           action: securityAction,
           tradeQty: securityTradeQty,
@@ -468,22 +415,22 @@ export async function exportSleeveAllocationToExcel(
   } else {
     sleeveAllocationData.forEach((account) => {
       exportData.push({
-        type: "Account",
+        type: 'Account',
         name: account.accountName,
-        sleeve: "",
+        sleeve: '',
         account: account.accountName,
         accountNumber: account.accountNumber,
         currentValue: account.totalValue,
         currentPercent: 0, // Will be calculated in the export
-        currentQty: "N/A",
+        currentQty: 'N/A',
         price: 0,
         targetValue: account.totalValue,
         targetPercent: 0, // Will be calculated in the export
-        targetQty: "N/A",
+        targetQty: 'N/A',
         difference: 0,
         differencePercent: 0,
-        action: "NONE",
-        tradeQty: "N/A",
+        action: 'NONE',
+        tradeQty: 'N/A',
         tradeValue: 0,
         postTradePercent: 0,
         postTradeDiff: 0,
@@ -497,22 +444,22 @@ export async function exportSleeveAllocationToExcel(
         const sleevePostTradePercent = getPostTradePercent(
           sleeve.currentValue,
           sleeveTradeValue,
-          totalCurrentValue
+          totalCurrentValue,
         );
         const sleevePostTradeDiff = getPostTradeDiff(
           sleeve.currentValue,
           sleeveTradeValue,
-          sleeve.targetValue
+          sleeve.targetValue,
         );
         const sleevePostTradeDiffPercent = getPostTradeDiffPercent(
           sleeve.currentValue,
           sleeveTradeValue,
           sleeve.targetPercent || 0,
-          totalCurrentValue
+          totalCurrentValue,
         );
 
         exportData.push({
-          type: "Sleeve",
+          type: 'Sleeve',
           name: sleeve.sleeveName,
           sleeve: sleeve.sleeveName,
           account: account.accountName,
@@ -521,7 +468,7 @@ export async function exportSleeveAllocationToExcel(
           currentPercent: sleeve.currentPercent || 0,
           currentQty: sleeve.securities.reduce(
             (total: number, security) => total + (security.qty || 0),
-            0
+            0,
           ),
           price: 0,
           targetValue: sleeve.targetValue,
@@ -529,17 +476,12 @@ export async function exportSleeveAllocationToExcel(
           targetQty: sleeve.securities.reduce((total: number, security) => {
             const targetQty =
               (security.currentPrice || 0) > 0
-                ? Math.round(
-                    (security.targetValue || 0) / (security.currentPrice || 1)
-                  )
+                ? Math.round((security.targetValue || 0) / (security.currentPrice || 1))
                 : 0;
             return total + targetQty;
           }, 0),
           difference: sleeve.difference,
-          differencePercent: getDiffPercent(
-            sleeve.currentPercent || 0,
-            sleeve.targetPercent || 0
-          ),
+          differencePercent: getDiffPercent(sleeve.currentPercent || 0, sleeve.targetPercent || 0),
           action: sleeveAction,
           tradeQty: sleeveTradeQty,
           tradeValue: sleeveTradeValue,
@@ -555,22 +497,22 @@ export async function exportSleeveAllocationToExcel(
           const securityPostTradePercent = getPostTradePercent(
             security.currentValue || 0,
             securityTradeValue,
-            totalCurrentValue
+            totalCurrentValue,
           );
           const securityPostTradeDiff = getPostTradeDiff(
             security.currentValue || 0,
             securityTradeValue,
-            security.targetValue || 0
+            security.targetValue || 0,
           );
           const securityPostTradeDiffPercent = getPostTradeDiffPercent(
             security.currentValue || 0,
             securityTradeValue,
             security.targetPercent || 0,
-            totalCurrentValue
+            totalCurrentValue,
           );
 
           exportData.push({
-            type: "Security",
+            type: 'Security',
             name: security.ticker,
             sleeve: sleeve.sleeveName,
             account: account.accountName,
@@ -583,14 +525,12 @@ export async function exportSleeveAllocationToExcel(
             targetPercent: security.targetPercent || 0,
             targetQty:
               (security.currentPrice || 0) > 0
-                ? Math.round(
-                    (security.targetValue || 0) / (security.currentPrice || 1)
-                  )
+                ? Math.round((security.targetValue || 0) / (security.currentPrice || 1))
                 : 0,
             difference: security.difference || 0,
             differencePercent: getDiffPercent(
               security.currentPercent || 0,
-              security.targetPercent || 0
+              security.targetPercent || 0,
             ),
             action: securityAction,
             tradeQty: securityTradeQty,
@@ -605,31 +545,31 @@ export async function exportSleeveAllocationToExcel(
   }
 
   const columns = [
-    { header: "Type", accessor: "type" as const },
-    { header: "Name", accessor: "name" as const },
-    { header: "Sleeve", accessor: "sleeve" as const },
-    { header: "Account", accessor: "account" as const },
-    { header: "Account Number", accessor: "accountNumber" as const },
-    { header: "Current $", accessor: "currentValue" as const },
-    { header: "Current %", accessor: "currentPercent" as const },
-    { header: "Current QTY", accessor: "currentQty" as const },
-    { header: "Price", accessor: "price" as const },
-    { header: "Target $", accessor: "targetValue" as const },
-    { header: "Target %", accessor: "targetPercent" as const },
-    { header: "Target QTY", accessor: "targetQty" as const },
-    { header: "Diff $", accessor: "difference" as const },
-    { header: "Diff %", accessor: "differencePercent" as const },
-    { header: "Action", accessor: "action" as const },
-    { header: "Trade QTY", accessor: "tradeQty" as const },
-    { header: "Trade $", accessor: "tradeValue" as const },
-    { header: "Post-Trade %", accessor: "postTradePercent" as const },
-    { header: "Post-Trade Diff $", accessor: "postTradeDiff" as const },
-    { header: "Post-Trade Diff %", accessor: "postTradeDiffPercent" as const },
+    { header: 'Type', accessor: 'type' as const },
+    { header: 'Name', accessor: 'name' as const },
+    { header: 'Sleeve', accessor: 'sleeve' as const },
+    { header: 'Account', accessor: 'account' as const },
+    { header: 'Account Number', accessor: 'accountNumber' as const },
+    { header: 'Current $', accessor: 'currentValue' as const },
+    { header: 'Current %', accessor: 'currentPercent' as const },
+    { header: 'Current QTY', accessor: 'currentQty' as const },
+    { header: 'Price', accessor: 'price' as const },
+    { header: 'Target $', accessor: 'targetValue' as const },
+    { header: 'Target %', accessor: 'targetPercent' as const },
+    { header: 'Target QTY', accessor: 'targetQty' as const },
+    { header: 'Diff $', accessor: 'difference' as const },
+    { header: 'Diff %', accessor: 'differencePercent' as const },
+    { header: 'Action', accessor: 'action' as const },
+    { header: 'Trade QTY', accessor: 'tradeQty' as const },
+    { header: 'Trade $', accessor: 'tradeValue' as const },
+    { header: 'Post-Trade %', accessor: 'postTradePercent' as const },
+    { header: 'Post-Trade Diff $', accessor: 'postTradeDiff' as const },
+    { header: 'Post-Trade Diff %', accessor: 'postTradeDiffPercent' as const },
   ];
 
   await exportTableToExcel(exportData as Record<string, unknown>[], columns, {
     filename,
-    sheetName: "Sleeve Allocation",
+    sheetName: 'Sleeve Allocation',
   });
 }
 

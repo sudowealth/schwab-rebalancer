@@ -1,19 +1,20 @@
 // Import individual seed functions
-import { seedSecurities, seedIndices } from "./securities";
-import { seedAccounts } from "./accounts";
-import { seedSleeves } from "./sleeves";
-import { seedModels } from "./models";
-import { seedRebalancingGroups } from "./rebalancing-groups";
-import { seedHoldings } from "./holdings";
-import { seedTransactions } from "./transactions";
-import { getDatabase, cleanupDatabase } from "../db-config";
-import { sql } from "drizzle-orm";
+
+import { sql } from 'drizzle-orm';
+import { cleanupDatabase, getDatabase } from '../db-config';
+import { seedAccounts } from './accounts';
+import { seedHoldings } from './holdings';
+import { seedModels } from './models';
+import { seedRebalancingGroups } from './rebalancing-groups';
+import { seedIndices, seedSecurities } from './securities';
+import { seedSleeves } from './sleeves';
+import { seedTransactions } from './transactions';
 
 // Initialize database connection to D1 local database
 const db = getDatabase();
 
 export async function seedDatabase(userId?: string) {
-  console.log("🌱 Starting database seeding...");
+  console.log('🌱 Starting database seeding...');
 
   try {
     // Tables will be created by Drizzle migrations
@@ -40,9 +41,9 @@ export async function seedDatabase(userId?: string) {
     // Clear the connection pool to ensure fresh connections see the new data
     cleanupDatabase();
 
-    console.log("✅ Database seeding completed successfully!");
+    console.log('✅ Database seeding completed successfully!');
   } catch (error) {
-    console.error("❌ Database seeding failed:", error);
+    console.error('❌ Database seeding failed:', error);
     throw error;
   }
 }
@@ -51,11 +52,11 @@ export async function seedDatabase(userId?: string) {
 if (import.meta.url === `file://${process.argv[1]}`) {
   seedDatabase()
     .then(() => {
-      console.log("🎉 Seeding completed!");
+      console.log('🎉 Seeding completed!');
       process.exit(0);
     })
     .catch((error) => {
-      console.error("💥 Seeding failed:", error);
+      console.error('💥 Seeding failed:', error);
       process.exit(1);
     });
 }

@@ -31,7 +31,7 @@ export class SecurityHeaders {
 
     // Check if origin is allowed
     const isAllowedOrigin = origin && this.config.allowedOrigins.includes(origin);
-    
+
     if (isAllowedOrigin) {
       headers['Access-Control-Allow-Origin'] = origin;
       headers['Access-Control-Allow-Credentials'] = 'true';
@@ -46,7 +46,7 @@ export class SecurityHeaders {
     // Common CORS headers
     if (headers['Access-Control-Allow-Origin']) {
       headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS';
-      headers['Access-Control-Allow-Headers'] = 
+      headers['Access-Control-Allow-Headers'] =
         'Content-Type, Authorization, X-Requested-With, X-CSRF-Token';
       headers['Access-Control-Max-Age'] = '86400'; // 24 hours
     }
@@ -74,7 +74,7 @@ export class SecurityHeaders {
         "object-src 'none'", // No plugins
         "base-uri 'self'", // Prevent base tag hijacking
         "form-action 'self'", // Forms only submit to same origin
-        "upgrade-insecure-requests" // Force HTTPS
+        'upgrade-insecure-requests', // Force HTTPS
       );
     } else {
       // Development CSP - more permissive
@@ -86,7 +86,7 @@ export class SecurityHeaders {
         "font-src 'self' https: data:",
         "connect-src 'self' ws: wss:", // Allow WebSocket for dev server
         "frame-ancestors 'self'",
-        "base-uri 'self'"
+        "base-uri 'self'",
       );
     }
 
@@ -98,37 +98,37 @@ export class SecurityHeaders {
    */
   getSecurityHeaders(origin: string | null): Record<string, string> {
     const corsHeaders = this.getCORSHeaders(origin);
-    
+
     const securityHeaders = {
       // Content Security Policy
       'Content-Security-Policy': this.getCSPHeader(),
-      
+
       // Prevent MIME type sniffing
       'X-Content-Type-Options': 'nosniff',
-      
+
       // Clickjacking protection
       'X-Frame-Options': 'DENY',
-      
+
       // XSS protection (legacy but still useful)
       'X-XSS-Protection': '1; mode=block',
-      
+
       // Force HTTPS (only in production)
       ...(this.config.environment === 'production' && {
-        'Strict-Transport-Security': 'max-age=31536000; includeSubDomains; preload'
+        'Strict-Transport-Security': 'max-age=31536000; includeSubDomains; preload',
       }),
-      
+
       // Referrer policy for privacy
       'Referrer-Policy': 'strict-origin-when-cross-origin',
-      
+
       // Permissions policy (restrict sensitive APIs)
-      'Permissions-Policy': 
+      'Permissions-Policy':
         'geolocation=(), microphone=(), camera=(), payment=(), usb=(), ' +
         'accelerometer=(), gyroscope=(), magnetometer=(), serial=()',
-      
+
       // Cache control for security-sensitive pages
       'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
-      'Pragma': 'no-cache',
-      'Expires': '0',
+      Pragma: 'no-cache',
+      Expires: '0',
     };
 
     return { ...corsHeaders, ...securityHeaders };
@@ -140,7 +140,7 @@ export class SecurityHeaders {
   handlePreflight(request: Request): Response {
     const origin = request.headers.get('Origin');
     const headers = this.getCORSHeaders(origin);
-    
+
     if (!headers['Access-Control-Allow-Origin']) {
       return new Response('CORS request not allowed', { status: 403 });
     }
@@ -156,7 +156,7 @@ export class SecurityHeaders {
    */
   applyHeaders(response: Response, origin: string | null): Response {
     const headers = this.getSecurityHeaders(origin);
-    
+
     // Create new response with security headers
     const secureResponse = new Response(response.body, {
       status: response.status,
@@ -204,14 +204,13 @@ export function createSecurityMiddleware(config: SecurityConfig) {
      */
     validateOrigin(request: Request): boolean {
       const origin = request.headers.get('Origin');
-      
+
       if (!origin) {
         // Same-origin requests don't have Origin header
         return true;
       }
 
-      return config.allowedOrigins.includes(origin) || 
-             config.environment === 'development';
+      return config.allowedOrigins.includes(origin) || config.environment === 'development';
     },
 
     /**
@@ -219,6 +218,6 @@ export function createSecurityMiddleware(config: SecurityConfig) {
      */
     getConfig(): SecurityConfig {
       return { ...config };
-    }
+    },
   };
 }

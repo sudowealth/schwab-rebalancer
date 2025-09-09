@@ -1,20 +1,20 @@
-import { createFileRoute, redirect } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
-import { getSystemStatsServerFn, verifyAdminAccessServerFn } from "~/lib/server-functions";
-import { Button } from "~/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
+import { useQuery } from '@tanstack/react-query';
+import { createFileRoute, redirect } from '@tanstack/react-router';
 import {
-  Users,
-  CreditCard,
-  Package,
-  TrendingUp,
-  DollarSign,
   Activity,
   BarChart3,
+  CreditCard,
+  DollarSign,
+  Package,
   ShoppingCart,
-} from "lucide-react";
+  TrendingUp,
+  Users,
+} from 'lucide-react';
+import { Button } from '~/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card';
+import { getSystemStatsServerFn, verifyAdminAccessServerFn } from '~/lib/server-functions';
 
-export const Route = createFileRoute("/admin/stats")({
+export const Route = createFileRoute('/admin/stats')({
   component: SystemStats,
   loader: async () => {
     try {
@@ -26,11 +26,11 @@ export const Route = createFileRoute("/admin/stats")({
     } catch (error) {
       // If not admin or not authenticated, redirect
       if (error instanceof Error) {
-        if (error.message.includes("Admin access required")) {
-          throw redirect({ to: "/" });
+        if (error.message.includes('Admin access required')) {
+          throw redirect({ to: '/' });
         }
-        if (error.message.includes("Authentication required")) {
-          throw redirect({ to: "/login", search: { reset: "" } });
+        if (error.message.includes('Authentication required')) {
+          throw redirect({ to: '/login', search: { reset: '' } });
         }
       }
       throw error;
@@ -41,13 +41,13 @@ export const Route = createFileRoute("/admin/stats")({
 function SystemStats() {
   // Get initial data from loader
   const loaderData = Route.useLoaderData();
-  
+
   const {
     data: stats,
     isPending: statsPending,
     refetch,
   } = useQuery({
-    queryKey: ["admin", "stats"],
+    queryKey: ['admin', 'stats'],
     queryFn: () => getSystemStatsServerFn(),
     initialData: loaderData, // Use loader data as initial data
   });
@@ -58,52 +58,52 @@ function SystemStats() {
 
   const statCards = [
     {
-      title: "Total Users",
+      title: 'Total Users',
       value: stats?.users || 0,
       icon: Users,
-      description: "Registered users in the system",
+      description: 'Registered users in the system',
     },
     {
-      title: "Accounts",
+      title: 'Accounts',
       value: stats?.accounts || 0,
       icon: CreditCard,
-      description: "Trading accounts across all users",
+      description: 'Trading accounts across all users',
     },
     {
-      title: "Sleeves",
+      title: 'Sleeves',
       value: stats?.sleeves || 0,
       icon: Package,
-      description: "Security sleeves created",
+      description: 'Security sleeves created',
     },
     {
-      title: "Models",
+      title: 'Models',
       value: stats?.models || 0,
       icon: TrendingUp,
-      description: "Portfolio models defined",
+      description: 'Portfolio models defined',
     },
     {
-      title: "Holdings",
+      title: 'Holdings',
       value: stats?.holdings || 0,
       icon: DollarSign,
-      description: "Individual security positions",
+      description: 'Individual security positions',
     },
     {
-      title: "Transactions",
+      title: 'Transactions',
       value: stats?.transactions || 0,
       icon: Activity,
-      description: "Total transactions recorded",
+      description: 'Total transactions recorded',
     },
     {
-      title: "Rebalancing Groups",
+      title: 'Rebalancing Groups',
       value: stats?.rebalancingGroups || 0,
       icon: BarChart3,
-      description: "Active rebalancing groups",
+      description: 'Active rebalancing groups',
     },
     {
-      title: "Trade Orders",
+      title: 'Trade Orders',
       value: stats?.orders || 0,
       icon: ShoppingCart,
-      description: "Orders placed through the system",
+      description: 'Orders placed through the system',
     },
   ];
 
@@ -130,18 +130,12 @@ function SystemStats() {
           return (
             <Card key={stat.title}>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  {stat.title}
-                </CardTitle>
+                <CardTitle className="text-sm font-medium">{stat.title}</CardTitle>
                 <Icon className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">
-                  {stat.value.toLocaleString()}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  {stat.description}
-                </p>
+                <div className="text-2xl font-bold">{stat.value.toLocaleString()}</div>
+                <p className="text-xs text-muted-foreground">{stat.description}</p>
               </CardContent>
             </Card>
           );
@@ -160,26 +154,20 @@ function SystemStats() {
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                 <div>
-                  <strong>Average accounts per user:</strong>{" "}
-                  {stats?.users
-                    ? (stats.accounts / stats.users).toFixed(1)
-                    : "0"}
+                  <strong>Average accounts per user:</strong>{' '}
+                  {stats?.users ? (stats.accounts / stats.users).toFixed(1) : '0'}
                 </div>
                 <div>
-                  <strong>Average sleeves per user:</strong>{" "}
-                  {stats?.users
-                    ? (stats.sleeves / stats.users).toFixed(1)
-                    : "0"}
+                  <strong>Average sleeves per user:</strong>{' '}
+                  {stats?.users ? (stats.sleeves / stats.users).toFixed(1) : '0'}
                 </div>
                 <div>
-                  <strong>Average models per user:</strong>{" "}
-                  {stats?.users ? (stats.models / stats.users).toFixed(1) : "0"}
+                  <strong>Average models per user:</strong>{' '}
+                  {stats?.users ? (stats.models / stats.users).toFixed(1) : '0'}
                 </div>
                 <div>
-                  <strong>Average holdings per account:</strong>{" "}
-                  {stats?.accounts
-                    ? (stats.holdings / stats.accounts).toFixed(1)
-                    : "0"}
+                  <strong>Average holdings per account:</strong>{' '}
+                  {stats?.accounts ? (stats.holdings / stats.accounts).toFixed(1) : '0'}
                 </div>
               </div>
             </div>

@@ -1,15 +1,9 @@
-import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Button } from "./ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "./ui/card";
-import { Download, Loader2, RefreshCw } from "lucide-react";
-import { syncYahooFundamentalsServerFn } from "../lib/server-functions";
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { Download, Loader2, RefreshCw } from 'lucide-react';
+import { useState } from 'react';
+import { syncYahooFundamentalsServerFn } from '../lib/server-functions';
+import { Button } from './ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 
 export function YahooIntegration() {
   const queryClient = useQueryClient();
@@ -21,9 +15,18 @@ export function YahooIntegration() {
 
   const yahooMutation = useMutation({
     mutationFn: async (
-      scope: "all-securities" | "all-holdings" | "five-holdings" | "missing-fundamentals" | "missing-fundamentals-holdings"
+      scope:
+        | 'all-securities'
+        | 'all-holdings'
+        | 'five-holdings'
+        | 'missing-fundamentals'
+        | 'missing-fundamentals-holdings',
     ): Promise<{ success: boolean; recordsProcessed: number; errorMessage?: string }> => {
-      const result = await syncYahooFundamentalsServerFn({ data: { scope } });
+      const result = (await syncYahooFundamentalsServerFn({ data: { scope } })) as {
+        success?: boolean;
+        recordsProcessed?: number;
+        errorMessage?: string;
+      };
       return {
         success: Boolean(result?.success),
         recordsProcessed: Number(result?.recordsProcessed ?? 0),
@@ -36,7 +39,7 @@ export function YahooIntegration() {
         recordsProcessed: Number(data?.recordsProcessed ?? 0),
         errorMessage: data?.errorMessage,
       });
-      queryClient.invalidateQueries({ queryKey: ["sync-logs"] });
+      queryClient.invalidateQueries({ queryKey: ['sync-logs'] });
     },
   });
 
@@ -58,7 +61,7 @@ export function YahooIntegration() {
           <Button
             variant="outline"
             className="w-full"
-            onClick={() => yahooMutation.mutate("all-securities")}
+            onClick={() => yahooMutation.mutate('all-securities')}
             disabled={isRunning}
           >
             {isRunning ? (
@@ -71,7 +74,7 @@ export function YahooIntegration() {
           <Button
             variant="outline"
             className="w-full"
-            onClick={() => yahooMutation.mutate("missing-fundamentals")}
+            onClick={() => yahooMutation.mutate('missing-fundamentals')}
             disabled={isRunning}
           >
             {isRunning ? (
@@ -84,7 +87,7 @@ export function YahooIntegration() {
           <Button
             variant="outline"
             className="w-full"
-            onClick={() => yahooMutation.mutate("missing-fundamentals-holdings")}
+            onClick={() => yahooMutation.mutate('missing-fundamentals-holdings')}
             disabled={isRunning}
           >
             {isRunning ? (
@@ -97,7 +100,7 @@ export function YahooIntegration() {
           <Button
             variant="outline"
             className="w-full"
-            onClick={() => yahooMutation.mutate("all-holdings")}
+            onClick={() => yahooMutation.mutate('all-holdings')}
             disabled={isRunning}
           >
             {isRunning ? (
@@ -110,7 +113,7 @@ export function YahooIntegration() {
           <Button
             variant="outline"
             className="w-full"
-            onClick={() => yahooMutation.mutate("five-holdings")}
+            onClick={() => yahooMutation.mutate('five-holdings')}
             disabled={isRunning}
           >
             {isRunning ? (
@@ -125,15 +128,11 @@ export function YahooIntegration() {
         {lastSummary && (
           <div className="text-sm text-muted-foreground">
             {lastSummary.success ? (
-              <span>
-                Updated {lastSummary.recordsProcessed} securities successfully.
-              </span>
+              <span>Updated {lastSummary.recordsProcessed} securities successfully.</span>
             ) : (
               <span className="text-red-600">
                 Update completed with errors
-                {lastSummary.errorMessage
-                  ? `: ${lastSummary.errorMessage}`
-                  : "."}
+                {lastSummary.errorMessage ? `: ${lastSummary.errorMessage}` : '.'}
               </span>
             )}
           </div>

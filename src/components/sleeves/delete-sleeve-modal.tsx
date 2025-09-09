@@ -1,5 +1,7 @@
-import { useState, useEffect } from "react";
-import { AlertTriangle } from "lucide-react";
+import { useRouter } from '@tanstack/react-router';
+import { AlertTriangle } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Button } from '../../components/ui/button';
 import {
   Dialog,
   DialogContent,
@@ -7,14 +9,9 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "../../components/ui/dialog";
-import { Button } from "../../components/ui/button";
-import {
-  deleteSleeveServerFn,
-  getSleeveHoldingsInfoServerFn,
-} from "../../lib/server-functions";
-import { useRouter } from "@tanstack/react-router";
-import type { Sleeve } from "../../lib/schemas";
+} from '../../components/ui/dialog';
+import type { Sleeve } from '../../lib/schemas';
+import { deleteSleeveServerFn, getSleeveHoldingsInfoServerFn } from '../../lib/server-functions';
 
 interface DeleteSleeveModalProps {
   isOpen: boolean;
@@ -22,13 +19,9 @@ interface DeleteSleeveModalProps {
   sleeve: Sleeve | null;
 }
 
-export function DeleteSleeveModal({
-  isOpen,
-  onClose,
-  sleeve,
-}: DeleteSleeveModalProps) {
+export function DeleteSleeveModal({ isOpen, onClose, sleeve }: DeleteSleeveModalProps) {
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState('');
   const [holdingsInfo, setHoldingsInfo] = useState<{
     hasHoldings: boolean;
     holdingTicker?: string;
@@ -52,7 +45,7 @@ export function DeleteSleeveModal({
         });
         setHoldingsInfo(info);
       } catch (err) {
-        console.error("Failed to load holdings info:", err);
+        console.error('Failed to load holdings info:', err);
         setHoldingsInfo({ hasHoldings: false });
       } finally {
         setLoadingHoldings(false);
@@ -66,12 +59,12 @@ export function DeleteSleeveModal({
 
   const handleDelete = async () => {
     if (!sleeve) {
-      setError("No sleeve selected for deletion");
+      setError('No sleeve selected for deletion');
       return;
     }
 
     setIsLoading(true);
-    setError("");
+    setError('');
 
     try {
       await deleteSleeveServerFn({
@@ -83,14 +76,14 @@ export function DeleteSleeveModal({
       onClose();
       router.invalidate(); // Refresh the data
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to delete sleeve");
+      setError(err instanceof Error ? err.message : 'Failed to delete sleeve');
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleClose = () => {
-    setError("");
+    setError('');
     setHoldingsInfo(null);
     onClose();
   };
@@ -112,7 +105,7 @@ export function DeleteSleeveModal({
           <DialogDescription>
             {hasHoldings
               ? `Delete sleeve "${sleeve.name}" and unassign its active holdings?`
-              : `Are you sure you want to delete the sleeve "${sleeve.name}"?`}{" "}
+              : `Are you sure you want to delete the sleeve "${sleeve.name}"?`}{' '}
             This action cannot be undone.
           </DialogDescription>
         </DialogHeader>
@@ -120,9 +113,7 @@ export function DeleteSleeveModal({
         <div className="space-y-4">
           {loadingHoldings && (
             <div className="p-3 bg-gray-50 border border-gray-200 rounded-md">
-              <p className="text-sm text-gray-600">
-                Loading holdings information...
-              </p>
+              <p className="text-sm text-gray-600">Loading holdings information...</p>
             </div>
           )}
 
@@ -131,12 +122,9 @@ export function DeleteSleeveModal({
               <div className="flex items-start space-x-2">
                 <AlertTriangle className="h-4 w-4 text-yellow-600 mt-0.5" />
                 <div className="text-sm text-yellow-800">
-                  <p className="font-medium">
-                    Warning: Active Holdings Detected
-                  </p>
+                  <p className="font-medium">Warning: Active Holdings Detected</p>
                   <p>
-                    This sleeve has an active position in{" "}
-                    {holdingsInfo?.holdingTicker}
+                    This sleeve has an active position in {holdingsInfo?.holdingTicker}
                     {holdingsInfo?.holdingValue &&
                       ` (value: $${holdingsInfo.holdingValue.toLocaleString()})`}
                     .
@@ -148,9 +136,7 @@ export function DeleteSleeveModal({
                     <li>The sleeve configuration will be deleted</li>
                     <li>The position will become "unassigned" (no sleeve)</li>
                     <li>Transaction history will be preserved</li>
-                    <li>
-                      You can still manage the position from the Positions page
-                    </li>
+                    <li>You can still manage the position from the Positions page</li>
                   </ul>
                 </div>
               </div>
@@ -177,9 +163,8 @@ export function DeleteSleeveModal({
               {!hasHoldings && (
                 <div className="p-3 bg-blue-50 border border-blue-200 rounded-md">
                   <p className="text-xs text-blue-800">
-                    <strong>Note:</strong> Any transaction history associated
-                    with this sleeve will be preserved. Only the sleeve and its
-                    member configuration will be deleted.
+                    <strong>Note:</strong> Any transaction history associated with this sleeve will
+                    be preserved. Only the sleeve and its member configuration will be deleted.
                   </p>
                 </div>
               )}
@@ -202,11 +187,7 @@ export function DeleteSleeveModal({
             onClick={handleDelete}
             disabled={isLoading || loadingHoldings}
           >
-            {isLoading
-              ? "Deleting..."
-              : hasHoldings
-                ? "Delete Anyway"
-                : "Delete Sleeve"}
+            {isLoading ? 'Deleting...' : hasHoldings ? 'Delete Anyway' : 'Delete Sleeve'}
           </Button>
         </DialogFooter>
       </DialogContent>

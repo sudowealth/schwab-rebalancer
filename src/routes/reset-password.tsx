@@ -1,72 +1,62 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useState, useEffect } from "react";
-import { authClient, signIn, useSession } from "../lib/auth-client";
+import { createFileRoute } from '@tanstack/react-router';
+import { useEffect, useId, useState } from 'react';
+import { authClient, signIn, useSession } from '../lib/auth-client';
 
-export const Route = createFileRoute("/reset-password")({
+export const Route = createFileRoute('/reset-password')({
   component: ResetPasswordPage,
   validateSearch: (search) => ({
-    token: typeof search.token === "string" ? search.token : "",
+    token: typeof search.token === 'string' ? search.token : '',
   }),
 });
 
 function ResetPasswordPage() {
   const { token } = Route.useSearch();
   const { data: session } = useSession();
-  const [email] = useState("d@d.com");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
+  const [email] = useState('d@d.com');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [validationErrors, setValidationErrors] = useState({
-    password: "",
-    confirmPassword: "",
+    password: '',
+    confirmPassword: '',
   });
   const [isClient, setIsClient] = useState(false);
+  const newPasswordId = useId();
+  const confirmPasswordId = useId();
 
   useEffect(() => {
     setIsClient(true);
     if (!token) {
-      setError(
-        "Invalid or missing reset token. Please request a new password reset."
-      );
+      setError('Invalid or missing reset token. Please request a new password reset.');
     }
   }, [token]);
 
   // Check if user is already logged in after password reset
   useEffect(() => {
     if (session?.user && success) {
-      console.log(
-        "✅ User is now logged in after password reset, redirecting to dashboard"
-      );
+      console.log('✅ User is now logged in after password reset, redirecting to dashboard');
       setTimeout(() => {
-        window.location.href = "/";
+        window.location.href = '/';
       }, 1000);
     }
   }, [session, success]);
 
   const validatePassword = (password: string) => {
-    if (!password) return "Password is required";
-    if (password.length < 8)
-      return "Password must be at least 8 characters long";
-    if (password.length > 128)
-      return "Password must be less than 128 characters";
-    if (!/(?=.*[a-z])/.test(password))
-      return "Password must contain at least one lowercase letter";
-    if (!/(?=.*[A-Z])/.test(password))
-      return "Password must contain at least one uppercase letter";
-    if (!/(?=.*\d)/.test(password))
-      return "Password must contain at least one number";
-    return "";
+    if (!password) return 'Password is required';
+    if (password.length < 8) return 'Password must be at least 8 characters long';
+    if (password.length > 128) return 'Password must be less than 128 characters';
+    if (!/(?=.*[a-z])/.test(password)) return 'Password must contain at least one lowercase letter';
+    if (!/(?=.*[A-Z])/.test(password)) return 'Password must contain at least one uppercase letter';
+    if (!/(?=.*\d)/.test(password)) return 'Password must contain at least one number';
+    return '';
   };
 
-  const validateConfirmPassword = (
-    confirmPassword: string,
-    password: string
-  ) => {
-    if (!confirmPassword) return "Please confirm your password";
-    if (confirmPassword !== password) return "Passwords do not match";
-    return "";
+  const validateConfirmPassword = (confirmPassword: string, password: string) => {
+    if (!confirmPassword) return 'Please confirm your password';
+    if (confirmPassword !== password) return 'Passwords do not match';
+    return '';
   };
 
   const handlePasswordChange = (value: string) => {
@@ -74,9 +64,7 @@ function ResetPasswordPage() {
     setValidationErrors((prev) => ({
       ...prev,
       password: validatePassword(value),
-      confirmPassword: confirmPassword
-        ? validateConfirmPassword(confirmPassword, value)
-        : "",
+      confirmPassword: confirmPassword ? validateConfirmPassword(confirmPassword, value) : '',
     }));
   };
 
@@ -90,10 +78,7 @@ function ResetPasswordPage() {
 
   const isFormValid = () => {
     const passwordError = validatePassword(password);
-    const confirmPasswordError = validateConfirmPassword(
-      confirmPassword,
-      password
-    );
+    const confirmPasswordError = validateConfirmPassword(confirmPassword, password);
 
     setValidationErrors({
       password: passwordError,
@@ -105,7 +90,7 @@ function ResetPasswordPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
+    setError('');
 
     if (!isFormValid()) {
       return;
@@ -130,40 +115,33 @@ function ResetPasswordPage() {
         });
 
         setTimeout(() => {
-          window.location.href = "/";
+          window.location.href = '/';
         }, 1000);
         return;
       } catch (loginError) {
-        console.error("❌ Auto-login failed:", loginError);
+        console.error('❌ Auto-login failed:', loginError);
         // Fall back to manual login
       }
 
       // Fallback: redirect to login with success message
       setTimeout(() => {
-        window.location.href = "/login?reset=success";
+        window.location.href = '/login?reset=success';
       }, 1500);
     } catch (error: unknown) {
-      console.error("Password reset error:", error);
+      console.error('Password reset error:', error);
       setIsLoading(false);
 
       if (
-        (error instanceof Error && error.message?.includes("Invalid token")) ||
-        (error instanceof Error && error.message?.includes("expired"))
+        (error instanceof Error && error.message?.includes('Invalid token')) ||
+        (error instanceof Error && error.message?.includes('expired'))
       ) {
         setError(
-          "This password reset link has expired or is invalid. Please request a new password reset."
+          'This password reset link has expired or is invalid. Please request a new password reset.',
         );
-      } else if (
-        error instanceof Error &&
-        error.message?.includes("Password")
-      ) {
-        setError(
-          "Password does not meet the requirements. Please check the password criteria."
-        );
+      } else if (error instanceof Error && error.message?.includes('Password')) {
+        setError('Password does not meet the requirements. Please check the password criteria.');
       } else {
-        setError(
-          "Password reset failed. Please try again or request a new reset link."
-        );
+        setError('Password reset failed. Please try again or request a new reset link.');
       }
     }
   };
@@ -180,6 +158,7 @@ function ResetPasswordPage() {
                 viewBox="0 0 24 24"
                 stroke="currentColor"
               >
+                <title>Password reset successful</title>
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -207,105 +186,95 @@ function ResetPasswordPage() {
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
             Reset your password
           </h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
-            Enter your new password below
-          </p>
+          <p className="mt-2 text-center text-sm text-gray-600">Enter your new password below</p>
         </div>
         {isClient ? (
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          {error && (
-            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-              {error}
-            </div>
-          )}
-
-          {/* Hidden email field - pre-filled but not visible to user */}
-          <input type="hidden" name="email" value={email} />
-
-          <div>
-            <label htmlFor="password" className="sr-only">
-              New Password
-            </label>
-            <input
-              id="password"
-              name="password"
-              type="password"
-              required
-              autoComplete="new-password"
-              className={`relative block w-full px-3 py-2 border placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:z-10 sm:text-sm ${
-                validationErrors.password
-                  ? "border-red-300 focus:ring-red-500 focus:border-red-500"
-                  : "border-gray-300 focus:ring-indigo-500 focus:border-indigo-500"
-              }`}
-              placeholder="New password"
-              value={password}
-              onChange={(e) => handlePasswordChange(e.target.value)}
-            />
-            {validationErrors.password && (
-              <p className="mt-1 text-sm text-red-600">
-                {validationErrors.password}
-              </p>
-            )}
-            {!validationErrors.password && password && (
-              <div className="mt-1 text-xs text-gray-500">
-                Password must contain: 8+ characters, uppercase, lowercase, and
-                number
+          <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+            {error && (
+              <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+                {error}
               </div>
             )}
-          </div>
 
-          <div>
-            <label htmlFor="confirmPassword" className="sr-only">
-              Confirm New Password
-            </label>
-            <input
-              id="confirmPassword"
-              name="confirmPassword"
-              type="password"
-              required
-              autoComplete="new-password"
-              className={`relative block w-full px-3 py-2 border placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:z-10 sm:text-sm ${
-                validationErrors.confirmPassword
-                  ? "border-red-300 focus:ring-red-500 focus:border-red-500"
-                  : "border-gray-300 focus:ring-indigo-500 focus:border-indigo-500"
-              }`}
-              placeholder="Confirm new password"
-              value={confirmPassword}
-              onChange={(e) => handleConfirmPasswordChange(e.target.value)}
-            />
-            {validationErrors.confirmPassword && (
-              <p className="mt-1 text-sm text-red-600">
-                {validationErrors.confirmPassword}
-              </p>
-            )}
-          </div>
+            {/* Hidden email field - pre-filled but not visible to user */}
+            <input type="hidden" name="email" value={email} />
 
-          <div>
-            <button
-              type="submit"
-              disabled={
-                isLoading ||
-                !password ||
-                !confirmPassword ||
-                !!validationErrors.password ||
-                !!validationErrors.confirmPassword ||
-                !token
-              }
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isLoading ? "Resetting password..." : "Reset password"}
-            </button>
-          </div>
+            <div>
+              <label htmlFor={newPasswordId} className="sr-only">
+                New Password
+              </label>
+              <input
+                id={newPasswordId}
+                name="password"
+                type="password"
+                required
+                autoComplete="new-password"
+                className={`relative block w-full px-3 py-2 border placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:z-10 sm:text-sm ${
+                  validationErrors.password
+                    ? 'border-red-300 focus:ring-red-500 focus:border-red-500'
+                    : 'border-gray-300 focus:ring-indigo-500 focus:border-indigo-500'
+                }`}
+                placeholder="New password"
+                value={password}
+                onChange={(e) => handlePasswordChange(e.target.value)}
+              />
+              {validationErrors.password && (
+                <p className="mt-1 text-sm text-red-600">{validationErrors.password}</p>
+              )}
+              {!validationErrors.password && password && (
+                <div className="mt-1 text-xs text-gray-500">
+                  Password must contain: 8+ characters, uppercase, lowercase, and number
+                </div>
+              )}
+            </div>
 
-          <div className="text-center">
-            <a
-              href="/login"
-              className="font-medium text-indigo-600 hover:text-indigo-500"
-            >
-              Back to sign in
-            </a>
-          </div>
-        </form>
+            <div>
+              <label htmlFor={confirmPasswordId} className="sr-only">
+                Confirm New Password
+              </label>
+              <input
+                id={confirmPasswordId}
+                name="confirmPassword"
+                type="password"
+                required
+                autoComplete="new-password"
+                className={`relative block w-full px-3 py-2 border placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:z-10 sm:text-sm ${
+                  validationErrors.confirmPassword
+                    ? 'border-red-300 focus:ring-red-500 focus:border-red-500'
+                    : 'border-gray-300 focus:ring-indigo-500 focus:border-indigo-500'
+                }`}
+                placeholder="Confirm new password"
+                value={confirmPassword}
+                onChange={(e) => handleConfirmPasswordChange(e.target.value)}
+              />
+              {validationErrors.confirmPassword && (
+                <p className="mt-1 text-sm text-red-600">{validationErrors.confirmPassword}</p>
+              )}
+            </div>
+
+            <div>
+              <button
+                type="submit"
+                disabled={
+                  isLoading ||
+                  !password ||
+                  !confirmPassword ||
+                  !!validationErrors.password ||
+                  !!validationErrors.confirmPassword ||
+                  !token
+                }
+                className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isLoading ? 'Resetting password...' : 'Reset password'}
+              </button>
+            </div>
+
+            <div className="text-center">
+              <a href="/login" className="font-medium text-indigo-600 hover:text-indigo-500">
+                Back to sign in
+              </a>
+            </div>
+          </form>
         ) : (
           <div className="mt-8 flex justify-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>

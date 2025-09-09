@@ -1,9 +1,9 @@
-import { getSchwabApiService } from './schwab-api';
-import { getDatabase } from './db-config';
-import * as schema from '../db/schema';
 import { eq, inArray } from 'drizzle-orm';
 import yahooFinance from 'yahoo-finance2';
+import * as schema from '../db/schema';
 import { CASH_TICKER, MANUAL_CASH_TICKER } from './constants';
+import { getDatabase } from './db-config';
+import { getSchwabApiService } from './schwab-api';
 
 export interface PriceUpdateResult {
   ticker: string;
@@ -30,10 +30,10 @@ export class PriceSyncService {
 
   async syncPrices(options: PriceSyncOptions = {}): Promise<PriceUpdateResult[]> {
     const { userId, symbols, forceRefresh = false, maxAge = this.DEFAULT_MAX_AGE } = options;
-    
+
     // Determine which symbols to update
     let symbolsToUpdate: string[];
-    
+
     if (symbols && symbols.length > 0) {
       symbolsToUpdate = symbols;
     } else {
@@ -41,10 +41,10 @@ export class PriceSyncService {
       const securities = await this.db
         .select({ ticker: schema.security.ticker })
         .from(schema.security);
-      
+
       symbolsToUpdate = securities
-        .map(s => s.ticker)
-        .filter(t => t !== CASH_TICKER && t !== MANUAL_CASH_TICKER);
+        .map((s) => s.ticker)
+        .filter((t) => t !== CASH_TICKER && t !== MANUAL_CASH_TICKER);
     }
 
     if (symbolsToUpdate.length === 0) {
@@ -66,9 +66,7 @@ export class PriceSyncService {
       .from(schema.security)
       .where(inArray(schema.security.ticker, symbolsToUpdate));
 
-    const securityMap = new Map(
-      currentSecurities.map(s => [s.ticker, s])
-    );
+    const securityMap = new Map(currentSecurities.map((s) => [s.ticker, s]));
 
     // Partition symbols into cached vs needing refresh
     const symbolsNeedingRefresh: string[] = [];
@@ -104,14 +102,24 @@ export class PriceSyncService {
     }
 
     // Helper to chunk an array
-    const chunk = <T,>(arr: T[], size: number): T[][] => {
+    const chunk = <T>(arr: T[], size: number): T[][] => {
       const chunks: T[][] = [];
       for (let i = 0; i < arr.length; i += size) chunks.push(arr.slice(i, i + size));
       return chunks;
     };
 
     const schwabApi = userId ? getSchwabApiService() : null;
-    let schwabQuotes: Record<string, { lastPrice: number; mark: number; regularMarketPrice: number; assetMainType?: string; assetSubType?: string; description?: string; }> = {};
+    let schwabQuotes: Record<
+      string,
+      {
+        lastPrice: number;
+        mark: number;
+        regularMarketPrice: number;
+        assetMainType?: string;
+        assetSubType?: string;
+        description?: string;
+      }
+    > = {};
     let canUseSchwab = false;
     if (userId && schwabApi) {
       try {
@@ -126,10 +134,16 @@ export class PriceSyncService {
       const batches = chunk(symbolsNeedingRefresh, this.MAX_QUOTES_PER_REQUEST);
       for (const symbolsBatch of batches) {
         try {
-          const batchQuotes = await schwabApi.getBulkQuotes(userId!, symbolsBatch);
+          if (!userId) {
+            throw new Error('Missing userId for price sync');
+          }
+          const batchQuotes = await schwabApi.getBulkQuotes(userId, symbolsBatch);
           schwabQuotes = { ...schwabQuotes, ...batchQuotes };
         } catch (err) {
-          console.warn('⚠️ [PriceSync] Schwab bulk quote batch failed, continuing with remaining and Yahoo fallback:', err);
+          console.warn(
+            '⚠️ [PriceSync] Schwab bulk quote batch failed, continuing with remaining and Yahoo fallback:',
+            err,
+          );
         }
         // Small delay between batches for safety
         await this.delay(150);
@@ -141,17 +155,18 @@ export class PriceSyncService {
       try {
         const currentSecurity = securityMap.get(symbol);
         const oldPrice = currentSecurity?.price || 0;
-         const oldName = (currentSecurity as { name?: string })?.name;
-         const oldAssetType = (currentSecurity as { assetType?: string })?.assetType;
-         const oldAssetTypeSub = (currentSecurity as { assetTypeSub?: string | null })?.assetTypeSub;
-         const fieldChanges: Record<string, { old: unknown; new: unknown }> = {};
+        const oldName = (currentSecurity as { name?: string })?.name;
+        const oldAssetType = (currentSecurity as { assetType?: string })?.assetType;
+        const oldAssetTypeSub = (currentSecurity as { assetTypeSub?: string | null })?.assetTypeSub;
+        const fieldChanges: Record<string, { old: unknown; new: unknown }> = {};
 
         let newPrice: number | null = null;
         let source: 'SCHWAB' | 'YAHOO' = 'YAHOO';
 
         const schwabQuote = schwabQuotes[symbol];
         if (schwabQuote) {
-          newPrice = schwabQuote.lastPrice || schwabQuote.mark || schwabQuote.regularMarketPrice || null;
+          newPrice =
+            schwabQuote.lastPrice || schwabQuote.mark || schwabQuote.regularMarketPrice || null;
           source = 'SCHWAB';
           // Update optional metadata from Schwab
           const additionalInfo = {
@@ -169,7 +184,10 @@ export class PriceSyncService {
               fieldChanges.assetType = { old: oldAssetType, new: additionalInfo.assetType };
             }
             if (additionalInfo.assetTypeSub && !fieldChanges.assetTypeSub) {
-              fieldChanges.assetTypeSub = { old: oldAssetTypeSub, new: additionalInfo.assetTypeSub };
+              fieldChanges.assetTypeSub = {
+                old: oldAssetTypeSub,
+                new: additionalInfo.assetTypeSub,
+              };
             }
           }
         }
@@ -177,9 +195,17 @@ export class PriceSyncService {
         if (newPrice === null) {
           try {
             // Disable yahoo-finance2 strict validation to handle occasional schema drifts
-            const quoteRaw = await yahooFinance.quote(symbol as string, { validateResult: false } as unknown as Record<string, unknown>);
-            const quote = (Array.isArray(quoteRaw) ? quoteRaw[0] : (quoteRaw as Record<string, unknown>)) as Record<string, unknown>;
-            const yahooPrice = (quote as { regularMarketPrice?: number; price?: number })?.regularMarketPrice ?? (quote as { regularMarketPrice?: number; price?: number })?.price ?? null;
+            const quoteRaw = await yahooFinance.quote(
+              symbol as string,
+              { validateResult: false } as unknown as Record<string, unknown>,
+            );
+            const quote = (
+              Array.isArray(quoteRaw) ? quoteRaw[0] : (quoteRaw as Record<string, unknown>)
+            ) as Record<string, unknown>;
+            const yahooPrice =
+              (quote as { regularMarketPrice?: number; price?: number })?.regularMarketPrice ??
+              (quote as { regularMarketPrice?: number; price?: number })?.price ??
+              null;
             newPrice = typeof yahooPrice === 'number' ? yahooPrice : null;
             source = 'YAHOO';
           } catch (error) {
@@ -251,7 +277,7 @@ export class PriceSyncService {
   private isPriceFresh(
     symbol: string,
     security: { price: number; updatedAt: number } | undefined,
-    maxAgeSeconds: number
+    maxAgeSeconds: number,
   ): boolean {
     if (!security) return false;
 
@@ -270,17 +296,17 @@ export class PriceSyncService {
   }
 
   private delay(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
   private async updateSecurityInfo(
     ticker: string,
-    info: { name?: string; assetType?: string; assetTypeSub?: string }
+    info: { name?: string; assetType?: string; assetTypeSub?: string },
   ): Promise<Record<string, { old: unknown; new: unknown }>> {
     try {
       const updateData: Record<string, unknown> = {};
       const changes: Record<string, { old: unknown; new: unknown }> = {};
-      
+
       if (info.name) {
         // Fetch current to compute change
         const current = await this.db
@@ -294,19 +320,25 @@ export class PriceSyncService {
           changes.name = { old: oldName, new: info.name };
         }
       }
-      
+
       if (info.assetType) {
         // Validate asset type against allowed values
         const validAssetTypes = [
-          'BOND', 'EQUITY', 'FOREX', 'FUTURE', 'FUTURE_OPTION', 
-          'INDEX', 'MUTUAL_FUND', 'OPTION'
+          'BOND',
+          'EQUITY',
+          'FOREX',
+          'FUTURE',
+          'FUTURE_OPTION',
+          'INDEX',
+          'MUTUAL_FUND',
+          'OPTION',
         ];
-        
-        const finalType = validAssetTypes.includes(info.assetType)
-          ? info.assetType
-          : 'EQUITY';
+
+        const finalType = validAssetTypes.includes(info.assetType) ? info.assetType : 'EQUITY';
         if (!validAssetTypes.includes(info.assetType)) {
-          console.warn(`⚠️ [PriceSync] Invalid asset type for ${ticker}: ${info.assetType}, using default EQUITY`);
+          console.warn(
+            `⚠️ [PriceSync] Invalid asset type for ${ticker}: ${info.assetType}, using default EQUITY`,
+          );
         }
         const current = await this.db
           .select({ assetType: schema.security.assetType })
@@ -319,15 +351,28 @@ export class PriceSyncService {
           changes.assetType = { old: oldType, new: finalType };
         }
       }
-      
+
       if (info.assetTypeSub !== undefined) {
         const rawSub = (info.assetTypeSub || '').toUpperCase().trim();
         const validAssetTypeSubs = [
-          'COE', 'PRF', 'ADR', 'GDR', 'CEF', 'ETF', 'ETN', 'UIT', 'WAR', 'RGT', 'OEF', 'MMF'
+          'COE',
+          'PRF',
+          'ADR',
+          'GDR',
+          'CEF',
+          'ETF',
+          'ETN',
+          'UIT',
+          'WAR',
+          'RGT',
+          'OEF',
+          'MMF',
         ];
         const finalSub = validAssetTypeSubs.includes(rawSub) ? rawSub : null;
         if (rawSub && !validAssetTypeSubs.includes(rawSub)) {
-          console.warn(`⚠️ [PriceSync] Invalid assetTypeSub for ${ticker}: ${info.assetTypeSub}, storing NULL`);
+          console.warn(
+            `⚠️ [PriceSync] Invalid assetTypeSub for ${ticker}: ${info.assetTypeSub}, storing NULL`,
+          );
         }
         const currentSub = await this.db
           .select({ assetTypeSub: schema.security.assetTypeSub })
@@ -340,15 +385,15 @@ export class PriceSyncService {
           changes.assetTypeSub = { old: oldSub, new: finalSub };
         }
       }
-      
+
       if (Object.keys(updateData).length > 0) {
         updateData.updatedAt = Date.now();
-        
+
         await this.db
           .update(schema.security)
           .set(updateData)
           .where(eq(schema.security.ticker, ticker));
-        
+
         console.log(`✅ [PriceSync] Updated security info for ${ticker}:`, updateData);
       }
       return changes;
@@ -374,18 +419,18 @@ export class PriceSyncService {
   // Enhanced price sync for specific securities with validation
   async syncSecurityPrices(
     securities: { ticker: string; expectedPrice?: number }[],
-    options: Omit<PriceSyncOptions, 'symbols'> = {}
+    options: Omit<PriceSyncOptions, 'symbols'> = {},
   ): Promise<PriceUpdateResult[]> {
-    const symbols = securities.map(s => s.ticker);
+    const symbols = securities.map((s) => s.ticker);
     const results = await this.syncPrices({ ...options, symbols });
 
     // Add validation for expected prices
-    return results.map(result => {
-      const security = securities.find(s => s.ticker === result.ticker);
+    return results.map((result) => {
+      const security = securities.find((s) => s.ticker === result.ticker);
       if (security?.expectedPrice) {
         const priceDiff = Math.abs(result.newPrice - security.expectedPrice);
         const priceVariance = priceDiff / security.expectedPrice;
-        
+
         // Flag prices that vary by more than 20% from expected
         if (priceVariance > 0.2) {
           return {
@@ -395,7 +440,7 @@ export class PriceSyncService {
           };
         }
       }
-      
+
       return result;
     });
   }
@@ -426,8 +471,8 @@ export async function scheduledPriceSync(userId?: string): Promise<{
       maxAge: 300, // 5 minutes for scheduled sync
     });
 
-    const successCount = results.filter(r => r.success).length;
-    const errorCount = results.filter(r => !r.success).length;
+    const successCount = results.filter((r) => r.success).length;
+    const errorCount = results.filter((r) => !r.success).length;
 
     return {
       success: errorCount === 0,

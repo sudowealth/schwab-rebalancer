@@ -1,15 +1,11 @@
 // Utility functions for rebalancing group calculations
+
+import { CASH_TICKER, isAnyCashTicker, isBaseCashTicker, MANUAL_CASH_TICKER } from './constants';
+import type { AccountHoldingsResult, SP500DataResult } from './db-api';
 import {
-  checkTransactionHistoryForWashSale,
   type Transaction as BaseTransaction,
-} from "./restrictions-utils";
-import type { SP500DataResult, AccountHoldingsResult } from "./db-api";
-import {
-  CASH_TICKER,
-  MANUAL_CASH_TICKER,
-  isAnyCashTicker,
-  isBaseCashTicker,
-} from "./constants";
+  checkTransactionHistoryForWashSale,
+} from './restrictions-utils';
 
 // Internal security data structure used in rebalancing calculations
 export interface SecurityData {
@@ -52,14 +48,14 @@ export interface AggregatedSleeveData {
 
 // Color palette for charts
 export const CHART_COLORS = [
-  "#0088FE",
-  "#00C49F",
-  "#FFBB28",
-  "#FF8042",
-  "#8884D8",
-  "#82CA9D",
-  "#A4DE6C",
-  "#FFD93D",
+  '#0088FE',
+  '#00C49F',
+  '#FFBB28',
+  '#FF8042',
+  '#8884D8',
+  '#82CA9D',
+  '#A4DE6C',
+  '#FFD93D',
 ];
 
 // Check if a security has wash sale risk (sold at loss within 31 days) - unified with rebalancing logic
@@ -69,16 +65,14 @@ interface Transaction extends BaseTransaction {
   price: number;
 }
 
-export const checkWashSaleRisk = (
-  ticker: string,
-  transactions: Transaction[] = []
-) => {
+export const checkWashSaleRisk = (ticker: string, transactions: Transaction[] = []) => {
   return checkTransactionHistoryForWashSale(ticker, transactions);
 };
 
 // Generate allocation data for different views
-import type { RebalancingGroupsResult } from "./db-api";
-type GroupMember = RebalancingGroupsResult[number]["members"][number];
+import type { RebalancingGroupsResult } from './db-api';
+
+type GroupMember = RebalancingGroupsResult[number]['members'][number];
 
 interface Group {
   members: GroupMember[];
@@ -114,58 +108,44 @@ interface AccountHoldingData {
 export type SP500Security = SP500DataResult[number];
 
 export const generateAllocationData = (
-  allocationView: "account" | "sector" | "industry" | "sleeve",
+  allocationView: 'account' | 'sector' | 'industry' | 'sleeve',
   group: Group,
   accountHoldings: AccountHoldingData[],
   sp500Data: SP500Security[],
-  totalValue: number
+  totalValue: number,
 ) => {
-  if (allocationView === "account") {
+  if (allocationView === 'account') {
     const result = group.members.map((member, index: number) => ({
       name: member.accountName,
       value: member.balance,
       percentage: ((member.balance || 0) / totalValue) * 100,
       color: CHART_COLORS[index % CHART_COLORS.length],
     }));
-    console.log("Account allocation result:", result);
+    console.log('Account allocation result:', result);
     return result;
-  } else if (allocationView === "sector") {
-    const result = generateSectorAllocationData(
-      accountHoldings,
-      sp500Data,
-      totalValue
-    );
+  } else if (allocationView === 'sector') {
+    const result = generateSectorAllocationData(accountHoldings, sp500Data, totalValue);
     return result;
-  } else if (allocationView === "sleeve") {
+  } else if (allocationView === 'sleeve') {
     const result = generateSleeveAllocationData(accountHoldings, totalValue);
-    console.log("Sleeve allocation result:", result);
+    console.log('Sleeve allocation result:', result);
     return result;
   } else {
-    const result = generateIndustryAllocationData(
-      accountHoldings,
-      sp500Data,
-      totalValue
-    );
-    console.log("Industry allocation result:", result);
+    const result = generateIndustryAllocationData(accountHoldings, sp500Data, totalValue);
+    console.log('Industry allocation result:', result);
     return result;
   }
 };
 
-export type GenerateAllocationDataResult = ReturnType<
-  typeof generateAllocationData
->;
+export type GenerateAllocationDataResult = ReturnType<typeof generateAllocationData>;
 
-export type GenerateSectorAllocationDataResult = ReturnType<
-  typeof generateSectorAllocationData
->;
+export type GenerateSectorAllocationDataResult = ReturnType<typeof generateSectorAllocationData>;
 
 export type GenerateIndustryAllocationDataResult = ReturnType<
   typeof generateIndustryAllocationData
 >;
 
-export type GenerateSleeveAllocationDataResult = ReturnType<
-  typeof generateSleeveAllocationData
->;
+export type GenerateSleeveAllocationDataResult = ReturnType<typeof generateSleeveAllocationData>;
 
 export type CheckWashSaleRiskResult = ReturnType<typeof checkWashSaleRisk>;
 
@@ -173,7 +153,7 @@ export type CheckWashSaleRiskResult = ReturnType<typeof checkWashSaleRisk>;
 export const generateSectorAllocationData = (
   accountHoldings: AccountHoldingData[],
   sp500Data: SP500Security[],
-  totalValue: number
+  totalValue: number,
 ) => {
   const sectorMap = new Map<string, number>();
   const securityInfoMap = new Map();
@@ -185,7 +165,7 @@ export const generateSectorAllocationData = (
   for (const account of accountHoldings) {
     for (const holding of account.holdings) {
       const securityInfo = securityInfoMap.get(holding.ticker);
-      const sector = securityInfo?.sector || "Unknown";
+      const sector = securityInfo?.sector || 'Unknown';
       sectorMap.set(sector, (sectorMap.get(sector) || 0) + holding.marketValue);
     }
   }
@@ -204,7 +184,7 @@ export const generateSectorAllocationData = (
 export const generateIndustryAllocationData = (
   accountHoldings: AccountHoldingData[],
   sp500Data: SP500Security[],
-  totalValue: number
+  totalValue: number,
 ) => {
   const industryMap = new Map<string, number>();
   const securityInfoMap = new Map();
@@ -216,11 +196,8 @@ export const generateIndustryAllocationData = (
   for (const account of accountHoldings) {
     for (const holding of account.holdings) {
       const securityInfo = securityInfoMap.get(holding.ticker);
-      const industry = securityInfo?.industry || "Unknown";
-      industryMap.set(
-        industry,
-        (industryMap.get(industry) || 0) + holding.marketValue
-      );
+      const industry = securityInfo?.industry || 'Unknown';
+      industryMap.set(industry, (industryMap.get(industry) || 0) + holding.marketValue);
     }
   }
 
@@ -237,7 +214,7 @@ export const generateIndustryAllocationData = (
 // Generate sleeve allocation data
 export const generateSleeveAllocationData = (
   accountHoldings: AccountHoldingData[],
-  totalValue: number
+  totalValue: number,
 ) => {
   const sleeveMap = new Map<string, number>();
 
@@ -247,13 +224,10 @@ export const generateSleeveAllocationData = (
         const sleeve = holding.sleeves[0];
         sleeveMap.set(
           sleeve.sleeveName,
-          (sleeveMap.get(sleeve.sleeveName) || 0) + holding.marketValue
+          (sleeveMap.get(sleeve.sleeveName) || 0) + holding.marketValue,
         );
       } else {
-        sleeveMap.set(
-          "Unassigned",
-          (sleeveMap.get("Unassigned") || 0) + holding.marketValue
-        );
+        sleeveMap.set('Unassigned', (sleeveMap.get('Unassigned') || 0) + holding.marketValue);
       }
     }
   }
@@ -272,24 +246,19 @@ export const generateSleeveAllocationData = (
 export const generateTopHoldingsData = (
   accountHoldings: AccountHoldingData[],
   totalValue: number,
-  limit?: number
+  limit?: number,
 ) => {
   const holdingsMap = new Map<string, number>();
 
   // Aggregate holdings across all accounts
   for (const account of accountHoldings) {
     for (const holding of account.holdings) {
-      holdingsMap.set(
-        holding.ticker,
-        (holdingsMap.get(holding.ticker) || 0) + holding.marketValue
-      );
+      holdingsMap.set(holding.ticker, (holdingsMap.get(holding.ticker) || 0) + holding.marketValue);
     }
   }
 
   // Sort by value and optionally limit
-  const sortedHoldings = Array.from(holdingsMap.entries()).sort(
-    ([, a], [, b]) => b - a
-  );
+  const sortedHoldings = Array.from(holdingsMap.entries()).sort(([, a], [, b]) => b - a);
 
   const finalHoldings = limit ? sortedHoldings.slice(0, limit) : sortedHoldings;
 
@@ -303,9 +272,7 @@ export const generateTopHoldingsData = (
   return result;
 };
 
-export type GenerateTopHoldingsDataResult = ReturnType<
-  typeof generateTopHoldingsData
->;
+export type GenerateTopHoldingsDataResult = ReturnType<typeof generateTopHoldingsData>;
 
 // Calculate sleeve allocations for each account
 interface SleeveData {
@@ -351,7 +318,7 @@ export const calculateSleeveAllocations = (
   group: Group & { assignedModel?: unknown },
   accountHoldings: AccountHoldingWithSleeve[],
   sleeveMembers: SleeveData[],
-  transactions: Transaction[]
+  transactions: Transaction[],
 ) => {
   if (!group.assignedModel) return [];
 
@@ -367,7 +334,7 @@ export const calculateSleeveAllocations = (
       accountId: account.accountId,
       accountName: account.accountName,
       accountType: account.accountType,
-      accountNumber: account.accountNumber || "",
+      accountNumber: account.accountNumber || '',
       totalValue: account.accountBalance,
       sleeves: [] as Array<{
         sleeveId: string;
@@ -416,9 +383,7 @@ export const calculateSleeveAllocations = (
       // in the group's assigned model (sleeveMembersMap). Otherwise, treat it
       // as Unassigned. This prevents globally defined sleeves from pulling
       // holdings into non-model sleeves for the current group.
-      const assignedSleeve = (holding.sleeves || []).find((s) =>
-        sleeveMembersMap.has(s.sleeveId)
-      );
+      const assignedSleeve = (holding.sleeves || []).find((s) => sleeveMembersMap.has(s.sleeveId));
 
       if (assignedSleeve) {
         const sleeve = assignedSleeve;
@@ -432,7 +397,11 @@ export const calculateSleeveAllocations = (
             holdingsByTicker: new Map(),
           });
         }
-        const sleeveData = sleeveHoldings.get(sleeve.sleeveId)!;
+        const sleeveData = sleeveHoldings.get(sleeve.sleeveId) as SleeveHoldingData | undefined;
+        if (!sleeveData) {
+          // Should not happen due to set above, but guard for safety
+          continue;
+        }
         sleeveData.currentValue += holding.marketValue;
 
         if (!sleeveData.holdingsByTicker.has(holding.ticker)) {
@@ -448,17 +417,27 @@ export const calculateSleeveAllocations = (
             totalQty: 0,
           });
         }
-        const tickerData = sleeveData.holdingsByTicker.get(holding.ticker)!;
+        const tickerData = sleeveData.holdingsByTicker.get(holding.ticker) as {
+          ticker: string;
+          currentValue: number;
+          costBasis: number;
+          qty: number;
+          openedAt?: Date | number | { getTime(): number };
+          currentPrice?: number;
+          totalCostBasis: number;
+          weightedOpenedAt: number;
+          totalQty: number;
+        };
+        if (!tickerData) continue;
         tickerData.currentValue += holding.marketValue;
         tickerData.qty += holding.qty || 0;
 
         // Calculate weighted average cost basis and opened date
         const holdingCostBasis = holding.costBasisPerShare || 0;
         const holdingOpenedAt = holding.openedAt
-          ? typeof holding.openedAt === "object" &&
-            "getTime" in holding.openedAt
+          ? typeof holding.openedAt === 'object' && 'getTime' in holding.openedAt
             ? holding.openedAt.getTime()
-            : typeof holding.openedAt === "number"
+            : typeof holding.openedAt === 'number'
               ? holding.openedAt
               : Date.now()
           : Date.now();
@@ -471,20 +450,18 @@ export const calculateSleeveAllocations = (
 
         // Update weighted averages
         tickerData.costBasis =
-          tickerData.totalQty > 0
-            ? tickerData.totalCostBasis / tickerData.totalQty
-            : 0;
+          tickerData.totalQty > 0 ? tickerData.totalCostBasis / tickerData.totalQty : 0;
         tickerData.openedAt =
           tickerData.totalQty > 0
             ? new Date(tickerData.weightedOpenedAt / tickerData.totalQty)
             : undefined;
       } else {
         // Handle unassigned holdings
-        const unassignedSleeveId = "unassigned";
+        const unassignedSleeveId = 'unassigned';
         if (!sleeveHoldings.has(unassignedSleeveId)) {
           sleeveHoldings.set(unassignedSleeveId, {
             sleeveId: unassignedSleeveId,
-            sleeveName: "Unassigned",
+            sleeveName: 'Unassigned',
             currentValue: 0,
             securities: [],
             holdingsByTicker: new Map<
@@ -503,7 +480,10 @@ export const calculateSleeveAllocations = (
             >(),
           });
         }
-        const sleeveData = sleeveHoldings.get(unassignedSleeveId)!;
+        const sleeveData = sleeveHoldings.get(unassignedSleeveId) as SleeveHoldingData | undefined;
+        if (!sleeveData) {
+          continue;
+        }
         sleeveData.currentValue += holding.marketValue;
 
         if (!sleeveData.holdingsByTicker.has(holding.ticker)) {
@@ -519,17 +499,27 @@ export const calculateSleeveAllocations = (
             totalQty: 0,
           });
         }
-        const tickerData = sleeveData.holdingsByTicker.get(holding.ticker)!;
+        const tickerData = sleeveData.holdingsByTicker.get(holding.ticker) as {
+          ticker: string;
+          currentValue: number;
+          costBasis: number;
+          qty: number;
+          openedAt?: Date | number | { getTime(): number };
+          currentPrice?: number;
+          totalCostBasis: number;
+          weightedOpenedAt: number;
+          totalQty: number;
+        };
+        if (!tickerData) continue;
         tickerData.currentValue += holding.marketValue;
         tickerData.qty += holding.qty || 0;
 
         // Calculate weighted average cost basis and opened date
         const holdingCostBasis = holding.costBasisPerShare || 0;
         const holdingOpenedAt = holding.openedAt
-          ? typeof holding.openedAt === "object" &&
-            "getTime" in holding.openedAt
+          ? typeof holding.openedAt === 'object' && 'getTime' in holding.openedAt
             ? holding.openedAt.getTime()
-            : typeof holding.openedAt === "number"
+            : typeof holding.openedAt === 'number'
               ? holding.openedAt
               : Date.now()
           : Date.now();
@@ -542,9 +532,7 @@ export const calculateSleeveAllocations = (
 
         // Update weighted averages
         tickerData.costBasis =
-          tickerData.totalQty > 0
-            ? tickerData.totalCostBasis / tickerData.totalQty
-            : 0;
+          tickerData.totalQty > 0 ? tickerData.totalCostBasis / tickerData.totalQty : 0;
         tickerData.openedAt =
           tickerData.totalQty > 0
             ? new Date(tickerData.weightedOpenedAt / tickerData.totalQty)
@@ -559,14 +547,11 @@ export const calculateSleeveAllocations = (
         sleeveId: string;
         sleeveName: string;
       };
-      const targetValue =
-        (member.targetWeight / 10000) * accountData.totalValue;
+      const targetValue = (member.targetWeight / 10000) * accountData.totalValue;
       const currentSleeveData = sleeveHoldings.get(member.sleeveId);
       const currentValue = currentSleeveData?.currentValue || 0;
       const currentPercent =
-        accountData.totalValue > 0
-          ? (currentValue / accountData.totalValue) * 100
-          : 0;
+        accountData.totalValue > 0 ? (currentValue / accountData.totalValue) * 100 : 0;
 
       // Get target securities for this sleeve
       // Even if there are no current holdings, we still need to calculate target securities
@@ -576,7 +561,7 @@ export const calculateSleeveAllocations = (
         currentSleeveData || { holdingsByTicker: new Map() },
         targetValue,
         transactions,
-        accountData.totalValue
+        accountData.totalValue,
       );
 
       accountData.sleeves.push({
@@ -593,30 +578,26 @@ export const calculateSleeveAllocations = (
     }
 
     // Add Unassigned sleeve if it has holdings
-    const unassignedSleeveData = sleeveHoldings.get("unassigned");
+    const unassignedSleeveData = sleeveHoldings.get('unassigned');
     if (unassignedSleeveData) {
       const unassignedCurrentValue = unassignedSleeveData.currentValue;
       const unassignedCurrentPercent =
-        accountData.totalValue > 0
-          ? (unassignedCurrentValue / accountData.totalValue) * 100
-          : 0;
+        accountData.totalValue > 0 ? (unassignedCurrentValue / accountData.totalValue) * 100 : 0;
 
       // Create securities list for unassigned holdings
       const unassignedSecurities = [];
       for (const [, tickerData] of unassignedSleeveData.holdingsByTicker) {
         const securityCurrentPercent =
-          accountData.totalValue > 0
-            ? (tickerData.currentValue / accountData.totalValue) * 100
-            : 0;
+          accountData.totalValue > 0 ? (tickerData.currentValue / accountData.totalValue) * 100 : 0;
 
         // Calculate gains/losses
         const totalCostValue = tickerData.costBasis * tickerData.qty;
         const totalGainLoss = tickerData.currentValue - totalCostValue;
         const isLongTerm = tickerData.openedAt
           ? Date.now() -
-              (typeof tickerData.openedAt === "number"
+              (typeof tickerData.openedAt === 'number'
                 ? tickerData.openedAt
-                : "getTime" in tickerData.openedAt
+                : 'getTime' in tickerData.openedAt
                   ? tickerData.openedAt.getTime()
                   : new Date(tickerData.openedAt).getTime()) >
             365 * 24 * 60 * 60 * 1000
@@ -646,8 +627,8 @@ export const calculateSleeveAllocations = (
       }
 
       accountData.sleeves.push({
-        sleeveId: "unassigned",
-        sleeveName: "Unassigned",
+        sleeveId: 'unassigned',
+        sleeveName: 'Unassigned',
         targetPercent: 0, // No target allocation for unassigned
         targetValue: 0,
         currentValue: unassignedCurrentValue,
@@ -661,14 +642,8 @@ export const calculateSleeveAllocations = (
     // Add Cash sleeve for tracking cash flow during rebalancing
     // Calculate holdings value excluding cash holdings
     const holdingsValue = account.holdings
-      .filter(
-        (h: { ticker: string; marketValue: number }) =>
-          !isAnyCashTicker(h.ticker)
-      )
-      .reduce(
-        (sum: number, h: { marketValue: number }) => sum + h.marketValue,
-        0
-      );
+      .filter((h: { ticker: string; marketValue: number }) => !isAnyCashTicker(h.ticker))
+      .reduce((sum: number, h: { marketValue: number }) => sum + h.marketValue, 0);
 
     // Calculate available cash (including cash and MCASH holdings)
 
@@ -678,12 +653,10 @@ export const calculateSleeveAllocations = (
     const cashSecurities: SecurityData[] = [];
 
     // Get base cash holdings ($$$)
-    const regularCashHoldings = account.holdings.filter((h: Holding) =>
-      isBaseCashTicker(h.ticker)
-    );
+    const regularCashHoldings = account.holdings.filter((h: Holding) => isBaseCashTicker(h.ticker));
     const regularCashValue = regularCashHoldings.reduce(
       (sum: number, h: Holding) => sum + h.marketValue,
-      0
+      0,
     );
 
     if (regularCashValue > 0) {
@@ -697,7 +670,7 @@ export const calculateSleeveAllocations = (
         differencePercent: 0,
         qty: regularCashHoldings.reduce(
           (sum: number, h: Holding & { qty?: number }) => sum + (h.qty || 0),
-          0
+          0,
         ),
         currentPrice: 1.0,
         isHeld: true,
@@ -709,16 +682,16 @@ export const calculateSleeveAllocations = (
 
     // Get MCASH holdings
     const manualCashHoldings = account.holdings.filter(
-      (h: Holding) => h.ticker === MANUAL_CASH_TICKER
+      (h: Holding) => h.ticker === MANUAL_CASH_TICKER,
     );
     const manualCashValue = manualCashHoldings.reduce(
       (sum: number, h: Holding) => sum + h.marketValue,
-      0
+      0,
     );
 
     if (manualCashValue > 0) {
       cashSecurities.push({
-        ticker: "MCASH",
+        ticker: 'MCASH',
         targetValue: manualCashValue,
         targetPercent: (manualCashValue / accountData.totalValue) * 100,
         currentValue: manualCashValue,
@@ -727,7 +700,7 @@ export const calculateSleeveAllocations = (
         differencePercent: 0,
         qty: manualCashHoldings.reduce(
           (sum: number, h: Holding & { qty?: number }) => sum + (h.qty || 0),
-          0
+          0,
         ),
         currentPrice: 1.0, // $1.00 per share
         isHeld: true,
@@ -738,8 +711,8 @@ export const calculateSleeveAllocations = (
     }
 
     accountData.sleeves.unshift({
-      sleeveId: "cash",
-      sleeveName: "Cash",
+      sleeveId: 'cash',
+      sleeveName: 'Cash',
       targetPercent: 0, // We target 0% cash allocation
       targetValue: 0, // Target is to invest all cash
       currentValue: availableCash,
@@ -762,9 +735,7 @@ export const calculateSleeveAllocations = (
 };
 
 // Export parameter types for better type safety
-export type CalculateSleeveAllocationsGroup = Parameters<
-  typeof calculateSleeveAllocations
->[0];
+export type CalculateSleeveAllocationsGroup = Parameters<typeof calculateSleeveAllocations>[0];
 export type CalculateSleeveAllocationsAccountHoldings = Parameters<
   typeof calculateSleeveAllocations
 >[1];
@@ -775,12 +746,8 @@ export type CalculateSleeveAllocationsTransactions = Parameters<
   typeof calculateSleeveAllocations
 >[3];
 
-export type GenerateAllocationDataAccountHoldings = Parameters<
-  typeof generateAllocationData
->[2];
-export type GenerateTopHoldingsDataAccountHoldings = Parameters<
-  typeof generateTopHoldingsData
->[0];
+export type GenerateAllocationDataAccountHoldings = Parameters<typeof generateAllocationData>[2];
+export type GenerateTopHoldingsDataAccountHoldings = Parameters<typeof generateTopHoldingsData>[0];
 
 // Calculate target securities for a sleeve
 interface ModelMember {
@@ -825,21 +792,17 @@ const calculateSleeveTargetSecurities = (
   currentSleeveData: CurrentSleeveData,
   targetValue: number,
   transactions: Transaction[],
-  totalAccountValue: number
+  totalAccountValue: number,
 ) => {
   const targetSecurities = [];
   const sleeveTargetData = sleeveMembersMap.get(modelMember.sleeveId);
 
   if (sleeveTargetData) {
-    const sortedMembers = [...sleeveTargetData.members].sort(
-      (a, b) => a.rank - b.rank
-    );
+    const sortedMembers = [...sleeveTargetData.members].sort((a, b) => a.rank - b.rank);
 
     // Check if any security is currently held
     const heldSecurity = sortedMembers.find((member) => {
-      const currentHolding = currentSleeveData?.holdingsByTicker.get(
-        member.ticker
-      );
+      const currentHolding = currentSleeveData?.holdingsByTicker.get(member.ticker);
       return !!currentHolding;
     });
 
@@ -859,20 +822,14 @@ const calculateSleeveTargetSecurities = (
     }
 
     for (const targetMember of sortedMembers) {
-      const currentHolding = currentSleeveData?.holdingsByTicker.get(
-        targetMember.ticker
-      );
+      const currentHolding = currentSleeveData?.holdingsByTicker.get(targetMember.ticker);
       const securityCurrentValue = currentHolding?.currentValue || 0;
       const securityCurrentPercent =
-        totalAccountValue > 0
-          ? (securityCurrentValue / totalAccountValue) * 100
-          : 0;
+        totalAccountValue > 0 ? (securityCurrentValue / totalAccountValue) * 100 : 0;
 
       const washSaleRisk = checkWashSaleRisk(targetMember.ticker, transactions);
       const isTargetSecurity = targetMember.ticker === targetSecurityTicker;
-      const securityTargetPercent = isTargetSecurity
-        ? modelMember.targetWeight / 100
-        : 0;
+      const securityTargetPercent = isTargetSecurity ? modelMember.targetWeight / 100 : 0;
       const securityTargetValue = isTargetSecurity ? targetValue : 0;
 
       // Calculate gains/losses for held securities
@@ -882,9 +839,9 @@ const calculateSleeveTargetSecurities = (
       const totalGainLoss = securityCurrentValue - totalCostValue;
       const isLongTerm = openedAt
         ? Date.now() -
-            (typeof openedAt === "number"
+            (typeof openedAt === 'number'
               ? openedAt
-              : "getTime" in openedAt
+              : 'getTime' in openedAt
                 ? openedAt.getTime()
                 : new Date(openedAt).getTime()) >
           365 * 24 * 60 * 60 * 1000
@@ -946,9 +903,9 @@ interface SleeveAllocationDataWithSleeves {
 export const generateSleeveTableData = (
   sleeveAllocationData: SleeveAllocationDataWithSleeves[],
   selectedAccountFilter: string,
-  totalValue: number
+  totalValue: number,
 ) => {
-  if (selectedAccountFilter === "all") {
+  if (selectedAccountFilter === 'all') {
     const sleeveMap = new Map<string, AggregatedSleeveData>();
 
     for (const account of sleeveAllocationData) {
@@ -967,7 +924,8 @@ export const generateSleeveTableData = (
           });
         }
 
-        const aggregatedSleeve = sleeveMap.get(key)!;
+        const aggregatedSleeve = sleeveMap.get(key) as AggregatedSleeveData | undefined;
+        if (!aggregatedSleeve) continue;
         aggregatedSleeve.targetValue += sleeve.targetValue;
         aggregatedSleeve.currentValue += sleeve.currentValue;
         aggregatedSleeve.accountNames.add(account.accountName);
@@ -981,7 +939,8 @@ export const generateSleeveTableData = (
               accountNames: new Set<string>(),
             });
           }
-          const aggSec = aggregatedSleeve.securities.get(secKey)!;
+          const aggSec = aggregatedSleeve.securities.get(secKey) as SecurityData | undefined;
+          if (!aggSec) continue;
           aggSec.currentValue += security.currentValue;
           aggSec.targetValue += security.targetValue;
           aggSec.qty += security.qty || 0;
@@ -1006,15 +965,11 @@ export const generateSleeveTableData = (
 
       return {
         ...sleeve,
-        currentPercent:
-          totalValue > 0 ? (sleeve.currentValue / totalValue) * 100 : 0,
-        targetPercent:
-          totalValue > 0 ? (sleeve.targetValue / totalValue) * 100 : 0,
+        currentPercent: totalValue > 0 ? (sleeve.currentValue / totalValue) * 100 : 0,
+        targetPercent: totalValue > 0 ? (sleeve.targetValue / totalValue) * 100 : 0,
         difference: sleeve.currentValue - sleeve.targetValue,
         differencePercent:
-          totalValue > 0
-            ? ((sleeve.currentValue - sleeve.targetValue) / totalValue) * 100
-            : 0,
+          totalValue > 0 ? ((sleeve.currentValue - sleeve.targetValue) / totalValue) * 100 : 0,
         // Add aggregated unrealized G/L values
         totalGainLoss,
         longTermGainLoss,
@@ -1022,18 +977,12 @@ export const generateSleeveTableData = (
         securities: Array.from(sleeve.securities.values()).map((sec) => ({
           ...sec,
           currentPercent:
-            sleeve.targetValue > 0
-              ? (sec.currentValue / sleeve.targetValue) * 100
-              : 0,
-          targetPercent:
-            sleeve.targetValue > 0
-              ? (sec.targetValue / sleeve.targetValue) * 100
-              : 0,
+            sleeve.targetValue > 0 ? (sec.currentValue / sleeve.targetValue) * 100 : 0,
+          targetPercent: sleeve.targetValue > 0 ? (sec.targetValue / sleeve.targetValue) * 100 : 0,
           difference: sec.currentValue - sec.targetValue,
           differencePercent:
             sleeve.targetValue > 0
-              ? ((sec.currentValue - sec.targetValue) / sleeve.targetValue) *
-                100
+              ? ((sec.currentValue - sec.targetValue) / sleeve.targetValue) * 100
               : 0,
           accountNames: Array.from(sec.accountNames || new Set()),
         })),
@@ -1042,7 +991,7 @@ export const generateSleeveTableData = (
     });
   } else {
     const selectedAccountData = sleeveAllocationData.find(
-      (account) => account.accountId === selectedAccountFilter
+      (account) => account.accountId === selectedAccountFilter,
     );
     return selectedAccountData
       ? selectedAccountData.sleeves.map((sleeve) => {
@@ -1076,9 +1025,5 @@ export const generateSleeveTableData = (
   }
 };
 
-export type CalculateSleeveAllocationsResult = ReturnType<
-  typeof calculateSleeveAllocations
->;
-export type GenerateSleeveTableDataResult = ReturnType<
-  typeof generateSleeveTableData
->;
+export type CalculateSleeveAllocationsResult = ReturnType<typeof calculateSleeveAllocations>;
+export type GenerateSleeveTableDataResult = ReturnType<typeof generateSleeveTableData>;

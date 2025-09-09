@@ -1,11 +1,14 @@
-import { createFileRoute, Link, redirect } from "@tanstack/react-router";
-import { FileText } from "lucide-react";
-import { AddRebalancingGroupModal } from "../../components/rebalancing-groups/add-rebalancing-group-modal";
-import { Badge } from "../../components/ui/badge";
-import type { RebalancingGroup } from "../../lib/schemas";
-import { getRebalancingGroupsServerFn, getGroupAccountHoldingsServerFn } from "../../lib/server-functions";
+import { createFileRoute, Link, redirect } from '@tanstack/react-router';
+import { FileText } from 'lucide-react';
+import { AddRebalancingGroupModal } from '../../components/rebalancing-groups/add-rebalancing-group-modal';
+import { Badge } from '../../components/ui/badge';
+import type { RebalancingGroup } from '../../lib/schemas';
+import {
+  getGroupAccountHoldingsServerFn,
+  getRebalancingGroupsServerFn,
+} from '../../lib/server-functions';
 
-export const Route = createFileRoute("/rebalancing-groups/")({
+export const Route = createFileRoute('/rebalancing-groups/')({
   component: RebalancingGroupsComponent,
   loader: async () => {
     try {
@@ -16,17 +19,16 @@ export const Route = createFileRoute("/rebalancing-groups/")({
       const updatedGroups = await Promise.all(
         groups.map(async (group) => {
           const accountIds = group.members.map((member) => member.accountId);
-          const accountHoldings = accountIds.length > 0
-            ? await getGroupAccountHoldingsServerFn({
-                data: { accountIds },
-              })
-            : [];
+          const accountHoldings =
+            accountIds.length > 0
+              ? await getGroupAccountHoldingsServerFn({
+                  data: { accountIds },
+                })
+              : [];
 
           // Update group members with calculated balances from holdings
           const updatedMembers = group.members.map((member) => {
-            const accountData = accountHoldings.find(
-              (ah) => ah.accountId === member.accountId
-            );
+            const accountData = accountHoldings.find((ah) => ah.accountId === member.accountId);
             return {
               ...member,
               balance: accountData ? accountData.accountBalance : member.balance,
@@ -37,14 +39,14 @@ export const Route = createFileRoute("/rebalancing-groups/")({
             ...group,
             members: updatedMembers,
           };
-        })
+        }),
       );
 
       return { groups: updatedGroups };
     } catch (error) {
       // If authentication error, redirect to login
-      if (error instanceof Error && error.message.includes("Authentication required")) {
-        throw redirect({ to: "/login", search: { reset: "" } });
+      if (error instanceof Error && error.message.includes('Authentication required')) {
+        throw redirect({ to: '/login', search: { reset: '' } });
       }
       // Re-throw other errors
       throw error;
@@ -60,9 +62,9 @@ function RebalancingGroupsComponent() {
 
   // Helper to format account balance
   const formatBalance = (balance: number): string => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
     }).format(balance);
@@ -70,10 +72,7 @@ function RebalancingGroupsComponent() {
 
   // Helper to calculate total group value
   const calculateGroupValue = (group: RebalancingGroup): number => {
-    return group.members.reduce(
-      (total, member) => total + (member.balance || 0),
-      0
-    );
+    return group.members.reduce((total, member) => total + (member.balance || 0), 0);
   };
 
   return (
@@ -81,12 +80,9 @@ function RebalancingGroupsComponent() {
       <div className="mb-8">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">
-              Rebalancing Groups
-            </h1>
+            <h1 className="text-2xl font-bold text-gray-900">Rebalancing Groups</h1>
             <p className="mt-2 text-sm text-gray-600">
-              Manage account groups for portfolio rebalancing and model
-              assignment
+              Manage account groups for portfolio rebalancing and model assignment
             </p>
           </div>
           <AddRebalancingGroupModal />
@@ -127,9 +123,7 @@ function RebalancingGroupsComponent() {
               {/* Group Statistics */}
               <div className="border-t border-b border-gray-100 py-4 mb-4">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-500 font-medium">
-                    Total Value:
-                  </span>
+                  <span className="text-sm text-gray-500 font-medium">Total Value:</span>
                   <span className="text-lg font-semibold text-gray-900">
                     {formatBalance(calculateGroupValue(group))}
                   </span>
@@ -139,13 +133,8 @@ function RebalancingGroupsComponent() {
               {/* Account Members */}
               <div className="space-y-3">
                 {group.members.slice(0, 3).map((member) => (
-                  <div
-                    key={member.id}
-                    className="flex items-center justify-between"
-                  >
-                    <span className="text-sm text-gray-700">
-                      {member.accountName}
-                    </span>
+                  <div key={member.id} className="flex items-center justify-between">
+                    <span className="text-sm text-gray-700">{member.accountName}</span>
                     <span className="text-sm font-medium text-gray-900">
                       {formatBalance(member.balance || 0)}
                     </span>
@@ -158,7 +147,7 @@ function RebalancingGroupsComponent() {
                     className="text-xs text-gray-500 cursor-pointer hover:text-blue-600 transition-colors block pt-2"
                   >
                     +{group.members.length - 3} more account
-                    {group.members.length - 3 > 1 ? "s" : ""}
+                    {group.members.length - 3 > 1 ? 's' : ''}
                   </Link>
                 )}
               </div>
@@ -169,9 +158,7 @@ function RebalancingGroupsComponent() {
       {groups.length === 0 && (
         <div className="text-center py-12">
           <FileText className="mx-auto h-12 w-12 text-gray-400" />
-          <h3 className="mt-2 text-sm font-medium text-gray-900">
-            No rebalancing groups found
-          </h3>
+          <h3 className="mt-2 text-sm font-medium text-gray-900">No rebalancing groups found</h3>
           <p className="mt-1 text-sm text-gray-500">
             Get started by creating a new rebalancing group.
           </p>

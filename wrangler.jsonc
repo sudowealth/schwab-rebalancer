@@ -5,39 +5,39 @@
   "compatibility_date": "2025-07-11",
   "compatibility_flags": ["nodejs_compat"],
   "assets": {
-    "directory": ".output/public",
+    "directory": ".output/public"
   },
   "observability": {
-    "enabled": true,
+    "enabled": true
   },
   "kv_namespaces": [
     {
       "binding": "CACHE",
-      "id": "CACHE_KV_ID_PLACEHOLDER",
+      "id": "CACHE_KV_ID_PLACEHOLDER"
     },
     {
       "binding": "CONFIG",
-      "id": "CONFIG_KV_ID_PLACEHOLDER",
-    },
+      "id": "CONFIG_KV_ID_PLACEHOLDER"
+    }
   ],
   "d1_databases": [
     {
       "binding": "DB",
       "database_name": "tax-loss-harvesting",
       "database_id": "DB_ID_PLACEHOLDER",
-      "migrations_dir": "drizzle",
-    },
+      "migrations_dir": "drizzle"
+    }
   ],
   "r2_buckets": [
     {
       "binding": "EXPORTS",
-      "bucket_name": "tax-loss-exports",
-    },
+      "bucket_name": "tax-loss-exports"
+    }
   ],
   "vars": {
     // Security: Limit to single user account for individual deployments
     // Set to "true" to allow only one user account (recommended for personal use)
     // Set to "false" to allow multiple user accounts (for team/organization use)
-    "INDIVIDUAL_USE": "true",
-  },
+    "INDIVIDUAL_USE": "true"
+  }
 }

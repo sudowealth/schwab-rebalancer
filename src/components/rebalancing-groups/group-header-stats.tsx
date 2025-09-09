@@ -1,6 +1,6 @@
-import { Card, CardContent, CardDescription, CardHeader } from "../ui/card";
-import { Badge } from "../ui/badge";
-import { formatCurrency } from "../../lib/utils";
+import { formatCurrency } from '../../lib/utils';
+import { Badge } from '../ui/badge';
+import { Card, CardContent, CardDescription, CardHeader } from '../ui/card';
 
 interface GroupHeaderStatsProps {
   totalValue: number;
@@ -53,7 +53,7 @@ export function GroupHeaderStats({
         </CardHeader>
         <CardContent>
           <div className="text-sm">
-            {updatedAt ? new Date(updatedAt).toLocaleDateString() : "N/A"}
+            {updatedAt ? new Date(updatedAt).toLocaleDateString() : 'N/A'}
           </div>
         </CardContent>
       </Card>

@@ -1,22 +1,21 @@
-import { drizzle } from "drizzle-orm/better-sqlite3";
-import Database from "better-sqlite3";
-import * as schema from "../db/schema";
-import fs from "fs";
-import path from "path";
-import { setInterval } from "timers";
+import fs from 'node:fs';
+import path from 'node:path';
+import Database from 'better-sqlite3';
+import { drizzle } from 'drizzle-orm/better-sqlite3';
+import * as schema from '../db/schema';
 
 // Get the D1 local database path from Wrangler
 export function getD1LocalPath(): string {
   // Try to find the actual database file in the .wrangler directory
-  const wranglerDir = "./.wrangler/state/v3/d1/miniflare-D1DatabaseObject";
+  const wranglerDir = './.wrangler/state/v3/d1/miniflare-D1DatabaseObject';
   if (fs.existsSync(wranglerDir)) {
     const files = fs.readdirSync(wranglerDir);
-    const sqliteFile = files.find((file) => file.endsWith(".sqlite"));
+    const sqliteFile = files.find((file) => file.endsWith('.sqlite'));
     if (sqliteFile) {
       return path.join(wranglerDir, sqliteFile);
     }
   }
-  throw new Error("Failed to find D1 local database path");
+  throw new Error('Failed to find D1 local database path');
 }
 
 // Database connection pool
@@ -52,10 +51,10 @@ export function createDatabase(): ReturnType<typeof drizzle> {
       });
 
       // Configure SQLite for better performance
-      sqlite.pragma("journal_mode = WAL");
-      sqlite.pragma("synchronous = NORMAL");
-      sqlite.pragma("cache_size = 1000");
-      sqlite.pragma("temp_store = memory");
+      sqlite.pragma('journal_mode = WAL');
+      sqlite.pragma('synchronous = NORMAL');
+      sqlite.pragma('cache_size = 1000');
+      sqlite.pragma('temp_store = memory');
 
       return drizzle(sqlite, { schema });
     } catch (error) {
@@ -63,13 +62,11 @@ export function createDatabase(): ReturnType<typeof drizzle> {
       console.warn(`Database connection attempt ${attempts} failed:`, error);
 
       if (attempts >= maxAttempts) {
-        throw new Error(
-          `Failed to connect to database after ${maxAttempts} attempts: ${error}`
-        );
+        throw new Error(`Failed to connect to database after ${maxAttempts} attempts: ${error}`);
       }
 
       // Wait before retrying (sync version for simplicity)
-      const delay = Math.pow(2, attempts) * 100; // Exponential backoff in ms
+      const delay = 2 ** attempts * 100; // Exponential backoff in ms
       const start = Date.now();
       while (Date.now() - start < delay) {
         // Busy wait - not ideal but keeps function sync
@@ -77,7 +74,7 @@ export function createDatabase(): ReturnType<typeof drizzle> {
     }
   }
 
-  throw new Error("Unexpected error in database connection");
+  throw new Error('Unexpected error in database connection');
 }
 
 // Get database with connection pooling
@@ -109,7 +106,7 @@ export function getDatabase(): ReturnType<typeof drizzle> {
 
     return db;
   } catch (error) {
-    console.error("Failed to get database connection:", error);
+    console.error('Failed to get database connection:', error);
     throw error;
   }
 }
@@ -119,9 +116,9 @@ export function cleanupDatabase(): void {
   if (dbPool) {
     try {
       dbPool.sqlite.close();
-      console.log("Database connection closed");
+      console.log('Database connection closed');
     } catch (error) {
-      console.warn("Error closing database connection:", error);
+      console.warn('Error closing database connection:', error);
     } finally {
       dbPool = null;
     }
@@ -135,9 +132,9 @@ const g = globalThis as typeof globalThis & {
 };
 
 if (!g.__dbListenersRegistered) {
-  process.on("SIGINT", cleanupDatabase);
-  process.on("SIGTERM", cleanupDatabase);
-  process.on("exit", cleanupDatabase);
+  process.on('SIGINT', cleanupDatabase);
+  process.on('SIGTERM', cleanupDatabase);
+  process.on('exit', cleanupDatabase);
   g.__dbListenersRegistered = true;
 }
 
@@ -145,7 +142,7 @@ if (!g.__dbListenersRegistered) {
 if (!g.__dbCleanupInterval) {
   g.__dbCleanupInterval = setInterval(() => {
     if (dbPool && Date.now() - dbPool.lastUsed > MAX_IDLE_TIME) {
-      console.log("Cleaning up idle database connection");
+      console.log('Cleaning up idle database connection');
       cleanupDatabase();
     }
   }, MAX_IDLE_TIME);

@@ -1,4 +1,7 @@
-import { useState, useEffect } from "react";
+import { useEffect, useId, useState } from 'react';
+import type { RebalanceMethod } from '../../types/rebalance';
+import { Button } from '../ui/button';
+import { Checkbox } from '../ui/checkbox';
 import {
   Dialog,
   DialogContent,
@@ -6,19 +9,10 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "../ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "../ui/select";
-import { Button } from "../ui/button";
-import { Label } from "../ui/label";
-import { Input } from "../ui/input";
-import type { RebalanceMethod } from "../../types/rebalance";
-import { Checkbox } from "../ui/checkbox";
+} from '../ui/dialog';
+import { Input } from '../ui/input';
+import { Label } from '../ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 
 interface RebalanceModalProps {
   open: boolean;
@@ -26,7 +20,7 @@ interface RebalanceModalProps {
   onGenerateTrades: (
     method: RebalanceMethod,
     cashAmount?: number,
-    fetchPricesSelected?: boolean
+    fetchPricesSelected?: boolean,
   ) => void;
   onFetchPrices: () => void | Promise<void>;
   isLoading?: boolean;
@@ -45,22 +39,21 @@ export function RebalanceModal({
   isSyncing = false,
   syncMessage,
 }: RebalanceModalProps) {
-  const [method, setMethod] = useState<RebalanceMethod>("allocation");
-  const [cashAmount, setCashAmount] = useState<string>(
-    availableCash.toString()
-  );
+  const [method, setMethod] = useState<RebalanceMethod>('allocation');
+  const [cashAmount, setCashAmount] = useState<string>(availableCash.toString());
   const [fetchPrices, setFetchPrices] = useState<boolean>(false);
+  const cashAmountId = useId();
+  const fetchPricesId = useId();
 
   // Update cash amount when availableCash changes or when switching to investCash
   useEffect(() => {
-    if (method === "investCash") {
+    if (method === 'investCash') {
       setCashAmount(availableCash.toString());
     }
   }, [method, availableCash]);
 
   const handleGenerateTrades = () => {
-    const parsedCashAmount =
-      method === "investCash" ? parseFloat(cashAmount) || 0 : undefined;
+    const parsedCashAmount = method === 'investCash' ? parseFloat(cashAmount) || 0 : undefined;
     onGenerateTrades(method, parsedCashAmount, fetchPrices);
     // If user opted to fetch prices and syncing is still in progress, keep modal open to show warning
     if (!(fetchPrices && isSyncing)) {
@@ -70,21 +63,20 @@ export function RebalanceModal({
 
   const methodOptions = {
     allocation: {
-      label: "Allocation",
-      description: "Rebalance to target weights",
+      label: 'Allocation',
+      description: 'Rebalance to target weights',
     },
     tlhSwap: {
-      label: "TLH Swap",
-      description: "Harvest losses and swap securities",
+      label: 'TLH Swap',
+      description: 'Harvest losses and swap securities',
     },
     tlhRebalance: {
-      label: "TLH + Rebalance",
-      description: "Harvest losses and rebalance",
+      label: 'TLH + Rebalance',
+      description: 'Harvest losses and rebalance',
     },
     investCash: {
-      label: "Invest Cash",
-      description:
-        "Invest cash from most underweight to most overweight sleeve",
+      label: 'Invest Cash',
+      description: 'Invest cash from most underweight to most overweight sleeve',
     },
   };
 
@@ -100,14 +92,14 @@ export function RebalanceModal({
 
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="method">Method</Label>
+            <Label>Method</Label>
             <Select
               value={method}
               onValueChange={(value: string) => {
                 const newMethod = value as RebalanceMethod;
                 setMethod(newMethod);
                 // Auto-populate cash amount when switching to investCash
-                if (newMethod === "investCash" && cashAmount === "") {
+                if (newMethod === 'investCash' && cashAmount === '') {
                   setCashAmount(availableCash.toString());
                 }
               }}
@@ -122,9 +114,7 @@ export function RebalanceModal({
                   <SelectItem key={value} value={value}>
                     <div className="flex flex-col">
                       <span className="font-medium">{option.label}</span>
-                      <span className="text-xs text-muted-foreground">
-                        {option.description}
-                      </span>
+                      <span className="text-xs text-muted-foreground">{option.description}</span>
                     </div>
                   </SelectItem>
                 ))}
@@ -132,11 +122,11 @@ export function RebalanceModal({
             </Select>
           </div>
 
-          {method === "investCash" && (
+          {method === 'investCash' && (
             <div className="space-y-2">
-              <Label htmlFor="cash-amount">Cash Amount</Label>
+              <Label htmlFor={cashAmountId}>Cash Amount</Label>
               <Input
-                id="cash-amount"
+                id={cashAmountId}
                 type="number"
                 step="0.01"
                 min="0"
@@ -153,7 +143,7 @@ export function RebalanceModal({
 
           <div className="flex items-center space-x-2 pt-2">
             <Checkbox
-              id="fetch-prices"
+              id={fetchPricesId}
               checked={fetchPrices}
               onCheckedChange={(checked) => {
                 const next = Boolean(checked);
@@ -164,13 +154,11 @@ export function RebalanceModal({
               }}
               disabled={isLoading}
             />
-            <Label htmlFor="fetch-prices" className="cursor-pointer">
+            <Label htmlFor={fetchPricesId} className="cursor-pointer">
               Refresh prices
             </Label>
           </div>
-          {syncMessage && (
-            <p className="text-xs text-amber-600">{syncMessage}</p>
-          )}
+          {syncMessage && <p className="text-xs text-amber-600">{syncMessage}</p>}
         </div>
 
         <DialogFooter>
@@ -178,7 +166,7 @@ export function RebalanceModal({
             Cancel
           </Button>
           <Button onClick={handleGenerateTrades} disabled={isLoading}>
-            {isLoading ? "Generating..." : "Generate Trades"}
+            {isLoading ? 'Generating...' : 'Generate Trades'}
           </Button>
         </DialogFooter>
       </DialogContent>

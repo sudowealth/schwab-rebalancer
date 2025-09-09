@@ -1,131 +1,111 @@
-import { createServerFn } from "@tanstack/react-start";
-import { requireAuth, requireAdmin } from "./auth-utils";
-import { SessionManager } from "./session-manager";
-import type { AccountHoldingsResult } from "./db-api";
-import type {
-  RebalanceSleeveDataNew,
-  RebalanceSecurityData,
-} from "./rebalance-logic";
-import type { SyncResult } from "./schwab-sync";
-import type { Trade } from "./schemas";
+import { createServerFn } from '@tanstack/react-start';
+import { requireAdmin, requireAuth } from './auth-utils';
+import { CASH_TICKER, isAnyCashTicker, isBaseCashTicker, MANUAL_CASH_TICKER } from './constants';
+import type { AccountHoldingsResult } from './db-api';
 import {
-  CASH_TICKER,
-  MANUAL_CASH_TICKER,
-  isAnyCashTicker,
-  isBaseCashTicker,
-} from "./constants";
-
-import {
+  DatabaseError,
   getErrorMessage,
   logError,
-  withRetry,
   ValidationError,
-  DatabaseError,
-} from "./error-handler";
+  withRetry,
+} from './error-handler';
+import type { RebalanceSecurityData, RebalanceSleeveDataNew } from './rebalance-logic';
+import type { Trade } from './schemas';
+import type { SyncResult } from './schwab-sync';
+import { SessionManager } from './session-manager';
 
 // Server function to get sleeves data - runs ONLY on server
-export const getSleevesServerFn = createServerFn({ method: "GET" }).handler(
-  async () => {
-    try {
-      const { user } = await requireAuth();
+export const getSleevesServerFn = createServerFn({ method: 'GET' }).handler(async () => {
+  try {
+    const { user } = await requireAuth();
 
-      return await withRetry(
-        async () => {
-          const { getSleeves } = await import("./db-api");
-          return await getSleeves(user.id);
-        },
-        2,
-        500,
-        "getSleeves"
-      );
-    } catch (error) {
-      logError(error, "Failed to get sleeves", { userId: "redacted" });
-      throw new DatabaseError("Failed to retrieve sleeves", error);
-    }
+    return await withRetry(
+      async () => {
+        const { getSleeves } = await import('./db-api');
+        return await getSleeves(user.id);
+      },
+      2,
+      500,
+      'getSleeves',
+    );
+  } catch (error) {
+    logError(error, 'Failed to get sleeves', { userId: 'redacted' });
+    throw new DatabaseError('Failed to retrieve sleeves', error);
   }
-);
+});
 
 // Server function to get dashboard data - runs ONLY on server
 export const getDashboardDataServerFn = createServerFn({
-  method: "GET",
+  method: 'GET',
 }).handler(async () => {
   const { user } = await requireAuth();
 
   // Import server-only functions
-  const { loadDashboardData } = await import("./server-only");
+  const { loadDashboardData } = await import('./server-only');
   const data = await loadDashboardData(user.id);
   return data;
 });
 
 // Server function to clear cache - runs ONLY on server
-export const clearCacheServerFn = createServerFn({ method: "POST" }).handler(
-  async () => {
-    await requireAdmin();
+export const clearCacheServerFn = createServerFn({ method: 'POST' }).handler(async () => {
+  await requireAdmin();
 
-    const { clearCache } = await import("./db-api");
-    clearCache();
-    return { success: true, message: "Cache cleared successfully" };
-  }
-);
+  const { clearCache } = await import('./db-api');
+  clearCache();
+  return { success: true, message: 'Cache cleared successfully' };
+});
 
 // Server function to truncate security table - runs ONLY on server
 export const truncateSecurityTableServerFn = createServerFn({
-  method: "POST",
+  method: 'POST',
 }).handler(async () => {
   await requireAdmin();
 
-  const { getDatabase } = await import("./db-config");
+  const { getDatabase } = await import('./db-config');
   const db = getDatabase();
-  const schema = await import("../db/schema");
+  const schema = await import('../db/schema');
   await db.delete(schema.security);
-  const { clearCache } = await import("./db-api");
+  const { clearCache } = await import('./db-api');
   clearCache();
-  return { success: true, message: "Security table truncated successfully" };
+  return { success: true, message: 'Security table truncated successfully' };
 });
 
 // Server function to get restricted securities - runs ONLY on server
 export const getRestrictedSecuritiesServerFn = createServerFn({
-  method: "GET",
+  method: 'GET',
 }).handler(async () => {
   await requireAuth();
 
   // Import database API only on the server
-  const { getRestrictedSecurities } = await import("./db-api");
+  const { getRestrictedSecurities } = await import('./db-api');
   const restricted = await getRestrictedSecurities();
   return restricted;
 });
 
 // Server function to seed demo data - runs ONLY on server
-export const seedDemoDataServerFn = createServerFn({ method: "POST" }).handler(
-  async () => {
-    const { user } = await requireAuth();
+export const seedDemoDataServerFn = createServerFn({ method: 'POST' }).handler(async () => {
+  const { user } = await requireAuth();
 
-    const { seedDatabase } = await import("./seeds/main");
-    await seedDatabase(user.id);
-    const { cleanupDatabase } = await import("./db-config");
-    cleanupDatabase();
-    return {
-      success: true,
-      summary: {
-        securitiesSeeded: 503,
-        accountsSeeded: 2,
-        sleevesCreated: 8,
-        holdingsSeeded: 7,
-        transactionsSeeded: 8,
-        message: "Full S&P 500 demo portfolio seeded successfully",
-      },
-    };
-  }
-);
+  const { seedDatabase } = await import('./seeds/main');
+  await seedDatabase(user.id);
+  const { cleanupDatabase } = await import('./db-config');
+  cleanupDatabase();
+  return {
+    success: true,
+    summary: {
+      securitiesSeeded: 503,
+      accountsSeeded: 2,
+      sleevesCreated: 8,
+      holdingsSeeded: 7,
+      transactionsSeeded: 8,
+      message: 'Full S&P 500 demo portfolio seeded successfully',
+    },
+  };
+});
 
 // Server function to create a new sleeve - runs ONLY on server
-export const createSleeveServerFn = createServerFn({ method: "POST" })
-  .validator(
-    (data: {
-      name: string;
-      members: Array<{ ticker: string; rank: number }>;
-    }) => data
-  )
+export const createSleeveServerFn = createServerFn({ method: 'POST' })
+  .validator((data: { name: string; members: Array<{ ticker: string; rank: number }> }) => data)
   .handler(async ({ data }) => {
     try {
       const { user } = await requireAuth();
@@ -133,62 +113,54 @@ export const createSleeveServerFn = createServerFn({ method: "POST" })
       const { name, members } = data;
 
       if (!name?.trim()) {
-        throw new ValidationError("Sleeve name is required", "name");
+        throw new ValidationError('Sleeve name is required', 'name');
       }
 
       if (!members || !Array.isArray(members) || members.length === 0) {
-        throw new ValidationError("At least one member is required", "members");
+        throw new ValidationError('At least one member is required', 'members');
       }
 
-      if (
-        members.some((m) => !m.ticker?.trim() || typeof m.rank !== "number")
-      ) {
-        throw new ValidationError(
-          "All members must have valid ticker and rank",
-          "members"
-        );
+      if (members.some((m) => !m.ticker?.trim() || typeof m.rank !== 'number')) {
+        throw new ValidationError('All members must have valid ticker and rank', 'members');
       }
 
       return await withRetry(
         async () => {
-          const { createSleeve } = await import("./db-api");
+          const { createSleeve } = await import('./db-api');
           const sleeveId = await createSleeve(name.trim(), members, user.id);
           return { success: true, sleeveId };
         },
         2,
         500,
-        "createSleeve"
+        'createSleeve',
       );
     } catch (error) {
       if (error instanceof ValidationError) throw error;
-      logError(error, "Failed to create sleeve", {
+      logError(error, 'Failed to create sleeve', {
         name: data.name,
         memberCount: data.members?.length,
       });
-      throw new DatabaseError("Failed to create sleeve", error);
+      throw new DatabaseError('Failed to create sleeve', error);
     }
   });
 
 // Server function to get available securities - runs ONLY on server
 export const getAvailableSecuritiesServerFn = createServerFn({
-  method: "GET",
+  method: 'GET',
 }).handler(async () => {
   await requireAuth();
 
   // Import database API only on the server
-  const { getAvailableSecurities } = await import("./db-api");
+  const { getAvailableSecurities } = await import('./db-api');
   const securities = await getAvailableSecurities();
   return securities;
 });
 
 // Server function to update a sleeve - runs ONLY on server
-export const updateSleeveServerFn = createServerFn({ method: "POST" })
+export const updateSleeveServerFn = createServerFn({ method: 'POST' })
   .validator(
-    (data: {
-      sleeveId: string;
-      name: string;
-      members: Array<{ ticker: string; rank: number }>;
-    }) => data
+    (data: { sleeveId: string; name: string; members: Array<{ ticker: string; rank: number }> }) =>
+      data,
   )
   .handler(async ({ data }) => {
     await requireAuth();
@@ -196,19 +168,17 @@ export const updateSleeveServerFn = createServerFn({ method: "POST" })
     const { sleeveId, name, members } = data;
 
     if (!sleeveId || !name || !members || !Array.isArray(members)) {
-      throw new Error(
-        "Invalid request: sleeveId, name and members array required"
-      );
+      throw new Error('Invalid request: sleeveId, name and members array required');
     }
 
     // Import database API only on the server
-    const { updateSleeve } = await import("./db-api");
+    const { updateSleeve } = await import('./db-api');
     await updateSleeve(sleeveId, name, members);
     return { success: true };
   });
 
 // Server function to delete a sleeve - runs ONLY on server
-export const deleteSleeveServerFn = createServerFn({ method: "POST" })
+export const deleteSleeveServerFn = createServerFn({ method: 'POST' })
   .validator((data: { sleeveId: string }) => data)
   .handler(async ({ data }) => {
     await requireAuth();
@@ -216,17 +186,17 @@ export const deleteSleeveServerFn = createServerFn({ method: "POST" })
     const { sleeveId } = data;
 
     if (!sleeveId) {
-      throw new Error("Invalid request: sleeveId required");
+      throw new Error('Invalid request: sleeveId required');
     }
 
     // Import database API only on the server
-    const { deleteSleeve } = await import("./db-api");
+    const { deleteSleeve } = await import('./db-api');
     await deleteSleeve(sleeveId);
     return { success: true };
   });
 
 // Server function to get sleeve by ID - runs ONLY on server
-export const getSleeveByIdServerFn = createServerFn({ method: "POST" })
+export const getSleeveByIdServerFn = createServerFn({ method: 'POST' })
   .validator((data: { sleeveId: string }) => data)
   .handler(async ({ data }) => {
     const { user } = await requireAuth();
@@ -234,17 +204,17 @@ export const getSleeveByIdServerFn = createServerFn({ method: "POST" })
     const { sleeveId } = data;
 
     if (!sleeveId) {
-      throw new Error("Invalid request: sleeveId required");
+      throw new Error('Invalid request: sleeveId required');
     }
 
     // Import database API only on the server
-    const { getSleeveById } = await import("./db-api");
+    const { getSleeveById } = await import('./db-api');
     const sleeve = await getSleeveById(sleeveId, user.id);
     return sleeve;
   });
 
 // Server function to get sleeve holdings info - runs ONLY on server
-export const getSleeveHoldingsInfoServerFn = createServerFn({ method: "POST" })
+export const getSleeveHoldingsInfoServerFn = createServerFn({ method: 'POST' })
   .validator((data: { sleeveId: string }) => data)
   .handler(async ({ data }) => {
     await requireAuth();
@@ -252,36 +222,34 @@ export const getSleeveHoldingsInfoServerFn = createServerFn({ method: "POST" })
     const { sleeveId } = data;
 
     if (!sleeveId) {
-      throw new Error("Invalid request: sleeveId required");
+      throw new Error('Invalid request: sleeveId required');
     }
 
     // Import database API only on the server
-    const { getSleeveHoldingsInfo } = await import("./db-api");
+    const { getSleeveHoldingsInfo } = await import('./db-api');
     const holdingsInfo = await getSleeveHoldingsInfo(sleeveId);
     return holdingsInfo;
   });
 
 // Server function to get all models - runs ONLY on server
-export const getModelsServerFn = createServerFn({ method: "GET" }).handler(
-  async () => {
-    const { user } = await requireAuth();
+export const getModelsServerFn = createServerFn({ method: 'GET' }).handler(async () => {
+  const { user } = await requireAuth();
 
-    // Import database API only on the server
-    const { getModels } = await import("./db-api");
-    const models = await getModels(user.id);
-    return models;
-  }
-);
+  // Import database API only on the server
+  const { getModels } = await import('./db-api');
+  const models = await getModels(user.id);
+  return models;
+});
 
 // Server function to create a new model - runs ONLY on server
-export const createModelServerFn = createServerFn({ method: "POST" })
+export const createModelServerFn = createServerFn({ method: 'POST' })
   .validator(
     (data: {
       name: string;
       description?: string;
       members: Array<{ sleeveId: string; targetWeight: number }>;
       updateExisting?: boolean;
-    }) => data
+    }) => data,
   )
   .handler(async ({ data }) => {
     const { user } = await requireAuth();
@@ -289,11 +257,11 @@ export const createModelServerFn = createServerFn({ method: "POST" })
     const { name, description, members, updateExisting } = data;
 
     if (!name || !members || !Array.isArray(members)) {
-      throw new Error("Invalid request: name and members array required");
+      throw new Error('Invalid request: name and members array required');
     }
 
     // Import database API only on the server
-    const { createModel } = await import("./db-api");
+    const { createModel } = await import('./db-api');
     const modelId = await createModel(
       {
         name,
@@ -301,20 +269,20 @@ export const createModelServerFn = createServerFn({ method: "POST" })
         members,
         updateExisting,
       },
-      user.id
+      user.id,
     );
     return { success: true, modelId };
   });
 
 // Server function to update a model - runs ONLY on server
-export const updateModelServerFn = createServerFn({ method: "POST" })
+export const updateModelServerFn = createServerFn({ method: 'POST' })
   .validator(
     (data: {
       modelId: string;
       name: string;
       description?: string;
       members: Array<{ sleeveId: string; targetWeight: number }>;
-    }) => data
+    }) => data,
   )
   .handler(async ({ data }) => {
     await requireAuth();
@@ -322,19 +290,17 @@ export const updateModelServerFn = createServerFn({ method: "POST" })
     const { modelId, name, description, members } = data;
 
     if (!modelId || !name || !members || !Array.isArray(members)) {
-      throw new Error(
-        "Invalid request: modelId, name and members array required"
-      );
+      throw new Error('Invalid request: modelId, name and members array required');
     }
 
     // Import database API only on the server
-    const { updateModel } = await import("./db-api");
+    const { updateModel } = await import('./db-api');
     await updateModel(modelId, { name, description, members });
     return { success: true };
   });
 
 // Server function to delete a model - runs ONLY on server
-export const deleteModelServerFn = createServerFn({ method: "POST" })
+export const deleteModelServerFn = createServerFn({ method: 'POST' })
   .validator((data: { modelId: string }) => data)
   .handler(async ({ data }) => {
     await requireAuth();
@@ -342,17 +308,17 @@ export const deleteModelServerFn = createServerFn({ method: "POST" })
     const { modelId } = data;
 
     if (!modelId) {
-      throw new Error("Invalid request: modelId required");
+      throw new Error('Invalid request: modelId required');
     }
 
     // Import database API only on the server
-    const { deleteModel } = await import("./db-api");
+    const { deleteModel } = await import('./db-api');
     await deleteModel(modelId);
     return { success: true };
   });
 
 // Server function to get model by ID - runs ONLY on server
-export const getModelByIdServerFn = createServerFn({ method: "POST" })
+export const getModelByIdServerFn = createServerFn({ method: 'POST' })
   .validator((data: { modelId: string }) => data)
   .handler(async ({ data }) => {
     await requireAuth();
@@ -360,23 +326,23 @@ export const getModelByIdServerFn = createServerFn({ method: "POST" })
     const { modelId } = data;
 
     if (!modelId) {
-      throw new Error("Invalid request: modelId required");
+      throw new Error('Invalid request: modelId required');
     }
 
     // Import database API only on the server
-    const { getModelById } = await import("./db-api");
+    const { getModelById } = await import('./db-api');
     const model = await getModelById(modelId);
     return model;
   });
 
 // Server function to get available sleeves for model creation/editing - runs ONLY on server
 export const getAvailableSleevesServerFn = createServerFn({
-  method: "GET",
+  method: 'GET',
 }).handler(async () => {
   await requireAuth();
 
   // Import database API only on the server
-  const { getAvailableSleeves } = await import("./db-api");
+  const { getAvailableSleeves } = await import('./db-api');
   const sleeves = await getAvailableSleeves();
   return sleeves;
 });
@@ -385,23 +351,20 @@ export const getAvailableSleevesServerFn = createServerFn({
 
 // Server function to get all rebalancing groups - runs ONLY on server
 export const getRebalancingGroupsServerFn = createServerFn({
-  method: "GET",
+  method: 'GET',
 }).handler(async () => {
   const { user } = await requireAuth();
 
-  const { getRebalancingGroups } = await import("./db-api");
+  const { getRebalancingGroups } = await import('./db-api');
   const groups = await getRebalancingGroups(user.id);
   return groups;
 });
 
 // Server function to create a new rebalancing group - runs ONLY on server
-export const createRebalancingGroupServerFn = createServerFn({ method: "POST" })
+export const createRebalancingGroupServerFn = createServerFn({ method: 'POST' })
   .validator(
-    (data: {
-      name: string;
-      members: Array<{ accountId: string }>;
-      updateExisting?: boolean;
-    }) => data
+    (data: { name: string; members: Array<{ accountId: string }>; updateExisting?: boolean }) =>
+      data,
   )
 
   .handler(async ({ data }) => {
@@ -410,25 +373,18 @@ export const createRebalancingGroupServerFn = createServerFn({ method: "POST" })
     const { name, members, updateExisting } = data;
 
     if (!name || !members || !Array.isArray(members)) {
-      throw new Error("Invalid request: name and members array required");
+      throw new Error('Invalid request: name and members array required');
     }
     // Import database API only on the server
-    const { createRebalancingGroup } = await import("./db-api");
-    const groupId = await createRebalancingGroup(
-      { name, members, updateExisting },
-      user.id
-    );
+    const { createRebalancingGroup } = await import('./db-api');
+    const groupId = await createRebalancingGroup({ name, members, updateExisting }, user.id);
     return { success: true, groupId };
   });
 
 // Server function to update a rebalancing group - runs ONLY on server
-export const updateRebalancingGroupServerFn = createServerFn({ method: "POST" })
+export const updateRebalancingGroupServerFn = createServerFn({ method: 'POST' })
   .validator(
-    (data: {
-      groupId: string;
-      name: string;
-      members: Array<{ accountId: string }>;
-    }) => data
+    (data: { groupId: string; name: string; members: Array<{ accountId: string }> }) => data,
   )
   .handler(async ({ data }) => {
     const { user } = await requireAuth();
@@ -436,18 +392,16 @@ export const updateRebalancingGroupServerFn = createServerFn({ method: "POST" })
     const { groupId, name, members } = data;
 
     if (!groupId || !name || !members || !Array.isArray(members)) {
-      throw new Error(
-        "Invalid request: groupId, name and members array required"
-      );
+      throw new Error('Invalid request: groupId, name and members array required');
     }
     // Import database API only on the server
-    const { updateRebalancingGroup } = await import("./db-api");
+    const { updateRebalancingGroup } = await import('./db-api');
     await updateRebalancingGroup(groupId, { name, members }, user.id);
     return { success: true };
   });
 
 // Server function to delete a rebalancing group - runs ONLY on server
-export const deleteRebalancingGroupServerFn = createServerFn({ method: "POST" })
+export const deleteRebalancingGroupServerFn = createServerFn({ method: 'POST' })
   .validator((data: { groupId: string }) => data)
 
   .handler(async ({ data }) => {
@@ -456,18 +410,18 @@ export const deleteRebalancingGroupServerFn = createServerFn({ method: "POST" })
     const { groupId } = data;
 
     if (!groupId) {
-      throw new Error("Invalid request: groupId required");
+      throw new Error('Invalid request: groupId required');
     }
 
     // Import database API only on the server
-    const { deleteRebalancingGroup } = await import("./db-api");
+    const { deleteRebalancingGroup } = await import('./db-api');
     await deleteRebalancingGroup(groupId, user.id);
     return { success: true };
   });
 
 // Server function to get rebalancing group by ID - runs ONLY on server
 export const getRebalancingGroupByIdServerFn = createServerFn({
-  method: "POST",
+  method: 'POST',
 })
   .validator((data: { groupId: string }) => data)
 
@@ -477,11 +431,11 @@ export const getRebalancingGroupByIdServerFn = createServerFn({
     const { groupId } = data;
 
     if (!groupId) {
-      throw new Error("Invalid request: groupId required");
+      throw new Error('Invalid request: groupId required');
     }
 
     // Import database API only on the server
-    const { getRebalancingGroupById } = await import("./db-api");
+    const { getRebalancingGroupById } = await import('./db-api');
     const group = await getRebalancingGroupById(groupId, user.id);
     return group;
   });
@@ -492,42 +446,35 @@ export type RebalancingGroupByIdResult = Awaited<
 
 // Server function to get account holdings for rebalancing group - runs ONLY on server
 export const getGroupAccountHoldingsServerFn = createServerFn({
-  method: "POST",
+  method: 'POST',
 })
   .validator((data: { accountIds: string[] }) => data)
   .handler(async ({ data }): Promise<AccountHoldingsResult> => {
     const { accountIds } = data;
 
     if (!accountIds || accountIds.length === 0) {
-      throw new Error("Invalid request: accountIds required");
+      throw new Error('Invalid request: accountIds required');
     }
 
     const { user } = await requireAuth();
 
     // Verify that all accountIds belong to the authenticated user
-    const { getDatabase } = await import("./db-config");
+    const { getDatabase } = await import('./db-config');
     const db = getDatabase();
-    const schema = await import("../db/schema");
-    const { eq, inArray, and } = await import("drizzle-orm");
+    const schema = await import('../db/schema');
+    const { eq, inArray, and } = await import('drizzle-orm');
 
     const ownedAccounts = await db
       .select({ id: schema.account.id })
       .from(schema.account)
-      .where(
-        and(
-          eq(schema.account.userId, user.id),
-          inArray(schema.account.id, accountIds)
-        )
-      );
+      .where(and(eq(schema.account.userId, user.id), inArray(schema.account.id, accountIds)));
 
     if (ownedAccounts.length !== accountIds.length) {
-      throw new Error(
-        "Access denied: One or more accounts do not belong to you"
-      );
+      throw new Error('Access denied: One or more accounts do not belong to you');
     }
 
     // Import database API only on the server
-    const { getAccountHoldings } = await import("./db-api");
+    const { getAccountHoldings } = await import('./db-api');
     const result = await getAccountHoldings(accountIds);
     return result;
   });
@@ -535,7 +482,7 @@ export const getGroupAccountHoldingsServerFn = createServerFn({
 export type GroupAccountHoldingsResult = AccountHoldingsResult;
 
 // Server function to get sleeve members (target securities) - runs ONLY on server
-export const getSleeveMembersServerFn = createServerFn({ method: "POST" })
+export const getSleeveMembersServerFn = createServerFn({ method: 'POST' })
   .validator((data: { sleeveIds: string[] }) => data)
   .handler(async ({ data }) => {
     await requireAuth();
@@ -543,109 +490,104 @@ export const getSleeveMembersServerFn = createServerFn({ method: "POST" })
     const { sleeveIds } = data;
 
     if (!sleeveIds || sleeveIds.length === 0) {
-      throw new Error("Invalid request: sleeveIds required");
+      throw new Error('Invalid request: sleeveIds required');
     }
 
     // Import database API only on the server
-    const { getSleeveMembers } = await import("./db-api");
+    const { getSleeveMembers } = await import('./db-api');
     const sleeveMembers = await getSleeveMembers(sleeveIds);
     return sleeveMembers;
   });
 
-export type SleeveMember = Awaited<
-  ReturnType<typeof getSleeveMembersServerFn>
->[number];
+export type SleeveMember = Awaited<ReturnType<typeof getSleeveMembersServerFn>>[number];
 
 // Server function to get available accounts for group creation/editing - runs ONLY on server
 export const getAvailableAccountsServerFn = createServerFn({
-  method: "GET",
+  method: 'GET',
 }).handler(async () => {
   const { user } = await requireAuth();
 
-  const { getAvailableAccounts } = await import("./db-api");
+  const { getAvailableAccounts } = await import('./db-api');
   const accounts = await getAvailableAccounts(user.id);
   return accounts;
 });
 
 // Server function to get accounts for rebalancing groups with assignment status
 export const getAccountsForRebalancingGroupsServerFn = createServerFn({
-  method: "GET",
+  method: 'GET',
 })
   .validator((data: { excludeGroupId?: string }) => data)
 
   .handler(async ({ data }) => {
     const { user } = await requireAuth();
 
-    const { getAccountsForRebalancingGroups } = await import("./db-api");
-    const accounts = await getAccountsForRebalancingGroups(
-      user.id,
-      data.excludeGroupId
-    );
+    const { getAccountsForRebalancingGroups } = await import('./db-api');
+    const accounts = await getAccountsForRebalancingGroups(user.id, data.excludeGroupId);
     return accounts;
   });
 
 // Server function to update account details - runs ONLY on server
-export const updateAccountServerFn = createServerFn({ method: "POST" })
+export const updateAccountServerFn = createServerFn({ method: 'POST' })
   .validator((data: { accountId: string; name: string; type: string }) => data)
 
   .handler(async ({ data }) => {
     const { accountId, name, type } = data;
 
     if (!accountId || !name.trim()) {
-      throw new Error("Invalid request: accountId and name are required");
+      throw new Error('Invalid request: accountId and name are required');
     }
 
     // Validate account type if provided
-    if (type && !["TAXABLE", "TAX_DEFERRED", "TAX_EXEMPT", ""].includes(type)) {
+    if (type && !['TAXABLE', 'TAX_DEFERRED', 'TAX_EXEMPT', ''].includes(type)) {
       throw new Error(
-        "Invalid account type. Must be TAXABLE, TAX_DEFERRED, TAX_EXEMPT, or empty string"
+        'Invalid account type. Must be TAXABLE, TAX_DEFERRED, TAX_EXEMPT, or empty string',
       );
     }
 
     const { user } = await requireAuth();
 
     // Import database API only on the server
-    const { updateAccount } = await import("./db-api");
+    const { updateAccount } = await import('./db-api');
     await updateAccount(accountId, { name: name.trim(), type }, user.id);
     return { success: true };
   });
 
 // Server function to assign a model to a rebalancing group - runs ONLY on server
-export const assignModelToGroupServerFn = createServerFn({ method: "POST" })
+export const assignModelToGroupServerFn = createServerFn({ method: 'POST' })
   .validator((data: { modelId: string; groupId: string }) => data)
 
   .handler(async ({ data }) => {
     const { modelId, groupId } = data;
 
     if (!modelId || !groupId) {
-      throw new Error("Invalid request: modelId and groupId required");
+      throw new Error('Invalid request: modelId and groupId required');
     }
 
     const { user } = await requireAuth();
 
     // Import database API only on the server
-    const { assignModelToGroup } = await import("./db-api");
+    const { assignModelToGroup } = await import('./db-api');
     await assignModelToGroup(modelId, groupId, user.id);
     return { success: true };
   });
 
 // Server function to unassign a model from a rebalancing group - runs ONLY on server
-export const unassignModelFromGroupServerFn = createServerFn({ method: "POST" })
+export const unassignModelFromGroupServerFn = createServerFn({ method: 'POST' })
   .validator((data: { modelId: string; groupId: string }) => data)
   .handler(async ({ data }) => {
     const { modelId, groupId } = data;
 
     if (!modelId || !groupId) {
-      throw new Error("Invalid request: modelId and groupId required");
+      throw new Error('Invalid request: modelId and groupId required');
     }
 
     const { user } = await requireAuth();
 
     // Verify that the rebalancing group belongs to the authenticated user
-    const { getDatabase } = await import("./db-config");
+    const { getDatabase } = await import('./db-config');
     const db = getDatabase();
-    const schema = await import("../db/schema");
-    const { eq } = await import("drizzle-orm");
+    const schema = await import('../db/schema');
+    const { eq } = await import('drizzle-orm');
 
     const group = await db
       .select({ userId: schema.rebalancingGroup.userId })
@@ -654,27 +596,25 @@ export const unassignModelFromGroupServerFn = createServerFn({ method: "POST" })
       .limit(1);
 
     if (group.length === 0 || group[0].userId !== user.id) {
-      throw new Error(
-        "Access denied: Rebalancing group not found or does not belong to you"
-      );
+      throw new Error('Access denied: Rebalancing group not found or does not belong to you');
     }
 
     // Import database API only on the server
-    const { unassignModelFromGroup } = await import("./db-api");
+    const { unassignModelFromGroup } = await import('./db-api');
     await unassignModelFromGroup(modelId, groupId);
     return { success: true };
   });
 
 // Server function to rebalance a portfolio - runs ONLY on server
-export const rebalancePortfolioServerFn = createServerFn({ method: "POST" })
+export const rebalancePortfolioServerFn = createServerFn({ method: 'POST' })
   .validator(
     (data: {
       portfolioId: string;
-      method: "allocation" | "tlhSwap" | "tlhRebalance" | "investCash";
+      method: 'allocation' | 'tlhSwap' | 'tlhRebalance' | 'investCash';
       allowOverinvestment?: boolean;
       maxOverinvestmentPercent?: number;
       cashAmount?: number;
-    }) => data
+    }) => data,
   )
   .handler(async ({ data }) => {
     const {
@@ -685,21 +625,19 @@ export const rebalancePortfolioServerFn = createServerFn({ method: "POST" })
       cashAmount,
     } = data;
 
-    console.log(
-      `🎯 SERVER DEBUG: Received method: ${method}, cashAmount: ${cashAmount}`
-    );
+    console.log(`🎯 SERVER DEBUG: Received method: ${method}, cashAmount: ${cashAmount}`);
 
     if (!portfolioId || !method) {
-      throw new Error("Invalid request: portfolioId and method required");
+      throw new Error('Invalid request: portfolioId and method required');
     }
 
     const { user } = await requireAuth();
 
     // Verify that the portfolio (rebalancing group) belongs to the authenticated user
-    const { getDatabase } = await import("./db-config");
+    const { getDatabase } = await import('./db-config');
     const db = getDatabase();
-    const schema = await import("../db/schema");
-    const { eq } = await import("drizzle-orm");
+    const schema = await import('../db/schema');
+    const { eq } = await import('drizzle-orm');
 
     const portfolio = await db
       .select({ userId: schema.rebalancingGroup.userId })
@@ -708,14 +646,12 @@ export const rebalancePortfolioServerFn = createServerFn({ method: "POST" })
       .limit(1);
 
     if (portfolio.length === 0 || portfolio[0].userId !== user.id) {
-      throw new Error(
-        "Access denied: Portfolio not found or does not belong to you"
-      );
+      throw new Error('Access denied: Portfolio not found or does not belong to you');
     }
 
     // Import additional necessary functions
-    const { and, inArray, gt, desc } = await import("drizzle-orm");
-    const { executeRebalance } = await import("./rebalance-logic");
+    const { and, inArray, gt, desc } = await import('drizzle-orm');
+    const { executeRebalance } = await import('./rebalance-logic');
 
     try {
       // Get rebalancing group and its accounts
@@ -726,7 +662,7 @@ export const rebalancePortfolioServerFn = createServerFn({ method: "POST" })
         .limit(1);
 
       if (!group.length) {
-        throw new Error("Rebalancing group not found");
+        throw new Error('Rebalancing group not found');
       }
 
       // Get group members (accounts)
@@ -745,7 +681,7 @@ export const rebalancePortfolioServerFn = createServerFn({ method: "POST" })
         .limit(1);
 
       if (!modelAssignment.length) {
-        throw new Error("No model assigned to this rebalancing group");
+        throw new Error('No model assigned to this rebalancing group');
       }
 
       // Get model sleeves
@@ -766,14 +702,8 @@ export const rebalancePortfolioServerFn = createServerFn({ method: "POST" })
           accountType: schema.account.type,
         })
         .from(schema.holding)
-        .innerJoin(
-          schema.security,
-          eq(schema.holding.ticker, schema.security.ticker)
-        )
-        .innerJoin(
-          schema.account,
-          eq(schema.holding.accountId, schema.account.id)
-        )
+        .innerJoin(schema.security, eq(schema.holding.ticker, schema.security.ticker))
+        .innerJoin(schema.account, eq(schema.holding.accountId, schema.account.id))
         .where(inArray(schema.holding.accountId, accountIds));
 
       // Get wash sale restrictions from database
@@ -784,10 +714,10 @@ export const rebalancePortfolioServerFn = createServerFn({ method: "POST" })
           and(
             inArray(
               schema.restrictedSecurity.sleeveId,
-              modelSleeves.map((s) => s.sleeveId)
+              modelSleeves.map((s) => s.sleeveId),
             ),
-            gt(schema.restrictedSecurity.blockedUntil, Date.now())
-          )
+            gt(schema.restrictedSecurity.blockedUntil, Date.now()),
+          ),
         );
 
       const washSaleRestrictions = restrictions.map((r) => ({
@@ -808,10 +738,7 @@ export const rebalancePortfolioServerFn = createServerFn({ method: "POST" })
           accountType: schema.account.type,
         })
         .from(schema.transaction)
-        .innerJoin(
-          schema.account,
-          eq(schema.transaction.accountId, schema.account.id)
-        )
+        .innerJoin(schema.account, eq(schema.transaction.accountId, schema.account.id))
         .where(inArray(schema.transaction.accountId, accountIds))
         .orderBy(desc(schema.transaction.executedAt));
 
@@ -823,13 +750,13 @@ export const rebalancePortfolioServerFn = createServerFn({ method: "POST" })
       }));
 
       console.log(
-        `🔍 WASH SALE CHECK: Loaded ${transactions.length} transactions from ${accountIds.length} accounts`
+        `🔍 WASH SALE CHECK: Loaded ${transactions.length} transactions from ${accountIds.length} accounts`,
       );
 
       // Debug: Show what transactions we have
       transactions.forEach((tx) => {
         console.log(
-          `🔍 Transaction: ${tx.ticker} ${tx.type} $${tx.realizedGainLoss?.toFixed(2) ?? 0} on ${new Date(tx.executedAt).toLocaleDateString()} in ${tx.accountName} (${tx.accountType})`
+          `🔍 Transaction: ${tx.ticker} ${tx.type} $${tx.realizedGainLoss?.toFixed(2) ?? 0} on ${new Date(tx.executedAt).toLocaleDateString()} in ${tx.accountName} (${tx.accountType})`,
         );
       });
 
@@ -838,13 +765,10 @@ export const rebalancePortfolioServerFn = createServerFn({ method: "POST" })
       // Transform data to new format
 
       const sleeves: RebalanceSleeveDataNew[] = [];
-      const totalPortfolioValue = holdings.reduce(
-        (sum, h) => sum + h.qty * h.price,
-        0
-      );
+      const totalPortfolioValue = holdings.reduce((sum, h) => sum + h.qty * h.price, 0);
 
       console.log(
-        `🎯 PORTFOLIO VALUE DEBUG: totalPortfolioValue: $${totalPortfolioValue.toFixed(2)} (raw: ${totalPortfolioValue})`
+        `🎯 PORTFOLIO VALUE DEBUG: totalPortfolioValue: $${totalPortfolioValue.toFixed(2)} (raw: ${totalPortfolioValue})`,
       );
 
       // Add Cash sleeve first to track cash flow during rebalancing
@@ -868,13 +792,11 @@ export const rebalancePortfolioServerFn = createServerFn({ method: "POST" })
       >();
       holdings.forEach((holding) => {
         if (isAnyCashTicker(holding.ticker)) {
-          const key = isBaseCashTicker(holding.ticker)
-            ? CASH_TICKER
-            : MANUAL_CASH_TICKER;
+          const key = isBaseCashTicker(holding.ticker) ? CASH_TICKER : MANUAL_CASH_TICKER;
           if (!cashHoldingsMap.has(key)) {
             cashHoldingsMap.set(key, []);
           }
-          cashHoldingsMap.get(key)!.push({ ...holding, ticker: key });
+          cashHoldingsMap.get(key)?.push({ ...holding, ticker: key });
         }
       });
 
@@ -891,17 +813,17 @@ export const rebalancePortfolioServerFn = createServerFn({ method: "POST" })
           targetPct: 0, // Cash target is 0%
           price: holdingList[0].price,
           accountId: holdingList[0].accountId,
-          isTaxable: holdingList.some((h) => h.accountType === "TAXABLE"),
+          isTaxable: holdingList.some((h) => h.accountType === 'TAXABLE'),
           unrealizedGain: holdingList.reduce(
             (sum, h) => sum + (h.qty * h.price - h.qty * h.costBasis),
-            0
+            0,
           ),
         });
       });
 
       sleeves.unshift({
         // Add at beginning
-        sleeveId: "cash",
+        sleeveId: 'cash',
         targetValue: 0, // Target is to invest all cash
         targetPct: 0, // We target 0% cash allocation
         currentValue: totalCashValue,
@@ -919,8 +841,7 @@ export const rebalancePortfolioServerFn = createServerFn({ method: "POST" })
           .where(eq(schema.sleeveMember.sleeveId, modelSleeve.sleeveId))
           .orderBy(schema.sleeveMember.rank); // Order by rank for processing
 
-        const sleeveTargetValue =
-          (totalPortfolioValue * modelSleeve.targetWeight) / 10000;
+        const sleeveTargetValue = (totalPortfolioValue * modelSleeve.targetWeight) / 10000;
         const sleeveTargetPct = modelSleeve.targetWeight / 100; // Convert basis points to percentage
 
         const sleeveSecurities: RebalanceSecurityData[] = [];
@@ -928,19 +849,12 @@ export const rebalancePortfolioServerFn = createServerFn({ method: "POST" })
 
         for (const member of sleeveMembers) {
           // Get current holdings for this security
-          const securityHoldings = holdings.filter(
-            (h) => h.ticker === member.ticker
-          );
-          const currentQty = securityHoldings.reduce(
-            (sum, h) => sum + h.qty,
-            0
-          );
+          const securityHoldings = holdings.filter((h) => h.ticker === member.ticker);
+          const currentQty = securityHoldings.reduce((sum, h) => sum + h.qty, 0);
 
           // Get security price from holdings or database
           let price = 1.0; // Default price $1.00
-          const securityHolding = holdings.find(
-            (h) => h.ticker === member.ticker
-          );
+          const securityHolding = holdings.find((h) => h.ticker === member.ticker);
 
           if (securityHolding) {
             price = securityHolding.price;
@@ -961,7 +875,7 @@ export const rebalancePortfolioServerFn = createServerFn({ method: "POST" })
 
           const unrealizedGain = securityHoldings.reduce(
             (sum, h) => sum + (h.qty * h.price - h.qty * h.costBasis),
-            0
+            0,
           );
           sleeveSecurities.push({
             securityId: member.ticker,
@@ -972,8 +886,7 @@ export const rebalancePortfolioServerFn = createServerFn({ method: "POST" })
             accountId: securityHoldings[0]?.accountId || accountIds[0],
             isTaxable: securityHoldings.some(
               (h) =>
-                holdings.find((hold) => hold.accountId === h.accountId)
-                  ?.accountType === "TAXABLE"
+                holdings.find((hold) => hold.accountId === h.accountId)?.accountType === 'TAXABLE',
             ),
             unrealizedGain,
           });
@@ -989,10 +902,12 @@ export const rebalancePortfolioServerFn = createServerFn({ method: "POST" })
       }
 
       // Add securities that are held but not in any sleeve (should be sold to 0)
-      const sleeveTickers = new Set();
-      sleeves.forEach((sleeve) =>
-        sleeve.securities.forEach((sec) => sleeveTickers.add(sec.securityId))
-      );
+      const sleeveTickers = new Set<string>();
+      for (const sleeve of sleeves) {
+        for (const sec of sleeve.securities) {
+          sleeveTickers.add(sec.securityId);
+        }
+      }
 
       const orphanSecurities: RebalanceSecurityData[] = [];
       holdings.forEach((holding) => {
@@ -1006,11 +921,8 @@ export const rebalancePortfolioServerFn = createServerFn({ method: "POST" })
               targetPct: 0,
               price: holding.price,
               accountId: holding.accountId,
-              isTaxable: holding.accountType === "TAXABLE",
-              unrealizedGain:
-                (holding.qty * holding.price -
-                  holding.qty * holding.costBasis) /
-                100,
+              isTaxable: holding.accountType === 'TAXABLE',
+              unrealizedGain: (holding.qty * holding.price - holding.qty * holding.costBasis) / 100,
             });
           }
         }
@@ -1019,13 +931,10 @@ export const rebalancePortfolioServerFn = createServerFn({ method: "POST" })
       // Add orphan securities as a special sleeve with 0% target
       if (orphanSecurities.length > 0) {
         sleeves.push({
-          sleeveId: "orphan-securities",
+          sleeveId: 'orphan-securities',
           targetValue: 0,
           targetPct: 0,
-          currentValue: orphanSecurities.reduce(
-            (sum, sec) => sum + sec.currentQty * sec.price,
-            0
-          ),
+          currentValue: orphanSecurities.reduce((sum, sec) => sum + sec.currentQty * sec.price, 0),
           securities: orphanSecurities,
         });
       }
@@ -1034,8 +943,7 @@ export const rebalancePortfolioServerFn = createServerFn({ method: "POST" })
       const allSecurities = sleeves.flatMap((sleeve) => sleeve.securities);
       const replacementCandidates = allSecurities.map((sec, index) => ({
         originalTicker: sec.securityId,
-        replacementTicker:
-          allSecurities[(index + 1) % allSecurities.length].securityId,
+        replacementTicker: allSecurities[(index + 1) % allSecurities.length].securityId,
         rank: index + 1,
       }));
 
@@ -1049,15 +957,13 @@ export const rebalancePortfolioServerFn = createServerFn({ method: "POST" })
         allowOverinvestment,
         maxOverinvestmentPercent,
         transactions,
-        cashAmount
+        cashAmount,
       );
 
       return result;
     } catch (error) {
-      console.error("Error calculating rebalance:", error);
-      throw new Error(
-        `Failed to calculate rebalance: ${getErrorMessage(error)}`
-      );
+      console.error('Error calculating rebalance:', error);
+      throw new Error(`Failed to calculate rebalance: ${getErrorMessage(error)}`);
     }
   });
 
@@ -1066,24 +972,22 @@ export type RebalancePortfolioServerFnResult = Awaited<
 >;
 
 // Server function to update manual cash for an account - runs ONLY on server
-export const updateManualCashServerFn = createServerFn({ method: "POST" })
+export const updateManualCashServerFn = createServerFn({ method: 'POST' })
   .validator((data: { accountId: string; amount: number }) => data)
   .handler(async ({ data }) => {
     const { accountId, amount } = data;
 
     if (!accountId || amount < 0) {
-      throw new Error(
-        "Invalid request: accountId required and amount must be >= 0"
-      );
+      throw new Error('Invalid request: accountId required and amount must be >= 0');
     }
 
     const { user } = await requireAuth();
 
     // Verify that the account belongs to the authenticated user
-    const { getDatabase } = await import("./db-config");
+    const { getDatabase } = await import('./db-config');
     const db = getDatabase();
-    const schema = await import("../db/schema");
-    const { eq } = await import("drizzle-orm");
+    const schema = await import('../db/schema');
+    const { eq } = await import('drizzle-orm');
 
     const account = await db
       .select({ userId: schema.account.userId })
@@ -1092,12 +996,10 @@ export const updateManualCashServerFn = createServerFn({ method: "POST" })
       .limit(1);
 
     if (account.length === 0 || account[0].userId !== user.id) {
-      throw new Error(
-        "Access denied: Account not found or does not belong to you"
-      );
+      throw new Error('Access denied: Account not found or does not belong to you');
     }
 
-    const { and } = await import("drizzle-orm");
+    const { and } = await import('drizzle-orm');
     const now = Date.now();
 
     try {
@@ -1105,20 +1007,13 @@ export const updateManualCashServerFn = createServerFn({ method: "POST" })
       const existingHolding = await db
         .select()
         .from(schema.holding)
-        .where(
-          and(
-            eq(schema.holding.accountId, accountId),
-            eq(schema.holding.ticker, "MCASH")
-          )
-        )
+        .where(and(eq(schema.holding.accountId, accountId), eq(schema.holding.ticker, 'MCASH')))
         .limit(1);
 
       if (amount === 0) {
         // Delete the holding if amount is 0
         if (existingHolding.length > 0) {
-          await db
-            .delete(schema.holding)
-            .where(eq(schema.holding.id, existingHolding[0].id));
+          await db.delete(schema.holding).where(eq(schema.holding.id, existingHolding[0].id));
         }
       } else {
         // Store amount as quantity (MCASH price is $1.00 per share)
@@ -1139,7 +1034,7 @@ export const updateManualCashServerFn = createServerFn({ method: "POST" })
           await db.insert(schema.holding).values({
             id: holdingId,
             accountId,
-            ticker: "MCASH",
+            ticker: 'MCASH',
             qty: qtyInDollars,
             averageCost: 1.0, // $1.00 per "share"
             openedAt: now,
@@ -1150,35 +1045,33 @@ export const updateManualCashServerFn = createServerFn({ method: "POST" })
       }
 
       // Clear cache to ensure fresh data
-      const { clearCache } = await import("./db-api");
+      const { clearCache } = await import('./db-api');
       clearCache();
 
       return { success: true };
     } catch (error) {
-      console.error("Error updating manual cash:", error);
-      throw new Error(
-        `Failed to update manual cash: ${getErrorMessage(error)}`
-      );
+      console.error('Error updating manual cash:', error);
+      throw new Error(`Failed to update manual cash: ${getErrorMessage(error)}`);
     }
   });
 
 // Server function to get manual cash amount for an account - runs ONLY on server
-export const getManualCashServerFn = createServerFn({ method: "POST" })
+export const getManualCashServerFn = createServerFn({ method: 'POST' })
   .validator((data: { accountId: string }) => data)
   .handler(async ({ data }) => {
     const { accountId } = data;
 
     if (!accountId) {
-      throw new Error("Invalid request: accountId required");
+      throw new Error('Invalid request: accountId required');
     }
 
     const { user } = await requireAuth();
 
     // Import database API only on the server
-    const { getDatabase } = await import("./db-config");
+    const { getDatabase } = await import('./db-config');
     const db = getDatabase();
-    const schema = await import("../db/schema");
-    const { eq } = await import("drizzle-orm");
+    const schema = await import('../db/schema');
+    const { eq } = await import('drizzle-orm');
 
     // Verify that the account belongs to the authenticated user
     const account = await db
@@ -1188,12 +1081,10 @@ export const getManualCashServerFn = createServerFn({ method: "POST" })
       .limit(1);
 
     if (account.length === 0 || account[0].userId !== user.id) {
-      throw new Error(
-        "Access denied: Account not found or does not belong to you"
-      );
+      throw new Error('Access denied: Account not found or does not belong to you');
     }
 
-    const { and } = await import("drizzle-orm");
+    const { and } = await import('drizzle-orm');
     try {
       // Get MCASH holding for this account
       const manualCashHolding = await db
@@ -1201,20 +1092,14 @@ export const getManualCashServerFn = createServerFn({ method: "POST" })
           qty: schema.holding.qty,
         })
         .from(schema.holding)
-        .where(
-          and(
-            eq(schema.holding.accountId, accountId),
-            eq(schema.holding.ticker, "MCASH")
-          )
-        )
+        .where(and(eq(schema.holding.accountId, accountId), eq(schema.holding.ticker, 'MCASH')))
         .limit(1);
 
-      const amount =
-        manualCashHolding.length > 0 ? manualCashHolding[0].qty : 0;
+      const amount = manualCashHolding.length > 0 ? manualCashHolding[0].qty : 0;
 
       return { amount };
     } catch (error) {
-      console.error("Error getting manual cash:", error);
+      console.error('Error getting manual cash:', error);
       throw new Error(`Failed to get manual cash: ${getErrorMessage(error)}`);
     }
   });
@@ -1222,29 +1107,29 @@ export const getManualCashServerFn = createServerFn({ method: "POST" })
 // Schwab Integration Server Functions
 
 // Server function to get Schwab OAuth URL
-export const getSchwabOAuthUrlServerFn = createServerFn({ method: "POST" })
+export const getSchwabOAuthUrlServerFn = createServerFn({ method: 'POST' })
   .validator((data: { redirectUri: string }) => data)
   .handler(async ({ data }) => {
-    console.log("🚀 [ServerFn] getSchwabOAuthUrl started");
-    console.log("📋 [ServerFn] Request data:", data);
+    console.log('🚀 [ServerFn] getSchwabOAuthUrl started');
+    console.log('📋 [ServerFn] Request data:', data);
 
     try {
-      console.log("📦 [ServerFn] Importing Schwab API service...");
-      const { getSchwabApiService } = await import("./schwab-api");
+      console.log('📦 [ServerFn] Importing Schwab API service...');
+      const { getSchwabApiService } = await import('./schwab-api');
       const schwabApi = getSchwabApiService();
 
-      console.log("🔗 [ServerFn] Getting OAuth URL...");
+      console.log('🔗 [ServerFn] Getting OAuth URL...');
       const authUrl = await schwabApi.getOAuthUrl(data.redirectUri);
 
-      console.log("✅ [ServerFn] Successfully generated OAuth URL");
-      console.log("🔗 [ServerFn] OAuth URL length:", authUrl.length);
+      console.log('✅ [ServerFn] Successfully generated OAuth URL');
+      console.log('🔗 [ServerFn] OAuth URL length:', authUrl.length);
 
       return { authUrl };
     } catch (error) {
-      console.error("❌ [ServerFn] Error getting Schwab OAuth URL:", error);
+      console.error('❌ [ServerFn] Error getting Schwab OAuth URL:', error);
       console.error(
-        "❌ [ServerFn] Error stack:",
-        error instanceof Error ? error.stack : "No stack trace"
+        '❌ [ServerFn] Error stack:',
+        error instanceof Error ? error.stack : 'No stack trace',
       );
       throw new Error(`Failed to get OAuth URL: ${getErrorMessage(error)}`);
     }
@@ -1252,71 +1137,66 @@ export const getSchwabOAuthUrlServerFn = createServerFn({ method: "POST" })
 
 // Server function to handle Schwab OAuth callback
 export const handleSchwabOAuthCallbackServerFn = createServerFn({
-  method: "POST",
+  method: 'POST',
 })
   .validator((data: { code: string; redirectUri: string }) => data)
 
   .handler(async ({ data }) => {
-    console.log("🔄 [ServerFn] handleSchwabOAuthCallback started");
-    console.log("📋 [ServerFn] Request data:", {
-      code: data.code ? `${data.code.substring(0, 10)}...` : "NOT PROVIDED",
+    console.log('🔄 [ServerFn] handleSchwabOAuthCallback started');
+    console.log('📋 [ServerFn] Request data:', {
+      code: data.code ? `${data.code.substring(0, 10)}...` : 'NOT PROVIDED',
       redirectUri: data.redirectUri,
     });
 
     try {
       const { user } = await requireAuth();
 
-      console.log("👤 [ServerFn] Using authenticated user ID:", user.id);
+      console.log('👤 [ServerFn] Using authenticated user ID:', user.id);
 
-      console.log("📦 [ServerFn] Importing Schwab API service...");
-      const { getSchwabApiService } = await import("./schwab-api");
+      console.log('📦 [ServerFn] Importing Schwab API service...');
+      const { getSchwabApiService } = await import('./schwab-api');
       const schwabApi = getSchwabApiService();
 
-      console.log("🔄 [ServerFn] Handling OAuth callback...");
+      console.log('🔄 [ServerFn] Handling OAuth callback...');
       await schwabApi.handleOAuthCallback(data.code, data.redirectUri, user.id);
 
-      console.log("✅ [ServerFn] OAuth callback handled successfully");
+      console.log('✅ [ServerFn] OAuth callback handled successfully');
       return { success: true };
     } catch (error) {
+      console.error('❌ [ServerFn] Error handling Schwab OAuth callback:', error);
       console.error(
-        "❌ [ServerFn] Error handling Schwab OAuth callback:",
-        error
+        '❌ [ServerFn] Error stack:',
+        error instanceof Error ? error.stack : 'No stack trace',
       );
-      console.error(
-        "❌ [ServerFn] Error stack:",
-        error instanceof Error ? error.stack : "No stack trace"
-      );
-      throw new Error(
-        `Failed to handle OAuth callback: ${getErrorMessage(error)}`
-      );
+      throw new Error(`Failed to handle OAuth callback: ${getErrorMessage(error)}`);
     }
   });
 
 // Server function to check Schwab credentials status
 export const getSchwabCredentialsStatusServerFn = createServerFn({
-  method: "GET",
+  method: 'GET',
 }).handler(async () => {
-  console.log("🔍 [ServerFn] getSchwabCredentialsStatus started");
+  console.log('🔍 [ServerFn] getSchwabCredentialsStatus started');
 
   try {
     const { user } = await requireAuth();
 
-    console.log("👤 [ServerFn] Using authenticated user ID:", user.id);
+    console.log('👤 [ServerFn] Using authenticated user ID:', user.id);
 
-    console.log("📦 [ServerFn] Importing Schwab API service...");
-    const { getSchwabApiService } = await import("./schwab-api");
+    console.log('📦 [ServerFn] Importing Schwab API service...');
+    const { getSchwabApiService } = await import('./schwab-api');
     const schwabApi = getSchwabApiService();
 
-    console.log("✅ [ServerFn] Checking credentials validity...");
+    console.log('✅ [ServerFn] Checking credentials validity...');
     const hasCredentials = await schwabApi.hasValidCredentials(user.id);
 
-    console.log("📊 [ServerFn] Credentials status:", hasCredentials);
+    console.log('📊 [ServerFn] Credentials status:', hasCredentials);
     return { hasCredentials };
   } catch (error) {
-    console.error("❌ [ServerFn] Error checking Schwab credentials:", error);
+    console.error('❌ [ServerFn] Error checking Schwab credentials:', error);
     console.error(
-      "❌ [ServerFn] Error stack:",
-      error instanceof Error ? error.stack : "No stack trace"
+      '❌ [ServerFn] Error stack:',
+      error instanceof Error ? error.stack : 'No stack trace',
     );
     return { hasCredentials: false };
   }
@@ -1324,75 +1204,73 @@ export const getSchwabCredentialsStatusServerFn = createServerFn({
 
 // Server function to sync Schwab accounts
 export const syncSchwabAccountsServerFn = createServerFn({
-  method: "POST",
+  method: 'POST',
 }).handler(async (): Promise<SyncResult> => {
-  console.log("🏦 [ServerFn] Starting Schwab accounts sync");
+  console.log('🏦 [ServerFn] Starting Schwab accounts sync');
   try {
     const { user } = await requireAuth();
 
-    console.log("👤 [ServerFn] Using user ID:", user.id);
+    console.log('👤 [ServerFn] Using user ID:', user.id);
 
-    const { getSchwabSyncService } = await import("./schwab-sync");
+    const { getSchwabSyncService } = await import('./schwab-sync');
     const syncService = getSchwabSyncService();
-    console.log("🔧 [ServerFn] Schwab sync service initialized");
+    console.log('🔧 [ServerFn] Schwab sync service initialized');
 
     const result = await syncService.syncAccounts(user.id);
-    console.log("✅ [ServerFn] Accounts sync completed:", result);
+    console.log('✅ [ServerFn] Accounts sync completed:', result);
     return result;
   } catch (error) {
-    console.error("❌ [ServerFn] Error syncing Schwab accounts:", error);
+    console.error('❌ [ServerFn] Error syncing Schwab accounts:', error);
     const errorResult = {
       success: false,
       recordsProcessed: 0,
       errorMessage: getErrorMessage(error),
     };
-    console.log("🔄 [ServerFn] Returning error result:", errorResult);
+    console.log('🔄 [ServerFn] Returning error result:', errorResult);
     return errorResult;
   }
 });
 
 // Server function to sync Schwab holdings
-export const syncSchwabHoldingsServerFn = createServerFn({ method: "POST" })
+export const syncSchwabHoldingsServerFn = createServerFn({ method: 'POST' })
   .validator((data: { accountId?: string }) => data)
 
   .handler(async ({ data }): Promise<SyncResult> => {
-    console.log("📊 [ServerFn] Starting Schwab holdings sync");
-    console.log("📋 [ServerFn] Request data:", data);
+    console.log('📊 [ServerFn] Starting Schwab holdings sync');
+    console.log('📋 [ServerFn] Request data:', data);
     try {
       const { user } = await requireAuth();
 
-      console.log("👤 [ServerFn] Using user ID:", user.id);
+      console.log('👤 [ServerFn] Using user ID:', user.id);
 
-      const { getSchwabSyncService } = await import("./schwab-sync");
+      const { getSchwabSyncService } = await import('./schwab-sync');
       const syncService = getSchwabSyncService();
-      console.log("🔧 [ServerFn] Schwab sync service initialized");
+      console.log('🔧 [ServerFn] Schwab sync service initialized');
 
       const result = await syncService.syncHoldings(user.id, data.accountId);
-      console.log("✅ [ServerFn] Holdings sync completed:", result);
+      console.log('✅ [ServerFn] Holdings sync completed:', result);
       return result;
     } catch (error) {
-      console.error("❌ [ServerFn] Error syncing Schwab holdings:", error);
+      console.error('❌ [ServerFn] Error syncing Schwab holdings:', error);
       const errorResult = {
         success: false,
         recordsProcessed: 0,
         errorMessage: getErrorMessage(error),
       };
-      console.log("🔄 [ServerFn] Returning error result:", errorResult);
+      console.log('🔄 [ServerFn] Returning error result:', errorResult);
       return errorResult;
     }
   });
 
 // Server function to sync Schwab transactions
-export const syncSchwabTransactionsServerFn = createServerFn({ method: "POST" })
-  .validator(
-    (data: { accountId?: string; startDate?: string; endDate?: string }) => data
-  )
+export const syncSchwabTransactionsServerFn = createServerFn({ method: 'POST' })
+  .validator((data: { accountId?: string; startDate?: string; endDate?: string }) => data)
 
   .handler(async ({ data }): Promise<SyncResult> => {
     try {
       const { user } = await requireAuth();
 
-      const { getSchwabSyncService } = await import("./schwab-sync");
+      const { getSchwabSyncService } = await import('./schwab-sync');
       const syncService = getSchwabSyncService();
       const startDate = data.startDate ? new Date(data.startDate) : undefined;
       const endDate = data.endDate ? new Date(data.endDate) : undefined;
@@ -1413,27 +1291,25 @@ export const syncSchwabTransactionsServerFn = createServerFn({ method: "POST" })
 
 // Server function to get held position tickers
 export const getHeldPositionTickersServerFn = createServerFn({
-  method: "GET",
+  method: 'GET',
 }).handler(async (): Promise<string[]> => {
   const { user } = await requireAuth();
 
-  const { getPositions } = await import("./db-api");
+  const { getPositions } = await import('./db-api');
   const positions = await getPositions(user.id);
 
   // Get unique tickers from positions
-  const uniqueTickers = [
-    ...new Set(positions.map((position) => position.ticker)),
-  ];
+  const uniqueTickers = [...new Set(positions.map((position) => position.ticker))];
   console.log(
     `📊 [ServerFn] Found ${uniqueTickers.length} unique tickers in held positions:`,
-    uniqueTickers
+    uniqueTickers,
   );
 
   return uniqueTickers;
 });
 
 // Server function to sync prices from Schwab
-export const syncSchwabPricesServerFn = createServerFn({ method: "POST" })
+export const syncSchwabPricesServerFn = createServerFn({ method: 'POST' })
   .validator((data: { symbols?: string[] }) => data)
 
   .handler(
@@ -1453,43 +1329,43 @@ export const syncSchwabPricesServerFn = createServerFn({ method: "POST" })
         logId?: string;
       }
     > => {
-      console.log("💰 [ServerFn] Starting Schwab prices sync");
-      console.log("📋 [ServerFn] Request data:", data);
+      console.log('💰 [ServerFn] Starting Schwab prices sync');
+      console.log('📋 [ServerFn] Request data:', data);
 
       const { user } = await requireAuth();
 
-      console.log("👤 [ServerFn] Using user ID:", user.id);
+      console.log('👤 [ServerFn] Using user ID:', user.id);
 
       try {
-        const { getDatabase } = await import("./db-config");
+        const { getDatabase } = await import('./db-config');
         const db = getDatabase();
-        const schema = await import("../db/schema");
-        const { eq } = await import("drizzle-orm");
+        const schema = await import('../db/schema');
+        const { eq } = await import('drizzle-orm');
 
-        const { getPriceSyncService } = await import("./price-sync");
+        const { getPriceSyncService } = await import('./price-sync');
         const priceSyncService = getPriceSyncService();
-        console.log("🔧 [ServerFn] Price sync service initialized");
+        console.log('🔧 [ServerFn] Price sync service initialized');
 
         // Create sync log entry (RUNNING)
         const logId = crypto.randomUUID();
         const startLog = {
           id: logId,
           userId: user.id,
-          syncType: "SECURITIES",
-          status: "RUNNING" as const,
+          syncType: 'SECURITIES',
+          status: 'RUNNING' as const,
           recordsProcessed: 0,
           startedAt: new Date(),
           createdAt: new Date(),
         };
         await db.insert(schema.syncLog).values(startLog);
-        console.log("📝 [ServerFn] Created sync log for prices:", logId);
+        console.log('📝 [ServerFn] Created sync log for prices:', logId);
 
         const results = await priceSyncService.syncPrices({
           userId: user.id,
           symbols: data.symbols,
           forceRefresh: true,
         });
-        console.log("📊 [ServerFn] Price sync results received:", results);
+        console.log('📊 [ServerFn] Price sync results received:', results);
 
         // Persist per-ticker as generic change entries
         try {
@@ -1501,9 +1377,9 @@ export const syncSchwabPricesServerFn = createServerFn({ method: "POST" })
             await db.insert(schema.syncLogDetail).values({
               id: crypto.randomUUID(),
               logId,
-              entityType: "SECURITY",
+              entityType: 'SECURITY',
               entityId: r.ticker,
-              operation: r.success ? "UPDATE" : "NOOP",
+              operation: r.success ? 'UPDATE' : 'NOOP',
               changes: JSON.stringify(changes),
               success: r.success,
               message: r.error,
@@ -1511,83 +1387,71 @@ export const syncSchwabPricesServerFn = createServerFn({ method: "POST" })
             });
           }
         } catch (persistErr) {
-          console.warn(
-            "⚠️ [ServerFn] Failed to persist sync details:",
-            persistErr
-          );
+          console.warn('⚠️ [ServerFn] Failed to persist sync details:', persistErr);
         }
 
         // Log individual price updates for verification
-        console.log("💲 [ServerFn] Individual price updates:");
+        console.log('💲 [ServerFn] Individual price updates:');
         results.forEach((result, index) => {
           if (result.success) {
             console.log(
-              `  ${index + 1}. ${result.ticker}: $${result.oldPrice} → $${result.newPrice} (${result.source})`
+              `  ${index + 1}. ${result.ticker}: $${result.oldPrice} → $${result.newPrice} (${result.source})`,
             );
           } else {
-            console.log(
-              `  ${index + 1}. ${result.ticker}: FAILED - ${result.error}`
-            );
+            console.log(`  ${index + 1}. ${result.ticker}: FAILED - ${result.error}`);
           }
         });
 
         const successCount = results.filter((r) => r.success).length;
         const errorCount = results.filter((r) => !r.success).length;
         console.log(
-          "📈 [ServerFn] Price sync summary - Success:",
+          '📈 [ServerFn] Price sync summary - Success:',
           successCount,
-          "Errors:",
-          errorCount
+          'Errors:',
+          errorCount,
         );
 
         // Complete sync log
         await db
           .update(schema.syncLog)
           .set({
-            status: errorCount > 0 ? "PARTIAL" : "SUCCESS",
+            status: errorCount > 0 ? 'PARTIAL' : 'SUCCESS',
             recordsProcessed: successCount,
-            errorMessage:
-              errorCount > 0
-                ? `${errorCount} securities failed to update`
-                : undefined,
+            errorMessage: errorCount > 0 ? `${errorCount} securities failed to update` : undefined,
             completedAt: new Date(),
           })
           .where(eq(schema.syncLog.id, logId));
-        console.log("🏁 [ServerFn] Completed sync log for prices:", logId);
+        console.log('🏁 [ServerFn] Completed sync log for prices:', logId);
 
         const finalResult = {
           success: errorCount === 0,
           recordsProcessed: successCount,
-          errorMessage:
-            errorCount > 0
-              ? `${errorCount} securities failed to update`
-              : undefined,
+          errorMessage: errorCount > 0 ? `${errorCount} securities failed to update` : undefined,
           details: results,
           logId,
         };
-        console.log("✅ [ServerFn] Prices sync completed:", finalResult);
+        console.log('✅ [ServerFn] Prices sync completed:', finalResult);
         return finalResult;
       } catch (error) {
-        console.error("❌ [ServerFn] Error syncing prices:", error);
+        console.error('❌ [ServerFn] Error syncing prices:', error);
         // Attempt to log error in sync log if we started one
         try {
-          const { getDatabase } = await import("./db-config");
+          const { getDatabase } = await import('./db-config');
           const db = getDatabase();
-          const schema = await import("../db/schema");
+          const schema = await import('../db/schema');
           await db.insert(schema.syncLog).values({
             id: crypto.randomUUID(),
             userId: user.id,
-            syncType: "SECURITIES",
-            status: "ERROR",
+            syncType: 'SECURITIES',
+            status: 'ERROR',
             recordsProcessed: 0,
-            errorMessage:
-              error instanceof Error ? error.message : String(error),
+            errorMessage: error instanceof Error ? error.message : String(error),
             startedAt: new Date(),
             completedAt: new Date(),
             createdAt: new Date(),
           });
         } catch (logErr) {
-          console.warn("⚠️ [ServerFn] Failed to write error sync log:", logErr);
+          console.warn('⚠️ [ServerFn] Failed to write error sync log:', logErr);
         }
 
         const errorResult = {
@@ -1595,90 +1459,88 @@ export const syncSchwabPricesServerFn = createServerFn({ method: "POST" })
           recordsProcessed: 0,
           errorMessage: getErrorMessage(error),
         };
-        console.log("🔄 [ServerFn] Returning error result:", errorResult);
+        console.log('🔄 [ServerFn] Returning error result:', errorResult);
         return errorResult;
       }
-    }
+    },
   );
 
 // Server function to revoke Schwab credentials
 export const revokeSchwabCredentialsServerFn = createServerFn({
-  method: "POST",
+  method: 'POST',
 }).handler(async () => {
-  console.log("🗑️ [ServerFn] Starting Schwab credentials revocation");
+  console.log('🗑️ [ServerFn] Starting Schwab credentials revocation');
   try {
     const { user } = await requireAuth();
 
-    console.log("👤 [ServerFn] Using user ID:", user.id);
+    console.log('👤 [ServerFn] Using user ID:', user.id);
 
-    const { getSchwabApiService } = await import("./schwab-api");
+    const { getSchwabApiService } = await import('./schwab-api');
     const schwabApi = getSchwabApiService();
-    console.log("🔧 [ServerFn] Schwab API service initialized");
+    console.log('🔧 [ServerFn] Schwab API service initialized');
 
     await schwabApi.revokeCredentials(user.id);
-    console.log("✅ [ServerFn] Credentials revoked successfully");
+    console.log('✅ [ServerFn] Credentials revoked successfully');
 
     return { success: true };
   } catch (error) {
-    console.error("❌ [ServerFn] Error revoking Schwab credentials:", error);
+    console.error('❌ [ServerFn] Error revoking Schwab credentials:', error);
     throw new Error(`Failed to revoke credentials: ${getErrorMessage(error)}`);
   }
 });
 
 // Server function to get sync logs
-export const getSyncLogsServerFn = createServerFn({ method: "GET" }).handler(
-  async () => {
-    try {
-      const { user } = await requireAuth();
+export const getSyncLogsServerFn = createServerFn({ method: 'GET' }).handler(async () => {
+  try {
+    const { user } = await requireAuth();
 
-      const { getDatabase } = await import("./db-config");
-      const db = getDatabase();
-      const schema = await import("../db/schema");
-      const { eq, desc } = await import("drizzle-orm");
+    const { getDatabase } = await import('./db-config');
+    const db = getDatabase();
+    const schema = await import('../db/schema');
+    const { eq, desc } = await import('drizzle-orm');
 
-      const logs = await db
-        .select()
-        .from(schema.syncLog)
-        .where(eq(schema.syncLog.userId, user.id))
-        .orderBy(desc(schema.syncLog.createdAt))
-        .limit(50);
+    const logs = await db
+      .select()
+      .from(schema.syncLog)
+      .where(eq(schema.syncLog.userId, user.id))
+      .orderBy(desc(schema.syncLog.createdAt))
+      .limit(50);
 
-      // Attach details for all logs (accounts, holdings, prices, etc.)
-      const logsWithDetails = await Promise.all(
-        logs.map(async (log) => {
-          try {
-            const details = await db
-              .select()
-              .from(schema.syncLogDetail)
-              .where(eq(schema.syncLogDetail.logId, log.id))
-              .orderBy(desc(schema.syncLogDetail.createdAt));
-            return { ...log, details };
-          } catch {
-            return log;
-          }
-        })
-      );
+    // Attach details for all logs (accounts, holdings, prices, etc.)
+    const logsWithDetails = await Promise.all(
+      logs.map(async (log) => {
+        try {
+          const details = await db
+            .select()
+            .from(schema.syncLogDetail)
+            .where(eq(schema.syncLogDetail.logId, log.id))
+            .orderBy(desc(schema.syncLogDetail.createdAt));
+          return { ...log, details };
+        } catch {
+          return log;
+        }
+      }),
+    );
 
-      return logsWithDetails;
-    } catch (error) {
-      console.error("Error getting sync logs:", error);
-      throw new Error(`Failed to get sync logs: ${getErrorMessage(error)}`);
-    }
+    return logsWithDetails;
+  } catch (error) {
+    console.error('Error getting sync logs:', error);
+    throw new Error(`Failed to get sync logs: ${getErrorMessage(error)}`);
   }
-);
+});
 
 // Yahoo Finance Integration - Update security fundamentals and price
-export const syncYahooFundamentalsServerFn = createServerFn({ method: "POST" })
+export const syncYahooFundamentalsServerFn = createServerFn({ method: 'POST' })
   .validator(
     (data: {
       scope?:
-        | "all-securities"
-        | "all-holdings"
-        | "five-holdings"
-        | "missing-fundamentals"
-        | "missing-fundamentals-holdings";
+        | 'all-securities'
+        | 'all-holdings'
+        | 'five-holdings'
+        | 'missing-fundamentals'
+        | 'missing-fundamentals-holdings';
       symbols?: string[];
-    }) => data
+    }) => data,
   )
 
   .handler(
@@ -1686,7 +1548,13 @@ export const syncYahooFundamentalsServerFn = createServerFn({ method: "POST" })
       data,
       context: _context,
     }): Promise<
-      | { success: boolean; recordsProcessed: number; details: {}[] }
+      | {
+          success: boolean;
+          recordsProcessed: number;
+          // biome-ignore lint/complexity/noBannedTypes: Upstream generic expects {}
+          details: { [x: string]: {} }[];
+          logId: `${string}-${string}-${string}-${string}-${string}`;
+        }
       | {
           success: boolean;
           recordsProcessed: number;
@@ -1705,25 +1573,25 @@ export const syncYahooFundamentalsServerFn = createServerFn({ method: "POST" })
       const scope = data.scope;
       const explicitSymbols = data.symbols;
 
-      const { getDatabase } = await import("./db-config");
+      const { getDatabase } = await import('./db-config');
       const db = getDatabase();
-      const schema = await import("../db/schema");
-      const { eq } = await import("drizzle-orm");
-      const yahooFinance = (await import("yahoo-finance2")).default;
-      const { isAnyCashTicker } = await import("./constants");
+      const schema = await import('../db/schema');
+      const { eq } = await import('drizzle-orm');
+      const yahooFinance = (await import('yahoo-finance2')).default;
+      const { isAnyCashTicker } = await import('./constants');
 
       // Determine symbols to update
       let symbols: string[] = [];
       if (Array.isArray(explicitSymbols) && explicitSymbols.length > 0) {
         symbols = explicitSymbols;
-      } else if (scope === "all-holdings" || scope === "five-holdings") {
-        const { getPositions } = await import("./db-api");
+      } else if (scope === 'all-holdings' || scope === 'five-holdings') {
+        const { getPositions } = await import('./db-api');
         const positions = await getPositions(user.id);
         const tickers = [...new Set(positions.map((p) => p.ticker))];
-        symbols = (
-          scope === "five-holdings" ? tickers.slice(0, 5) : tickers
-        ).filter((t) => !isAnyCashTicker(t));
-      } else if (scope === "missing-fundamentals") {
+        symbols = (scope === 'five-holdings' ? tickers.slice(0, 5) : tickers).filter(
+          (t) => !isAnyCashTicker(t),
+        );
+      } else if (scope === 'missing-fundamentals') {
         // Securities missing sector or industry
         const rows = await db
           .select({
@@ -1733,13 +1601,11 @@ export const syncYahooFundamentalsServerFn = createServerFn({ method: "POST" })
           })
           .from(schema.security);
         symbols = rows
-          .filter(
-            (r) => (!r.sector || !r.industry) && !isAnyCashTicker(r.ticker)
-          )
+          .filter((r) => (!r.sector || !r.industry) && !isAnyCashTicker(r.ticker))
           .map((r) => r.ticker);
-      } else if (scope === "missing-fundamentals-holdings") {
+      } else if (scope === 'missing-fundamentals-holdings') {
         // Held securities that are missing sector or industry
-        const { getPositions } = await import("./db-api");
+        const { getPositions } = await import('./db-api');
         const positions = await getPositions(user.id);
         const held = new Set(positions.map((p) => p.ticker));
         const rows = await db
@@ -1751,20 +1617,22 @@ export const syncYahooFundamentalsServerFn = createServerFn({ method: "POST" })
           .from(schema.security);
         symbols = rows
           .filter((r) => held.has(r.ticker))
-          .filter(
-            (r) => (!r.sector || !r.industry) && !isAnyCashTicker(r.ticker)
-          )
+          .filter((r) => (!r.sector || !r.industry) && !isAnyCashTicker(r.ticker))
           .map((r) => r.ticker);
       } else {
         // Default and 'all-securities' -> all securities
-        const all = await db
-          .select({ ticker: schema.security.ticker })
-          .from(schema.security);
+        const all = await db.select({ ticker: schema.security.ticker }).from(schema.security);
         symbols = all.map((s) => s.ticker).filter((t) => !isAnyCashTicker(t));
       }
 
       if (symbols.length === 0) {
-        return { success: true, recordsProcessed: 0, details: [] };
+        const emptyLogId = crypto.randomUUID();
+        return {
+          success: true,
+          recordsProcessed: 0,
+          details: [],
+          logId: emptyLogId as `${string}-${string}-${string}-${string}-${string}`,
+        };
       }
 
       // Create sync log entry
@@ -1773,8 +1641,8 @@ export const syncYahooFundamentalsServerFn = createServerFn({ method: "POST" })
         await db.insert(schema.syncLog).values({
           id: logId,
           userId: user.id,
-          syncType: "YAHOO",
-          status: "RUNNING",
+          syncType: 'YAHOO',
+          status: 'RUNNING',
           recordsProcessed: 0,
           startedAt: new Date(),
           createdAt: new Date(),
@@ -1794,28 +1662,20 @@ export const syncYahooFundamentalsServerFn = createServerFn({ method: "POST" })
       for (const symbol of symbols) {
         try {
           const summary = await yahooFinance.quoteSummary(symbol, {
-            modules: [
-              "assetProfile",
-              "price",
-              "summaryDetail",
-              "defaultKeyStatistics",
-            ],
+            modules: ['assetProfile', 'price', 'summaryDetail', 'defaultKeyStatistics'],
           } as unknown as Record<string, unknown>);
 
           const price = summary.price?.regularMarketPrice ?? null;
-          const marketCapRaw =
-            summary.price?.marketCap ??
-            summary.summaryDetail?.marketCap ??
-            null;
+          const marketCapRaw = summary.price?.marketCap ?? summary.summaryDetail?.marketCap ?? null;
           const marketCapMillions = marketCapRaw
             ? Math.round(Number(marketCapRaw) / 1_000_000)
             : null;
           const peRatio = summary.summaryDetail?.trailingPE ?? null;
           const sector = summary.assetProfile?.sector ?? null;
           const industry = summary.assetProfile?.industry ?? null;
-          const yahooName = (summary.price?.longName ||
-            summary.price?.shortName ||
-            null) as string | null;
+          const yahooName = (summary.price?.longName || summary.price?.shortName || null) as
+            | string
+            | null;
 
           // Read existing values for change set
           const current = await db
@@ -1837,7 +1697,7 @@ export const syncYahooFundamentalsServerFn = createServerFn({ method: "POST" })
             results.push({
               ticker: symbol,
               success: false,
-              error: "Security not found",
+              error: 'Security not found',
             });
             continue;
           }
@@ -1845,7 +1705,7 @@ export const syncYahooFundamentalsServerFn = createServerFn({ method: "POST" })
           const updateData: Record<string, unknown> = { updatedAt: Date.now() };
           const changes: Record<string, { old: unknown; new: unknown }> = {};
 
-          if (typeof price === "number") {
+          if (typeof price === 'number') {
             updateData.price = price;
             changes.price = { old: current[0].price, new: price };
           }
@@ -1857,14 +1717,14 @@ export const syncYahooFundamentalsServerFn = createServerFn({ method: "POST" })
               changes.name = { old: currentName, new: yahooName };
             }
           }
-          if (typeof marketCapMillions === "number") {
+          if (typeof marketCapMillions === 'number') {
             updateData.marketCap = marketCapMillions;
             changes.marketCap = {
               old: current[0].marketCap,
               new: marketCapMillions,
             };
           }
-          if (typeof peRatio === "number") {
+          if (typeof peRatio === 'number') {
             updateData.peRatio = peRatio;
             changes.peRatio = { old: current[0].peRatio, new: peRatio };
           }
@@ -1889,9 +1749,9 @@ export const syncYahooFundamentalsServerFn = createServerFn({ method: "POST" })
             await db.insert(schema.syncLogDetail).values({
               id: crypto.randomUUID(),
               logId,
-              entityType: "SECURITY",
+              entityType: 'SECURITY',
               entityId: symbol,
-              operation: "UPDATE",
+              operation: 'UPDATE',
               changes: JSON.stringify(changes),
               success: true,
               createdAt: new Date(),
@@ -1909,9 +1769,9 @@ export const syncYahooFundamentalsServerFn = createServerFn({ method: "POST" })
             await db.insert(schema.syncLogDetail).values({
               id: crypto.randomUUID(),
               logId,
-              entityType: "SECURITY",
+              entityType: 'SECURITY',
               entityId: symbol,
-              operation: "NOOP",
+              operation: 'NOOP',
               changes: JSON.stringify({}),
               success: false,
               message,
@@ -1930,10 +1790,9 @@ export const syncYahooFundamentalsServerFn = createServerFn({ method: "POST" })
         await db
           .update(schema.syncLog)
           .set({
-            status: errorCount > 0 ? "PARTIAL" : "SUCCESS",
+            status: errorCount > 0 ? 'PARTIAL' : 'SUCCESS',
             recordsProcessed: successCount,
-            errorMessage:
-              errorCount > 0 ? `${errorCount} updates failed` : undefined,
+            errorMessage: errorCount > 0 ? `${errorCount} updates failed` : undefined,
             completedAt: new Date(),
           })
           .where(eq(schema.syncLog.id, logId));
@@ -1944,37 +1803,34 @@ export const syncYahooFundamentalsServerFn = createServerFn({ method: "POST" })
       return {
         success: errorCount === 0,
         recordsProcessed: successCount,
-        errorMessage:
-          errorCount > 0
-            ? (`${errorCount} updates failed` as const)
-            : undefined,
+        errorMessage: errorCount > 0 ? (`${errorCount} updates failed` as const) : undefined,
         details: results,
         logId: logId as `${string}-${string}-${string}-${string}-${string}`,
       };
-    }
+    },
   );
 
 // Orders / Blotter server functions
 export const addGroupTradesToBlotterServerFn = createServerFn({
-  method: "POST",
+  method: 'POST',
 })
   .validator(
     (data: {
       groupId: string;
       trades: Array<{
         ticker: string;
-        type: "BUY" | "SELL";
+        type: 'BUY' | 'SELL';
         qty: number;
         currentPrice?: number;
         accountId?: string;
       }>;
       batchLabel?: string;
-    }) => data
+    }) => data,
   )
   .handler(async ({ data }) => {
     const { groupId, trades, batchLabel } = data;
     if (!groupId || !Array.isArray(trades)) {
-      throw new Error("Invalid request: groupId and trades required");
+      throw new Error('Invalid request: groupId and trades required');
     }
 
     const { user } = await requireAuth();
@@ -1984,21 +1840,21 @@ export const addGroupTradesToBlotterServerFn = createServerFn({
       id: crypto.randomUUID(),
       type: t.type,
       ticker: t.ticker,
-      sleeveId: "",
-      sleeveName: "",
+      sleeveId: '',
+      sleeveName: '',
       qty: Math.abs(t.qty),
       currentPrice: t.currentPrice ?? 0,
       estimatedValue: (t.currentPrice ?? 0) * Math.abs(t.qty),
-      reason: "Added to blotter",
+      reason: 'Added to blotter',
       realizedGainLoss: 0,
       canExecute: true,
-      accountId: t.accountId ?? "",
-      accountName: "",
-      accountType: "",
-      accountNumber: "",
+      accountId: t.accountId ?? '',
+      accountName: '',
+      accountType: '',
+      accountNumber: '',
     }));
 
-    const { addDraftOrdersFromProposedTrades } = await import("./db-api");
+    const { addDraftOrdersFromProposedTrades } = await import('./db-api');
     const result = await addDraftOrdersFromProposedTrades({
       userId: user.id,
       groupId,
@@ -2008,18 +1864,18 @@ export const addGroupTradesToBlotterServerFn = createServerFn({
     return result;
   });
 
-export const getGroupOrdersServerFn = createServerFn({ method: "POST" })
+export const getGroupOrdersServerFn = createServerFn({ method: 'POST' })
   .validator((data: { groupId: string }) => data)
   .handler(async ({ data }) => {
     const { groupId } = data;
-    if (!groupId) throw new Error("groupId required");
+    if (!groupId) throw new Error('groupId required');
 
     const { user } = await requireAuth();
 
-    const { getDatabase } = await import("./db-config");
+    const { getDatabase } = await import('./db-config');
     const db = getDatabase();
-    const schema = await import("../db/schema");
-    const { eq } = await import("drizzle-orm");
+    const schema = await import('../db/schema');
+    const { eq } = await import('drizzle-orm');
 
     // Verify that the rebalancing group belongs to the authenticated user
     const group = await db
@@ -2029,9 +1885,7 @@ export const getGroupOrdersServerFn = createServerFn({ method: "POST" })
       .limit(1);
 
     if (group.length === 0 || group[0].userId !== user.id) {
-      throw new Error(
-        "Access denied: Rebalancing group not found or does not belong to you"
-      );
+      throw new Error('Access denied: Rebalancing group not found or does not belong to you');
     }
     // Find group members (accounts)
     const members = await db
@@ -2039,112 +1893,102 @@ export const getGroupOrdersServerFn = createServerFn({ method: "POST" })
       .from(schema.rebalancingGroupMember)
       .where(eq(schema.rebalancingGroupMember.groupId, groupId));
     const accountIds = members.map((m) => m.accountId);
-    const { getOrdersForAccounts } = await import("./db-api");
+    const { getOrdersForAccounts } = await import('./db-api');
     const orders = await getOrdersForAccounts(accountIds);
     return orders;
   });
 
-export const updateOrderServerFn = createServerFn({ method: "POST" })
+export const updateOrderServerFn = createServerFn({ method: 'POST' })
   .validator(
     (data: {
       id: string;
       updates: Partial<{
         symbol: string;
-        side: "BUY" | "SELL";
+        side: 'BUY' | 'SELL';
         qty: number;
-        type: "MARKET" | "LIMIT" | "STOP" | "STOP_LIMIT";
+        type: 'MARKET' | 'LIMIT' | 'STOP' | 'STOP_LIMIT';
         limit: number | null;
         stop: number | null;
-        tif: "DAY" | "GTC";
-        session: "NORMAL" | "AM" | "PM" | "ALL";
+        tif: 'DAY' | 'GTC';
+        session: 'NORMAL' | 'AM' | 'PM' | 'ALL';
       }>;
-    }) => data
+    }) => data,
   )
   .handler(async ({ data }) => {
     const { id, updates } = data;
-    if (!id) throw new Error("id required");
+    if (!id) throw new Error('id required');
 
     const { user } = await requireAuth();
 
     // Verify that the order belongs to the authenticated user
-    const { getDatabase } = await import("./db-config");
+    const { getDatabase } = await import('./db-config');
     const db = getDatabase();
-    const schema = await import("../db/schema");
-    const { eq } = await import("drizzle-orm");
+    const schema = await import('../db/schema');
+    const { eq } = await import('drizzle-orm');
 
     const order = await db
       .select({
         userId: schema.account.userId,
       })
       .from(schema.tradeOrder)
-      .innerJoin(
-        schema.account,
-        eq(schema.tradeOrder.accountId, schema.account.id)
-      )
+      .innerJoin(schema.account, eq(schema.tradeOrder.accountId, schema.account.id))
       .where(eq(schema.tradeOrder.id, id))
       .limit(1);
 
     if (order.length === 0 || order[0].userId !== user.id) {
-      throw new Error(
-        "Access denied: Order not found or does not belong to you"
-      );
+      throw new Error('Access denied: Order not found or does not belong to you');
     }
 
-    const { updateTradeOrder } = await import("./db-api");
+    const { updateTradeOrder } = await import('./db-api');
     await updateTradeOrder(id, updates);
     return { success: true };
   });
 
-export const deleteOrderServerFn = createServerFn({ method: "POST" })
+export const deleteOrderServerFn = createServerFn({ method: 'POST' })
   .validator((data: { id: string }) => data)
   .handler(async ({ data }) => {
     const { id } = data;
-    if (!id) throw new Error("id required");
+    if (!id) throw new Error('id required');
 
     const { user } = await requireAuth();
 
     // Verify that the order belongs to the authenticated user
-    const { getDatabase } = await import("./db-config");
+    const { getDatabase } = await import('./db-config');
     const db = getDatabase();
-    const schema = await import("../db/schema");
-    const { eq } = await import("drizzle-orm");
+    const schema = await import('../db/schema');
+    const { eq } = await import('drizzle-orm');
 
     const order = await db
       .select({
         userId: schema.account.userId,
       })
       .from(schema.tradeOrder)
-      .innerJoin(
-        schema.account,
-        eq(schema.tradeOrder.accountId, schema.account.id)
-      )
+      .innerJoin(schema.account, eq(schema.tradeOrder.accountId, schema.account.id))
       .where(eq(schema.tradeOrder.id, id))
       .limit(1);
 
     if (order.length === 0 || order[0].userId !== user.id) {
-      throw new Error(
-        "Access denied: Order not found or does not belong to you"
-      );
+      throw new Error('Access denied: Order not found or does not belong to you');
     }
 
-    const { deleteTradeOrder } = await import("./db-api");
+    const { deleteTradeOrder } = await import('./db-api');
     await deleteTradeOrder(id);
     return { success: true };
   });
 
 // Preview an order with Schwab and persist preview results to the draft order
-export const previewOrderServerFn = createServerFn({ method: "POST" })
+export const previewOrderServerFn = createServerFn({ method: 'POST' })
   .validator((data: { id: string }) => data)
   .handler(async ({ data }) => {
     const { id } = data;
-    if (!id) throw new Error("id required");
+    if (!id) throw new Error('id required');
 
     const { user } = await requireAuth();
 
-    const { getDatabase } = await import("./db-config");
+    const { getDatabase } = await import('./db-config');
     const db = getDatabase();
-    const schema = await import("../db/schema");
-    const { eq } = await import("drizzle-orm");
+    const schema = await import('../db/schema');
+    const { eq } = await import('drizzle-orm');
 
     // Verify that the order belongs to the authenticated user
     const order = await db
@@ -2152,20 +1996,15 @@ export const previewOrderServerFn = createServerFn({ method: "POST" })
         userId: schema.account.userId,
       })
       .from(schema.tradeOrder)
-      .innerJoin(
-        schema.account,
-        eq(schema.tradeOrder.accountId, schema.account.id)
-      )
+      .innerJoin(schema.account, eq(schema.tradeOrder.accountId, schema.account.id))
       .where(eq(schema.tradeOrder.id, id))
       .limit(1);
 
     if (order.length === 0 || order[0].userId !== user.id) {
-      throw new Error(
-        "Access denied: Order not found or does not belong to you"
-      );
+      throw new Error('Access denied: Order not found or does not belong to you');
     }
 
-    const { getSchwabApiService } = await import("./schwab-api");
+    const { getSchwabApiService } = await import('./schwab-api');
     const schwab = getSchwabApiService();
 
     // Load order and account
@@ -2174,7 +2013,7 @@ export const previewOrderServerFn = createServerFn({ method: "POST" })
       .from(schema.tradeOrder)
       .where(eq(schema.tradeOrder.id, id))
       .limit(1);
-    if (rows.length === 0) throw new Error("Order not found");
+    if (rows.length === 0) throw new Error('Order not found');
     const o = rows[0] as typeof schema.tradeOrder.$inferSelect;
 
     // Map to Schwab preview payload (align with Schwab schema)
@@ -2182,18 +2021,15 @@ export const previewOrderServerFn = createServerFn({ method: "POST" })
       session: o.session,
       duration: o.tif,
       orderType: o.type,
-      price: o.type === "LIMIT" ? Number(o.limit) : undefined,
-      stopPrice:
-        o.type === "STOP" || o.type === "STOP_LIMIT"
-          ? Number(o.stop)
-          : undefined,
+      price: o.type === 'LIMIT' ? Number(o.limit) : undefined,
+      stopPrice: o.type === 'STOP' || o.type === 'STOP_LIMIT' ? Number(o.stop) : undefined,
       taxLotMethod: o.taxLotMethod ?? undefined,
-      orderStrategyType: o.orderStrategyType ?? "SINGLE",
+      orderStrategyType: o.orderStrategyType ?? 'SINGLE',
       orderLegCollection: [
         {
           instruction: o.side,
           quantity: Number(o.qty),
-          instrument: { symbol: o.symbol, assetType: "EQUITY" },
+          instrument: { symbol: o.symbol, assetType: 'EQUITY' },
         },
       ],
     } as Record<string, unknown>;
@@ -2208,17 +2044,14 @@ export const previewOrderServerFn = createServerFn({ method: "POST" })
       .where(eq(schema.account.id, o.accountId))
       .limit(1);
     if (!acctRow.length) {
-      throw new Error("Account not found for order");
+      throw new Error('Account not found for order');
     }
     // For Orders API, Schwab expects the hashed account id (accountId/displayAcctId).
     // Fall back to accountNumber if hash is unavailable (e.g., demo or during migration).
     // Prefer accountNumber for Orders API; fall back to Schwab hashed id
-    const accountIdentifier =
-      acctRow[0].accountNumber || acctRow[0].schwabAccountId || "";
+    const accountIdentifier = acctRow[0].accountNumber || acctRow[0].schwabAccountId || '';
     if (!accountIdentifier) {
-      throw new Error(
-        "Schwab account identifier not available. Link account before preview."
-      );
+      throw new Error('Schwab account identifier not available. Link account before preview.');
     }
 
     let resp: unknown;
@@ -2233,10 +2066,10 @@ export const previewOrderServerFn = createServerFn({ method: "POST" })
           : acctRow[0].accountNumber;
       if ((/404/.test(errMsg) || /Invalid account number/i.test(errMsg)) && altIdentifier) {
         console.warn(
-          "⚠️ [PreviewOrder] Preview failed with",
+          '⚠️ [PreviewOrder] Preview failed with',
           accountIdentifier,
-          "— retrying with",
-          altIdentifier
+          '— retrying with',
+          altIdentifier,
         );
         try {
           resp = await schwab.previewOrder(user.id, altIdentifier, payload);
@@ -2245,12 +2078,10 @@ export const previewOrderServerFn = createServerFn({ method: "POST" })
           await db
             .update(schema.tradeOrder)
             .set({
-              status: "PREVIEW_ERROR",
+              status: 'PREVIEW_ERROR',
               previewWarnCount: 0,
               previewErrorCount: 1,
-              previewFirstMessage: String(
-                e2 instanceof Error ? e2.message : e2
-              ).slice(0, 500),
+              previewFirstMessage: String(e2 instanceof Error ? e2.message : e2).slice(0, 500),
               previewJson: null,
               updatedAt: new Date(),
             })
@@ -2262,7 +2093,7 @@ export const previewOrderServerFn = createServerFn({ method: "POST" })
         await db
           .update(schema.tradeOrder)
           .set({
-            status: "PREVIEW_ERROR",
+            status: 'PREVIEW_ERROR',
             previewWarnCount: 0,
             previewErrorCount: 1,
             previewFirstMessage: errMsg.slice(0, 500),
@@ -2276,57 +2107,49 @@ export const previewOrderServerFn = createServerFn({ method: "POST" })
     // Extract values
     const respObj = resp as Record<string, unknown>;
     const orderBalance =
-      ((respObj?.orderStrategy as Record<string, unknown>)
-        ?.orderBalance as Record<string, unknown>) ?? {};
+      ((respObj?.orderStrategy as Record<string, unknown>)?.orderBalance as Record<
+        string,
+        unknown
+      >) ?? {};
     const warns =
-      ((respObj?.orderValidationResult as Record<string, unknown>)
-        ?.warns as unknown[]) ?? [];
+      ((respObj?.orderValidationResult as Record<string, unknown>)?.warns as unknown[]) ?? [];
     const rejects =
-      ((respObj?.orderValidationResult as Record<string, unknown>)
-        ?.rejects as unknown[]) ?? [];
+      ((respObj?.orderValidationResult as Record<string, unknown>)?.rejects as unknown[]) ?? [];
 
     // Persist preview details
     await db
       .update(schema.tradeOrder)
       .set({
         previewJson: JSON.stringify(resp),
-        previewOrderValue:
-          ((orderBalance as Record<string, unknown>).orderValue as number) ??
-          null,
+        previewOrderValue: ((orderBalance as Record<string, unknown>).orderValue as number) ?? null,
         previewProjectedCommission:
-          ((orderBalance as Record<string, unknown>)
-            .projectedCommission as number) ?? null,
+          ((orderBalance as Record<string, unknown>).projectedCommission as number) ?? null,
         previewWarnCount: warns.length,
         previewErrorCount: rejects.length,
-        previewFirstMessage: ((rejects[0] as Record<string, unknown>)
-          ?.message ??
+        previewFirstMessage: ((rejects[0] as Record<string, unknown>)?.message ??
           (warns[0] as Record<string, unknown>)?.message ??
           null) as string | null,
         status:
-          rejects.length > 0
-            ? "PREVIEW_ERROR"
-            : warns.length > 0
-              ? "PREVIEW_WARN"
-              : "PREVIEW_OK",
+          rejects.length > 0 ? 'PREVIEW_ERROR' : warns.length > 0 ? 'PREVIEW_WARN' : 'PREVIEW_OK',
         updatedAt: new Date(),
       })
       .where(eq(schema.tradeOrder.id, id));
 
     // Best-effort: if preview payload contains a mark price, persist it to security table
     const tryFindMarkPrice = (obj: unknown, depth = 0): number | null => {
-      if (!obj || typeof obj !== "object" || depth > 6) return null;
+      if (!obj || typeof obj !== 'object' || depth > 6) return null;
       const o = obj as Record<string, unknown>;
       for (const [k, v] of Object.entries(o)) {
         const key = k.toLowerCase();
         if (
-          (key === "mark" || key === "markprice" || key === "mark_price") &&
-          typeof v === "number" &&
-          isFinite(v) &&
+          (key === 'mark' || key === 'markprice' || key === 'mark_price') &&
+          typeof v === 'number' &&
+          Number.isFinite(v) &&
           v > 0
         ) {
           return v;
         }
-        if (v && typeof v === "object") {
+        if (v && typeof v === 'object') {
           const nested = tryFindMarkPrice(v, depth + 1);
           if (nested && nested > 0) return nested;
         }
@@ -2335,19 +2158,22 @@ export const previewOrderServerFn = createServerFn({ method: "POST" })
     };
 
     const tryFindLastPrice = (obj: unknown, depth = 0): number | null => {
-      if (!obj || typeof obj !== "object" || depth > 6) return null;
+      if (!obj || typeof obj !== 'object' || depth > 6) return null;
       const o = obj as Record<string, unknown>;
       for (const [k, v] of Object.entries(o)) {
         const key = k.toLowerCase();
         if (
-          (key === "lastprice" || key === "last" || key === "last_price" || key === "lasttradeprice") &&
-          typeof v === "number" &&
-          isFinite(v) &&
+          (key === 'lastprice' ||
+            key === 'last' ||
+            key === 'last_price' ||
+            key === 'lasttradeprice') &&
+          typeof v === 'number' &&
+          Number.isFinite(v) &&
           v > 0
         ) {
           return v;
         }
-        if (v && typeof v === "object") {
+        if (v && typeof v === 'object') {
           const nested = tryFindLastPrice(v, depth + 1);
           if (nested && nested > 0) return nested;
         }
@@ -2355,37 +2181,43 @@ export const previewOrderServerFn = createServerFn({ method: "POST" })
       return null;
     };
 
-    let lastPrice = tryFindLastPrice(respObj);
+    const lastPrice = tryFindLastPrice(respObj);
     let markPrice = tryFindMarkPrice(respObj);
     // Fallback: derive price from orderValue/qty when available
-    if ((!markPrice || !(markPrice > 0)) && (!lastPrice || !(lastPrice > 0)) && typeof o.qty === "number" && o.qty > 0) {
+    if (
+      (!markPrice || !(markPrice > 0)) &&
+      (!lastPrice || !(lastPrice > 0)) &&
+      typeof o.qty === 'number' &&
+      o.qty > 0
+    ) {
       const ov = (orderBalance as Record<string, unknown>).orderValue as number | undefined;
-      const derived = typeof ov === "number" && isFinite(ov) && ov > 0 ? ov / o.qty : null;
+      const derived = typeof ov === 'number' && Number.isFinite(ov) && ov > 0 ? ov / o.qty : null;
       if (derived && derived > 0) markPrice = derived;
     }
     // Choose price per rules:
     // - For MARKET orders: prefer markPrice, then lastPrice, then derived
     // - For non-MARKET: only use lastPrice (accurate last traded)
     let chosenPrice: number | null = null;
-    if (o.type === "MARKET") {
-      chosenPrice = (markPrice && markPrice > 0)
-        ? markPrice
-        : (lastPrice && lastPrice > 0)
-          ? lastPrice
-          : (markPrice && markPrice > 0) // keep as-is
-            ? markPrice
-            : (markPrice ?? null);
+    if (o.type === 'MARKET') {
+      chosenPrice =
+        markPrice && markPrice > 0
+          ? markPrice
+          : lastPrice && lastPrice > 0
+            ? lastPrice
+            : markPrice && markPrice > 0 // keep as-is
+              ? markPrice
+              : (markPrice ?? null);
       // If neither explicit mark nor last, allow derived fallback
       if ((!chosenPrice || !(chosenPrice > 0)) && markPrice && markPrice > 0) {
         chosenPrice = markPrice;
       }
-      if ((!chosenPrice || !(chosenPrice > 0)) && typeof o.qty === "number" && o.qty > 0) {
+      if ((!chosenPrice || !(chosenPrice > 0)) && typeof o.qty === 'number' && o.qty > 0) {
         const ov = (orderBalance as Record<string, unknown>).orderValue as number | undefined;
-        const derived = typeof ov === "number" && isFinite(ov) && ov > 0 ? ov / o.qty : null;
+        const derived = typeof ov === 'number' && Number.isFinite(ov) && ov > 0 ? ov / o.qty : null;
         if (derived && derived > 0) chosenPrice = derived;
       }
     } else {
-      chosenPrice = (lastPrice && lastPrice > 0) ? lastPrice : null;
+      chosenPrice = lastPrice && lastPrice > 0 ? lastPrice : null;
     }
 
     if (chosenPrice && chosenPrice > 0) {
@@ -2395,7 +2227,7 @@ export const previewOrderServerFn = createServerFn({ method: "POST" })
           .set({ price: chosenPrice, updatedAt: Date.now() })
           .where(eq(schema.security.ticker, o.symbol));
       } catch (e) {
-        console.warn("⚠️ Failed to persist mark price for", o.symbol, e);
+        console.warn('⚠️ Failed to persist mark price for', o.symbol, e);
       }
     }
 
@@ -2403,18 +2235,18 @@ export const previewOrderServerFn = createServerFn({ method: "POST" })
   });
 
 // Submit an order to Schwab after a successful preview
-export const submitOrderServerFn = createServerFn({ method: "POST" })
+export const submitOrderServerFn = createServerFn({ method: 'POST' })
   .validator((data: { id: string }) => data)
   .handler(async ({ data }) => {
     const { id } = data;
-    if (!id) throw new Error("id required");
+    if (!id) throw new Error('id required');
 
     const { user } = await requireAuth();
 
-    const { getDatabase } = await import("./db-config");
+    const { getDatabase } = await import('./db-config');
     const db = getDatabase();
-    const schema = await import("../db/schema");
-    const { eq } = await import("drizzle-orm");
+    const schema = await import('../db/schema');
+    const { eq } = await import('drizzle-orm');
 
     // Verify order belongs to user and load
     const rows = await db
@@ -2423,20 +2255,17 @@ export const submitOrderServerFn = createServerFn({ method: "POST" })
         all: schema.tradeOrder,
       })
       .from(schema.tradeOrder)
-      .innerJoin(
-        schema.account,
-        eq(schema.tradeOrder.accountId, schema.account.id)
-      )
+      .innerJoin(schema.account, eq(schema.tradeOrder.accountId, schema.account.id))
       .where(eq(schema.tradeOrder.id, id))
       .limit(1);
     if (!rows.length || rows[0].orderUserId !== user.id) {
-      throw new Error("Access denied: Order not found or does not belong to you");
+      throw new Error('Access denied: Order not found or does not belong to you');
     }
     const o = rows[0].all as typeof schema.tradeOrder.$inferSelect;
 
     // Require a preview step without errors before submit
-    if (o.status !== "PREVIEW_OK" && o.status !== "PREVIEW_WARN") {
-      throw new Error("Order must be previewed successfully (OK or WARN) before submission");
+    if (o.status !== 'PREVIEW_OK' && o.status !== 'PREVIEW_WARN') {
+      throw new Error('Order must be previewed successfully (OK or WARN) before submission');
     }
 
     // Map to Schwab order payload
@@ -2444,16 +2273,15 @@ export const submitOrderServerFn = createServerFn({ method: "POST" })
       session: o.session,
       duration: o.tif,
       orderType: o.type,
-      price: o.type === "LIMIT" ? Number(o.limit) : undefined,
-      stopPrice:
-        o.type === "STOP" || o.type === "STOP_LIMIT" ? Number(o.stop) : undefined,
+      price: o.type === 'LIMIT' ? Number(o.limit) : undefined,
+      stopPrice: o.type === 'STOP' || o.type === 'STOP_LIMIT' ? Number(o.stop) : undefined,
       taxLotMethod: o.taxLotMethod ?? undefined,
-      orderStrategyType: o.orderStrategyType ?? "SINGLE",
+      orderStrategyType: o.orderStrategyType ?? 'SINGLE',
       orderLegCollection: [
         {
           instruction: o.side,
           quantity: Number(o.qty),
-          instrument: { symbol: o.symbol, assetType: "EQUITY" },
+          instrument: { symbol: o.symbol, assetType: 'EQUITY' },
         },
       ],
     } as Record<string, unknown>;
@@ -2467,14 +2295,13 @@ export const submitOrderServerFn = createServerFn({ method: "POST" })
       .from(schema.account)
       .where(eq(schema.account.id, o.accountId))
       .limit(1);
-    if (!acctRow.length) throw new Error("Account not found for order");
-    const accountIdentifier =
-      acctRow[0].accountNumber || acctRow[0].schwabAccountId || "";
+    if (!acctRow.length) throw new Error('Account not found for order');
+    const accountIdentifier = acctRow[0].accountNumber || acctRow[0].schwabAccountId || '';
     if (!accountIdentifier) {
-      throw new Error("Schwab account identifier not available. Link account before submit.");
+      throw new Error('Schwab account identifier not available. Link account before submit.');
     }
 
-    const { getSchwabApiService } = await import("./schwab-api");
+    const { getSchwabApiService } = await import('./schwab-api');
     const schwab = getSchwabApiService();
 
     let resp: unknown;
@@ -2485,7 +2312,7 @@ export const submitOrderServerFn = createServerFn({ method: "POST" })
       await db
         .update(schema.tradeOrder)
         .set({
-          status: "REJECTED",
+          status: 'REJECTED',
           statusDescription: String(e instanceof Error ? e.message : e).slice(0, 500),
           lastSnapshot: null,
           updatedAt: new Date(),
@@ -2494,30 +2321,49 @@ export const submitOrderServerFn = createServerFn({ method: "POST" })
       throw e;
     }
 
-    const respObj = (resp || {}) as Record<string, any>;
+    const respObj = (resp || {}) as Record<string, unknown>;
+    const getPath = (o: Record<string, unknown>, path: string[]): unknown => {
+      let cur: unknown = o;
+      for (const p of path) {
+        if (!cur || typeof cur !== 'object') return undefined;
+        cur = (cur as Record<string, unknown>)[p];
+      }
+      return cur;
+    };
     const schwabOrderId: string | null =
-      respObj.orderId || respObj?.orders?.[0]?.orderId || respObj?.orderStrategy?.orderId || null;
+      (respObj.orderId as string | undefined) ||
+      (Array.isArray(respObj.orders) && respObj.orders[0]
+        ? ((respObj.orders[0] as Record<string, unknown>).orderId as string | undefined)
+        : undefined) ||
+      (getPath(respObj, ['orderStrategy', 'orderId']) as string | undefined) ||
+      null;
     const rawStatus = String(
-      respObj.status || respObj.orderStatus || respObj?.orderStrategy?.status || "ACCEPTED"
+      (respObj.status as string | undefined) ||
+        (respObj.orderStatus as string | undefined) ||
+        (getPath(respObj, ['orderStrategy', 'status']) as string | undefined) ||
+        'ACCEPTED',
     ).toUpperCase();
     const allowed = new Set([
-      "ACCEPTED",
-      "WORKING",
-      "PARTIALLY_FILLED",
-      "REPLACED",
-      "FILLED",
-      "CANCELED",
-      "REJECTED",
-      "EXPIRED",
+      'ACCEPTED',
+      'WORKING',
+      'PARTIALLY_FILLED',
+      'REPLACED',
+      'FILLED',
+      'CANCELED',
+      'REJECTED',
+      'EXPIRED',
     ]);
-    const status = allowed.has(rawStatus) ? rawStatus : "ACCEPTED";
+    const status = allowed.has(rawStatus) ? rawStatus : 'ACCEPTED';
 
     await db
       .update(schema.tradeOrder)
       .set({
         schwabOrderId: schwabOrderId ?? undefined,
         status,
-        statusDescription: respObj.statusDescription || null,
+        statusDescription:
+          typeof (respObj as { statusDescription?: unknown }).statusDescription === 'string'
+            ? (respObj as { statusDescription?: string }).statusDescription
+            : null,
         cancelable: true,
         editable: false,
         placedAt: new Date(),
@@ -2538,43 +2384,41 @@ export const submitOrderServerFn = createServerFn({ method: "POST" })
 // Admin-only functions
 
 // Get all users (admin only)
-export const getAllUsersServerFn = createServerFn({ method: "GET" }).handler(
-  async () => {
-    await requireAdmin();
+export const getAllUsersServerFn = createServerFn({ method: 'GET' }).handler(async () => {
+  await requireAdmin();
 
-    const { getDatabase } = await import("./db-config");
-    const db = getDatabase();
-    const schema = await import("../db/schema");
+  const { getDatabase } = await import('./db-config');
+  const db = getDatabase();
+  const schema = await import('../db/schema');
 
-    const users = await db
-      .select({
-        id: schema.user.id,
-        email: schema.user.email,
-        name: schema.user.name,
-        role: schema.user.role,
-        emailVerified: schema.user.emailVerified,
-        createdAt: schema.user.createdAt,
-        updatedAt: schema.user.updatedAt,
-      })
-      .from(schema.user)
-      .orderBy(schema.user.createdAt);
+  const users = await db
+    .select({
+      id: schema.user.id,
+      email: schema.user.email,
+      name: schema.user.name,
+      role: schema.user.role,
+      emailVerified: schema.user.emailVerified,
+      createdAt: schema.user.createdAt,
+      updatedAt: schema.user.updatedAt,
+    })
+    .from(schema.user)
+    .orderBy(schema.user.createdAt);
 
-    return users;
-  }
-);
+  return users;
+});
 
 // Update user role (admin only)
-export const updateUserRoleServerFn = createServerFn({ method: "POST" })
-  .validator((data: { userId: string; role: "user" | "admin" }) => data)
+export const updateUserRoleServerFn = createServerFn({ method: 'POST' })
+  .validator((data: { userId: string; role: 'user' | 'admin' }) => data)
   .handler(async ({ data }) => {
     const { userId, role } = data;
 
     await requireAdmin();
 
-    const { getDatabase } = await import("./db-config");
+    const { getDatabase } = await import('./db-config');
     const db = getDatabase();
-    const schema = await import("../db/schema");
-    const { eq } = await import("drizzle-orm");
+    const schema = await import('../db/schema');
+    const { eq } = await import('drizzle-orm');
 
     // Verify user exists
     const existingUser = await db
@@ -2584,7 +2428,7 @@ export const updateUserRoleServerFn = createServerFn({ method: "POST" })
       .limit(1);
 
     if (existingUser.length === 0) {
-      throw new Error("User not found");
+      throw new Error('User not found');
     }
 
     // Update role
@@ -2600,77 +2444,61 @@ export const updateUserRoleServerFn = createServerFn({ method: "POST" })
   });
 
 // Get system statistics (admin only)
-export const getSystemStatsServerFn = createServerFn({ method: "GET" }).handler(
-  async () => {
-    await requireAdmin();
+export const getSystemStatsServerFn = createServerFn({ method: 'GET' }).handler(async () => {
+  await requireAdmin();
 
-    const { getDatabase } = await import("./db-config");
-    const db = getDatabase();
-    const schema = await import("../db/schema");
-    const { sql } = await import("drizzle-orm");
+  const { getDatabase } = await import('./db-config');
+  const db = getDatabase();
+  const schema = await import('../db/schema');
+  const { sql } = await import('drizzle-orm');
 
-    // Get various counts
-    const userCount = await db
-      .select({ count: sql<number>`count(*)` })
-      .from(schema.user);
+  // Get various counts
+  const userCount = await db.select({ count: sql<number>`count(*)` }).from(schema.user);
 
-    const accountCount = await db
-      .select({ count: sql<number>`count(*)` })
-      .from(schema.account);
+  const accountCount = await db.select({ count: sql<number>`count(*)` }).from(schema.account);
 
-    const sleeveCount = await db
-      .select({ count: sql<number>`count(*)` })
-      .from(schema.sleeve);
+  const sleeveCount = await db.select({ count: sql<number>`count(*)` }).from(schema.sleeve);
 
-    const modelCount = await db
-      .select({ count: sql<number>`count(*)` })
-      .from(schema.model);
+  const modelCount = await db.select({ count: sql<number>`count(*)` }).from(schema.model);
 
-    const holdingCount = await db
-      .select({ count: sql<number>`count(*)` })
-      .from(schema.holding);
+  const holdingCount = await db.select({ count: sql<number>`count(*)` }).from(schema.holding);
 
-    const transactionCount = await db
-      .select({ count: sql<number>`count(*)` })
-      .from(schema.transaction);
+  const transactionCount = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(schema.transaction);
 
-    const rebalancingGroupCount = await db
-      .select({ count: sql<number>`count(*)` })
-      .from(schema.rebalancingGroup);
+  const rebalancingGroupCount = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(schema.rebalancingGroup);
 
-    const orderCount = await db
-      .select({ count: sql<number>`count(*)` })
-      .from(schema.tradeOrder);
+  const orderCount = await db.select({ count: sql<number>`count(*)` }).from(schema.tradeOrder);
 
-    return {
-      users: userCount[0]?.count || 0,
-      accounts: accountCount[0]?.count || 0,
-      sleeves: sleeveCount[0]?.count || 0,
-      models: modelCount[0]?.count || 0,
-      holdings: holdingCount[0]?.count || 0,
-      transactions: transactionCount[0]?.count || 0,
-      rebalancingGroups: rebalancingGroupCount[0]?.count || 0,
-      orders: orderCount[0]?.count || 0,
-    };
-  }
-);
+  return {
+    users: userCount[0]?.count || 0,
+    accounts: accountCount[0]?.count || 0,
+    sleeves: sleeveCount[0]?.count || 0,
+    models: modelCount[0]?.count || 0,
+    holdings: holdingCount[0]?.count || 0,
+    transactions: transactionCount[0]?.count || 0,
+    rebalancingGroups: rebalancingGroupCount[0]?.count || 0,
+    orders: orderCount[0]?.count || 0,
+  };
+});
 
 // Get audit logs (admin only)
-export const getAuditLogsServerFn = createServerFn({ method: "GET" })
-  .validator(
-    (data?: { limit?: number; offset?: number; userId?: string }) => data || {}
-  )
+export const getAuditLogsServerFn = createServerFn({ method: 'GET' })
+  .validator((data?: { limit?: number; offset?: number; userId?: string }) => data || {})
   .handler(async ({ data = {} }) => {
     await requireAdmin();
 
     const { limit = 100, offset = 0, userId } = data;
 
-    const { getDatabase } = await import("./db-config");
+    const { getDatabase } = await import('./db-config');
     const db = getDatabase();
-    const schema = await import("../db/schema");
-    const { eq, desc } = await import("drizzle-orm");
+    const schema = await import('../db/schema');
+    const { eq, desc } = await import('drizzle-orm');
 
-    let baseQuery = db
+    const baseQuery = db
       .select({
         id: schema.auditLog.id,
         userId: schema.auditLog.userId,
@@ -2696,26 +2524,26 @@ export const getAuditLogsServerFn = createServerFn({ method: "GET" })
   });
 
 // Delete user and all associated data (admin only)
-export const deleteUserServerFn = createServerFn({ method: "POST" })
+export const deleteUserServerFn = createServerFn({ method: 'POST' })
   .validator((data: { userId: string; confirmation: string }) => data)
   .handler(async ({ data }) => {
     const { userId, confirmation } = data;
 
-    if (confirmation !== "DELETE_USER_DATA") {
-      throw new Error("Invalid confirmation");
+    if (confirmation !== 'DELETE_USER_DATA') {
+      throw new Error('Invalid confirmation');
     }
 
     const { user: currentUser } = await requireAdmin();
 
     // Prevent admins from deleting themselves
     if (currentUser.id === userId) {
-      throw new Error("Cannot delete your own account");
+      throw new Error('Cannot delete your own account');
     }
 
-    const { getDatabase } = await import("./db-config");
+    const { getDatabase } = await import('./db-config');
     const db = getDatabase();
-    const schema = await import("../db/schema");
-    const { eq } = await import("drizzle-orm");
+    const schema = await import('../db/schema');
+    const { eq } = await import('drizzle-orm');
 
     // Verify user exists
     const existingUser = await db
@@ -2725,7 +2553,7 @@ export const deleteUserServerFn = createServerFn({ method: "POST" })
       .limit(1);
 
     if (existingUser.length === 0) {
-      throw new Error("User not found");
+      throw new Error('User not found');
     }
 
     // Delete user (cascading deletes will handle associated data)
@@ -2738,27 +2566,23 @@ export const deleteUserServerFn = createServerFn({ method: "POST" })
   });
 
 // Get all data for a specific user (admin only)
-export const getUserDataServerFn = createServerFn({ method: "GET" })
+export const getUserDataServerFn = createServerFn({ method: 'GET' })
   .validator((data: { userId: string }) => data)
   .handler(async ({ data }) => {
     const { userId } = data;
 
     await requireAdmin();
 
-    const { getDatabase } = await import("./db-config");
+    const { getDatabase } = await import('./db-config');
     const db = getDatabase();
-    const schema = await import("../db/schema");
-    const { eq } = await import("drizzle-orm");
+    const schema = await import('../db/schema');
+    const { eq } = await import('drizzle-orm');
 
     // Get user info
-    const user = await db
-      .select()
-      .from(schema.user)
-      .where(eq(schema.user.id, userId))
-      .limit(1);
+    const user = await db.select().from(schema.user).where(eq(schema.user.id, userId)).limit(1);
 
     if (user.length === 0) {
-      throw new Error("User not found");
+      throw new Error('User not found');
     }
 
     // Get all user data
@@ -2767,15 +2591,9 @@ export const getUserDataServerFn = createServerFn({ method: "GET" })
       .from(schema.account)
       .where(eq(schema.account.userId, userId));
 
-    const sleeves = await db
-      .select()
-      .from(schema.sleeve)
-      .where(eq(schema.sleeve.userId, userId));
+    const sleeves = await db.select().from(schema.sleeve).where(eq(schema.sleeve.userId, userId));
 
-    const models = await db
-      .select()
-      .from(schema.model)
-      .where(eq(schema.model.userId, userId));
+    const models = await db.select().from(schema.model).where(eq(schema.model.userId, userId));
 
     const rebalancingGroups = await db
       .select()
@@ -2792,44 +2610,40 @@ export const getUserDataServerFn = createServerFn({ method: "GET" })
   });
 
 // Custom signup server function that assigns admin role to first user
-export const signUpWithFirstAdminServerFn = createServerFn({ method: "POST" })
+export const signUpWithFirstAdminServerFn = createServerFn({ method: 'POST' })
   .validator((data: { email: string; password: string; name: string }) => data)
   .handler(async ({ data }) => {
     const { email, password, name } = data;
 
-    const { getDatabase } = await import("./db-config");
+    const { getDatabase } = await import('./db-config');
     const db = getDatabase();
-    const schema = await import("../db/schema");
-    const { sql, eq } = await import("drizzle-orm");
+    const schema = await import('../db/schema');
+    const { sql, eq } = await import('drizzle-orm');
 
     try {
       // Check if user creation is allowed
-      const individualUse = process.env.INDIVIDUAL_USE === "true";
+      const individualUse = process.env.INDIVIDUAL_USE === 'true';
 
       if (individualUse) {
-        const userCount = await db
-          .select({ count: sql<number>`count(*)` })
-          .from(schema.user);
+        const userCount = await db.select({ count: sql<number>`count(*)` }).from(schema.user);
 
         const totalUsers = userCount[0]?.count || 0;
 
         if (totalUsers > 0) {
           throw new Error(
-            "This application is configured for individual use only. Only one user account is allowed. To enable multiple users, set INDIVIDUAL_USE=false in your environment variables."
+            'This application is configured for individual use only. Only one user account is allowed. To enable multiple users, set INDIVIDUAL_USE=false in your environment variables.',
           );
         }
       }
 
       // Check if this would be the first user
-      const userCount = await db
-        .select({ count: sql<number>`count(*)` })
-        .from(schema.user);
+      const userCount = await db.select({ count: sql<number>`count(*)` }).from(schema.user);
 
       const totalUsers = userCount[0]?.count || 0;
       const isFirstUser = totalUsers === 0;
 
       // Use Better Auth's signUp.email method directly
-      const { signUp } = await import("./auth-client");
+      const { signUp } = await import('./auth-client');
 
       // Create user with Better Auth
       await signUp.email({
@@ -2840,7 +2654,7 @@ export const signUpWithFirstAdminServerFn = createServerFn({ method: "POST" })
 
       // If this was the first user, update their role to admin
       if (isFirstUser) {
-        console.log("🔑 First user created, setting admin role for:", email);
+        console.log('🔑 First user created, setting admin role for:', email);
 
         // Find the newly created user
         const newUser = await db
@@ -2853,12 +2667,12 @@ export const signUpWithFirstAdminServerFn = createServerFn({ method: "POST" })
           await db
             .update(schema.user)
             .set({
-              role: "admin",
+              role: 'admin',
               updatedAt: new Date(),
             })
             .where(eq(schema.user.id, newUser[0].id));
 
-          console.log("✅ Admin role assigned to first user");
+          console.log('✅ Admin role assigned to first user');
         }
       }
 
@@ -2866,18 +2680,18 @@ export const signUpWithFirstAdminServerFn = createServerFn({ method: "POST" })
         success: true,
         isFirstUser,
         message: isFirstUser
-          ? "Admin account created successfully!"
-          : "Account created successfully!",
+          ? 'Admin account created successfully!'
+          : 'Account created successfully!',
       };
     } catch (error) {
-      console.error("❌ Signup error:", error);
+      console.error('❌ Signup error:', error);
       throw error;
     }
   });
 
 // Server function to verify admin access (for route loaders)
 export const verifyAdminAccessServerFn = createServerFn({
-  method: "GET",
+  method: 'GET',
 }).handler(async () => {
   const { user } = await requireAdmin();
   return {
@@ -2892,16 +2706,14 @@ export const verifyAdminAccessServerFn = createServerFn({
 
 // Check if there are any users in the system (for determining first admin)
 export const checkIsFirstUserServerFn = createServerFn({
-  method: "GET",
+  method: 'GET',
 }).handler(async () => {
-  const { getDatabase } = await import("./db-config");
+  const { getDatabase } = await import('./db-config');
   const db = getDatabase();
-  const schema = await import("../db/schema");
-  const { sql } = await import("drizzle-orm");
+  const schema = await import('../db/schema');
+  const { sql } = await import('drizzle-orm');
 
-  const userCount = await db
-    .select({ count: sql<number>`count(*)` })
-    .from(schema.user);
+  const userCount = await db.select({ count: sql<number>`count(*)` }).from(schema.user);
 
   const totalUsers = userCount[0]?.count || 0;
   return {
@@ -2912,10 +2724,10 @@ export const checkIsFirstUserServerFn = createServerFn({
 
 // Check if user creation is allowed based on INDIVIDUAL_USE setting
 export const checkUserCreationAllowedServerFn = createServerFn({
-  method: "GET",
+  method: 'GET',
 }).handler(async () => {
   // Get environment variable
-  const individualUse = process.env.INDIVIDUAL_USE === "true";
+  const individualUse = process.env.INDIVIDUAL_USE === 'true';
 
   if (!individualUse) {
     return {
@@ -2925,14 +2737,12 @@ export const checkUserCreationAllowedServerFn = createServerFn({
   }
 
   // If INDIVIDUAL_USE is enabled, check if there are already users
-  const { getDatabase } = await import("./db-config");
+  const { getDatabase } = await import('./db-config');
   const db = getDatabase();
-  const schema = await import("../db/schema");
-  const { sql } = await import("drizzle-orm");
+  const schema = await import('../db/schema');
+  const { sql } = await import('drizzle-orm');
 
-  const userCount = await db
-    .select({ count: sql<number>`count(*)` })
-    .from(schema.user);
+  const userCount = await db.select({ count: sql<number>`count(*)` }).from(schema.user);
 
   const totalUsers = userCount[0]?.count || 0;
   const allowed = totalUsers === 0;
@@ -2941,7 +2751,7 @@ export const checkUserCreationAllowedServerFn = createServerFn({
     allowed,
     reason: allowed
       ? null
-      : "This application is configured for individual use only. Only one user account is allowed. To enable multiple users, set INDIVIDUAL_USE=false in your environment variables.",
+      : 'This application is configured for individual use only. Only one user account is allowed. To enable multiple users, set INDIVIDUAL_USE=false in your environment variables.',
     totalUsers,
     individualUse,
   };
@@ -2950,7 +2760,7 @@ export const checkUserCreationAllowedServerFn = createServerFn({
 // Session Management Server Functions
 
 export const getActiveSessionsServerFn = createServerFn({
-  method: "GET",
+  method: 'GET',
 }).handler(async () => {
   const { user } = await requireAuth();
   const sessions = await SessionManager.getActiveSessions(user.id);
@@ -2958,22 +2768,22 @@ export const getActiveSessionsServerFn = createServerFn({
 });
 
 export const invalidateSessionServerFn = createServerFn({
-  method: "POST",
+  method: 'POST',
 }).handler(async (ctx) => {
   const { user } = await requireAuth();
   const data = ctx.data as { sessionId: string; reason: string } | undefined;
 
   if (!data || !data.sessionId || !data.reason) {
-    throw new Error("Invalid request data");
+    throw new Error('Invalid request data');
   }
 
   const count = await SessionManager.invalidateSessions({
     sessionId: data.sessionId,
     reason: data.reason as
-      | "password_change"
-      | "suspicious_activity"
-      | "admin_action"
-      | "logout_all",
+      | 'password_change'
+      | 'suspicious_activity'
+      | 'admin_action'
+      | 'logout_all',
     userId: user.id,
   });
 
@@ -2981,7 +2791,7 @@ export const invalidateSessionServerFn = createServerFn({
 });
 
 export const logoutAllSessionsServerFn = createServerFn({
-  method: "POST",
+  method: 'POST',
 }).handler(async (ctx) => {
   const { user } = await requireAuth();
   const { currentSessionId } = (ctx.data || {}) as {
@@ -2990,11 +2800,11 @@ export const logoutAllSessionsServerFn = createServerFn({
 
   await SessionManager.logoutAllSessions(user.id, currentSessionId);
 
-  return { success: true, message: "All sessions have been logged out" };
+  return { success: true, message: 'All sessions have been logged out' };
 });
 
 export const cleanupExpiredSessionsServerFn = createServerFn({
-  method: "POST",
+  method: 'POST',
 }).handler(async () => {
   await requireAdmin(); // Only admins can cleanup sessions
 

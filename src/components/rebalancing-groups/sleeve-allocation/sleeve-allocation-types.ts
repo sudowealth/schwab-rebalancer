@@ -1,4 +1,4 @@
-import { SortField, SortDirection } from "./sleeve-allocation-table-headers";
+import type { SortDirection, SortField } from './sleeve-allocation-table-headers';
 
 // UI-specific types that extend base types with additional properties
 export interface Security extends Record<string, unknown> {
@@ -22,7 +22,7 @@ export interface Security extends Record<string, unknown> {
   openedAt?: Date | string | number | { getTime(): number } | null;
   totalGainLoss?: number;
   longTermGainLoss?: number;
-  shortTermGainLoss?: number; 
+  shortTermGainLoss?: number;
   realizedGainLoss?: number;
   realizedLongTermGainLoss?: number;
   realizedShortTermGainLoss?: number;
@@ -61,14 +61,16 @@ export interface SleeveAllocationData extends Record<string, unknown> {
   sleeves: SleeveTableData[];
 }
 
-import type { RebalancingGroupsResult } from "../../../lib/db-api";
-export type GroupMember = RebalancingGroupsResult[number]["members"][number] & {
+import type { RebalancingGroupsResult } from '../../../lib/db-api';
+export type GroupMember = RebalancingGroupsResult[number]['members'][number] & {
   accountName: string; // Ensure accountName is required for UI
 };
 
-
 // Import base types from central location
-import type { Trade as BaseTrade, AccountHolding as BaseAccountHolding } from "../../../types/rebalance";
+import type {
+  AccountHolding as BaseAccountHolding,
+  Trade as BaseTrade,
+} from '../../../types/rebalance';
 
 // Extend Trade to include ticker for UI purposes
 export interface Trade extends BaseTrade {
@@ -85,9 +87,9 @@ export interface SleeveAllocationTableProps {
   expandedAccounts: Set<string>;
   groupMembers: GroupMember[];
   sleeveAllocationData: SleeveAllocationData[];
-  groupingMode: "sleeve" | "account";
+  groupingMode: 'sleeve' | 'account';
   onAccountFilterChange: (value: string) => void;
-  onGroupingModeChange: (mode: "sleeve" | "account") => void;
+  onGroupingModeChange: (mode: 'sleeve' | 'account') => void;
   onSleeveExpansionToggle: (sleeveKey: string) => void;
   onAccountExpansionToggle: (accountKey: string) => void;
   onTickerClick: (ticker: string) => void;
@@ -99,11 +101,7 @@ export interface SleeveAllocationTableProps {
   sortField?: SortField;
   sortDirection?: SortDirection;
   onSort?: (field: SortField) => void;
-  onTradeQtyChange?: (
-    ticker: string,
-    newQty: number,
-    isPreview?: boolean
-  ) => void;
+  onTradeQtyChange?: (ticker: string, newQty: number, isPreview?: boolean) => void;
   accountHoldings?: AccountHolding[];
 }
 

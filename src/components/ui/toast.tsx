@@ -1,14 +1,14 @@
-import * as React from "react";
-import { createContext, useContext, useState } from "react";
+import type * as React from 'react';
+import { createContext, useContext, useState } from 'react';
 
 interface Toast {
   id: string;
   message: string;
-  type: "success" | "error" | "info";
+  type: 'success' | 'error' | 'info';
 }
 
 interface ToastContextType {
-  showToast: (message: string, type: "success" | "error" | "info") => void;
+  showToast: (message: string, type: 'success' | 'error' | 'info') => void;
 }
 
 const ToastContext = createContext<ToastContextType | undefined>(undefined);
@@ -16,7 +16,7 @@ const ToastContext = createContext<ToastContextType | undefined>(undefined);
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
 
-  const showToast = (message: string, type: "success" | "error" | "info") => {
+  const showToast = (message: string, type: 'success' | 'error' | 'info') => {
     const id = Math.random().toString(36).substr(2, 9);
     const newToast = { id, message, type };
 
@@ -43,24 +43,25 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
             className={`
               min-w-80 p-4 rounded-md shadow-lg border-l-4 transition-all duration-300 ease-in-out
               ${
-                toast.type === "success"
-                  ? "bg-green-50 border-l-green-400 text-green-800"
-                  : toast.type === "error"
-                    ? "bg-red-50 border-l-red-400 text-red-800"
-                    : "bg-blue-50 border-l-blue-400 text-blue-800"
+                toast.type === 'success'
+                  ? 'bg-green-50 border-l-green-400 text-green-800'
+                  : toast.type === 'error'
+                    ? 'bg-red-50 border-l-red-400 text-red-800'
+                    : 'bg-blue-50 border-l-blue-400 text-blue-800'
               }
             `}
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center">
                 <div className="flex-shrink-0">
-                  {toast.type === "success" && (
+                  {toast.type === 'success' && (
                     <svg
                       className="h-5 w-5 text-green-400"
                       fill="none"
                       viewBox="0 0 24 24"
                       stroke="currentColor"
                     >
+                      <title>Success</title>
                       <path
                         strokeLinecap="round"
                         strokeLinejoin="round"
@@ -69,13 +70,14 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
                       />
                     </svg>
                   )}
-                  {toast.type === "error" && (
+                  {toast.type === 'error' && (
                     <svg
                       className="h-5 w-5 text-red-400"
                       fill="none"
                       viewBox="0 0 24 24"
                       stroke="currentColor"
                     >
+                      <title>Error</title>
                       <path
                         strokeLinecap="round"
                         strokeLinejoin="round"
@@ -84,13 +86,14 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
                       />
                     </svg>
                   )}
-                  {toast.type === "info" && (
+                  {toast.type === 'info' && (
                     <svg
                       className="h-5 w-5 text-blue-400"
                       fill="none"
                       viewBox="0 0 24 24"
                       stroke="currentColor"
                     >
+                      <title>Info</title>
                       <path
                         strokeLinecap="round"
                         strokeLinejoin="round"
@@ -106,15 +109,16 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
               </div>
               <div className="ml-4 flex-shrink-0">
                 <button
+                  type="button"
                   onClick={() => removeToast(toast.id)}
                   className={`
                     inline-flex rounded-md p-1.5 hover:bg-opacity-20 focus:outline-none
                     ${
-                      toast.type === "success"
-                        ? "text-green-500 hover:bg-green-100"
-                        : toast.type === "error"
-                          ? "text-red-500 hover:bg-red-100"
-                          : "text-blue-500 hover:bg-blue-100"
+                      toast.type === 'success'
+                        ? 'text-green-500 hover:bg-green-100'
+                        : toast.type === 'error'
+                          ? 'text-red-500 hover:bg-red-100'
+                          : 'text-blue-500 hover:bg-blue-100'
                     }
                   `}
                 >
@@ -123,7 +127,10 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
                     fill="none"
                     viewBox="0 0 24 24"
                     stroke="currentColor"
+                    role="img"
+                    aria-label="Dismiss"
                   >
+                    <title>Dismiss</title>
                     <path
                       strokeLinecap="round"
                       strokeLinejoin="round"
@@ -144,7 +151,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 export function useToast() {
   const context = useContext(ToastContext);
   if (context === undefined) {
-    throw new Error("useToast must be used within a ToastProvider");
+    throw new Error('useToast must be used within a ToastProvider');
   }
   return context;
 }

@@ -1,22 +1,10 @@
-import { useState, useEffect } from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "../ui/dialog";
-import { Button } from "../ui/button";
-import { Input } from "../ui/input";
-import { Label } from "../ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "../ui/select";
-import { updateAccountServerFn } from "../../lib/server-functions";
+import { useEffect, useId, useState } from 'react';
+import { updateAccountServerFn } from '../../lib/server-functions';
+import { Button } from '../ui/button';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '../ui/dialog';
+import { Input } from '../ui/input';
+import { Label } from '../ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 
 interface Account {
   id: string;
@@ -34,20 +22,16 @@ interface EditAccountModalProps {
   onAccountUpdated?: () => void;
 }
 
-const ACCOUNT_TYPES = [
-  "TAXABLE",
-  "TAX_DEFERRED", 
-  "TAX_EXEMPT",
-];
+const ACCOUNT_TYPES = ['TAXABLE', 'TAX_DEFERRED', 'TAX_EXEMPT'];
 
 const formatAccountType = (type: string): string => {
-  if (!type) return "";
+  if (!type) return '';
   return type
-    .replace(/_/g, " ")
+    .replace(/_/g, ' ')
     .toLowerCase()
-    .split(" ")
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ");
+    .split(' ')
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
 };
 
 export function EditAccountModal({
@@ -57,56 +41,53 @@ export function EditAccountModal({
   onClose,
   onAccountUpdated,
 }: EditAccountModalProps) {
-  const [accountName, setAccountName] = useState("");
-  const [accountType, setAccountType] = useState("");
+  const [accountName, setAccountName] = useState('');
+  const [accountType, setAccountType] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState('');
+  const accountNameId = useId();
 
   // Initialize form with account data
   useEffect(() => {
     if (account && open) {
       setAccountName(account.accountName);
-      setAccountType(account.accountType || "NONE");
-      setError("");
+      setAccountType(account.accountType || 'NONE');
+      setError('');
     }
   }, [account, open]);
 
   const handleSubmit = async () => {
     if (!accountName.trim()) {
-      setError("Account name is required");
+      setError('Account name is required');
       return;
     }
 
     if (!account) return;
 
     setIsLoading(true);
-    setError("");
+    setError('');
 
     try {
       await updateAccountServerFn({
         data: {
           accountId: account.accountId,
           name: accountName.trim(),
-          type: accountType === "NONE" ? "" : accountType,
+          type: accountType === 'NONE' ? '' : accountType,
         },
       });
 
       onAccountUpdated?.();
       onClose();
     } catch (err: unknown) {
-      console.error("Failed to update account:", err);
-      setError(
-        err instanceof Error
-          ? err.message
-          : "Failed to update account"
-      );
+      console.error('Failed to update account:', err);
+      setError(err instanceof Error ? err.message : 'Failed to update account');
     } finally {
       setIsLoading(false);
     }
   };
 
   const resetForm = () => {
-    setError("");
+    setError('');
   };
 
   const handleOpenChange = (open: boolean) => {
@@ -125,9 +106,9 @@ export function EditAccountModal({
         </DialogHeader>
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="account-name">Account Name</Label>
+            <Label htmlFor={accountNameId}>Account Name</Label>
             <Input
-              id="account-name"
+              id={accountNameId}
               value={accountName}
               onChange={(e) => setAccountName(e.target.value)}
               placeholder="e.g., John's Roth IRA"
@@ -136,11 +117,7 @@ export function EditAccountModal({
           </div>
           <div className="space-y-2">
             <Label htmlFor="account-type">Account Type</Label>
-            <Select
-              value={accountType}
-              onValueChange={setAccountType}
-              disabled={isLoading}
-            >
+            <Select value={accountType} onValueChange={setAccountType} disabled={isLoading}>
               <SelectTrigger>
                 <SelectValue placeholder="Select account type (optional)" />
               </SelectTrigger>
@@ -154,22 +131,14 @@ export function EditAccountModal({
               </SelectContent>
             </Select>
           </div>
-          {error && (
-            <div className="text-sm text-red-600 bg-red-50 p-2 rounded">
-              {error}
-            </div>
-          )}
+          {error && <div className="text-sm text-red-600 bg-red-50 p-2 rounded">{error}</div>}
         </div>
         <DialogFooter>
-          <Button
-            variant="outline"
-            onClick={() => handleOpenChange(false)}
-            disabled={isLoading}
-          >
+          <Button variant="outline" onClick={() => handleOpenChange(false)} disabled={isLoading}>
             Cancel
           </Button>
           <Button onClick={handleSubmit} disabled={isLoading}>
-            {isLoading ? "Updating..." : "Update Account"}
+            {isLoading ? 'Updating...' : 'Update Account'}
           </Button>
         </DialogFooter>
       </DialogContent>

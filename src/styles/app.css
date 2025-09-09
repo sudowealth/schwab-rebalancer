@@ -17,7 +17,7 @@
   }
 
   .using-mouse * {
-    outline: none !important;
+    outline: none;
   }
   :root {
     --background: 0 0% 100%;

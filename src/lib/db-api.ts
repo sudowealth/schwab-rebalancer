@@ -1,41 +1,36 @@
-import { eq, desc, sql, inArray, and } from "drizzle-orm";
-import { validateData } from "./schemas";
+import { and, desc, eq, inArray, sql } from 'drizzle-orm';
+import * as schema from '../db/schema';
+import { getDatabase } from './db-config';
+import { DatabaseError, logError, ValidationError, withRetry } from './error-handler';
 import {
-  logError,
-  withRetry,
-  ValidationError,
-  DatabaseError,
-} from "./error-handler";
-import {
-  PortfolioMetricsSchema,
-  Position,
-  Transaction,
-  Order,
-  SP500Stock,
-  SP500DataSchema,
-  Sleeve,
-  RestrictedSecurity,
-  Trade,
-  PortfolioMetrics,
-  PositionsSchema,
-  TransactionsSchema,
-  SleevesSchema,
-  RestrictedSecuritiesSchema,
-  TradesSchema,
-  Model,
+  type CreateModel,
+  type CreateRebalancingGroup,
+  type Model,
   ModelsSchema,
-  CreateModel,
-  RebalancingGroup,
-  RebalancingGroupsSchema,
-  CreateRebalancingGroup,
+  type Order,
   OrdersSchema,
-} from "./schemas";
-import { getDatabase } from "./db-config";
-import * as schema from "../db/schema";
+  type PortfolioMetrics,
+  PortfolioMetricsSchema,
+  type Position,
+  PositionsSchema,
+  type RebalancingGroup,
+  RebalancingGroupsSchema,
+  RestrictedSecuritiesSchema,
+  type RestrictedSecurity,
+  type Sleeve,
+  SleevesSchema,
+  SP500DataSchema,
+  type SP500Stock,
+  type Trade,
+  TradesSchema,
+  type Transaction,
+  TransactionsSchema,
+  validateData,
+} from './schemas';
 
 // Financial Planning Types
 export interface FinancialPlanInput {
-  filingStatus: "single" | "married_filing_jointly" | "head_of_household";
+  filingStatus: 'single' | 'married_filing_jointly' | 'head_of_household';
   primaryUserAge: number;
   spouseAge?: number;
   simulationPeriod: number;
@@ -51,12 +46,12 @@ export interface FinancialPlanInput {
 export interface FinancialPlanGoal {
   id: string;
   purpose?: string;
-  type: "contribution" | "fixed_withdrawal";
+  type: 'contribution' | 'fixed_withdrawal';
   amount: number;
   inflationAdjusted: boolean;
   startTiming: string;
   durationYears: number;
-  frequency: "annually" | "monthly";
+  frequency: 'annually' | 'monthly';
   repeatPattern: string;
   occurrences: number;
 }
@@ -139,7 +134,7 @@ function setCache(key: string, data: unknown): void {
 }
 
 export const getSnP500Data = async () => {
-  const cacheKey = "sp500-data";
+  const cacheKey = 'sp500-data';
   const cached = getCached<SP500Stock[]>(cacheKey);
   if (cached) {
     return cached;
@@ -151,46 +146,38 @@ export const getSnP500Data = async () => {
         const securities = await db.select().from(schema.security);
 
         if (!securities || securities.length === 0) {
-          throw new DatabaseError("No securities found in database");
+          throw new DatabaseError('No securities found in database');
         }
 
         const sp500Data: SP500Stock[] = securities.map((security) => ({
           ticker: security.ticker,
           name: security.name,
           price: security.price,
-          marketCap: security.marketCap
-            ? formatMarketCap(security.marketCap)
-            : "0",
+          marketCap: security.marketCap ? formatMarketCap(security.marketCap) : '0',
           peRatio: security.peRatio || undefined,
-          industry: security.industry || "Unknown",
-          sector: security.sector || "Unknown",
+          industry: security.industry || 'Unknown',
+          sector: security.sector || 'Unknown',
         }));
 
-        const validatedData = validateData(
-          SP500DataSchema,
-          sp500Data,
-          "S&P 500 data"
-        );
+        const validatedData = validateData(SP500DataSchema, sp500Data, 'S&P 500 data');
         setCache(cacheKey, validatedData);
 
         return validatedData;
       },
       3,
       1000,
-      "getSnP500Data"
+      'getSnP500Data',
     );
   } catch (error) {
-    logError(error, "Failed to get S&P 500 data");
+    logError(error, 'Failed to get S&P 500 data');
     if (error instanceof ValidationError) throw error;
-    throw new DatabaseError("Failed to retrieve securities data", error);
+    throw new DatabaseError('Failed to retrieve securities data', error);
   }
 };
 
 // Get all indices
-export const getIndices = async (): Promise<
-  Array<{ id: string; name: string }>
-> => {
-  const cacheKey = "indices";
+export const getIndices = async (): Promise<Array<{ id: string; name: string }>> => {
+  const cacheKey = 'indices';
   const cached = getCached<Array<{ id: string; name: string }>>(cacheKey);
   if (cached) {
     return cached;
@@ -208,9 +195,7 @@ export const getIndices = async (): Promise<
 };
 
 // Get securities filtered by index
-export const getSecuritiesByIndex = async (
-  indexId?: string
-): Promise<SP500Stock[]> => {
+export const getSecuritiesByIndex = async (indexId?: string): Promise<SP500Stock[]> => {
   if (!indexId) {
     return getSnP500Data(); // Return all securities if no index specified
   }
@@ -233,27 +218,24 @@ export const getSecuritiesByIndex = async (
       sector: schema.security.sector,
     })
     .from(schema.security)
-    .innerJoin(
-      schema.indexMember,
-      eq(schema.security.ticker, schema.indexMember.securityId)
-    )
+    .innerJoin(schema.indexMember, eq(schema.security.ticker, schema.indexMember.securityId))
     .where(eq(schema.indexMember.indexId, indexId));
 
   const filteredData: SP500Stock[] = securitiesInIndex.map((security) => ({
     ticker: security.ticker,
     name: security.name,
     price: security.price,
-    marketCap: security.marketCap ? formatMarketCap(security.marketCap) : "0",
+    marketCap: security.marketCap ? formatMarketCap(security.marketCap) : '0',
     peRatio: security.peRatio || undefined,
-    industry: security.industry || "Unknown",
-    sector: security.sector || "Unknown",
+    industry: security.industry || 'Unknown',
+    sector: security.sector || 'Unknown',
   }));
 
   // Validate data
   const validatedData = validateData(
     SP500DataSchema,
     filteredData,
-    `securities for index ${indexId}`
+    `securities for index ${indexId}`,
   );
   setCache(cacheKey, validatedData);
 
@@ -262,7 +244,7 @@ export const getSecuritiesByIndex = async (
 
 export const getPositions = async (userId?: string) => {
   if (!userId?.trim()) {
-    throw new ValidationError("User ID is required", "userId");
+    throw new ValidationError('User ID is required', 'userId');
   }
 
   const cacheKey = `positions-${userId}`;
@@ -277,11 +259,11 @@ export const getPositions = async (userId?: string) => {
         // Get S&P 500 data for current prices
         const sp500Data = await getSnP500Data();
         const priceMap = new Map<string, number>(
-          sp500Data.map((stock) => [stock.ticker, stock.price])
+          sp500Data.map((stock) => [stock.ticker, stock.price]),
         );
         // Ensure cash tickers are valued at $1
-        priceMap.set("$$$", 1.0);
-        priceMap.set("MCASH", 1.0);
+        priceMap.set('$$$', 1.0);
+        priceMap.set('MCASH', 1.0);
 
         // Get holdings with related data - try with accountNumber first, fallback without it
         interface HoldingWithAccount {
@@ -311,10 +293,7 @@ export const getPositions = async (userId?: string) => {
               accountNumber: schema.account.accountNumber,
             })
             .from(schema.holding)
-            .innerJoin(
-              schema.account,
-              eq(schema.holding.accountId, schema.account.id)
-            )
+            .innerJoin(schema.account, eq(schema.holding.accountId, schema.account.id))
             .where(eq(schema.account.userId, userId));
         } catch {
           // If accountNumber column doesn't exist, query without it
@@ -330,10 +309,7 @@ export const getPositions = async (userId?: string) => {
               accountType: schema.account.type,
             })
             .from(schema.holding)
-            .innerJoin(
-              schema.account,
-              eq(schema.holding.accountId, schema.account.id)
-            )
+            .innerJoin(schema.account, eq(schema.holding.accountId, schema.account.id))
             .where(eq(schema.account.userId, userId));
         }
 
@@ -345,22 +321,16 @@ export const getPositions = async (userId?: string) => {
             sleeveName: schema.sleeve.name,
           })
           .from(schema.sleeveMember)
-          .innerJoin(
-            schema.sleeve,
-            eq(schema.sleeveMember.sleeveId, schema.sleeve.id)
-          )
+          .innerJoin(schema.sleeve, eq(schema.sleeveMember.sleeveId, schema.sleeve.id))
           .where(eq(schema.sleeveMember.isActive, true));
 
         // Create a map of ticker to sleeves
-        const tickerToSleeves = new Map<
-          string,
-          Array<{ sleeveId: string; sleeveName: string }>
-        >();
+        const tickerToSleeves = new Map<string, Array<{ sleeveId: string; sleeveName: string }>>();
         for (const member of sleeveMembers) {
           if (!tickerToSleeves.has(member.ticker)) {
             tickerToSleeves.set(member.ticker, []);
           }
-          tickerToSleeves.get(member.ticker)!.push({
+          tickerToSleeves.get(member.ticker)?.push({
             sleeveId: member.sleeveId,
             sleeveName: member.sleeveName,
           });
@@ -380,19 +350,16 @@ export const getPositions = async (userId?: string) => {
             const marketValue = qty * currentPrice;
             const costValue = qty * costBasis;
             const dollarGainLoss = marketValue - costValue;
-            const percentGainLoss =
-              costValue > 0 ? (dollarGainLoss / costValue) * 100 : 0;
+            const percentGainLoss = costValue > 0 ? (dollarGainLoss / costValue) * 100 : 0;
 
             const openedAt = new Date(holding.openedAt);
-            const daysHeld = Math.floor(
-              (Date.now() - openedAt.getTime()) / (1000 * 60 * 60 * 24)
-            );
+            const daysHeld = Math.floor((Date.now() - openedAt.getTime()) / (1000 * 60 * 60 * 24));
 
             // Get sleeve information from sleeve_member table
             const sleeves = tickerToSleeves.get(holding.ticker) || [];
             const primarySleeve = sleeves[0]; // For now, just use the first sleeve if multiple exist
-            const sleeveId = primarySleeve?.sleeveId || "";
-            const sleeveName = primarySleeve?.sleeveName || "No Sleeve";
+            const sleeveId = primarySleeve?.sleeveId || '';
+            const sleeveName = primarySleeve?.sleeveName || 'No Sleeve';
 
             return {
               id: holding.id,
@@ -402,49 +369,40 @@ export const getPositions = async (userId?: string) => {
               qty: qty,
               costBasis: costBasis,
               currentPrice: currentPrice,
-              marketValue: `$${marketValue.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
-              dollarGainLoss: `${dollarGainLoss >= 0 ? "" : "-"}$${Math.abs(dollarGainLoss).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
-              percentGainLoss: `${percentGainLoss >= 0 ? "" : "-"}${Math.abs(percentGainLoss).toFixed(2)}%`,
+              marketValue: `$${marketValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+              dollarGainLoss: `${dollarGainLoss >= 0 ? '' : '-'}$${Math.abs(dollarGainLoss).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+              percentGainLoss: `${percentGainLoss >= 0 ? '' : '-'}${Math.abs(percentGainLoss).toFixed(2)}%`,
               daysHeld,
               openedAt,
               accountId: holding.accountId,
               accountName: holding.accountName,
               accountType: holding.accountType,
-              accountNumber: holding.accountNumber || "N/A", // Use actual value or fallback
+              accountNumber: holding.accountNumber || 'N/A', // Use actual value or fallback
             };
           })
-          .filter(
-            (position): position is NonNullable<typeof position> =>
-              position !== null
-          );
+          .filter((position): position is NonNullable<typeof position> => position !== null);
 
         // Validate data
-        const validatedData = validateData(
-          PositionsSchema,
-          positions,
-          "positions"
-        );
+        const validatedData = validateData(PositionsSchema, positions, 'positions');
         setCache(cacheKey, validatedData);
 
         return validatedData;
       },
       3,
       1000,
-      "getPositions"
+      'getPositions',
     );
   } catch (error) {
-    logError(error, "Failed to get positions", { userId: "redacted" });
+    logError(error, 'Failed to get positions', { userId: 'redacted' });
     if (error instanceof ValidationError) throw error;
-    throw new DatabaseError("Failed to retrieve positions", error);
+    throw new DatabaseError('Failed to retrieve positions', error);
   }
 };
 
 export const getTransactions = async (userId?: string) => {
   // If no userId provided, return empty array for security
   if (!userId) {
-    console.warn(
-      "getTransactions called without userId - returning empty array for security"
-    );
+    console.warn('getTransactions called without userId - returning empty array for security');
     return [];
   }
 
@@ -486,10 +444,7 @@ export const getTransactions = async (userId?: string) => {
         accountNumber: schema.account.accountNumber,
       })
       .from(schema.transaction)
-      .innerJoin(
-        schema.account,
-        eq(schema.transaction.accountId, schema.account.id)
-      )
+      .innerJoin(schema.account, eq(schema.transaction.accountId, schema.account.id))
       .where(eq(schema.account.userId, userId))
       .orderBy(desc(schema.transaction.executedAt));
   } catch {
@@ -508,10 +463,7 @@ export const getTransactions = async (userId?: string) => {
         accountType: schema.account.type,
       })
       .from(schema.transaction)
-      .innerJoin(
-        schema.account,
-        eq(schema.transaction.accountId, schema.account.id)
-      )
+      .innerJoin(schema.account, eq(schema.transaction.accountId, schema.account.id))
       .where(eq(schema.account.userId, userId))
       .orderBy(desc(schema.transaction.executedAt));
   }
@@ -524,22 +476,16 @@ export const getTransactions = async (userId?: string) => {
       sleeveName: schema.sleeve.name,
     })
     .from(schema.sleeveMember)
-    .innerJoin(
-      schema.sleeve,
-      eq(schema.sleeveMember.sleeveId, schema.sleeve.id)
-    )
+    .innerJoin(schema.sleeve, eq(schema.sleeveMember.sleeveId, schema.sleeve.id))
     .where(eq(schema.sleeveMember.isActive, true));
 
   // Create a map of ticker to sleeves
-  const tickerToSleeves = new Map<
-    string,
-    Array<{ sleeveId: string; sleeveName: string }>
-  >();
+  const tickerToSleeves = new Map<string, Array<{ sleeveId: string; sleeveName: string }>>();
   for (const member of sleeveMembers) {
     if (!tickerToSleeves.has(member.ticker)) {
       tickerToSleeves.set(member.ticker, []);
     }
-    tickerToSleeves.get(member.ticker)!.push({
+    tickerToSleeves.get(member.ticker)?.push({
       sleeveId: member.sleeveId,
       sleeveName: member.sleeveName,
     });
@@ -551,32 +497,28 @@ export const getTransactions = async (userId?: string) => {
       // Get sleeve information from sleeve_member table
       const sleeves = tickerToSleeves.get(tx.ticker) || [];
       const primarySleeve = sleeves[0]; // For now, just use the first sleeve if multiple exist
-      const sleeveId = primarySleeve?.sleeveId || "";
-      const sleeveName = primarySleeve?.sleeveName || "No Sleeve";
+      const sleeveId = primarySleeve?.sleeveId || '';
+      const sleeveName = primarySleeve?.sleeveName || 'No Sleeve';
 
       return {
         id: tx.id,
         sleeveId: sleeveId,
         sleeveName: sleeveName,
         ticker: tx.ticker,
-        type: tx.type as "BUY" | "SELL",
+        type: tx.type as 'BUY' | 'SELL',
         qty: tx.qty,
         price: tx.price,
         executedAt: new Date(tx.executedAt),
         realizedGainLoss: tx.realizedGainLoss || 0,
-        accountId: tx.accountId || "",
-        accountName: tx.accountName || "No Account",
-        accountType: tx.accountType || "",
-        accountNumber: tx.accountNumber || "N/A", // Use actual value or fallback
+        accountId: tx.accountId || '',
+        accountName: tx.accountName || 'No Account',
+        accountType: tx.accountType || '',
+        accountNumber: tx.accountNumber || 'N/A', // Use actual value or fallback
       };
     });
 
   // Validate data
-  const validatedData = validateData(
-    TransactionsSchema,
-    formattedTransactions,
-    "transactions"
-  );
+  const validatedData = validateData(TransactionsSchema, formattedTransactions, 'transactions');
   setCache(cacheKey, validatedData);
 
   return validatedData;
@@ -585,9 +527,7 @@ export const getTransactions = async (userId?: string) => {
 export const getSleeves = async (userId?: string) => {
   // If no userId provided, return empty array for security
   if (!userId) {
-    console.warn(
-      "getSleeves called without userId - returning empty array for security"
-    );
+    console.warn('getSleeves called without userId - returning empty array for security');
     return [];
   }
 
@@ -599,9 +539,7 @@ export const getSleeves = async (userId?: string) => {
 
   // Get S&P 500 data for current prices
   const sp500Data = await getSnP500Data();
-  const priceMap = new Map<string, number>(
-    sp500Data.map((stock) => [stock.ticker, stock.price])
-  );
+  const priceMap = new Map<string, number>(sp500Data.map((stock) => [stock.ticker, stock.price]));
 
   // Get restricted securities
   const restrictedSecurities = await getRestrictedSecurities();
@@ -612,7 +550,7 @@ export const getSleeves = async (userId?: string) => {
         soldAt: r.soldAt.toLocaleDateString(),
         blockedUntil: r.blockedUntil.toLocaleDateString(),
       },
-    ])
+    ]),
   );
 
   // Get sleeves with their members for this user only
@@ -623,9 +561,7 @@ export const getSleeves = async (userId?: string) => {
       isActive: schema.sleeve.isActive,
     })
     .from(schema.sleeve)
-    .where(
-      and(eq(schema.sleeve.isActive, true), eq(schema.sleeve.userId, userId))
-    );
+    .where(and(eq(schema.sleeve.isActive, true), eq(schema.sleeve.userId, userId)));
 
   const sleevesWithMembers: Sleeve[] = [];
 
@@ -677,8 +613,7 @@ export const getSleeves = async (userId?: string) => {
       const marketValue = qty * currentPrice;
       const costValue = qty * costBasis;
       const dollarGainLoss = marketValue - costValue;
-      const percentGainLoss =
-        costValue > 0 ? (dollarGainLoss / costValue) * 100 : 0;
+      const percentGainLoss = costValue > 0 ? (dollarGainLoss / costValue) * 100 : 0;
 
       position = {
         id: h.id,
@@ -705,25 +640,19 @@ export const getSleeves = async (userId?: string) => {
         isRestricted: !!m.isRestricted || restrictedTickers.has(m.ticker),
       })),
       position,
-      restrictedInfo: restrictedTickers.get(position?.ticker || ""),
+      restrictedInfo: restrictedTickers.get(position?.ticker || ''),
     });
   }
 
   // Validate data
-  const validatedData = validateData(
-    SleevesSchema,
-    sleevesWithMembers,
-    "sleeves"
-  );
+  const validatedData = validateData(SleevesSchema, sleevesWithMembers, 'sleeves');
   setCache(cacheKey, validatedData);
 
   return validatedData;
 };
 
-export const getRestrictedSecurities = async (): Promise<
-  RestrictedSecurity[]
-> => {
-  const cacheKey = "restricted-securities";
+export const getRestrictedSecurities = async (): Promise<RestrictedSecurity[]> => {
+  const cacheKey = 'restricted-securities';
   const cached = getCached<RestrictedSecurity[]>(cacheKey);
   if (cached) {
     return cached;
@@ -739,36 +668,30 @@ export const getRestrictedSecurities = async (): Promise<
       blockedUntil: schema.restrictedSecurity.blockedUntil,
     })
     .from(schema.restrictedSecurity)
-    .innerJoin(
-      schema.sleeve,
-      eq(schema.restrictedSecurity.sleeveId, schema.sleeve.id)
-    )
+    .innerJoin(schema.sleeve, eq(schema.restrictedSecurity.sleeveId, schema.sleeve.id))
     .where(sql`${schema.restrictedSecurity.blockedUntil} > ${Date.now()}`);
 
-  const formattedRestrictedSecurities: RestrictedSecurity[] =
-    restrictedSecurities.map((rs) => {
-      const soldAt = new Date(rs.soldAt);
-      const blockedUntil = new Date(rs.blockedUntil);
-      const daysToUnblock = Math.ceil(
-        (blockedUntil.getTime() - Date.now()) / (1000 * 60 * 60 * 24)
-      );
+  const formattedRestrictedSecurities: RestrictedSecurity[] = restrictedSecurities.map((rs) => {
+    const soldAt = new Date(rs.soldAt);
+    const blockedUntil = new Date(rs.blockedUntil);
+    const daysToUnblock = Math.ceil((blockedUntil.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
 
-      return {
-        ticker: rs.ticker,
-        sleeveId: rs.sleeveId,
-        sleeveName: rs.sleeveName,
-        lossAmount: `$${rs.lossAmount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
-        soldAt,
-        blockedUntil,
-        daysToUnblock: Math.max(0, daysToUnblock),
-      };
-    });
+    return {
+      ticker: rs.ticker,
+      sleeveId: rs.sleeveId,
+      sleeveName: rs.sleeveName,
+      lossAmount: `$${rs.lossAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+      soldAt,
+      blockedUntil,
+      daysToUnblock: Math.max(0, daysToUnblock),
+    };
+  });
 
   // Validate data
   const validatedData = validateData(
     RestrictedSecuritiesSchema,
     formattedRestrictedSecurities,
-    "restricted securities"
+    'restricted securities',
   );
   setCache(cacheKey, validatedData);
 
@@ -779,7 +702,7 @@ export const getPortfolioMetrics = async (userId?: string) => {
   // If no userId provided, return default empty metrics for security
   if (!userId) {
     console.warn(
-      "getPortfolioMetrics called without userId - returning empty metrics for security"
+      'getPortfolioMetrics called without userId - returning empty metrics for security',
     );
     return {
       totalMarketValue: 0,
@@ -815,8 +738,7 @@ export const getPortfolioMetrics = async (userId?: string) => {
   let totalCostBasis = 0;
 
   for (const position of positions) {
-    const marketValue =
-      parseFloat(position.marketValue.replace(/[$,]/g, "")) || 0;
+    const marketValue = parseFloat(position.marketValue.replace(/[$,]/g, '')) || 0;
     const costBasis = (position.costBasis || 0) * (position.qty || 0);
 
     totalMarketValue += marketValue;
@@ -824,20 +746,14 @@ export const getPortfolioMetrics = async (userId?: string) => {
   }
 
   const unrealizedGain = totalMarketValue - totalCostBasis;
-  const unrealizedGainPercent =
-    totalCostBasis > 0 ? (unrealizedGain / totalCostBasis) * 100 : 0;
+  const unrealizedGainPercent = totalCostBasis > 0 ? (unrealizedGain / totalCostBasis) * 100 : 0;
 
   // Calculate realized gains from transactions
-  const realizedGain = transactions.reduce(
-    (sum, tx) => sum + (tx.realizedGainLoss || 0),
-    0
-  );
-  const realizedGainPercent =
-    totalCostBasis > 0 ? (realizedGain / totalCostBasis) * 100 : 0;
+  const realizedGain = transactions.reduce((sum, tx) => sum + (tx.realizedGainLoss || 0), 0);
+  const realizedGainPercent = totalCostBasis > 0 ? (realizedGain / totalCostBasis) * 100 : 0;
 
   const totalGain = unrealizedGain + realizedGain;
-  const totalGainPercent =
-    totalCostBasis > 0 ? (totalGain / totalCostBasis) * 100 : 0;
+  const totalGainPercent = totalCostBasis > 0 ? (totalGain / totalCostBasis) * 100 : 0;
 
   // Calculate YTD harvested losses (negative realized gains)
   const ytdHarvestedLosses = Math.abs(Math.min(0, realizedGain));
@@ -845,13 +761,11 @@ export const getPortfolioMetrics = async (userId?: string) => {
   // Calculate harvestable losses (positions meeting harvesting criteria) - only for taxable accounts
   let harvestablelosses = 0;
   const taxablePositionsForMetrics = positions.filter(
-    (position) => position.accountType === "TAXABLE"
+    (position) => position.accountType === 'TAXABLE',
   );
   for (const position of taxablePositionsForMetrics) {
-    const dollarGainLoss =
-      parseFloat(position.dollarGainLoss.replace(/[$,]/g, "")) || 0;
-    const percentGainLoss =
-      parseFloat(position.percentGainLoss.replace(/%/g, "")) || 0;
+    const dollarGainLoss = parseFloat(position.dollarGainLoss.replace(/[$,]/g, '')) || 0;
+    const percentGainLoss = parseFloat(position.percentGainLoss.replace(/%/g, '')) || 0;
 
     // Same criteria as in getProposedTrades: -5% OR -$2,500 threshold
     if (
@@ -876,17 +790,12 @@ export const getPortfolioMetrics = async (userId?: string) => {
     harvestingTarget: {
       year1Target: 0.03, // 3% target for year 1
       steadyStateTarget: 0.02, // 2% target for steady state
-      currentProgress:
-        totalMarketValue > 0 ? ytdHarvestedLosses / totalMarketValue : 0,
+      currentProgress: totalMarketValue > 0 ? ytdHarvestedLosses / totalMarketValue : 0,
     },
   };
 
   // Validate data
-  const validatedData = validateData(
-    PortfolioMetricsSchema,
-    portfolioMetrics,
-    "portfolio metrics"
-  );
+  const validatedData = validateData(PortfolioMetricsSchema, portfolioMetrics, 'portfolio metrics');
   setCache(cacheKey, validatedData);
 
   return validatedData;
@@ -895,9 +804,7 @@ export const getPortfolioMetrics = async (userId?: string) => {
 export const getProposedTrades = async (userId?: string) => {
   // If no userId provided, return empty array for security
   if (!userId) {
-    console.warn(
-      "getProposedTrades called without userId - returning empty array for security"
-    );
+    console.warn('getProposedTrades called without userId - returning empty array for security');
     return [];
   }
 
@@ -914,29 +821,23 @@ export const getProposedTrades = async (userId?: string) => {
   const sp500Data = await getSnP500Data();
 
   // Create a map of restricted tickers for quick lookup
-  const restrictedTickers = new Set(
-    restrictedSecurities.map((rs) => rs.ticker)
-  );
+  const restrictedTickers = new Set(restrictedSecurities.map((rs) => rs.ticker));
 
   // Create a map of sleeve names for quick lookup
   const sleeveNameMap = new Map(sleeves.map((s) => [s.id, s.name]));
 
   // Create a map of stock prices for quick lookup
-  const priceMap = new Map(
-    sp500Data.map((stock) => [stock.ticker, stock.price])
-  );
+  const priceMap = new Map(sp500Data.map((stock) => [stock.ticker, stock.price]));
 
   const trades: Trade[] = [];
 
   // Filter positions to only include taxable accounts (TLH only applies to taxable accounts)
-  const taxablePositions = positions.filter(
-    (position) => position.accountType === "TAXABLE"
-  );
+  const taxablePositions = positions.filter((position) => position.accountType === 'TAXABLE');
 
   // Analyze each position for tax-loss harvesting opportunities
   for (const position of taxablePositions) {
     // Parse the gain/loss to determine if it's a loss
-    const dollarGainLossStr = position.dollarGainLoss.replace(/[$,]/g, "");
+    const dollarGainLossStr = position.dollarGainLoss.replace(/[$,]/g, '');
     const dollarGainLoss = parseFloat(dollarGainLossStr);
 
     // Only consider positions with losses (negative gain/loss)
@@ -951,9 +852,7 @@ export const getProposedTrades = async (userId?: string) => {
     const lossAmount = Math.abs(dollarGainLoss);
 
     // Calculate percentage loss for threshold check
-    const percentLoss = Math.abs(
-      parseFloat(position.percentGainLoss.replace(/%/g, ""))
-    );
+    const percentLoss = Math.abs(parseFloat(position.percentGainLoss.replace(/%/g, '')));
 
     // Only consider losses meeting the -5% OR -$2,500 threshold
     if (!(percentLoss >= 5 || lossAmount >= 2500)) {
@@ -971,12 +870,12 @@ export const getProposedTrades = async (userId?: string) => {
     // Find the sleeve to check for available replacement securities
     const sleeve = sleeves.find((s) => s.id === position.sleeveId);
     let canExecute = false;
-    let blockingReason = "";
-    let replacementTicker = "";
+    let blockingReason = '';
+    let replacementTicker = '';
 
     if (isCurrentlyRestricted) {
       // This position itself is restricted due to wash sale rules
-      blockingReason = "Wash sale restriction";
+      blockingReason = 'Wash sale restriction';
       canExecute = false;
     } else if (sleeve) {
       // Look for an available replacement security in this sleeve
@@ -986,14 +885,12 @@ export const getProposedTrades = async (userId?: string) => {
           member.ticker !== position.ticker &&
           member.isActive &&
           !member.isRestricted &&
-          !restrictedTickers.has(member.ticker)
+          !restrictedTickers.has(member.ticker),
       );
 
       if (availableReplacements.length > 0) {
         // Use the highest ranked available replacement
-        const replacement = availableReplacements.sort(
-          (a, b) => a.rank - b.rank
-        )[0];
+        const replacement = availableReplacements.sort((a, b) => a.rank - b.rank)[0];
         replacementTicker = replacement.ticker;
         canExecute = true;
       } else {
@@ -1001,49 +898,39 @@ export const getProposedTrades = async (userId?: string) => {
         const restrictedMembers = sleeve.members.filter(
           (member) =>
             member.ticker !== position.ticker &&
-            (member.isRestricted || restrictedTickers.has(member.ticker))
+            (member.isRestricted || restrictedTickers.has(member.ticker)),
         );
         const inactiveMembers = sleeve.members.filter(
-          (member) => member.ticker !== position.ticker && !member.isActive
+          (member) => member.ticker !== position.ticker && !member.isActive,
         );
 
         if (restrictedMembers.length > 0 && inactiveMembers.length === 0) {
           // Get detailed wash sale information for restricted members
           const washSaleDetails = await Promise.all(
             restrictedMembers.map(async (member) => {
-              const restrictedInfo = restrictedSecurities.find(
-                (rs) => rs.ticker === member.ticker
-              );
+              const restrictedInfo = restrictedSecurities.find((rs) => rs.ticker === member.ticker);
               if (restrictedInfo) {
-                const soldDate = restrictedInfo.soldAt.toLocaleDateString(
-                  "en-US",
-                  {
-                    month: "2-digit",
-                    day: "2-digit",
-                    year: "numeric",
-                  }
-                );
+                const soldDate = restrictedInfo.soldAt.toLocaleDateString('en-US', {
+                  month: '2-digit',
+                  day: '2-digit',
+                  year: 'numeric',
+                });
                 return `- ${member.ticker} sold on ${soldDate} (${restrictedInfo.daysToUnblock} days left)`;
               }
               return `- ${member.ticker} (wash sale restriction)`;
-            })
+            }),
           );
 
           const lossAmount = Math.abs(dollarGainLoss);
-          const percentLoss = Math.abs(
-            parseFloat(position.percentGainLoss.replace(/%/g, ""))
-          );
+          const percentLoss = Math.abs(parseFloat(position.percentGainLoss.replace(/%/g, '')));
 
-          blockingReason = `Unable to harvest $${lossAmount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (${percentLoss.toFixed(2)}%) loss because of potential wash sales with all replacement securities:\n${washSaleDetails.join("\n")}`;
-        } else if (
-          inactiveMembers.length > 0 &&
-          restrictedMembers.length === 0
-        ) {
-          blockingReason = `All replacement securities in this sleeve are inactive: ${inactiveMembers.map((m) => m.ticker).join(", ")}`;
+          blockingReason = `Unable to harvest $${lossAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (${percentLoss.toFixed(2)}%) loss because of potential wash sales with all replacement securities:\n${washSaleDetails.join('\n')}`;
+        } else if (inactiveMembers.length > 0 && restrictedMembers.length === 0) {
+          blockingReason = `All replacement securities in this sleeve are inactive: ${inactiveMembers.map((m) => m.ticker).join(', ')}`;
         } else if (sleeve.members.length <= 1) {
           blockingReason = `No replacement securities available in this sleeve`;
         } else {
-          blockingReason = `No available replacement securities: ${restrictedMembers.map((m) => m.ticker + " (restricted)").join(", ")}${restrictedMembers.length > 0 && inactiveMembers.length > 0 ? ", " : ""}${inactiveMembers.map((m) => m.ticker + " (inactive)").join(", ")}`;
+          blockingReason = `No available replacement securities: ${restrictedMembers.map((m) => `${m.ticker} (restricted)`).join(', ')}${restrictedMembers.length > 0 && inactiveMembers.length > 0 ? ', ' : ''}${inactiveMembers.map((m) => `${m.ticker} (inactive)`).join(', ')}`;
         }
         canExecute = false;
       }
@@ -1055,14 +942,14 @@ export const getProposedTrades = async (userId?: string) => {
     // Generate the proposed SELL trade
     const sellTrade = {
       id: `sell-${position.id}`,
-      type: "SELL" as const,
+      type: 'SELL' as const,
       ticker: position.ticker,
       sleeveId: position.sleeveId,
       sleeveName: sleeveNameMap.get(position.sleeveId) || position.sleeveName,
       qty: position.qty,
       currentPrice: position.currentPrice,
-      estimatedValue: parseFloat(position.marketValue.replace(/[$,]/g, "")),
-      reason: `Sell ${position.ticker} to harvest $${lossAmount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${isLongTerm ? "long-term" : "short-term"} loss`,
+      estimatedValue: parseFloat(position.marketValue.replace(/[$,]/g, '')),
+      reason: `Sell ${position.ticker} to harvest $${lossAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${isLongTerm ? 'long-term' : 'short-term'} loss`,
       realizedGainLoss: dollarGainLoss, // This will be negative for losses
       replacementTicker: replacementTicker || undefined,
       canExecute,
@@ -1070,7 +957,7 @@ export const getProposedTrades = async (userId?: string) => {
       accountId: position.accountId,
       accountName: position.accountName,
       accountType: position.accountType,
-      accountNumber: position.accountNumber || "N/A", // Use actual value or fallback
+      accountNumber: position.accountNumber || 'N/A', // Use actual value or fallback
     };
 
     trades.push(sellTrade);
@@ -1080,8 +967,8 @@ export const getProposedTrades = async (userId?: string) => {
       // Get the price for the replacement security with safety guards
       const rawReplacementPrice = priceMap.get(replacementTicker);
       const replacementPrice =
-        typeof rawReplacementPrice === "number" &&
-        isFinite(rawReplacementPrice) &&
+        typeof rawReplacementPrice === 'number' &&
+        Number.isFinite(rawReplacementPrice) &&
         rawReplacementPrice > 0
           ? rawReplacementPrice
           : position.currentPrice && position.currentPrice > 0
@@ -1089,21 +976,17 @@ export const getProposedTrades = async (userId?: string) => {
             : 0;
 
       // Calculate how many shares we can buy with the proceeds
-      const sellProceeds = parseFloat(
-        position.marketValue.replace(/[$,]/g, "")
-      );
-      const buyQty =
-        replacementPrice > 0 ? Math.floor(sellProceeds / replacementPrice) : 0;
+      const sellProceeds = parseFloat(position.marketValue.replace(/[$,]/g, ''));
+      const buyQty = replacementPrice > 0 ? Math.floor(sellProceeds / replacementPrice) : 0;
 
       // Only create a buy trade when we can size at least 1 share and price is valid
       if (buyQty > 0 && replacementPrice > 0) {
         const buyTrade = {
           id: `buy-${position.id}`,
-          type: "BUY" as const,
+          type: 'BUY' as const,
           ticker: replacementTicker,
           sleeveId: position.sleeveId,
-          sleeveName:
-            sleeveNameMap.get(position.sleeveId) || position.sleeveName,
+          sleeveName: sleeveNameMap.get(position.sleeveId) || position.sleeveName,
           qty: buyQty,
           currentPrice: replacementPrice,
           estimatedValue: buyQty * replacementPrice,
@@ -1115,7 +998,7 @@ export const getProposedTrades = async (userId?: string) => {
           accountId: position.accountId,
           accountName: position.accountName,
           accountType: position.accountType,
-          accountNumber: position.accountNumber || "N/A", // Use actual value or fallback
+          accountNumber: position.accountNumber || 'N/A', // Use actual value or fallback
         };
 
         trades.push(buyTrade);
@@ -1135,7 +1018,7 @@ export const getProposedTrades = async (userId?: string) => {
   });
 
   // Validate data
-  const validatedData = validateData(TradesSchema, trades, "trades");
+  const validatedData = validateData(TradesSchema, trades, 'trades');
   setCache(cacheKey, validatedData);
 
   return validatedData;
@@ -1145,7 +1028,7 @@ export const getProposedTrades = async (userId?: string) => {
 export const createSleeve = async (
   name: string,
   members: Array<{ ticker: string; rank: number }>,
-  userId: string
+  userId: string,
 ): Promise<string> => {
   const sleeveId = `sleeve_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
 
@@ -1161,12 +1044,10 @@ export const createSleeve = async (
 
   // Ensure member tickers are unique within this sleeve definition
   const memberTickers = members.map((m) => m.ticker);
-  const dupInMembers = memberTickers.filter(
-    (t, i) => memberTickers.indexOf(t) !== i
-  );
+  const dupInMembers = memberTickers.filter((t, i) => memberTickers.indexOf(t) !== i);
   if (dupInMembers.length > 0) {
     throw new Error(
-      `Duplicate tickers within the sleeve: ${Array.from(new Set(dupInMembers)).join(", ")}`
+      `Duplicate tickers within the sleeve: ${Array.from(new Set(dupInMembers)).join(', ')}`,
     );
   }
 
@@ -1175,18 +1056,14 @@ export const createSleeve = async (
     .select({ ticker: schema.security.ticker })
     .from(schema.security)
     .where(
-      sql`${schema.security.ticker} IN (${sql.raw(memberTickers.map((t) => `'${t}'`).join(","))})`
+      sql`${schema.security.ticker} IN (${sql.raw(memberTickers.map((t) => `'${t}'`).join(','))})`,
     );
 
   const securityTickers = new Set(securities.map((s) => s.ticker));
-  const invalidTickers = memberTickers.filter(
-    (ticker) => !securityTickers.has(ticker)
-  );
+  const invalidTickers = memberTickers.filter((ticker) => !securityTickers.has(ticker));
 
   if (invalidTickers.length > 0) {
-    throw new Error(
-      `Invalid tickers (not found in securities): ${invalidTickers.join(", ")}`
-    );
+    throw new Error(`Invalid tickers (not found in securities): ${invalidTickers.join(', ')}`);
   }
 
   const now = Date.now();
@@ -1222,7 +1099,7 @@ export const createSleeve = async (
 
     return sleeveId;
   } catch (error) {
-    console.error("Error creating sleeve:", error);
+    console.error('Error creating sleeve:', error);
     throw error;
   }
 };
@@ -1231,7 +1108,7 @@ export const createSleeve = async (
 export const getAvailableSecurities = async (): Promise<
   Array<{ ticker: string; name: string }>
 > => {
-  const cacheKey = "available-securities";
+  const cacheKey = 'available-securities';
   const cached = getCached<Array<{ ticker: string; name: string }>>(cacheKey);
   if (cached) {
     return cached;
@@ -1253,7 +1130,7 @@ export const getAvailableSecurities = async (): Promise<
 export const updateSleeve = async (
   sleeveId: string,
   name: string,
-  members: Array<{ ticker: string; rank: number }>
+  members: Array<{ ticker: string; rank: number }>,
 ): Promise<void> => {
   // Check if sleeve exists
   const existingSleeve = await db
@@ -1271,7 +1148,7 @@ export const updateSleeve = async (
     .select({ name: schema.sleeve.name })
     .from(schema.sleeve)
     .where(
-      sql`${schema.sleeve.name} = ${name} AND ${schema.sleeve.id} != ${sleeveId} AND ${schema.sleeve.userId} = ${existingSleeve[0].userId}`
+      sql`${schema.sleeve.name} = ${name} AND ${schema.sleeve.id} != ${sleeveId} AND ${schema.sleeve.userId} = ${existingSleeve[0].userId}`,
     );
 
   if (conflictingSleeves.length > 0) {
@@ -1280,12 +1157,10 @@ export const updateSleeve = async (
 
   // Ensure member tickers are unique within this sleeve definition
   const memberTickers = members.map((m) => m.ticker);
-  const dupInMembers = memberTickers.filter(
-    (t, i) => memberTickers.indexOf(t) !== i
-  );
+  const dupInMembers = memberTickers.filter((t, i) => memberTickers.indexOf(t) !== i);
   if (dupInMembers.length > 0) {
     throw new Error(
-      `Duplicate tickers within the sleeve: ${Array.from(new Set(dupInMembers)).join(", ")}`
+      `Duplicate tickers within the sleeve: ${Array.from(new Set(dupInMembers)).join(', ')}`,
     );
   }
 
@@ -1294,18 +1169,14 @@ export const updateSleeve = async (
     .select({ ticker: schema.security.ticker })
     .from(schema.security)
     .where(
-      sql`${schema.security.ticker} IN (${sql.raw(memberTickers.map((t) => `'${t}'`).join(","))})`
+      sql`${schema.security.ticker} IN (${sql.raw(memberTickers.map((t) => `'${t}'`).join(','))})`,
     );
 
   const securityTickers = new Set(securities.map((s) => s.ticker));
-  const invalidTickers = memberTickers.filter(
-    (ticker) => !securityTickers.has(ticker)
-  );
+  const invalidTickers = memberTickers.filter((ticker) => !securityTickers.has(ticker));
 
   if (invalidTickers.length > 0) {
-    throw new Error(
-      `Invalid tickers (not found in securities): ${invalidTickers.join(", ")}`
-    );
+    throw new Error(`Invalid tickers (not found in securities): ${invalidTickers.join(', ')}`);
   }
 
   const now = Date.now();
@@ -1321,9 +1192,7 @@ export const updateSleeve = async (
       .where(eq(schema.sleeve.id, sleeveId));
 
     // Delete existing members
-    await db
-      .delete(schema.sleeveMember)
-      .where(eq(schema.sleeveMember.sleeveId, sleeveId));
+    await db.delete(schema.sleeveMember).where(eq(schema.sleeveMember.sleeveId, sleeveId));
 
     // Create new sleeve members
     const memberRecords = members.map((member) => ({
@@ -1342,7 +1211,7 @@ export const updateSleeve = async (
     // Clear cache so that the updated sleeve appears (user-scoped)
     clearCache(`sleeves-${existingSleeve[0].userId}`);
   } catch (error) {
-    console.error("Error updating sleeve:", error);
+    console.error('Error updating sleeve:', error);
     throw error;
   }
 };
@@ -1366,9 +1235,7 @@ export const deleteSleeve = async (sleeveId: string): Promise<void> => {
 
   try {
     // Delete sleeve members first (due to foreign key constraints)
-    await db
-      .delete(schema.sleeveMember)
-      .where(eq(schema.sleeveMember.sleeveId, sleeveId));
+    await db.delete(schema.sleeveMember).where(eq(schema.sleeveMember.sleeveId, sleeveId));
 
     // Delete the sleeve
     await db.delete(schema.sleeve).where(eq(schema.sleeve.id, sleeveId));
@@ -1376,23 +1243,20 @@ export const deleteSleeve = async (sleeveId: string): Promise<void> => {
     // Clear cache so that the deleted sleeve is removed (user-scoped)
     clearCache(`sleeves-${existingSleeve[0].userId}`);
   } catch (error) {
-    console.error("Error deleting sleeve:", error);
+    console.error('Error deleting sleeve:', error);
     throw error;
   }
 };
 
 // Get sleeve by ID for editing
-export const getSleeveById = async (
-  sleeveId: string,
-  userId?: string
-): Promise<Sleeve | null> => {
+export const getSleeveById = async (sleeveId: string, userId?: string): Promise<Sleeve | null> => {
   const sleeves = await getSleeves(userId);
   return sleeves.find((sleeve) => sleeve.id === sleeveId) || null;
 };
 
 // Get holdings info for a sleeve (for delete confirmation)
 export const getSleeveHoldingsInfo = async (
-  sleeveId: string
+  sleeveId: string,
 ): Promise<{
   hasHoldings: boolean;
   holdingTicker?: string;
@@ -1444,9 +1308,7 @@ export const getSleeveHoldingsInfo = async (
 export const getModels = async (userId?: string) => {
   // If no userId provided, return empty array for security
   if (!userId) {
-    console.warn(
-      "getModels called without userId - returning empty array for security"
-    );
+    console.warn('getModels called without userId - returning empty array for security');
     return [];
   }
 
@@ -1467,9 +1329,7 @@ export const getModels = async (userId?: string) => {
       updatedAt: schema.model.updatedAt,
     })
     .from(schema.model)
-    .where(
-      and(eq(schema.model.isActive, true), eq(schema.model.userId, userId))
-    )
+    .where(and(eq(schema.model.isActive, true), eq(schema.model.userId, userId)))
     .orderBy(schema.model.name);
 
   // Get all model members for active models
@@ -1486,14 +1346,11 @@ export const getModels = async (userId?: string) => {
             sleeveName: schema.sleeve.name,
           })
           .from(schema.modelMember)
-          .innerJoin(
-            schema.sleeve,
-            eq(schema.modelMember.sleeveId, schema.sleeve.id)
-          )
+          .innerJoin(schema.sleeve, eq(schema.modelMember.sleeveId, schema.sleeve.id))
           .where(
             sql`${schema.modelMember.modelId} IN (${sql.raw(
-              modelIds.map((id) => `'${id}'`).join(",")
-            )}) AND ${schema.modelMember.isActive} = 1`
+              modelIds.map((id) => `'${id}'`).join(','),
+            )}) AND ${schema.modelMember.isActive} = 1`,
           )
       : [];
 
@@ -1510,7 +1367,7 @@ export const getModels = async (userId?: string) => {
     if (!membersByModel.has(member.modelId)) {
       membersByModel.set(member.modelId, []);
     }
-    membersByModel.get(member.modelId)!.push({
+    membersByModel.get(member.modelId)?.push({
       id: member.id,
       sleeveId: member.sleeveId,
       sleeveName: member.sleeveName,
@@ -1531,7 +1388,7 @@ export const getModels = async (userId?: string) => {
   }));
 
   // Validate data
-  const validatedData = validateData(ModelsSchema, modelsWithMembers, "models");
+  const validatedData = validateData(ModelsSchema, modelsWithMembers, 'models');
   setCache(cacheKey, validatedData);
 
   return validatedData;
@@ -1587,10 +1444,7 @@ export const getModelById = async (modelId: string): Promise<Model | null> => {
 };
 
 // Create a new model with members
-export const createModel = async (
-  data: CreateModel,
-  userId: string
-): Promise<string> => {
+export const createModel = async (data: CreateModel, userId: string): Promise<string> => {
   // Check if model name already exists
   const existingModels = await db
     .select({ id: schema.model.id, name: schema.model.name })
@@ -1617,29 +1471,22 @@ export const createModel = async (
       .select({ id: schema.sleeve.id })
       .from(schema.sleeve)
       .where(
-        sql`${schema.sleeve.id} IN (${sql.raw(
-          memberSleeveIds.map((id) => `'${id}'`).join(",")
-        )})`
+        sql`${schema.sleeve.id} IN (${sql.raw(memberSleeveIds.map((id) => `'${id}'`).join(','))})`,
       );
 
     const existingSleeveIds = new Set(sleeves.map((s) => s.id));
-    const invalidSleeveIds = memberSleeveIds.filter(
-      (id) => !existingSleeveIds.has(id)
-    );
+    const invalidSleeveIds = memberSleeveIds.filter((id) => !existingSleeveIds.has(id));
 
     if (invalidSleeveIds.length > 0) {
-      throw new Error(`Invalid sleeve IDs: ${invalidSleeveIds.join(", ")}`);
+      throw new Error(`Invalid sleeve IDs: ${invalidSleeveIds.join(', ')}`);
     }
   }
 
   // Validate that target weights sum to 10000 (100%)
-  const totalWeight = data.members.reduce(
-    (sum, member) => sum + member.targetWeight,
-    0
-  );
+  const totalWeight = data.members.reduce((sum, member) => sum + member.targetWeight, 0);
   if (totalWeight !== 10000) {
     throw new Error(
-      `Target weights must sum to 100% (10000 basis points), got ${totalWeight / 100}%`
+      `Target weights must sum to 100% (10000 basis points), got ${totalWeight / 100}%`,
     );
   }
 
@@ -1677,16 +1524,13 @@ export const createModel = async (
 
     return modelId;
   } catch (error) {
-    console.error("Error creating model:", error);
+    console.error('Error creating model:', error);
     throw error;
   }
 };
 
 // Update an existing model
-export const updateModel = async (
-  modelId: string,
-  data: CreateModel
-): Promise<void> => {
+export const updateModel = async (modelId: string, data: CreateModel): Promise<void> => {
   // Check if model exists
   const existingModel = await db
     .select({ id: schema.model.id, name: schema.model.name, userId: schema.model.userId })
@@ -1703,7 +1547,7 @@ export const updateModel = async (
     .select({ name: schema.model.name })
     .from(schema.model)
     .where(
-      sql`${schema.model.name} = ${data.name} AND ${schema.model.id} != ${modelId} AND ${schema.model.userId} = ${existingModel[0].userId}`
+      sql`${schema.model.name} = ${data.name} AND ${schema.model.id} != ${modelId} AND ${schema.model.userId} = ${existingModel[0].userId}`,
     );
 
   if (conflictingModels.length > 0) {
@@ -1717,29 +1561,22 @@ export const updateModel = async (
       .select({ id: schema.sleeve.id })
       .from(schema.sleeve)
       .where(
-        sql`${schema.sleeve.id} IN (${sql.raw(
-          memberSleeveIds.map((id) => `'${id}'`).join(",")
-        )})`
+        sql`${schema.sleeve.id} IN (${sql.raw(memberSleeveIds.map((id) => `'${id}'`).join(','))})`,
       );
 
     const existingSleeveIds = new Set(sleeves.map((s) => s.id));
-    const invalidSleeveIds = memberSleeveIds.filter(
-      (id) => !existingSleeveIds.has(id)
-    );
+    const invalidSleeveIds = memberSleeveIds.filter((id) => !existingSleeveIds.has(id));
 
     if (invalidSleeveIds.length > 0) {
-      throw new Error(`Invalid sleeve IDs: ${invalidSleeveIds.join(", ")}`);
+      throw new Error(`Invalid sleeve IDs: ${invalidSleeveIds.join(', ')}`);
     }
   }
 
   // Validate that target weights sum to 10000 (100%)
-  const totalWeight = data.members.reduce(
-    (sum, member) => sum + member.targetWeight,
-    0
-  );
+  const totalWeight = data.members.reduce((sum, member) => sum + member.targetWeight, 0);
   if (totalWeight !== 10000) {
     throw new Error(
-      `Target weights must sum to 100% (10000 basis points), got ${totalWeight / 100}%`
+      `Target weights must sum to 100% (10000 basis points), got ${totalWeight / 100}%`,
     );
   }
 
@@ -1757,9 +1594,7 @@ export const updateModel = async (
       .where(eq(schema.model.id, modelId));
 
     // Delete existing members
-    await db
-      .delete(schema.modelMember)
-      .where(eq(schema.modelMember.modelId, modelId));
+    await db.delete(schema.modelMember).where(eq(schema.modelMember.modelId, modelId));
 
     // Create new model members
     if (data.members.length > 0) {
@@ -1779,7 +1614,7 @@ export const updateModel = async (
     // Clear cache so that updated model appears (user-scoped)
     clearCache(`models-${existingModel[0].userId}`);
   } catch (error) {
-    console.error("Error updating model:", error);
+    console.error('Error updating model:', error);
     throw error;
   }
 };
@@ -1799,9 +1634,7 @@ export const deleteModel = async (modelId: string): Promise<void> => {
 
   try {
     // Delete model members first (due to foreign key constraints)
-    await db
-      .delete(schema.modelMember)
-      .where(eq(schema.modelMember.modelId, modelId));
+    await db.delete(schema.modelMember).where(eq(schema.modelMember.modelId, modelId));
 
     // Delete the model
     await db.delete(schema.model).where(eq(schema.model.id, modelId));
@@ -1809,16 +1642,14 @@ export const deleteModel = async (modelId: string): Promise<void> => {
     // Clear cache so that deleted model disappears (user-scoped)
     clearCache(`models-${existingModel[0].userId}`);
   } catch (error) {
-    console.error("Error deleting model:", error);
+    console.error('Error deleting model:', error);
     throw error;
   }
 };
 
 // Get all available sleeves for model creation/editing
-export const getAvailableSleeves = async (): Promise<
-  Array<{ id: string; name: string }>
-> => {
-  const cacheKey = "available-sleeves";
+export const getAvailableSleeves = async (): Promise<Array<{ id: string; name: string }>> => {
+  const cacheKey = 'available-sleeves';
   const cached = getCached<Array<{ id: string; name: string }>>(cacheKey);
   if (cached) {
     return cached;
@@ -1847,15 +1678,13 @@ export const clearCache = (key?: string): void => {
 };
 
 // --- Orders / Blotter ---
-export async function getOrdersForAccounts(
-  accountIds: string[]
-): Promise<Order[]> {
+export async function getOrdersForAccounts(accountIds: string[]): Promise<Order[]> {
   if (!accountIds.length) return [];
   const rows = await db
     .select()
     .from(schema.tradeOrder)
     .where(
-      sql`${schema.tradeOrder.accountId} IN (${sql.raw(accountIds.map((id) => `'${id}'`).join(","))})`
+      sql`${schema.tradeOrder.accountId} IN (${sql.raw(accountIds.map((id) => `'${id}'`).join(','))})`,
     )
     .orderBy(desc(schema.tradeOrder.createdAt));
 
@@ -1870,7 +1699,7 @@ export async function getOrdersForAccounts(
     createdAt: new Date(r.createdAt),
     updatedAt: new Date(r.updatedAt),
   }));
-  return validateData(OrdersSchema, normalized, "orders");
+  return validateData(OrdersSchema, normalized, 'orders');
 }
 
 export async function addDraftOrdersFromProposedTrades(params: {
@@ -1887,7 +1716,7 @@ export async function addDraftOrdersFromProposedTrades(params: {
     // Skip if no qty or price
     if (!t.qty || !t.currentPrice) continue;
     const qty = Math.abs(t.qty);
-    const side = t.type === "BUY" ? "BUY" : "SELL";
+    const side = t.type === 'BUY' ? 'BUY' : 'SELL';
     const accountId = params.accountId || t.accountId;
     if (!accountId) continue;
 
@@ -1902,10 +1731,10 @@ export async function addDraftOrdersFromProposedTrades(params: {
         symbol: t.ticker,
         side,
         qty,
-        type: "MARKET",
-        tif: "DAY",
-        session: "NORMAL",
-        status: "DRAFT",
+        type: 'MARKET',
+        tif: 'DAY',
+        session: 'NORMAL',
+        status: 'DRAFT',
         previewWarnCount: 0,
         previewErrorCount: 0,
         cancelable: false,
@@ -1921,11 +1750,11 @@ export async function addDraftOrdersFromProposedTrades(params: {
       created += 1;
     } catch {
       // Likely unique idempotency violation -> skip
-      console.warn("Skipping duplicate draft order:", idempotencyKey);
+      console.warn('Skipping duplicate draft order:', idempotencyKey);
     }
   }
 
-  clearCache("orders");
+  clearCache('orders');
   return { created };
 }
 
@@ -1933,46 +1762,41 @@ export async function updateTradeOrder(
   id: string,
   updates: Partial<{
     symbol: string;
-    side: "BUY" | "SELL";
+    side: 'BUY' | 'SELL';
     qty: number;
-    type: "MARKET" | "LIMIT" | "STOP" | "STOP_LIMIT";
+    type: 'MARKET' | 'LIMIT' | 'STOP' | 'STOP_LIMIT';
     limit: number | null;
     stop: number | null;
-    tif: "DAY" | "GTC";
-    session: "NORMAL" | "AM" | "PM" | "ALL";
-  }>
+    tif: 'DAY' | 'GTC';
+    session: 'NORMAL' | 'AM' | 'PM' | 'ALL';
+  }>,
 ): Promise<void> {
   const set: Record<string, unknown> = { updatedAt: new Date() };
-  if (typeof updates.symbol === "string") set.symbol = updates.symbol;
+  if (typeof updates.symbol === 'string') set.symbol = updates.symbol;
   if (updates.side) set.side = updates.side;
-  if (typeof updates.qty === "number") set.qty = updates.qty;
+  if (typeof updates.qty === 'number') set.qty = updates.qty;
   if (updates.type) set.type = updates.type;
-  if (typeof updates.limit === "number" || updates.limit === null)
+  if (typeof updates.limit === 'number' || updates.limit === null)
     set.limit = updates.limit ?? null;
-  if (typeof updates.stop === "number" || updates.stop === null)
-    set.stop = updates.stop ?? null;
+  if (typeof updates.stop === 'number' || updates.stop === null) set.stop = updates.stop ?? null;
   if (updates.tif) set.tif = updates.tif;
   if (updates.session) set.session = updates.session;
 
-  await db
-    .update(schema.tradeOrder)
-    .set(set)
-    .where(eq(schema.tradeOrder.id, id));
-  clearCache("orders");
+  await db.update(schema.tradeOrder).set(set).where(eq(schema.tradeOrder.id, id));
+  clearCache('orders');
 }
 
 export async function deleteTradeOrder(id: string): Promise<void> {
   await db.delete(schema.tradeOrder).where(eq(schema.tradeOrder.id, id));
-  clearCache("orders");
+  clearCache('orders');
 }
 
 // Get all index members mapping
 export const getIndexMembers = async (): Promise<
   Array<{ indexId: string; securityId: string }>
 > => {
-  const cacheKey = "index-members";
-  const cached =
-    getCached<Array<{ indexId: string; securityId: string }>>(cacheKey);
+  const cacheKey = 'index-members';
+  const cached = getCached<Array<{ indexId: string; securityId: string }>>(cacheKey);
   if (cached) {
     return cached;
   }
@@ -1987,9 +1811,7 @@ export const getIndexMembers = async (): Promise<
 };
 
 // Get all rebalancing groups with their members and assigned models
-export const getRebalancingGroups = async (
-  userId: string
-): Promise<RebalancingGroup[]> => {
+export const getRebalancingGroups = async (userId: string): Promise<RebalancingGroup[]> => {
   const cacheKey = `rebalancing-groups-${userId}`;
   const cached = getCached<RebalancingGroup[]>(cacheKey);
   if (cached) {
@@ -2007,7 +1829,7 @@ export const getRebalancingGroups = async (
     })
     .from(schema.rebalancingGroup)
     .where(
-      sql`${schema.rebalancingGroup.userId} = ${userId} AND ${schema.rebalancingGroup.isActive} = 1`
+      sql`${schema.rebalancingGroup.userId} = ${userId} AND ${schema.rebalancingGroup.isActive} = 1`,
     )
     .orderBy(schema.rebalancingGroup.name);
 
@@ -2025,14 +1847,11 @@ export const getRebalancingGroups = async (
             accountType: schema.account.type,
           })
           .from(schema.rebalancingGroupMember)
-          .innerJoin(
-            schema.account,
-            eq(schema.rebalancingGroupMember.accountId, schema.account.id)
-          )
+          .innerJoin(schema.account, eq(schema.rebalancingGroupMember.accountId, schema.account.id))
           .where(
             sql`${schema.rebalancingGroupMember.groupId} IN (${sql.raw(
-              groupIds.map((id) => `'${id}'`).join(",")
-            )}) AND ${schema.rebalancingGroupMember.isActive} = 1`
+              groupIds.map((id) => `'${id}'`).join(','),
+            )}) AND ${schema.rebalancingGroupMember.isActive} = 1`,
           )
       : [];
 
@@ -2052,12 +1871,12 @@ export const getRebalancingGroups = async (
           .from(schema.model)
           .innerJoin(
             schema.modelGroupAssignment,
-            eq(schema.model.id, schema.modelGroupAssignment.modelId)
+            eq(schema.model.id, schema.modelGroupAssignment.modelId),
           )
           .where(
             sql`${schema.modelGroupAssignment.rebalancingGroupId} IN (${sql.raw(
-              groupIds.map((id) => `'${id}'`).join(",")
-            )}) AND ${schema.model.isActive} = 1`
+              groupIds.map((id) => `'${id}'`).join(','),
+            )}) AND ${schema.model.isActive} = 1`,
           )
       : [];
 
@@ -2075,7 +1894,7 @@ export const getRebalancingGroups = async (
     if (!membersByGroup.has(member.groupId)) {
       membersByGroup.set(member.groupId, []);
     }
-    membersByGroup.get(member.groupId)!.push({
+    membersByGroup.get(member.groupId)?.push({
       id: member.id,
       accountId: member.accountId,
       accountName: member.accountName,
@@ -2134,7 +1953,7 @@ export const getRebalancingGroups = async (
   const validatedData = validateData(
     RebalancingGroupsSchema,
     groupsWithMembers,
-    "rebalancing groups"
+    'rebalancing groups',
   );
   setCache(cacheKey, validatedData);
 
@@ -2144,7 +1963,7 @@ export const getRebalancingGroups = async (
 // Get rebalancing group by ID
 export const getRebalancingGroupById = async (
   groupId: string,
-  userId: string
+  userId: string,
 ): Promise<RebalancingGroup | null> => {
   const group = await db
     .select({
@@ -2156,7 +1975,7 @@ export const getRebalancingGroupById = async (
     })
     .from(schema.rebalancingGroup)
     .where(
-      sql`${schema.rebalancingGroup.id} = ${groupId} AND ${schema.rebalancingGroup.userId} = ${userId}`
+      sql`${schema.rebalancingGroup.id} = ${groupId} AND ${schema.rebalancingGroup.userId} = ${userId}`,
     )
     .limit(1);
 
@@ -2175,12 +1994,9 @@ export const getRebalancingGroupById = async (
       accountNumber: schema.account.accountNumber,
     })
     .from(schema.rebalancingGroupMember)
-    .innerJoin(
-      schema.account,
-      eq(schema.rebalancingGroupMember.accountId, schema.account.id)
-    )
+    .innerJoin(schema.account, eq(schema.rebalancingGroupMember.accountId, schema.account.id))
     .where(
-      sql`${schema.rebalancingGroupMember.groupId} = ${groupId} AND ${schema.rebalancingGroupMember.isActive} = 1`
+      sql`${schema.rebalancingGroupMember.groupId} = ${groupId} AND ${schema.rebalancingGroupMember.isActive} = 1`,
     );
 
   // Get assigned model via junction table
@@ -2196,10 +2012,10 @@ export const getRebalancingGroupById = async (
     .from(schema.model)
     .innerJoin(
       schema.modelGroupAssignment,
-      eq(schema.model.id, schema.modelGroupAssignment.modelId)
+      eq(schema.model.id, schema.modelGroupAssignment.modelId),
     )
     .where(
-      sql`${schema.modelGroupAssignment.rebalancingGroupId} = ${groupId} AND ${schema.model.isActive} = 1`
+      sql`${schema.modelGroupAssignment.rebalancingGroupId} = ${groupId} AND ${schema.model.isActive} = 1`,
     )
     .limit(1);
 
@@ -2223,10 +2039,7 @@ export const getRebalancingGroupById = async (
         sleeveName: schema.sleeve.name,
       })
       .from(schema.modelMember)
-      .innerJoin(
-        schema.sleeve,
-        eq(schema.modelMember.sleeveId, schema.sleeve.id)
-      )
+      .innerJoin(schema.sleeve, eq(schema.modelMember.sleeveId, schema.sleeve.id))
       .where(eq(schema.modelMember.modelId, assignedModel[0].id));
   }
 
@@ -2270,16 +2083,11 @@ export const getRebalancingGroupById = async (
 export const getAccountHoldings = async (accountIds: string[]) => {
   // Get S&P 500 data for current prices and security information (baseline)
   const sp500Data = await getSnP500Data();
-  const priceMap = new Map<string, number>(
-    sp500Data.map((stock) => [stock.ticker, stock.price])
-  );
+  const priceMap = new Map<string, number>(sp500Data.map((stock) => [stock.ticker, stock.price]));
 
   // Create a map for sector and industry information
   const securityInfoMap = new Map<string, { sector: string; industry: string }>(
-    sp500Data.map((stock) => [
-      stock.ticker,
-      { sector: stock.sector, industry: stock.industry },
-    ])
+    sp500Data.map((stock) => [stock.ticker, { sector: stock.sector, industry: stock.industry }]),
   );
 
   // Get holdings for the specified accounts
@@ -2308,13 +2116,16 @@ export const getAccountHoldings = async (accountIds: string[]) => {
         .from(schema.security)
         .where(inArray(schema.security.ticker, tickers));
       for (const r of rows) {
-        if (typeof r.price === "number" && isFinite(r.price) && r.price > 0) {
+        if (typeof r.price === 'number' && Number.isFinite(r.price) && r.price > 0) {
           priceMap.set(r.ticker, r.price);
         }
       }
     }
   } catch (e) {
-    console.warn("⚠️ getAccountHoldings: fallback to SP500 prices due to security price overlay failure", e);
+    console.warn(
+      '⚠️ getAccountHoldings: fallback to SP500 prices due to security price overlay failure',
+      e,
+    );
   }
 
   // Get sleeve information for each ticker
@@ -2325,22 +2136,16 @@ export const getAccountHoldings = async (accountIds: string[]) => {
       sleeveName: schema.sleeve.name,
     })
     .from(schema.sleeveMember)
-    .innerJoin(
-      schema.sleeve,
-      eq(schema.sleeveMember.sleeveId, schema.sleeve.id)
-    )
+    .innerJoin(schema.sleeve, eq(schema.sleeveMember.sleeveId, schema.sleeve.id))
     .where(eq(schema.sleeveMember.isActive, true));
 
   // Create a map of ticker to sleeves
-  const tickerToSleeves = new Map<
-    string,
-    Array<{ sleeveId: string; sleeveName: string }>
-  >();
+  const tickerToSleeves = new Map<string, Array<{ sleeveId: string; sleeveName: string }>>();
   for (const member of sleeveMembers) {
     if (!tickerToSleeves.has(member.ticker)) {
       tickerToSleeves.set(member.ticker, []);
     }
-    tickerToSleeves.get(member.ticker)!.push({
+    tickerToSleeves.get(member.ticker)?.push({
       sleeveId: member.sleeveId,
       sleeveName: member.sleeveName,
     });
@@ -2382,7 +2187,7 @@ export const getAccountHoldings = async (accountIds: string[]) => {
         accountId: holding.accountId,
         accountName: holding.accountName,
         accountType: holding.accountType,
-        accountNumber: holding.accountNumber || "",
+        accountNumber: holding.accountNumber || '',
         accountBalance: 0, // Will be calculated from holdings
         totalValue: 0, // Will be calculated from holdings
         holdings: [],
@@ -2396,11 +2201,11 @@ export const getAccountHoldings = async (accountIds: string[]) => {
 
     const sleeves = tickerToSleeves.get(holding.ticker) || [];
     const securityInfo = securityInfoMap.get(holding.ticker) || {
-      sector: "Unknown",
-      industry: "Unknown",
+      sector: 'Unknown',
+      industry: 'Unknown',
     };
 
-    accountHoldings.get(accountId)!.holdings.push({
+    accountHoldings.get(accountId)?.holdings.push({
       id: holding.id,
       ticker: holding.ticker,
       qty: holding.qty,
@@ -2409,8 +2214,7 @@ export const getAccountHoldings = async (accountIds: string[]) => {
       costBasisPerShare: holding.costBasis,
       costBasisTotal,
       unrealizedGain,
-      unrealizedGainPercent:
-        costBasisTotal > 0 ? (unrealizedGain / costBasisTotal) * 100 : 0,
+      unrealizedGainPercent: costBasisTotal > 0 ? (unrealizedGain / costBasisTotal) * 100 : 0,
       sleeves,
       sector: securityInfo.sector,
       industry: securityInfo.industry,
@@ -2422,7 +2226,7 @@ export const getAccountHoldings = async (accountIds: string[]) => {
   const result = Array.from(accountHoldings.values()).map((account) => {
     const calculatedBalance = account.holdings.reduce(
       (sum, holding) => sum + holding.marketValue,
-      0
+      0,
     );
     return {
       ...account,
@@ -2437,22 +2241,12 @@ export type SP500DataResult = Awaited<ReturnType<typeof getSnP500Data>>;
 export type PositionsResult = Awaited<ReturnType<typeof getPositions>>;
 export type TransactionsResult = Awaited<ReturnType<typeof getTransactions>>;
 export type SleevesResult = Awaited<ReturnType<typeof getSleeves>>;
-export type PortfolioMetricsResult = Awaited<
-  ReturnType<typeof getPortfolioMetrics>
->;
-export type ProposedTradesResult = Awaited<
-  ReturnType<typeof getProposedTrades>
->;
+export type PortfolioMetricsResult = Awaited<ReturnType<typeof getPortfolioMetrics>>;
+export type ProposedTradesResult = Awaited<ReturnType<typeof getProposedTrades>>;
 export type ModelsResult = Awaited<ReturnType<typeof getModels>>;
-export type AccountHoldingsResult = Awaited<
-  ReturnType<typeof getAccountHoldings>
->;
-export type RebalancingGroupsResult = Awaited<
-  ReturnType<typeof getRebalancingGroups>
->;
-export type RebalancingGroupByIdResult = Awaited<
-  ReturnType<typeof getRebalancingGroupById>
->;
+export type AccountHoldingsResult = Awaited<ReturnType<typeof getAccountHoldings>>;
+export type RebalancingGroupsResult = Awaited<ReturnType<typeof getRebalancingGroups>>;
+export type RebalancingGroupByIdResult = Awaited<ReturnType<typeof getRebalancingGroupById>>;
 export type SleeveMembersResult = Awaited<ReturnType<typeof getSleeveMembers>>;
 
 // Get sleeve members (target securities) for specific sleeves
@@ -2463,9 +2257,7 @@ export const getSleeveMembers = async (sleeveIds: string[]) => {
 
   // Get S&P 500 data for current prices
   const sp500Data = await getSnP500Data();
-  const priceMap = new Map<string, number>(
-    sp500Data.map((stock) => [stock.ticker, stock.price])
-  );
+  const priceMap = new Map<string, number>(sp500Data.map((stock) => [stock.ticker, stock.price]));
 
   // Get sleeve members (securities within each sleeve) - process in smaller batches
 
@@ -2501,15 +2293,12 @@ export const getSleeveMembers = async (sleeveIds: string[]) => {
           sleeveName: schema.sleeve.name,
         })
         .from(schema.sleeveMember)
-        .innerJoin(
-          schema.sleeve,
-          eq(schema.sleeveMember.sleeveId, schema.sleeve.id)
-        )
+        .innerJoin(schema.sleeve, eq(schema.sleeveMember.sleeveId, schema.sleeve.id))
         .where(
           and(
             inArray(schema.sleeveMember.sleeveId, batchIds),
-            eq(schema.sleeveMember.isActive, true)
-          )
+            eq(schema.sleeveMember.isActive, true),
+          ),
         );
 
       // Group by sleeve
@@ -2523,7 +2312,7 @@ export const getSleeveMembers = async (sleeveIds: string[]) => {
         }
 
         const currentPrice = priceMap.get(member.ticker) || 0;
-        finalSleeveMap.get(member.sleeveId)!.members.push({
+        finalSleeveMap.get(member.sleeveId)?.members.push({
           id: member.id,
           ticker: member.ticker,
           rank: member.rank,
@@ -2535,7 +2324,7 @@ export const getSleeveMembers = async (sleeveIds: string[]) => {
     } catch (error) {
       console.error(
         `Error fetching sleeve members for batch ${Math.floor(i / batchSize) + 1}:`,
-        error
+        error,
       );
     }
   }
@@ -2547,11 +2336,9 @@ export const getSleeveMembers = async (sleeveIds: string[]) => {
       const equalWeight = Math.floor(10000 / memberCount);
       const remainder = 10000 - equalWeight * memberCount;
 
-      sleeveData.members.forEach(
-        (member: { targetWeight: number }, index: number) => {
-          member.targetWeight = equalWeight + (index < remainder ? 1 : 0);
-        }
-      );
+      sleeveData.members.forEach((member: { targetWeight: number }, index: number) => {
+        member.targetWeight = equalWeight + (index < remainder ? 1 : 0);
+      });
     }
   }
 
@@ -2562,7 +2349,7 @@ export const getSleeveMembers = async (sleeveIds: string[]) => {
 // Create a new rebalancing group with members
 export const createRebalancingGroup = async (
   data: CreateRebalancingGroup,
-  userId: string
+  userId: string,
 ): Promise<string> => {
   // Check if group name already exists for this user
   const existingGroups = await db
@@ -2572,7 +2359,7 @@ export const createRebalancingGroup = async (
     })
     .from(schema.rebalancingGroup)
     .where(
-      sql`${schema.rebalancingGroup.name} = ${data.name} AND ${schema.rebalancingGroup.userId} = ${userId}`
+      sql`${schema.rebalancingGroup.name} = ${data.name} AND ${schema.rebalancingGroup.userId} = ${userId}`,
     );
 
   if (existingGroups.length > 0) {
@@ -2596,17 +2383,15 @@ export const createRebalancingGroup = async (
       .from(schema.account)
       .where(
         sql`${schema.account.id} IN (${sql.raw(
-          memberAccountIds.map((id) => `'${id}'`).join(",")
-        )}) AND ${schema.account.userId} = ${userId}`
+          memberAccountIds.map((id) => `'${id}'`).join(','),
+        )}) AND ${schema.account.userId} = ${userId}`,
       );
 
     const existingAccountIds = new Set(accounts.map((a) => a.id));
-    const invalidAccountIds = memberAccountIds.filter(
-      (id) => !existingAccountIds.has(id)
-    );
+    const invalidAccountIds = memberAccountIds.filter((id) => !existingAccountIds.has(id));
 
     if (invalidAccountIds.length > 0) {
-      throw new Error(`Invalid account IDs: ${invalidAccountIds.join(", ")}`);
+      throw new Error(`Invalid account IDs: ${invalidAccountIds.join(', ')}`);
     }
   }
 
@@ -2642,7 +2427,7 @@ export const createRebalancingGroup = async (
 
     return groupId;
   } catch (error) {
-    console.error("Error creating rebalancing group:", error);
+    console.error('Error creating rebalancing group:', error);
     throw error;
   }
 };
@@ -2651,7 +2436,7 @@ export const createRebalancingGroup = async (
 export const updateRebalancingGroup = async (
   groupId: string,
   data: CreateRebalancingGroup,
-  userId: string
+  userId: string,
 ): Promise<void> => {
   // Check if group exists and belongs to user
   const existingGroup = await db
@@ -2661,7 +2446,7 @@ export const updateRebalancingGroup = async (
     })
     .from(schema.rebalancingGroup)
     .where(
-      sql`${schema.rebalancingGroup.id} = ${groupId} AND ${schema.rebalancingGroup.userId} = ${userId}`
+      sql`${schema.rebalancingGroup.id} = ${groupId} AND ${schema.rebalancingGroup.userId} = ${userId}`,
     )
     .limit(1);
 
@@ -2674,7 +2459,7 @@ export const updateRebalancingGroup = async (
     .select({ name: schema.rebalancingGroup.name })
     .from(schema.rebalancingGroup)
     .where(
-      sql`${schema.rebalancingGroup.name} = ${data.name} AND ${schema.rebalancingGroup.userId} = ${userId} AND ${schema.rebalancingGroup.id} != ${groupId}`
+      sql`${schema.rebalancingGroup.name} = ${data.name} AND ${schema.rebalancingGroup.userId} = ${userId} AND ${schema.rebalancingGroup.id} != ${groupId}`,
     );
 
   if (conflictingGroups.length > 0) {
@@ -2689,17 +2474,15 @@ export const updateRebalancingGroup = async (
       .from(schema.account)
       .where(
         sql`${schema.account.id} IN (${sql.raw(
-          memberAccountIds.map((id) => `'${id}'`).join(",")
-        )}) AND ${schema.account.userId} = ${userId}`
+          memberAccountIds.map((id) => `'${id}'`).join(','),
+        )}) AND ${schema.account.userId} = ${userId}`,
       );
 
     const existingAccountIds = new Set(accounts.map((a) => a.id));
-    const invalidAccountIds = memberAccountIds.filter(
-      (id) => !existingAccountIds.has(id)
-    );
+    const invalidAccountIds = memberAccountIds.filter((id) => !existingAccountIds.has(id));
 
     if (invalidAccountIds.length > 0) {
-      throw new Error(`Invalid account IDs: ${invalidAccountIds.join(", ")}`);
+      throw new Error(`Invalid account IDs: ${invalidAccountIds.join(', ')}`);
     }
   }
 
@@ -2737,16 +2520,13 @@ export const updateRebalancingGroup = async (
     // Clear cache so that updated group appears
     clearCache(`rebalancing-groups-${userId}`);
   } catch (error) {
-    console.error("Error updating rebalancing group:", error);
+    console.error('Error updating rebalancing group:', error);
     throw error;
   }
 };
 
 // Delete a rebalancing group (soft delete)
-export const deleteRebalancingGroup = async (
-  groupId: string,
-  userId: string
-): Promise<void> => {
+export const deleteRebalancingGroup = async (groupId: string, userId: string): Promise<void> => {
   // Check if group exists and belongs to user
   const existingGroup = await db
     .select({
@@ -2755,7 +2535,7 @@ export const deleteRebalancingGroup = async (
     })
     .from(schema.rebalancingGroup)
     .where(
-      sql`${schema.rebalancingGroup.id} = ${groupId} AND ${schema.rebalancingGroup.userId} = ${userId}`
+      sql`${schema.rebalancingGroup.id} = ${groupId} AND ${schema.rebalancingGroup.userId} = ${userId}`,
     )
     .limit(1);
 
@@ -2791,22 +2571,18 @@ export const deleteRebalancingGroup = async (
     clearCache(`rebalancing-groups-${userId}`);
     clearCache(`models-${userId}`);
   } catch (error) {
-    console.error("Error deleting rebalancing group:", error);
+    console.error('Error deleting rebalancing group:', error);
     throw error;
   }
 };
 
 // Get all available accounts for group creation/editing
 export const getAvailableAccounts = async (
-  userId: string
-): Promise<
-  Array<{ id: string; name: string; type: string; balance: number }>
-> => {
+  userId: string,
+): Promise<Array<{ id: string; name: string; type: string; balance: number }>> => {
   const cacheKey = `available-accounts-${userId}`;
   const cached =
-    getCached<
-      Array<{ id: string; name: string; type: string; balance: number }>
-    >(cacheKey);
+    getCached<Array<{ id: string; name: string; type: string; balance: number }>>(cacheKey);
   if (cached) {
     return cached;
   }
@@ -2824,7 +2600,7 @@ export const getAvailableAccounts = async (
   const processedAccounts = accounts.map((account) => ({
     id: account.id,
     name: account.name,
-    type: account.type || "", // Convert null to empty string
+    type: account.type || '', // Convert null to empty string
     balance: 0, // Will be calculated from holdings
   }));
 
@@ -2836,7 +2612,7 @@ export const getAvailableAccounts = async (
 // Get accounts with their assignment status for rebalancing group selection
 export const getAccountsForRebalancingGroups = async (
   userId: string,
-  excludeGroupId?: string
+  excludeGroupId?: string,
 ): Promise<
   Array<{
     id: string;
@@ -2849,19 +2625,20 @@ export const getAccountsForRebalancingGroups = async (
     assignedGroupName?: string;
   }>
 > => {
-  const cacheKey = `accounts-for-rebalancing-${userId}-${excludeGroupId || "all"}`;
-  const cached = getCached<
-    Array<{
-      id: string;
-      name: string;
-      type: string;
-      accountNumber: string | null;
-      dataSource: string;
-      balance: number;
-      isAssigned: boolean;
-      assignedGroupName?: string;
-    }>
-  >(cacheKey);
+  const cacheKey = `accounts-for-rebalancing-${userId}-${excludeGroupId || 'all'}`;
+  const cached =
+    getCached<
+      Array<{
+        id: string;
+        name: string;
+        type: string;
+        accountNumber: string | null;
+        dataSource: string;
+        balance: number;
+        isAssigned: boolean;
+        assignedGroupName?: string;
+      }>
+    >(cacheKey);
   if (cached) {
     return cached;
   }
@@ -2889,14 +2666,12 @@ export const getAccountsForRebalancingGroups = async (
     .from(schema.rebalancingGroupMember)
     .innerJoin(
       schema.rebalancingGroup,
-      eq(schema.rebalancingGroupMember.groupId, schema.rebalancingGroup.id)
+      eq(schema.rebalancingGroupMember.groupId, schema.rebalancingGroup.id),
     )
     .where(
       sql`${schema.rebalancingGroupMember.isActive} = 1 AND ${schema.rebalancingGroup.isActive} = 1 AND ${schema.rebalancingGroup.userId} = ${userId}${
-        excludeGroupId
-          ? sql` AND ${schema.rebalancingGroup.id} != ${excludeGroupId}`
-          : sql``
-      }`
+        excludeGroupId ? sql` AND ${schema.rebalancingGroup.id} != ${excludeGroupId}` : sql``
+      }`,
     );
 
   // Create a map of account assignments
@@ -2912,9 +2687,7 @@ export const getAccountsForRebalancingGroups = async (
 
   if (accounts.length > 0) {
     const sp500Data = await getSnP500Data();
-    const priceMap = new Map<string, number>(
-      sp500Data.map((stock) => [stock.ticker, stock.price])
-    );
+    const priceMap = new Map<string, number>(sp500Data.map((stock) => [stock.ticker, stock.price]));
 
     const accountIds = accounts.map((account) => account.id);
     const holdings = await db
@@ -2924,12 +2697,9 @@ export const getAccountsForRebalancingGroups = async (
         qty: schema.holding.qty,
       })
       .from(schema.holding)
-      .innerJoin(
-        schema.account,
-        eq(schema.holding.accountId, schema.account.id)
-      )
+      .innerJoin(schema.account, eq(schema.holding.accountId, schema.account.id))
       .where(
-        sql`${schema.account.id} IN (${sql.raw(accountIds.map((id) => `'${id}'`).join(","))})`
+        sql`${schema.account.id} IN (${sql.raw(accountIds.map((id) => `'${id}'`).join(','))})`,
       );
 
     // Calculate balance for each account
@@ -2946,7 +2716,7 @@ export const getAccountsForRebalancingGroups = async (
     return {
       id: account.id,
       name: account.name,
-      type: account.type || "", // Convert null to empty string
+      type: account.type || '', // Convert null to empty string
       accountNumber: account.accountNumber,
       dataSource: account.dataSource,
       balance: accountBalances.get(account.id) || 0,
@@ -2964,7 +2734,7 @@ export const getAccountsForRebalancingGroups = async (
 export const assignModelToGroup = async (
   modelId: string,
   groupId: string,
-  userId: string
+  userId: string,
 ): Promise<void> => {
   // Verify the model exists
   const model = await db
@@ -2982,7 +2752,7 @@ export const assignModelToGroup = async (
     .select({ id: schema.rebalancingGroup.id })
     .from(schema.rebalancingGroup)
     .where(
-      sql`${schema.rebalancingGroup.id} = ${groupId} AND ${schema.rebalancingGroup.userId} = ${userId} AND ${schema.rebalancingGroup.isActive} = 1`
+      sql`${schema.rebalancingGroup.id} = ${groupId} AND ${schema.rebalancingGroup.userId} = ${userId} AND ${schema.rebalancingGroup.isActive} = 1`,
     )
     .limit(1);
 
@@ -2998,8 +2768,8 @@ export const assignModelToGroup = async (
       .where(
         and(
           eq(schema.modelGroupAssignment.modelId, modelId),
-          eq(schema.modelGroupAssignment.rebalancingGroupId, groupId)
-        )
+          eq(schema.modelGroupAssignment.rebalancingGroupId, groupId),
+        ),
       )
       .limit(1);
 
@@ -3019,16 +2789,13 @@ export const assignModelToGroup = async (
     clearCache(`rebalancing-groups-${userId}`);
     clearCache(`models-${userId}`);
   } catch (error) {
-    console.error("Error assigning model to group:", error);
+    console.error('Error assigning model to group:', error);
     throw error;
   }
 };
 
 // Unassign a model from a rebalancing group
-export const unassignModelFromGroup = async (
-  modelId: string,
-  groupId: string
-): Promise<void> => {
+export const unassignModelFromGroup = async (modelId: string, groupId: string): Promise<void> => {
   try {
     // Determine userId from the group
     const group = await db
@@ -3043,8 +2810,8 @@ export const unassignModelFromGroup = async (
       .where(
         and(
           eq(schema.modelGroupAssignment.modelId, modelId),
-          eq(schema.modelGroupAssignment.rebalancingGroupId, groupId)
-        )
+          eq(schema.modelGroupAssignment.rebalancingGroupId, groupId),
+        ),
       );
 
     // Clear caches (user-scoped if found)
@@ -3054,7 +2821,7 @@ export const unassignModelFromGroup = async (
       clearCache(`models-${uid}`);
     }
   } catch (error) {
-    console.error("Error unassigning model from group:", error);
+    console.error('Error unassigning model from group:', error);
     throw error;
   }
 };
@@ -3063,20 +2830,18 @@ export const unassignModelFromGroup = async (
 export const updateAccount = async (
   accountId: string,
   updates: { name: string; type: string },
-  userId: string
+  userId: string,
 ): Promise<void> => {
   try {
     // Verify the account belongs to the user
     const existingAccount = await db
       .select({ id: schema.account.id })
       .from(schema.account)
-      .where(
-        and(eq(schema.account.id, accountId), eq(schema.account.userId, userId))
-      )
+      .where(and(eq(schema.account.id, accountId), eq(schema.account.userId, userId)))
       .limit(1);
 
     if (existingAccount.length === 0) {
-      throw new Error("Account not found or unauthorized");
+      throw new Error('Account not found or unauthorized');
     }
 
     // Update the account
@@ -3093,7 +2858,7 @@ export const updateAccount = async (
     clearCache(`rebalancing-groups-${userId}`);
     clearCache(`available-accounts-${userId}`);
   } catch (error) {
-    console.error("Error updating account:", error);
+    console.error('Error updating account:', error);
     throw error;
   }
 };
@@ -3104,7 +2869,7 @@ export const createFinancialPlan = async (
   userId: string,
   name: string,
   inputs: FinancialPlanInput,
-  goals: FinancialPlanGoal[] = []
+  goals: FinancialPlanGoal[] = [],
 ): Promise<string> => {
   try {
     const planId = `plan-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
@@ -3159,7 +2924,7 @@ export const createFinancialPlan = async (
     clearCache(`financial-plans-${userId}`);
     return planId;
   } catch (error) {
-    console.error("Error creating financial plan:", error);
+    console.error('Error creating financial plan:', error);
     throw error;
   }
 };
@@ -3168,7 +2933,7 @@ export const updateFinancialPlan = async (
   planId: string,
   userId: string,
   inputs: FinancialPlanInput,
-  goals: FinancialPlanGoal[] = []
+  goals: FinancialPlanGoal[] = [],
 ): Promise<void> => {
   try {
     const now = Date.now();
@@ -3177,16 +2942,11 @@ export const updateFinancialPlan = async (
     const existingPlan = await db
       .select({ id: schema.financialPlan.id })
       .from(schema.financialPlan)
-      .where(
-        and(
-          eq(schema.financialPlan.id, planId),
-          eq(schema.financialPlan.userId, userId)
-        )
-      )
+      .where(and(eq(schema.financialPlan.id, planId), eq(schema.financialPlan.userId, userId)))
       .limit(1);
 
     if (existingPlan.length === 0) {
-      throw new Error("Plan not found or unauthorized");
+      throw new Error('Plan not found or unauthorized');
     }
 
     // Update plan timestamp
@@ -3215,9 +2975,7 @@ export const updateFinancialPlan = async (
       .where(eq(schema.financialPlanInput.planId, planId));
 
     // Delete existing goals and recreate
-    await db
-      .delete(schema.financialPlanGoal)
-      .where(eq(schema.financialPlanGoal.planId, planId));
+    await db.delete(schema.financialPlanGoal).where(eq(schema.financialPlanGoal.planId, planId));
 
     // Insert new goals
     for (const goal of goals) {
@@ -3240,14 +2998,14 @@ export const updateFinancialPlan = async (
     clearCache(`financial-plans-${userId}`);
     clearCache(`financial-plan-${planId}`);
   } catch (error) {
-    console.error("Error updating financial plan:", error);
+    console.error('Error updating financial plan:', error);
     throw error;
   }
 };
 
 export const getFinancialPlan = async (
   planId: string,
-  userId: string
+  userId: string,
 ): Promise<FinancialPlan | null> => {
   try {
     const cacheKey = `financial-plan-${planId}`;
@@ -3258,16 +3016,11 @@ export const getFinancialPlan = async (
     const plan = await db
       .select()
       .from(schema.financialPlan)
-      .where(
-        and(
-          eq(schema.financialPlan.id, planId),
-          eq(schema.financialPlan.userId, userId)
-        )
-      )
+      .where(and(eq(schema.financialPlan.id, planId), eq(schema.financialPlan.userId, userId)))
       .limit(1);
 
     if (plan.length === 0) {
-      throw new Error("Plan not found or unauthorized");
+      throw new Error('Plan not found or unauthorized');
     }
 
     // Get plan inputs
@@ -3285,30 +3038,34 @@ export const getFinancialPlan = async (
 
     const result: FinancialPlan = {
       ...plan[0],
-      inputs: inputs[0] ? {
-        ...inputs[0],
-        filingStatus: inputs[0].filingStatus as "single" | "married_filing_jointly" | "head_of_household",
-        spouseAge: inputs[0].spouseAge ?? undefined
-      } : undefined,
-      goals: goals?.map(goal => ({
-        ...goal,
-        purpose: goal.purpose ?? undefined,
-        type: goal.type as "contribution" | "fixed_withdrawal",
-        frequency: goal.frequency as "annually" | "monthly"
-      })) || [],
+      inputs: inputs[0]
+        ? {
+            ...inputs[0],
+            filingStatus: inputs[0].filingStatus as
+              | 'single'
+              | 'married_filing_jointly'
+              | 'head_of_household',
+            spouseAge: inputs[0].spouseAge ?? undefined,
+          }
+        : undefined,
+      goals:
+        goals?.map((goal) => ({
+          ...goal,
+          purpose: goal.purpose ?? undefined,
+          type: goal.type as 'contribution' | 'fixed_withdrawal',
+          frequency: goal.frequency as 'annually' | 'monthly',
+        })) || [],
     };
 
     setCache(cacheKey, result);
     return result;
   } catch (error) {
-    console.error("Error getting financial plan:", error);
+    console.error('Error getting financial plan:', error);
     throw error;
   }
 };
 
-export const getFinancialPlans = async (
-  userId: string
-): Promise<FinancialPlanSummary[]> => {
+export const getFinancialPlans = async (userId: string): Promise<FinancialPlanSummary[]> => {
   try {
     const cacheKey = `financial-plans-${userId}`;
     const cached = getCached<FinancialPlanSummary[]>(cacheKey);
@@ -3328,41 +3085,31 @@ export const getFinancialPlans = async (
     setCache(cacheKey, plans);
     return plans;
   } catch (error) {
-    console.error("Error getting financial plans:", error);
+    console.error('Error getting financial plans:', error);
     throw error;
   }
 };
 
-export const deleteFinancialPlan = async (
-  planId: string,
-  userId: string
-): Promise<void> => {
+export const deleteFinancialPlan = async (planId: string, userId: string): Promise<void> => {
   try {
     // Verify plan ownership
     const existingPlan = await db
       .select({ id: schema.financialPlan.id })
       .from(schema.financialPlan)
-      .where(
-        and(
-          eq(schema.financialPlan.id, planId),
-          eq(schema.financialPlan.userId, userId)
-        )
-      )
+      .where(and(eq(schema.financialPlan.id, planId), eq(schema.financialPlan.userId, userId)))
       .limit(1);
 
     if (existingPlan.length === 0) {
-      throw new Error("Plan not found or unauthorized");
+      throw new Error('Plan not found or unauthorized');
     }
 
     // Delete plan (cascading deletes will handle inputs, goals, and results)
-    await db
-      .delete(schema.financialPlan)
-      .where(eq(schema.financialPlan.id, planId));
+    await db.delete(schema.financialPlan).where(eq(schema.financialPlan.id, planId));
 
     clearCache(`financial-plans-${userId}`);
     clearCache(`financial-plan-${planId}`);
   } catch (error) {
-    console.error("Error deleting financial plan:", error);
+    console.error('Error deleting financial plan:', error);
     throw error;
   }
 };

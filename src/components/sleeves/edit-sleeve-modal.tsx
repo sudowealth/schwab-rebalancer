@@ -1,5 +1,7 @@
-import { useState, useEffect } from "react";
-import { X, Plus } from "lucide-react";
+import { useRouter } from '@tanstack/react-router';
+import { Plus, X } from 'lucide-react';
+import { useEffect, useId, useState } from 'react';
+import { Button } from '../../components/ui/button';
 import {
   Dialog,
   DialogContent,
@@ -7,16 +9,11 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "../../components/ui/dialog";
-import { Button } from "../../components/ui/button";
-import { Input } from "../../components/ui/input";
-import { VirtualizedSelect, type Option } from "../../components/ui/virtualized-select-fixed";
-import {
-  updateSleeveServerFn,
-  getAvailableSecuritiesServerFn,
-} from "../../lib/server-functions";
-import { useRouter } from "@tanstack/react-router";
-import type { Sleeve } from "../../lib/schemas";
+} from '../../components/ui/dialog';
+import { Input } from '../../components/ui/input';
+import { type Option, VirtualizedSelect } from '../../components/ui/virtualized-select-fixed';
+import type { Sleeve } from '../../lib/schemas';
+import { getAvailableSecuritiesServerFn, updateSleeveServerFn } from '../../lib/server-functions';
 
 type Security = Awaited<ReturnType<typeof getAvailableSecuritiesServerFn>>[number];
 
@@ -26,18 +23,15 @@ interface EditSleeveModalProps {
   sleeve: Sleeve | null;
 }
 
-export function EditSleeveModal({
-  isOpen,
-  onClose,
-  sleeve,
-}: EditSleeveModalProps) {
-  const [sleeveName, setSleeveName] = useState("");
+export function EditSleeveModal({ isOpen, onClose, sleeve }: EditSleeveModalProps) {
+  const [sleeveName, setSleeveName] = useState('');
   const [members, setMembers] = useState<Array<{ ticker: string; rank: number }>>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState('');
   const [securities, setSecurities] = useState<Security[]>([]);
   const [securityOptions, setSecurityOptions] = useState<Option[]>([]);
   const router = useRouter();
+  const sleeveNameId = `${useId()}-sleeve-name`;
 
   // Load available securities when component mounts
   useEffect(() => {
@@ -52,7 +46,7 @@ export function EditSleeveModal({
         }));
         setSecurityOptions(options);
       } catch (err) {
-        console.error("Failed to load securities:", err);
+        console.error('Failed to load securities:', err);
       }
     };
     loadSecurities();
@@ -68,27 +62,27 @@ export function EditSleeveModal({
           rank: member.rank,
         })),
       );
-      setError("");
+      setError('');
     }
   }, [sleeve]);
 
   const resetForm = () => {
-    setSleeveName("");
+    setSleeveName('');
     setMembers([]);
-    setError("");
+    setError('');
   };
 
   const validateMembers = (membersToValidate: Array<{ ticker: string; rank: number }>) => {
     const errors: string[] = [];
 
     if (membersToValidate.length === 0) {
-      errors.push("At least one member is required");
+      errors.push('At least one member is required');
     }
 
     const ranks = membersToValidate.map((m) => m.rank);
     const uniqueRanks = [...new Set(ranks)];
     if (ranks.length !== uniqueRanks.length) {
-      errors.push("All members must have unique ranks");
+      errors.push('All members must have unique ranks');
     }
 
     const tickers = membersToValidate
@@ -96,15 +90,13 @@ export function EditSleeveModal({
       .filter((t) => t.length > 0);
     const uniqueTickers = [...new Set(tickers)];
     if (tickers.length !== uniqueTickers.length) {
-      errors.push("All members must have unique tickers");
+      errors.push('All members must have unique tickers');
     }
 
     const validTickers = new Set(securities.map((s) => s.ticker));
-    const invalidTickers = tickers.filter(
-      (ticker) => !validTickers.has(ticker),
-    );
+    const invalidTickers = tickers.filter((ticker) => !validTickers.has(ticker));
     if (invalidTickers.length > 0) {
-      errors.push(`Invalid tickers: ${invalidTickers.join(", ")}`);
+      errors.push(`Invalid tickers: ${invalidTickers.join(', ')}`);
     }
 
     return errors;
@@ -112,12 +104,12 @@ export function EditSleeveModal({
 
   const handleSubmit = async () => {
     if (!sleeve) {
-      setError("No sleeve selected for editing");
+      setError('No sleeve selected for editing');
       return;
     }
 
     if (!sleeveName.trim()) {
-      setError("Sleeve name is required");
+      setError('Sleeve name is required');
       return;
     }
 
@@ -125,12 +117,12 @@ export function EditSleeveModal({
     const errors = validateMembers(validMembers);
 
     if (errors.length > 0) {
-      setError(errors.join(". "));
+      setError(errors.join('. '));
       return;
     }
 
     setIsLoading(true);
-    setError("");
+    setError('');
 
     try {
       await updateSleeveServerFn({
@@ -148,19 +140,15 @@ export function EditSleeveModal({
       resetForm();
       router.invalidate(); // Refresh the data
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to update sleeve");
+      setError(err instanceof Error ? err.message : 'Failed to update sleeve');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const updateMember = (
-    index: number,
-    field: "ticker" | "rank",
-    value: string | number,
-  ) => {
+  const updateMember = (index: number, field: 'ticker' | 'rank', value: string | number) => {
     const newMembers = [...members];
-    if (field === "ticker") {
+    if (field === 'ticker') {
       newMembers[index][field] = String(value).toUpperCase();
     } else {
       newMembers[index][field] = Number(value);
@@ -170,7 +158,7 @@ export function EditSleeveModal({
 
   const addMember = () => {
     const maxRank = Math.max(...members.map((m) => m.rank), 0);
-    setMembers([...members, { ticker: "", rank: maxRank + 1 }]);
+    setMembers([...members, { ticker: '', rank: maxRank + 1 }]);
   };
 
   const removeMember = (index: number) => {
@@ -193,17 +181,16 @@ export function EditSleeveModal({
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Edit Sleeve</DialogTitle>
-          <DialogDescription>
-            Update the sleeve name and member securities.
-          </DialogDescription>
+          <DialogDescription>Update the sleeve name and member securities.</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor={sleeveNameId} className="block text-sm font-medium text-gray-700 mb-1">
               Sleeve Name
             </label>
             <Input
+              id={sleeveNameId}
               value={sleeveName}
               onChange={(e) => setSleeveName(e.target.value)}
               placeholder="Enter sleeve name"
@@ -212,9 +199,7 @@ export function EditSleeveModal({
 
           <div>
             <div className="flex items-center justify-between mb-2">
-              <label className="block text-sm font-medium text-gray-700">
-                Members (by rank)
-              </label>
+              <div className="block text-sm font-medium text-gray-700">Members (by rank)</div>
               <Button onClick={addMember} size="sm" variant="outline">
                 <Plus className="h-3 w-3 mr-1" />
                 Add Member
@@ -223,14 +208,15 @@ export function EditSleeveModal({
 
             <div className="space-y-2">
               {members.map((member, index) => (
-                <div key={index} className="flex items-center space-x-2">
+                <div
+                  key={`${member.rank}-${member.ticker || 'empty'}`}
+                  className="flex items-center space-x-2"
+                >
                   <div className="w-16">
                     <Input
                       type="number"
                       value={member.rank}
-                      onChange={(e) =>
-                        updateMember(index, "rank", e.target.value)
-                      }
+                      onChange={(e) => updateMember(index, 'rank', e.target.value)}
                       placeholder="Rank"
                       min="1"
                     />
@@ -239,9 +225,7 @@ export function EditSleeveModal({
                     <VirtualizedSelect
                       options={securityOptions}
                       value={member.ticker}
-                      onValueChange={(value) =>
-                        updateMember(index, "ticker", value)
-                      }
+                      onValueChange={(value) => updateMember(index, 'ticker', value)}
                       placeholder="Select a ticker..."
                       searchPlaceholder="Search tickers..."
                       emptyMessage="No ticker found."
@@ -249,6 +233,7 @@ export function EditSleeveModal({
                   </div>
                   {members.length > 1 && (
                     <Button
+                      type="button"
                       onClick={() => removeMember(index)}
                       variant="outline"
                       className="h-10 w-10 p-0"
@@ -273,7 +258,7 @@ export function EditSleeveModal({
             Cancel
           </Button>
           <Button onClick={handleSubmit} disabled={isLoading}>
-            {isLoading ? "Updating..." : "Update Sleeve"}
+            {isLoading ? 'Updating...' : 'Update Sleeve'}
           </Button>
         </DialogFooter>
       </DialogContent>

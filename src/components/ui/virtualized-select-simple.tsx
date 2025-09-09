@@ -1,9 +1,9 @@
-import * as React from "react";
-import { useVirtualizer } from "@tanstack/react-virtual";
-import { Check, ChevronsUpDown, Search } from "lucide-react";
-import { cn } from "../../lib/utils";
-import { Button } from "./button";
-import { Popover, PopoverContent, PopoverTrigger } from "./popover";
+import { useVirtualizer } from '@tanstack/react-virtual';
+import { Check, ChevronsUpDown, Search } from 'lucide-react';
+import * as React from 'react';
+import { cn } from '../../lib/utils';
+import { Button } from './button';
+import { Popover, PopoverContent, PopoverTrigger } from './popover';
 
 export interface Option {
   value: string;
@@ -24,17 +24,17 @@ export function VirtualizedSelect({
   options,
   value,
   onValueChange,
-  placeholder = "Select an option...",
-  searchPlaceholder = "Search...",
-  emptyMessage = "No option found.",
+  placeholder = 'Select an option...',
+  searchPlaceholder = 'Search...',
+  emptyMessage = 'No option found.',
   className,
 }: VirtualizedSelectProps) {
   const [open, setOpen] = React.useState(false);
-  const [searchValue, setSearchValue] = React.useState("");
+  const [searchValue, setSearchValue] = React.useState('');
 
   const filteredOptions = React.useMemo(() => {
-    console.log("VirtualizedSelect - options length:", options.length);
-    console.log("VirtualizedSelect - searchValue:", searchValue);
+    console.log('VirtualizedSelect - options length:', options.length);
+    console.log('VirtualizedSelect - searchValue:', searchValue);
 
     if (!options || options.length === 0) {
       return [];
@@ -44,16 +44,15 @@ export function VirtualizedSelect({
 
     if (!search) {
       // Return all options; virtualization keeps DOM light
-      console.log("VirtualizedSelect - returning all options:", options.length);
+      console.log('VirtualizedSelect - returning all options:', options.length);
       return options;
     }
 
     const filtered = options.filter(
       (option) =>
-        option.value.toLowerCase().includes(search) ||
-        option.label.toLowerCase().includes(search),
+        option.value.toLowerCase().includes(search) || option.label.toLowerCase().includes(search),
     );
-    console.log("VirtualizedSelect - filtered results:", filtered.length);
+    console.log('VirtualizedSelect - filtered results:', filtered.length);
     return filtered;
   }, [options, searchValue]);
 
@@ -66,10 +65,7 @@ export function VirtualizedSelect({
     overscan: 5,
   });
 
-  console.log(
-    "VirtualizedSelect - virtualItems:",
-    virtualizer.getVirtualItems().length,
-  );
+  console.log('VirtualizedSelect - virtualItems:', virtualizer.getVirtualItems().length);
 
   const selectedOption = options.find((option) => option.value === value);
 
@@ -88,16 +84,13 @@ export function VirtualizedSelect({
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          className={cn("w-full justify-between", className)}
+          className={cn('w-full justify-between', className)}
         >
           {selectedOption ? selectedOption.label : placeholder}
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent
-        className="w-[--radix-popover-trigger-width] p-0"
-        align="start"
-      >
+      <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
         <div className="flex flex-col">
           <div className="flex items-center border-b px-3">
             <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
@@ -107,7 +100,6 @@ export function VirtualizedSelect({
               value={searchValue}
               onChange={(e) => setSearchValue(e.target.value)}
               className="flex h-10 w-full bg-transparent px-0 py-3 text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"
-              autoFocus
             />
           </div>
 
@@ -120,8 +112,8 @@ export function VirtualizedSelect({
               <div
                 style={{
                   height: `${virtualizer.getTotalSize()}px`,
-                  width: "100%",
-                  position: "relative",
+                  width: '100%',
+                  position: 'relative',
                 }}
               >
                 {virtualizer.getVirtualItems().map((virtualItem) => {
@@ -132,32 +124,30 @@ export function VirtualizedSelect({
                     <div
                       key={option.value}
                       style={{
-                        position: "absolute",
+                        position: 'absolute',
                         top: 0,
                         left: 0,
-                        width: "100%",
+                        width: '100%',
                         height: `${virtualItem.size}px`,
                         transform: `translateY(${virtualItem.start}px)`,
                       }}
                     >
                       <button
+                        type="button"
                         className={cn(
-                          "relative flex w-full cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors",
-                          "hover:bg-accent hover:text-accent-foreground",
-                          "focus:bg-accent focus:text-accent-foreground",
-                          isSelected && "bg-accent text-accent-foreground",
+                          'relative flex w-full cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors',
+                          'hover:bg-accent hover:text-accent-foreground',
+                          'focus:bg-accent focus:text-accent-foreground',
+                          isSelected && 'bg-accent text-accent-foreground',
                         )}
                         onClick={() => {
                           onValueChange?.(option.value);
                           setOpen(false);
-                          setSearchValue("");
+                          setSearchValue('');
                         }}
                       >
                         <Check
-                          className={cn(
-                            "mr-2 h-4 w-4",
-                            isSelected ? "opacity-100" : "opacity-0",
-                          )}
+                          className={cn('mr-2 h-4 w-4', isSelected ? 'opacity-100' : 'opacity-0')}
                         />
                         {option.label}
                       </button>

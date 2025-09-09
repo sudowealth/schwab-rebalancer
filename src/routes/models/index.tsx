@@ -1,14 +1,14 @@
-import { createFileRoute, redirect } from "@tanstack/react-router";
-import { useState } from "react";
-import { FileText, Trash2 } from "lucide-react";
-import { AddModelModal } from "../../components/models/add-model-modal";
-import { EditModelModal } from "../../components/models/edit-model-modal";
-import { DeleteModelModal } from "../../components/models/delete-model-modal";
-import { Button } from "../../components/ui/button";
-import type { Model } from "../../lib/schemas";
-import { getModelsServerFn } from "../../lib/server-functions";
+import { createFileRoute, redirect } from '@tanstack/react-router';
+import { FileText, Trash2 } from 'lucide-react';
+import { useState } from 'react';
+import { AddModelModal } from '../../components/models/add-model-modal';
+import { DeleteModelModal } from '../../components/models/delete-model-modal';
+import { EditModelModal } from '../../components/models/edit-model-modal';
+import { Button } from '../../components/ui/button';
+import type { Model } from '../../lib/schemas';
+import { getModelsServerFn } from '../../lib/server-functions';
 
-export const Route = createFileRoute("/models/")({
+export const Route = createFileRoute('/models/')({
   component: ModelsComponent,
   loader: async () => {
     try {
@@ -17,11 +17,8 @@ export const Route = createFileRoute("/models/")({
       return { models };
     } catch (error) {
       // If authentication error, redirect to login
-      if (
-        error instanceof Error &&
-        error.message.includes("Authentication required")
-      ) {
-        throw redirect({ to: "/login", search: { reset: "" } });
+      if (error instanceof Error && error.message.includes('Authentication required')) {
+        throw redirect({ to: '/login', search: { reset: '' } });
       }
       // Re-throw other errors
       throw error;
@@ -75,39 +72,29 @@ function ModelsComponent() {
           >
             <div className="p-5">
               <div className="flex items-center justify-between mb-4">
-                <h3
-                  className="text-lg font-medium text-gray-900 cursor-pointer hover:text-blue-600 transition-colors"
+                <button
+                  type="button"
+                  className="text-lg font-medium text-gray-900 cursor-pointer hover:text-blue-600 transition-colors text-left"
                   onClick={() => handleEditModel(model)}
                 >
                   {model.name}
-                </h3>
+                </button>
                 <div className="flex items-center space-x-2">
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => handleDeleteModel(model)}
-                  >
+                  <Button size="sm" variant="ghost" onClick={() => handleDeleteModel(model)}>
                     <Trash2 className="h-3 w-3" />
                   </Button>
                 </div>
               </div>
 
               {model.description && (
-                <p className="text-sm text-gray-500 mb-4">
-                  {model.description}
-                </p>
+                <p className="text-sm text-gray-500 mb-4">{model.description}</p>
               )}
 
               {/* Model Members */}
               <div className="space-y-2">
-                <h4 className="text-sm font-medium text-gray-700">
-                  Allocations:
-                </h4>
+                <h4 className="text-sm font-medium text-gray-700">Allocations:</h4>
                 {model.members.slice(0, 3).map((member) => (
-                  <div
-                    key={member.id}
-                    className="flex items-center justify-between text-sm"
-                  >
+                  <div key={member.id} className="flex items-center justify-between text-sm">
                     <div className="flex items-center space-x-2">
                       <span className="text-gray-900 font-medium">
                         {member.sleeveName || member.sleeveId}
@@ -119,12 +106,13 @@ function ModelsComponent() {
                   </div>
                 ))}
                 {model.members.length > 3 && (
-                  <div
+                  <button
+                    type="button"
                     className="text-xs text-gray-400 cursor-pointer hover:text-blue-600 transition-colors"
                     onClick={() => handleEditModel(model)}
                   >
                     +{model.members.length - 3} more...
-                  </div>
+                  </button>
                 )}
               </div>
             </div>
@@ -134,12 +122,8 @@ function ModelsComponent() {
       {models.length === 0 && (
         <div className="text-center py-12">
           <FileText className="mx-auto h-12 w-12 text-gray-400" />
-          <h3 className="mt-2 text-sm font-medium text-gray-900">
-            No models found
-          </h3>
-          <p className="mt-1 text-sm text-gray-500">
-            Get started by creating a new model.
-          </p>
+          <h3 className="mt-2 text-sm font-medium text-gray-900">No models found</h3>
+          <p className="mt-1 text-sm text-gray-500">Get started by creating a new model.</p>
         </div>
       )}
 

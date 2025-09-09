@@ -1,14 +1,13 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "../../ui/dialog";
-import { Button } from "../../ui/button";
-import { Input } from "../../ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../ui/select";
-import type { Order } from "../../../lib/schemas";
-import { OrderTypeSchema } from "../../../lib/schemas";
-import { z } from "zod";
-import { updateOrderServerFn, previewOrderServerFn } from "../../../lib/server-functions";
-import { Calculator } from "lucide-react";
-import { QuantityCalculatorModal } from "./quantity-calculator-modal";
+import { Calculator } from 'lucide-react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import type { z } from 'zod';
+import type { Order, OrderTypeSchema } from '../../../lib/schemas';
+import { previewOrderServerFn, updateOrderServerFn } from '../../../lib/server-functions';
+import { Button } from '../../ui/button';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '../../ui/dialog';
+import { Input } from '../../ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../ui/select';
+import { QuantityCalculatorModal } from './quantity-calculator-modal';
 
 type Props = {
   open: boolean;
@@ -19,12 +18,16 @@ type Props = {
 };
 
 export function EditOrderModal({ open, onOpenChange, order, onSaved, prices }: Props) {
-  const [symbol, setSymbol] = useState("");
-  const [side, setSide] = useState<"BUY" | "SELL">("BUY");
+  const symbolId = `${useId()}-symbol`;
+  const qtyId = `${useId()}-qty`;
+  const limitId = `${useId()}-limit`;
+  const stopId = `${useId()}-stop`;
+  const [symbol, setSymbol] = useState('');
+  const [side, setSide] = useState<'BUY' | 'SELL'>('BUY');
   const [qty, setQty] = useState<number>(0);
-  const [type, setType] = useState<"MARKET" | "LIMIT" | "STOP" | "STOP_LIMIT">("MARKET");
-  const [limit, setLimit] = useState<number | "">("");
-  const [stop, setStop] = useState<number | "">("");
+  const [type, setType] = useState<'MARKET' | 'LIMIT' | 'STOP' | 'STOP_LIMIT'>('MARKET');
+  const [limit, setLimit] = useState<number | ''>('');
+  const [stop, setStop] = useState<number | ''>('');
   // Enforced values (hidden): TIF=DAY, Session=NORMAL
   const [saving, setSaving] = useState(false);
   const [calcOpen, setCalcOpen] = useState(false);
@@ -32,11 +35,11 @@ export function EditOrderModal({ open, onOpenChange, order, onSaved, prices }: P
   useEffect(() => {
     if (!order) return;
     setSymbol(order.symbol);
-    setSide(order.side as "BUY" | "SELL");
+    setSide(order.side as 'BUY' | 'SELL');
     setQty(order.qty || 0);
     setType(order.type as z.infer<typeof OrderTypeSchema>);
-    setLimit(order.limit ?? "");
-    setStop(order.stop ?? "");
+    setLimit(order.limit ?? '');
+    setStop(order.stop ?? '');
     // Always enforce DAY/NORMAL regardless of stored values
   }, [order]);
 
@@ -48,14 +51,13 @@ export function EditOrderModal({ open, onOpenChange, order, onSaved, prices }: P
   const estValue = useMemo(() => (qty || 0) * (estPrice || 0), [qty, estPrice]);
 
   // Default/adjust Limit price ±5% based on side; update when side changes
-  const prevSideRef = useRef<"BUY" | "SELL">(side);
+  const prevSideRef = useRef<'BUY' | 'SELL'>(side);
   useEffect(() => {
     const current = prices?.[symbol] ?? 0;
     if (!current) return;
-    if (type === "LIMIT" || type === "STOP_LIMIT") {
-      const suggested = side === "BUY" ? current * 0.95 : current * 1.05;
-      const shouldSet =
-        limit === "" || typeof limit !== "number" || prevSideRef.current !== side;
+    if (type === 'LIMIT' || type === 'STOP_LIMIT') {
+      const suggested = side === 'BUY' ? current * 0.95 : current * 1.05;
+      const shouldSet = limit === '' || typeof limit !== 'number' || prevSideRef.current !== side;
       if (shouldSet) {
         setLimit(Number(suggested.toFixed(2)));
       }
@@ -75,10 +77,10 @@ export function EditOrderModal({ open, onOpenChange, order, onSaved, prices }: P
             side,
             qty,
             type,
-            limit: typeof limit === "number" ? limit : null,
-            stop: typeof stop === "number" ? stop : null,
-            tif: "DAY",
-            session: "NORMAL",
+            limit: typeof limit === 'number' ? limit : null,
+            stop: typeof stop === 'number' ? stop : null,
+            tif: 'DAY',
+            session: 'NORMAL',
           },
         },
       });
@@ -86,12 +88,12 @@ export function EditOrderModal({ open, onOpenChange, order, onSaved, prices }: P
       try {
         await previewOrderServerFn({ data: { id: order.id } });
       } catch (e) {
-        console.error("Preview error after edit:", e);
+        console.error('Preview error after edit:', e);
       }
       onOpenChange(false);
       onSaved?.({ openPreviewForId: order.id });
-      if (typeof window !== "undefined") {
-        window.dispatchEvent(new CustomEvent("orders:refresh", { detail: { groupId: undefined } }));
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('orders:refresh', { detail: { groupId: undefined } }));
       }
     } finally {
       setSaving(false);
@@ -100,123 +102,168 @@ export function EditOrderModal({ open, onOpenChange, order, onSaved, prices }: P
 
   return (
     <>
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Edit Order</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-3">
-          <div className="grid grid-cols-1 gap-3">
-            <div>
-              <label className="text-xs font-medium">Symbol</label>
-              <Input value={symbol} readOnly disabled />
-            </div>
-            <div>
-              <label className="text-xs font-medium">Side</label>
-              <Select value={side} onValueChange={(v) => setSide(v as "BUY" | "SELL")}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Side" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="BUY">BUY</SelectItem>
-                  <SelectItem value="SELL">SELL</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <label className="text-xs font-medium">Qty</label>
-              <div className="mt-1 flex items-center gap-2">
-                <Input
-                  type="number"
-                  value={Number.isFinite(qty) ? String(qty) : ""}
-                  onChange={(e) => setQty(parseFloat(e.target.value) || 0)}
-                />
-                <button
-                  type="button"
-                  aria-label="Open calculator"
-                  title="Calculate shares"
-                  onClick={() => setCalcOpen(true)}
-                  className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-gray-200 hover:bg-gray-100"
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Order</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="grid grid-cols-1 gap-3">
+              <div>
+                <label className="text-xs font-medium" htmlFor={symbolId}>
+                  Symbol
+                </label>
+                <Input id={symbolId} value={symbol} readOnly disabled />
+              </div>
+              <div>
+                <div className="text-xs font-medium">Side</div>
+                <Select value={side} onValueChange={(v) => setSide(v as 'BUY' | 'SELL')}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Side" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="BUY">BUY</SelectItem>
+                    <SelectItem value="SELL">SELL</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="text-xs font-medium" htmlFor={qtyId}>
+                  Qty
+                </label>
+                <div className="mt-1 flex items-center gap-2">
+                  <Input
+                    id={qtyId}
+                    type="number"
+                    value={Number.isFinite(qty) ? String(qty) : ''}
+                    onChange={(e) => setQty(parseFloat(e.target.value) || 0)}
+                  />
+                  <button
+                    type="button"
+                    aria-label="Open calculator"
+                    title="Calculate shares"
+                    onClick={() => setCalcOpen(true)}
+                    className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-gray-200 hover:bg-gray-100"
+                  >
+                    <Calculator className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+              <div>
+                <div className="text-xs font-medium">Type</div>
+                <Select
+                  value={type}
+                  onValueChange={(v) => setType(v as z.infer<typeof OrderTypeSchema>)}
                 >
-                  <Calculator className="h-4 w-4" />
-                </button>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="MARKET">Market</SelectItem>
+                    <SelectItem value="LIMIT">Limit</SelectItem>
+                    <SelectItem value="STOP">Stop</SelectItem>
+                    <SelectItem value="STOP_LIMIT">Stop Limit</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-            </div>
-            <div>
-              <label className="text-xs font-medium">Type</label>
-              <Select value={type} onValueChange={(v) => setType(v as z.infer<typeof OrderTypeSchema>)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="MARKET">Market</SelectItem>
-                  <SelectItem value="LIMIT">Limit</SelectItem>
-                  <SelectItem value="STOP">Stop</SelectItem>
-                  <SelectItem value="STOP_LIMIT">Stop Limit</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            {type === "LIMIT" && (
-              <div>
-                <label className="text-xs font-medium">Limit Price</label>
-                <Input
-                  type="number"
-                  value={typeof limit === "number" ? String(limit) : ""}
-                  onChange={(e) => setLimit(e.target.value === "" ? "" : parseFloat(e.target.value))}
-                />
-              </div>
-            )}
-            {type === "STOP" && (
-              <div>
-                <label className="text-xs font-medium">Stop Price</label>
-                <Input
-                  type="number"
-                  value={typeof stop === "number" ? String(stop) : ""}
-                  onChange={(e) => setStop(e.target.value === "" ? "" : parseFloat(e.target.value))}
-                />
-              </div>
-            )}
-            {type === "STOP_LIMIT" && (
-              <>
+              {type === 'LIMIT' && (
                 <div>
-                  <label className="text-xs font-medium">Limit Price</label>
+                  <label className="text-xs font-medium" htmlFor={limitId}>
+                    Limit Price
+                  </label>
                   <Input
+                    id={limitId}
                     type="number"
-                    value={typeof limit === "number" ? String(limit) : ""}
-                    onChange={(e) => setLimit(e.target.value === "" ? "" : parseFloat(e.target.value))}
+                    value={typeof limit === 'number' ? String(limit) : ''}
+                    onChange={(e) =>
+                      setLimit(e.target.value === '' ? '' : parseFloat(e.target.value))
+                    }
                   />
                 </div>
+              )}
+              {type === 'STOP' && (
                 <div>
-                  <label className="text-xs font-medium">Stop Price</label>
+                  <label className="text-xs font-medium" htmlFor={stopId}>
+                    Stop Price
+                  </label>
                   <Input
+                    id={stopId}
                     type="number"
-                    value={typeof stop === "number" ? String(stop) : ""}
-                    onChange={(e) => setStop(e.target.value === "" ? "" : parseFloat(e.target.value))}
+                    value={typeof stop === 'number' ? String(stop) : ''}
+                    onChange={(e) =>
+                      setStop(e.target.value === '' ? '' : parseFloat(e.target.value))
+                    }
                   />
                 </div>
-              </>
-            )}
-            {/* TIF and Session are hidden and enforced as DAY/NORMAL */}
+              )}
+              {type === 'STOP_LIMIT' && (
+                <>
+                  <div>
+                    <label className="text-xs font-medium" htmlFor={limitId}>
+                      Limit Price
+                    </label>
+                    <Input
+                      id={limitId}
+                      type="number"
+                      value={typeof limit === 'number' ? String(limit) : ''}
+                      onChange={(e) =>
+                        setLimit(e.target.value === '' ? '' : parseFloat(e.target.value))
+                      }
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium" htmlFor={stopId}>
+                      Stop Price
+                    </label>
+                    <Input
+                      id={stopId}
+                      type="number"
+                      value={typeof stop === 'number' ? String(stop) : ''}
+                      onChange={(e) =>
+                        setStop(e.target.value === '' ? '' : parseFloat(e.target.value))
+                      }
+                    />
+                  </div>
+                </>
+              )}
+              {/* TIF and Session are hidden and enforced as DAY/NORMAL */}
+            </div>
+            <div className="text-xs text-gray-600">
+              Est. Price:{' '}
+              {estPrice
+                ? `$${estPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 })}`
+                : '-'}
+            </div>
+            <div className="text-xs text-gray-600">
+              Est. Value:{' '}
+              {estValue
+                ? `$${estValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                : '-'}
+            </div>
           </div>
-          <div className="text-xs text-gray-600">Est. Price: {estPrice ? `$${estPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 })}` : "-"}</div>
-          <div className="text-xs text-gray-600">Est. Value: {estValue ? `$${estValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "-"}</div>
-        </div>
-        <DialogFooter>
-          <Button variant="ghost" onClick={() => onOpenChange(false)} className="h-8 px-3 py-1 text-xs">Cancel</Button>
-          <Button onClick={onSave} disabled={saving} className="h-8 px-3 py-1 text-xs">
-            {saving ? "Previewing..." : "Preview"}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-    <QuantityCalculatorModal
-      open={calcOpen}
-      onOpenChange={setCalcOpen}
-      marketPrice={(type === "LIMIT" && typeof limit === "number" && limit > 0 ? limit : estPrice || 0)}
-      basisLabel={type === "LIMIT" ? "Limit" : "Market"}
-      onApply={(newQty) => setQty(newQty)}
-    />
+          <DialogFooter>
+            <Button
+              variant="ghost"
+              onClick={() => onOpenChange(false)}
+              className="h-8 px-3 py-1 text-xs"
+            >
+              Cancel
+            </Button>
+            <Button onClick={onSave} disabled={saving} className="h-8 px-3 py-1 text-xs">
+              {saving ? 'Previewing...' : 'Preview'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <QuantityCalculatorModal
+        open={calcOpen}
+        onOpenChange={setCalcOpen}
+        marketPrice={
+          type === 'LIMIT' && typeof limit === 'number' && limit > 0 ? limit : estPrice || 0
+        }
+        basisLabel={type === 'LIMIT' ? 'Limit' : 'Market'}
+        onApply={(newQty) => setQty(newQty)}
+      />
     </>
   );
 }
-

@@ -1,16 +1,10 @@
-import { Link } from "@tanstack/react-router";
-import { Menu, ChevronRight, Shield } from "lucide-react";
-import { useSession, signOut } from "~/lib/auth-client";
-import { useAuth } from "~/hooks/useAuth";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "~/components/ui/sheet";
-import { cn } from "~/lib/utils";
-import { useState } from "react";
+import { Link } from '@tanstack/react-router';
+import { ChevronRight, Menu, Shield } from 'lucide-react';
+import { useState } from 'react';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '~/components/ui/sheet';
+import { useAuth } from '~/hooks/useAuth';
+import { signOut, useSession } from '~/lib/auth-client';
+import { cn } from '~/lib/utils';
 
 export function MobileNavigation() {
   const { data: session, isPending: isLoading } = useSession();
@@ -19,11 +13,11 @@ export function MobileNavigation() {
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   const navItems = [
-    { to: "/", label: "Dashboard", exact: true },
-    { to: "/models", label: "Models" },
-    { to: "/rebalancing-groups", label: "Rebalancing Groups" },
-    { to: "/sleeves", label: "Sleeves" },
-    { to: "/planning", label: "Planning" },
+    { to: '/', label: 'Dashboard', exact: true },
+    { to: '/models', label: 'Models' },
+    { to: '/rebalancing-groups', label: 'Rebalancing Groups' },
+    { to: '/sleeves', label: 'Sleeves' },
+    { to: '/planning', label: 'Planning' },
   ];
 
   const handleLinkClick = () => {
@@ -34,6 +28,7 @@ export function MobileNavigation() {
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
         <button
+          type="button"
           className="md:hidden inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500"
           aria-label="Open navigation menu"
         >
@@ -53,12 +48,11 @@ export function MobileNavigation() {
                 to={item.to}
                 onClick={handleLinkClick}
                 className={cn(
-                  "text-gray-700 hover:text-gray-900 hover:bg-gray-50 px-3 py-2 rounded-md text-sm font-medium transition-colors"
+                  'text-gray-700 hover:text-gray-900 hover:bg-gray-50 px-3 py-2 rounded-md text-sm font-medium transition-colors',
                 )}
                 activeOptions={item.exact ? { exact: true } : undefined}
                 activeProps={{
-                  className:
-                    "bg-blue-50 text-blue-600 border-l-4 border-blue-500",
+                  className: 'bg-blue-50 text-blue-600 border-l-4 border-blue-500',
                 }}
               >
                 {item.label}
@@ -71,10 +65,10 @@ export function MobileNavigation() {
                 to="/admin"
                 onClick={handleLinkClick}
                 className={cn(
-                  "text-gray-700 hover:text-gray-900 hover:bg-gray-50 px-3 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-2"
+                  'text-gray-700 hover:text-gray-900 hover:bg-gray-50 px-3 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-2',
                 )}
                 activeProps={{
-                  className: "bg-red-50 text-red-600 border-l-4 border-red-500",
+                  className: 'bg-red-50 text-red-600 border-l-4 border-red-500',
                 }}
               >
                 <Shield className="h-4 w-4" />
@@ -85,17 +79,15 @@ export function MobileNavigation() {
             {/* Settings Menu */}
             <div>
               <button
+                type="button"
                 onClick={() => setSettingsOpen(!settingsOpen)}
                 className={cn(
-                  "w-full flex items-center justify-between text-gray-700 hover:text-gray-900 hover:bg-gray-50 px-3 py-2 rounded-md text-sm font-medium transition-colors"
+                  'w-full flex items-center justify-between text-gray-700 hover:text-gray-900 hover:bg-gray-50 px-3 py-2 rounded-md text-sm font-medium transition-colors',
                 )}
               >
                 Settings
                 <ChevronRight
-                  className={cn(
-                    "h-4 w-4 transition-transform",
-                    settingsOpen && "rotate-90"
-                  )}
+                  className={cn('h-4 w-4 transition-transform', settingsOpen && 'rotate-90')}
                 />
               </button>
               {settingsOpen && (
@@ -135,6 +127,7 @@ export function MobileNavigation() {
                   </div>
                 </div>
                 <button
+                  type="button"
                   onClick={() => {
                     signOut();
                     handleLinkClick();
@@ -148,7 +141,7 @@ export function MobileNavigation() {
               <div className="space-y-2">
                 <Link
                   to="/login"
-                  search={{ reset: "" }}
+                  search={{ reset: '' }}
                   onClick={handleLinkClick}
                   className="block w-full px-3 py-2 text-sm text-gray-700 hover:text-gray-900 hover:bg-gray-50 rounded-md transition-colors"
                 >

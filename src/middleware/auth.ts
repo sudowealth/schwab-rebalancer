@@ -1,9 +1,9 @@
-import { createMiddleware } from "@tanstack/react-start";
-import { auth } from "../lib/auth";
+import { createMiddleware } from '@tanstack/react-start';
+import { auth } from '../lib/auth';
 
 /**
  * Authentication middleware for TanStack Start
- * 
+ *
  * This middleware:
  * 1. Checks for a valid user session using Better Auth
  * 2. Throws error if no valid session exists
@@ -15,15 +15,18 @@ export const authMiddleware = createMiddleware({ type: 'function' }).server(
     try {
       // Get headers from the correct location
       const headers = (rest as { headers?: Headers | Record<string, string> })?.headers;
-      
+
       if (!headers) {
         console.error('No headers found in middleware parameters');
-        throw new Error("Authentication required - no headers");
+        throw new Error('Authentication required - no headers');
       }
 
       console.log('Auth middleware: Found headers, checking session...');
       console.log('Auth middleware: Headers keys:', Object.keys(headers));
-      console.log('Auth middleware: Cookie header:', 'cookie' in headers ? (headers as Record<string, string>).cookie : undefined);
+      console.log(
+        'Auth middleware: Cookie header:',
+        'cookie' in headers ? (headers as Record<string, string>).cookie : undefined,
+      );
 
       // Get session from request headers using Better Auth
       const session = await auth.api.getSession({
@@ -40,7 +43,7 @@ export const authMiddleware = createMiddleware({ type: 'function' }).server(
       // Check if we have a valid user session
       if (!session?.user?.id) {
         console.log('Auth middleware: No valid session found');
-        throw new Error("Authentication required");
+        throw new Error('Authentication required');
       }
 
       console.log('Auth middleware: Valid session found for user:', session.user.id);
@@ -52,16 +55,16 @@ export const authMiddleware = createMiddleware({ type: 'function' }).server(
           user: {
             id: session.user.id,
             email: session.user.email,
-            role: (session.user as { role?: string }).role || "user",
+            role: (session.user as { role?: string }).role || 'user',
           },
         },
       });
     } catch (error) {
       // For any auth errors, throw error
       console.error('Authentication middleware error:', error);
-      throw new Error("Authentication required");
+      throw new Error('Authentication required');
     }
-  }
+  },
 );
 
 /**
@@ -71,13 +74,13 @@ export const adminMiddleware = createMiddleware({ type: 'function' }).server(
   async ({ next, context }) => {
     // Assumes authMiddleware has already run and provided user context
     const user = (context as { user?: { role?: string } } | undefined)?.user;
-    
+
     if (!user || user.role !== 'admin') {
-      throw new Error("Admin access required");
+      throw new Error('Admin access required');
     }
-    
+
     return next({ context });
-  }
+  },
 );
 
 /**
@@ -92,4 +95,4 @@ export interface AuthContext {
 }
 
 // Re-export for convenience
-export { createMiddleware } from "@tanstack/react-start";
+export { createMiddleware } from '@tanstack/react-start';

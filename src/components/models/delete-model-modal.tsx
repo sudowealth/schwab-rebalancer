@@ -1,5 +1,7 @@
-import { useState } from "react";
-import { AlertTriangle } from "lucide-react";
+import { useRouter } from '@tanstack/react-router';
+import { AlertTriangle } from 'lucide-react';
+import { useState } from 'react';
+import { Button } from '../../components/ui/button';
 import {
   Dialog,
   DialogContent,
@@ -7,11 +9,9 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "../../components/ui/dialog";
-import { Button } from "../../components/ui/button";
-import { deleteModelServerFn } from "../../lib/server-functions";
-import { useRouter } from "@tanstack/react-router";
-import type { Model } from "../../lib/schemas";
+} from '../../components/ui/dialog';
+import type { Model } from '../../lib/schemas';
+import { deleteModelServerFn } from '../../lib/server-functions';
 
 interface DeleteModelModalProps {
   model: Model | null;
@@ -20,24 +20,19 @@ interface DeleteModelModalProps {
   onClose: () => void;
 }
 
-export function DeleteModelModal({
-  model,
-  open,
-  onOpenChange,
-  onClose,
-}: DeleteModelModalProps) {
+export function DeleteModelModal({ model, open, onOpenChange, onClose }: DeleteModelModalProps) {
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState('');
   const router = useRouter();
 
   const handleDelete = async () => {
     if (!model) {
-      setError("No model selected for deletion");
+      setError('No model selected for deletion');
       return;
     }
 
     setIsLoading(true);
-    setError("");
+    setError('');
 
     try {
       await deleteModelServerFn({
@@ -49,14 +44,14 @@ export function DeleteModelModal({
       onClose();
       router.invalidate(); // Refresh the data
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to delete model");
+      setError(err instanceof Error ? err.message : 'Failed to delete model');
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleClose = () => {
-    setError("");
+    setError('');
     onClose();
   };
 
@@ -80,8 +75,8 @@ export function DeleteModelModal({
         <div className="space-y-4">
           <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3">
             <p className="text-sm text-yellow-800">
-              <strong>Warning:</strong> This action cannot be undone. The model and all its
-              member allocations will be permanently deleted.
+              <strong>Warning:</strong> This action cannot be undone. The model and all its member
+              allocations will be permanently deleted.
             </p>
           </div>
 
@@ -98,32 +93,21 @@ export function DeleteModelModal({
                   </li>
                 ))}
                 {model.members.length > 5 && (
-                  <li className="text-blue-600">
-                    ... and {model.members.length - 5} more
-                  </li>
+                  <li className="text-blue-600">... and {model.members.length - 5} more</li>
                 )}
               </ul>
             </div>
           )}
 
-          {error && (
-            <div className="text-sm text-red-600 bg-red-50 p-3 rounded-md">
-              {error}
-            </div>
-          )}
+          {error && <div className="text-sm text-red-600 bg-red-50 p-3 rounded-md">{error}</div>}
         </div>
 
         <DialogFooter>
           <Button type="button" variant="outline" onClick={handleClose}>
             Cancel
           </Button>
-          <Button
-            type="button"
-            variant="destructive"
-            onClick={handleDelete}
-            disabled={isLoading}
-          >
-            {isLoading ? "Deleting..." : "Delete Model"}
+          <Button type="button" variant="destructive" onClick={handleDelete} disabled={isLoading}>
+            {isLoading ? 'Deleting...' : 'Delete Model'}
           </Button>
         </DialogFooter>
       </DialogContent>

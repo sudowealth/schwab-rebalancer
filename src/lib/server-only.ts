@@ -3,8 +3,8 @@
 
 export async function loadDashboardData(userId?: string) {
   // Double-check we're on the server
-  if (typeof window !== "undefined") {
-    console.warn("loadDashboardData called on client, returning empty data");
+  if (typeof window !== 'undefined') {
+    console.warn('loadDashboardData called on client, returning empty data');
     return {
       positions: [],
       metrics: {
@@ -35,9 +35,9 @@ export async function loadDashboardData(userId?: string) {
 
   try {
     // Dynamic import to prevent client-side bundling
-    const dbApiModule = await import("./db-api");
+    const dbApiModule = await import('./db-api');
 
-    console.log("🔄 Loading dashboard data from database...");
+    console.log('🔄 Loading dashboard data from database...');
 
     const [
       positions,
@@ -59,13 +59,13 @@ export async function loadDashboardData(userId?: string) {
       dbApiModule.getIndexMembers(),
     ]);
 
-    console.log("✅ Dashboard data loaded successfully");
+    console.log('✅ Dashboard data loaded successfully');
     console.log(
-      `📊 Data counts: positions=${positions.length}, transactions=${transactions.length}, sp500=${sp500Data.length}, sleeves=${sleeves.length}`
+      `📊 Data counts: positions=${positions.length}, transactions=${transactions.length}, sp500=${sp500Data.length}, sleeves=${sleeves.length}`,
     );
 
     if (sp500Data.length === 0) {
-      console.warn("⚠️ SP500 data is empty in server-only loader!");
+      console.warn('⚠️ SP500 data is empty in server-only loader!');
     }
 
     return {
@@ -79,7 +79,7 @@ export async function loadDashboardData(userId?: string) {
       indexMembers,
     };
   } catch (error) {
-    console.error("❌ Error loading dashboard data:", error);
+    console.error('❌ Error loading dashboard data:', error);
     // Return empty data to prevent crashes
     return {
       positions: [],

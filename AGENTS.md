@@ -21,7 +21,7 @@
 - `npm run build`: Production build and TypeScript check.
 - `npm start`: Run built server from `.output/`.
 - `npm run deploy`: Build then deploy via Cloudflare Wrangler.
-- `npm run lint` / `npm run format` / `npm run typecheck`: Lint, format with Prettier, type‑check.
+- `npm run lint` / `npm run format` / `npm run typecheck`: Lint and format with Biome; type‑check.
 - `npm run db:generate`: Generate Drizzle migrations from schema.
 - `npm run db:migrate`: Apply D1 migrations locally to `tax-loss-harvesting`.
 - `npm run db:migrate:prod`: Apply migrations to production.
@@ -32,8 +32,7 @@
 ## Coding Style & Naming Conventions
 
 - Language: TypeScript + React. Prefer functional components and hooks.
-- Formatting: Prettier (2‑space indent, single quotes default). Run `npm run format`.
-- Linting: ESLint with TypeScript/React plugins. Fix issues or add rationale.
+- Formatting & Linting: Biome (2‑space indent, single quotes). Use `npm run format`, `npm run lint`, or `npm run fix`.
 - Naming: Components `PascalCase.tsx` in `src/components`; utilities `camelCase.ts` in `src/lib`/`src/utils`; routes `kebab-case.tsx` in `src/routes` with `index.tsx` for folders.
 - Types: Prefer exported return types and `Awaited<ReturnType<typeof fn>>`; avoid `as any` and redundant manual type aliases.
 

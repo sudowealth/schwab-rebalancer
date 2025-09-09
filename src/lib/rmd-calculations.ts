@@ -60,7 +60,7 @@ const UNIFORM_LIFETIME_TABLE: RMDTableEntry[] = [
   { age: 120, distributionPeriod: 2.0 },
 ];
 
-// Joint Life and Last Survivor Table - used when spouse is sole beneficiary 
+// Joint Life and Last Survivor Table - used when spouse is sole beneficiary
 // and is more than 10 years younger than account owner
 // For simplicity, we'll use a subset of common age differences
 const JOINT_LIFE_TABLE: { [ageDifference: number]: RMDTableEntry[] } = {
@@ -103,57 +103,54 @@ export interface RMDCalculationInput {
   accountBalance: number; // Account balance as of December 31 of prior year
   ownerAge: number; // Age on December 31 of current year
   spouseAge?: number; // Age of spouse on December 31 of current year (if married)
-  filingStatus: "single" | "married_filing_jointly" | "head_of_household";
+  filingStatus: 'single' | 'married_filing_jointly' | 'head_of_household';
 }
 
 export interface RMDCalculationResult {
   requiredDistribution: number;
   distributionPeriod: number;
-  table: "uniform_lifetime" | "joint_life";
+  table: 'uniform_lifetime' | 'joint_life';
   isRMDRequired: boolean;
   notes?: string;
 }
 
-function getDistributionPeriod(
-  age: number,
-  table: RMDTableEntry[]
-): number {
+function getDistributionPeriod(age: number, table: RMDTableEntry[]): number {
   // Find the entry for the given age
-  const entry = table.find(e => e.age === age);
+  const entry = table.find((e) => e.age === age);
   if (entry) {
     return entry.distributionPeriod;
   }
-  
+
   // If exact age not found, use the last entry (for ages beyond the table)
   if (age > table[table.length - 1].age) {
     return table[table.length - 1].distributionPeriod;
   }
-  
+
   // If age is below the minimum age in table, no RMD required
   return 0;
 }
 
 export function calculateRMD(input: RMDCalculationInput): RMDCalculationResult {
   const { accountBalance, ownerAge, spouseAge, filingStatus } = input;
-  
+
   // RMDs start at age 73 (as of 2023)
   if (ownerAge < 73) {
     return {
       requiredDistribution: 0,
       distributionPeriod: 0,
-      table: "uniform_lifetime",
+      table: 'uniform_lifetime',
       isRMDRequired: false,
-      notes: "RMDs not required until age 73",
+      notes: 'RMDs not required until age 73',
     };
   }
 
   // Determine which table to use
   let table: RMDTableEntry[];
-  let tableType: "uniform_lifetime" | "joint_life" = "uniform_lifetime";
-  
-  if (filingStatus === "married_filing_jointly" && spouseAge !== undefined) {
+  let tableType: 'uniform_lifetime' | 'joint_life' = 'uniform_lifetime';
+
+  if (filingStatus === 'married_filing_jointly' && spouseAge !== undefined) {
     const ageDifference = ownerAge - spouseAge;
-    
+
     // Use Joint Life table if spouse is sole beneficiary and more than 10 years younger
     if (ageDifference > 10) {
       // For simplicity, we'll use predefined age differences
@@ -167,9 +164,9 @@ export function calculateRMD(input: RMDCalculationInput): RMDCalculationResult {
       } else {
         table = UNIFORM_LIFETIME_TABLE;
       }
-      
+
       if (table !== UNIFORM_LIFETIME_TABLE) {
-        tableType = "joint_life";
+        tableType = 'joint_life';
       }
     } else {
       table = UNIFORM_LIFETIME_TABLE;
@@ -179,14 +176,14 @@ export function calculateRMD(input: RMDCalculationInput): RMDCalculationResult {
   }
 
   const distributionPeriod = getDistributionPeriod(ownerAge, table);
-  
+
   if (distributionPeriod === 0) {
     return {
       requiredDistribution: 0,
       distributionPeriod: 0,
       table: tableType,
       isRMDRequired: false,
-      notes: "Age not found in distribution table",
+      notes: 'Age not found in distribution table',
     };
   }
 
@@ -197,7 +194,7 @@ export function calculateRMD(input: RMDCalculationInput): RMDCalculationResult {
     distributionPeriod,
     table: tableType,
     isRMDRequired: true,
-    notes: `Using ${tableType === "joint_life" ? "Joint Life" : "Uniform Lifetime"} table`,
+    notes: `Using ${tableType === 'joint_life' ? 'Joint Life' : 'Uniform Lifetime'} table`,
   };
 }
 
@@ -207,8 +204,8 @@ export function calculateRMDSchedule(
   startingAge: number,
   years: number,
   spouseAge?: number,
-  filingStatus: "single" | "married_filing_jointly" | "head_of_household" = "single",
-  growthRate: number = 0.07 // 7% default growth rate
+  filingStatus: 'single' | 'married_filing_jointly' | 'head_of_household' = 'single',
+  growthRate: number = 0.07, // 7% default growth rate
 ): Array<{
   year: number;
   age: number;
@@ -218,11 +215,11 @@ export function calculateRMDSchedule(
 }> {
   const schedule = [];
   let currentBalance = initialBalance;
-  
+
   for (let year = 0; year < years; year++) {
     const currentAge = startingAge + year;
     const currentSpouseAge = spouseAge ? spouseAge + year : undefined;
-    
+
     // Calculate RMD based on beginning of year balance
     const rmdResult = calculateRMD({
       accountBalance: currentBalance,
@@ -230,11 +227,11 @@ export function calculateRMDSchedule(
       spouseAge: currentSpouseAge,
       filingStatus,
     });
-    
+
     // Apply growth and subtract RMD
     const growthAmount = currentBalance * growthRate;
     const endingBalance = currentBalance + growthAmount - rmdResult.requiredDistribution;
-    
+
     schedule.push({
       year: year + 1,
       age: currentAge,
@@ -242,10 +239,10 @@ export function calculateRMDSchedule(
       rmdResult,
       endingBalance: Math.max(0, endingBalance), // Can't go negative
     });
-    
+
     currentBalance = Math.max(0, endingBalance);
   }
-  
+
   return schedule;
 }
 
@@ -255,8 +252,8 @@ export function estimateTotalRMDs(
   startingAge: number,
   endingAge: number,
   spouseAge?: number,
-  filingStatus: "single" | "married_filing_jointly" | "head_of_household" = "single",
-  growthRate: number = 0.07
+  filingStatus: 'single' | 'married_filing_jointly' | 'head_of_household' = 'single',
+  growthRate: number = 0.07,
 ): number {
   const years = endingAge - startingAge + 1;
   const schedule = calculateRMDSchedule(
@@ -265,9 +262,9 @@ export function estimateTotalRMDs(
     years,
     spouseAge,
     filingStatus,
-    growthRate
+    growthRate,
   );
-  
+
   return schedule.reduce((total, entry) => total + entry.rmdResult.requiredDistribution, 0);
 }
 

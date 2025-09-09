@@ -3,8 +3,8 @@
 
 export async function getServerData() {
   // Only import the database functions if we're on the server
-  if (typeof window !== "undefined") {
-    throw new Error("This function should only be called on the server");
+  if (typeof window !== 'undefined') {
+    throw new Error('This function should only be called on the server');
   }
 
   const {
@@ -14,24 +14,18 @@ export async function getServerData() {
     getSleeves,
     getProposedTrades,
     getSnP500Data,
-  } = await import("./db-api");
+  } = await import('./db-api');
 
   try {
-    const [
-      positions,
-      metrics,
-      transactions,
-      sp500Data,
-      proposedTrades,
-      sleeves,
-    ] = await Promise.all([
-      getPositions(),
-      getPortfolioMetrics(),
-      getTransactions(),
-      getSnP500Data(),
-      getProposedTrades(),
-      getSleeves(),
-    ]);
+    const [positions, metrics, transactions, sp500Data, proposedTrades, sleeves] =
+      await Promise.all([
+        getPositions(),
+        getPortfolioMetrics(),
+        getTransactions(),
+        getSnP500Data(),
+        getProposedTrades(),
+        getSleeves(),
+      ]);
 
     return {
       positions,
@@ -42,7 +36,7 @@ export async function getServerData() {
       sleeves,
     };
   } catch (error) {
-    console.error("Error loading server data:", error);
+    console.error('Error loading server data:', error);
     // Return empty data instead of throwing to avoid breaking the page
     return {
       positions: [],

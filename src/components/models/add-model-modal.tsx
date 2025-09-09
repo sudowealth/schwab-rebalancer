@@ -1,5 +1,7 @@
-import { useState, useEffect } from "react";
-import { Plus, X, Upload, FileDown } from "lucide-react";
+import { useRouter } from '@tanstack/react-router';
+import { FileDown, Plus, Upload, X } from 'lucide-react';
+import { useEffect, useId, useState } from 'react';
+import { Button } from '../../components/ui/button';
 import {
   Dialog,
   DialogContent,
@@ -8,45 +10,44 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "../../components/ui/dialog";
-import { Button } from "../../components/ui/button";
-import { Input } from "../../components/ui/input";
-import {
-  VirtualizedSelect,
-  type Option,
-} from "../../components/ui/virtualized-select-fixed";
-import {
-  createModelServerFn,
-  getAvailableSleevesServerFn,
-} from "../../lib/server-functions";
-import { useRouter } from "@tanstack/react-router";
-import { cn } from "../../lib/utils";
+} from '../../components/ui/dialog';
+import { Input } from '../../components/ui/input';
+import { type Option, VirtualizedSelect } from '../../components/ui/virtualized-select-fixed';
+import { createModelServerFn, getAvailableSleevesServerFn } from '../../lib/server-functions';
+import { cn } from '../../lib/utils';
 
 interface ModelMember {
+  id: string;
   sleeveId: string;
   targetWeight: number;
 }
+
+type WeightMember = { sleeveId: string; targetWeight: number };
 
 // Use function return types instead of manual interfaces
 type Sleeve = Awaited<ReturnType<typeof getAvailableSleevesServerFn>>[number];
 
 export function AddModelModal() {
   const [isOpen, setIsOpen] = useState(false);
-  const [mode, setMode] = useState<"single" | "bulk">("single");
-  const [modelName, setModelName] = useState("");
-  const [description, setDescription] = useState("");
+  const [mode, setMode] = useState<'single' | 'bulk'>('single');
+  const [modelName, setModelName] = useState('');
+  const [description, setDescription] = useState('');
+  const genId = () => Math.random().toString(36).slice(2);
   const [members, setMembers] = useState<ModelMember[]>([
-    { sleeveId: "", targetWeight: 0 },
-    { sleeveId: "", targetWeight: 0 },
-    { sleeveId: "", targetWeight: 0 },
+    { id: genId(), sleeveId: '', targetWeight: 0 },
+    { id: genId(), sleeveId: '', targetWeight: 0 },
+    { id: genId(), sleeveId: '', targetWeight: 0 },
   ]);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState('');
   const [sleeves, setSleeves] = useState<Sleeve[]>([]);
   const [sleeveOptions, setSleeveOptions] = useState<Option[]>([]);
-  const [csvData, setCsvData] = useState("");
+  const [csvData, setCsvData] = useState('');
   const [updateExisting, setUpdateExisting] = useState(false);
   const router = useRouter();
+  const modelNameId = `${useId()}-model-name`;
+  const descriptionId = `${useId()}-description`;
+  const updateExistingId = `${useId()}-update-existing`;
 
   // Load available sleeves when component mounts
   useEffect(() => {
@@ -61,50 +62,43 @@ export function AddModelModal() {
         }));
         setSleeveOptions(options);
       } catch (err) {
-        console.error("Failed to load sleeves:", err);
+        console.error('Failed to load sleeves:', err);
       }
     };
     loadSleeves();
   }, []);
 
   const resetForm = () => {
-    setModelName("");
-    setDescription("");
+    setModelName('');
+    setDescription('');
     setMembers([
-      { sleeveId: "", targetWeight: 0 },
-      { sleeveId: "", targetWeight: 0 },
-      { sleeveId: "", targetWeight: 0 },
+      { id: genId(), sleeveId: '', targetWeight: 0 },
+      { id: genId(), sleeveId: '', targetWeight: 0 },
+      { id: genId(), sleeveId: '', targetWeight: 0 },
     ]);
-    setCsvData("");
-    setError("");
-    setMode("single");
+    setCsvData('');
+    setError('');
+    setMode('single');
     setUpdateExisting(false);
   };
 
-  const validateMembers = (membersToValidate: ModelMember[]) => {
+  const validateMembers = (membersToValidate: WeightMember[]) => {
     const errors: string[] = [];
 
     if (membersToValidate.length === 0) {
-      errors.push("At least one member is required");
+      errors.push('At least one member is required');
     }
 
-    const sleeveIds = membersToValidate
-      .map((m) => m.sleeveId)
-      .filter((id) => id.length > 0);
+    const sleeveIds = membersToValidate.map((m) => m.sleeveId).filter((id) => id.length > 0);
     const uniqueSleeveIds = [...new Set(sleeveIds)];
     if (sleeveIds.length !== uniqueSleeveIds.length) {
-      errors.push("All members must have unique sleeves");
+      errors.push('All members must have unique sleeves');
     }
 
-    const totalWeight = membersToValidate.reduce(
-      (sum, member) => sum + member.targetWeight,
-      0
-    );
+    const totalWeight = membersToValidate.reduce((sum, member) => sum + member.targetWeight, 0);
     if (Math.abs(totalWeight - 10000) > 1) {
       // Allow for tiny floating-point rounding errors
-      errors.push(
-        `Target weights must sum to 100%, currently ${(totalWeight / 100).toFixed(2)}%`
-      );
+      errors.push(`Target weights must sum to 100%, currently ${(totalWeight / 100).toFixed(2)}%`);
     }
 
     membersToValidate.forEach((member, index) => {
@@ -117,29 +111,20 @@ export function AddModelModal() {
   };
 
   const addMember = () => {
-    const nextWeight = Math.max(
-      0,
-      10000 - members.reduce((sum, m) => sum + m.targetWeight, 0)
-    );
-    setMembers([...members, { sleeveId: "", targetWeight: nextWeight }]);
+    const nextWeight = Math.max(0, 10000 - members.reduce((sum, m) => sum + m.targetWeight, 0));
+    setMembers([...members, { id: genId(), sleeveId: '', targetWeight: nextWeight }]);
   };
 
   const removeMember = (index: number) => {
     setMembers(members.filter((_, i) => i !== index));
   };
 
-  const updateMember = (
-    index: number,
-    field: keyof ModelMember,
-    value: string | number
-  ) => {
+  const updateMember = (index: number, field: keyof ModelMember, value: string | number) => {
     const updatedMembers = [...members];
-    if (field === "targetWeight") {
+    if (field === 'targetWeight') {
       // Convert percentage to basis points
       const percentage = parseFloat(value as string);
-      updatedMembers[index][field] = isNaN(percentage)
-        ? 0
-        : Math.round(percentage * 100);
+      updatedMembers[index][field] = Number.isNaN(percentage) ? 0 : Math.round(percentage * 100);
     } else {
       updatedMembers[index][field] = value as string;
     }
@@ -157,9 +142,7 @@ export function AddModelModal() {
       if (member.sleeveId.length === 0) {
         return { ...member, targetWeight: 0 };
       }
-      const validIndex = validMembers.findIndex(
-        (vm) => vm.sleeveId === member.sleeveId
-      );
+      const validIndex = validMembers.findIndex((vm) => vm.sleeveId === member.sleeveId);
       return {
         ...member,
         targetWeight: weightPerMember + (validIndex < remainder ? 1 : 0),
@@ -170,26 +153,24 @@ export function AddModelModal() {
   };
 
   const handleSingleSubmit = async () => {
-    setError("");
+    setError('');
     setIsLoading(true);
 
     try {
       if (!modelName.trim()) {
-        throw new Error("Model name is required");
+        throw new Error('Model name is required');
       }
 
-      const membersWithSleeves = members.filter(
-        (member) => member.sleeveId.length > 0
-      );
+      const membersWithSleeves = members.filter((member) => member.sleeveId.length > 0);
 
       if (membersWithSleeves.length === 0) {
-        throw new Error("At least one sleeve must be selected");
+        throw new Error('At least one sleeve must be selected');
       }
 
       // Validate members with sleeves (for new models, empty members are expected)
       const validationErrors = validateMembers(membersWithSleeves);
       if (validationErrors.length > 0) {
-        throw new Error(validationErrors.join(", "));
+        throw new Error(validationErrors.join(', '));
       }
 
       await createModelServerFn({
@@ -204,18 +185,18 @@ export function AddModelModal() {
       setIsOpen(false);
       router.invalidate();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "An error occurred");
+      setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
       setIsLoading(false);
     }
   };
 
   const parseCsvData = (csvText: string) => {
-    const lines = csvText.trim().split("\n");
+    const lines = csvText.trim().split('\n');
     const models: Array<{
       name: string;
       description?: string;
-      members: ModelMember[];
+      members: WeightMember[];
     }> = [];
 
     const errors: string[] = [];
@@ -228,9 +209,9 @@ export function AddModelModal() {
       if (!line) continue;
 
       // Try different delimiters: comma, tab, or multiple spaces
-      let parts = line.split(",").map((part) => part.trim());
+      let parts = line.split(',').map((part) => part.trim());
       if (parts.length < 3) {
-        parts = line.split("\t").map((part) => part.trim());
+        parts = line.split('\t').map((part) => part.trim());
       }
       if (parts.length < 3) {
         parts = line.split(/\s{2,}/).map((part) => part.trim());
@@ -238,24 +219,22 @@ export function AddModelModal() {
       if (parts.length < 3) {
         // Try single space as last resort
         parts = line
-          .split(" ")
+          .split(' ')
           .map((part) => part.trim())
           .filter((part) => part.length > 0);
       }
 
       if (parts.length < 3) {
-        invalidRows.push(
-          `Row ${i + 1}: Expected 3 columns, got ${parts.length}. Data: "${line}"`
-        );
+        invalidRows.push(`Row ${i + 1}: Expected 3 columns, got ${parts.length}. Data: "${line}"`);
         continue;
       }
 
       const [modelName, sleeveName, weightStr] = parts;
       const weight = parseFloat(weightStr);
 
-      if (!modelName || !sleeveName || isNaN(weight)) {
+      if (!modelName || !sleeveName || Number.isNaN(weight)) {
         invalidRows.push(
-          `Row ${i + 1}: Missing or invalid data (model: "${modelName}", sleeve: "${sleeveName}", weight: "${weightStr}")`
+          `Row ${i + 1}: Missing or invalid data (model: "${modelName}", sleeve: "${sleeveName}", weight: "${weightStr}")`,
         );
         continue;
       }
@@ -288,7 +267,7 @@ export function AddModelModal() {
     if (notFoundSleeves.size > 0) {
       const slevesList = Array.from(notFoundSleeves)
         .map((sleeve) => `• ${sleeve}`)
-        .join("\n");
+        .join('\n');
       errors.push(`Sleeves not found:\n${slevesList}`);
     }
     if (invalidRows.length > 0) {
@@ -297,35 +276,31 @@ export function AddModelModal() {
 
     // If we have errors, throw them
     if (errors.length > 0) {
-      throw new Error(errors.join(". "));
+      throw new Error(errors.join('. '));
     }
 
     return models;
   };
 
   const handleBulkSubmit = async () => {
-    setError("");
+    setError('');
     setIsLoading(true);
 
     try {
       if (!csvData.trim()) {
-        throw new Error("CSV data is required");
+        throw new Error('CSV data is required');
       }
 
       const models = parseCsvData(csvData);
       if (models.length === 0) {
-        throw new Error(
-          "No valid models were created. Please check your CSV format and data."
-        );
+        throw new Error('No valid models were created. Please check your CSV format and data.');
       }
 
       // Validate each model
       for (const model of models) {
         const validationErrors = validateMembers(model.members);
         if (validationErrors.length > 0) {
-          throw new Error(
-            `Model "${model.name}": ${validationErrors.join(", ")}`
-          );
+          throw new Error(`Model "${model.name}": ${validationErrors.join(', ')}`);
         }
       }
 
@@ -340,7 +315,7 @@ export function AddModelModal() {
       setIsOpen(false);
       router.invalidate();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "An error occurred");
+      setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
       setIsLoading(false);
     }
@@ -348,21 +323,21 @@ export function AddModelModal() {
 
   const downloadTemplate = () => {
     const csvContent = [
-      "model,sleeve,weight",
-      "S&P 500 Tech,Semiconductors - 1,25.5",
-      "S&P 500 Tech,Software - Application - 1,30.0",
-      "S&P 500 Tech,Technology Hardware - 1,44.5",
-      "Balanced Fund,Banks - Diversified - 1,20.0",
-      "Balanced Fund,Healthcare Plans - 1,25.0",
-      "Balanced Fund,Semiconductors - 1,25.0",
-      "Balanced Fund,Consumer Finance - 1,30.0",
-    ].join("\n");
+      'model,sleeve,weight',
+      'S&P 500 Tech,Semiconductors - 1,25.5',
+      'S&P 500 Tech,Software - Application - 1,30.0',
+      'S&P 500 Tech,Technology Hardware - 1,44.5',
+      'Balanced Fund,Banks - Diversified - 1,20.0',
+      'Balanced Fund,Healthcare Plans - 1,25.0',
+      'Balanced Fund,Semiconductors - 1,25.0',
+      'Balanced Fund,Consumer Finance - 1,30.0',
+    ].join('\n');
 
-    const blob = new globalThis.Blob([csvContent], { type: "text/csv" });
+    const blob = new globalThis.Blob([csvContent], { type: 'text/csv' });
     const url = globalThis.URL.createObjectURL(blob);
-    const a = document.createElement("a");
+    const a = document.createElement('a');
     a.href = url;
-    a.download = "model-template.csv";
+    a.download = 'model-template.csv';
     a.click();
     globalThis.URL.revokeObjectURL(url);
   };
@@ -372,20 +347,15 @@ export function AddModelModal() {
   const totalPercentage = (currentTotal / 100).toFixed(2);
 
   // Check for duplicate sleeves
-  const selectedSleeves = members
-    .filter((m) => m.sleeveId)
-    .map((m) => m.sleeveId);
+  const selectedSleeves = members.filter((m) => m.sleeveId).map((m) => m.sleeveId);
   const duplicateSleeves = [
     ...new Set(
-      selectedSleeves.filter(
-        (sleeve, index) => selectedSleeves.indexOf(sleeve) !== index
-      )
+      selectedSleeves.filter((sleeve, index) => selectedSleeves.indexOf(sleeve) !== index),
     ),
   ];
   const hasDuplicates = duplicateSleeves.length > 0;
   const duplicateNames = duplicateSleeves.map(
-    (sleeveId) =>
-      sleeveOptions.find((opt) => opt.value === sleeveId)?.label || sleeveId
+    (sleeveId) => sleeveOptions.find((opt) => opt.value === sleeveId)?.label || sleeveId,
   );
 
   return (
@@ -407,15 +377,15 @@ export function AddModelModal() {
         <div className="mb-4">
           <div className="flex space-x-2">
             <Button
-              variant={mode === "single" ? "default" : "outline"}
-              onClick={() => setMode("single")}
+              variant={mode === 'single' ? 'default' : 'outline'}
+              onClick={() => setMode('single')}
               className="flex-1"
             >
               Single Model
             </Button>
             <Button
-              variant={mode === "bulk" ? "default" : "outline"}
-              onClick={() => setMode("bulk")}
+              variant={mode === 'bulk' ? 'default' : 'outline'}
+              onClick={() => setMode('bulk')}
               className="flex-1"
             >
               <Upload className="mr-2 h-4 w-4" />
@@ -424,17 +394,14 @@ export function AddModelModal() {
           </div>
         </div>
 
-        {mode === "single" ? (
+        {mode === 'single' ? (
           <div className="space-y-4">
             <div>
-              <label
-                htmlFor="model-name"
-                className="block text-sm font-medium mb-2"
-              >
+              <label htmlFor={modelNameId} className="block text-sm font-medium mb-2">
                 Model Name *
               </label>
               <Input
-                id="model-name"
+                id={modelNameId}
                 value={modelName}
                 onChange={(e) => setModelName(e.target.value)}
                 placeholder="Enter model name"
@@ -442,14 +409,11 @@ export function AddModelModal() {
             </div>
 
             <div>
-              <label
-                htmlFor="description"
-                className="block text-sm font-medium mb-2"
-              >
+              <label htmlFor={descriptionId} className="block text-sm font-medium mb-2">
                 Description
               </label>
               <Input
-                id="description"
+                id={descriptionId}
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Enter description (optional)"
@@ -458,24 +422,12 @@ export function AddModelModal() {
 
             <div>
               <div className="flex items-center justify-between mb-2">
-                <label className="block text-sm font-medium">
-                  Model Members *
-                </label>
+                <div className="block text-sm font-medium">Model Members *</div>
                 <div className="flex space-x-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={distributeEqually}
-                  >
+                  <Button type="button" variant="outline" size="sm" onClick={distributeEqually}>
                     Distribute Equally
                   </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={addMember}
-                  >
+                  <Button type="button" variant="outline" size="sm" onClick={addMember}>
                     <Plus className="h-4 w-4" />
                   </Button>
                 </div>
@@ -483,14 +435,12 @@ export function AddModelModal() {
 
               <div className="space-y-2">
                 {members.map((member, index) => (
-                  <div key={index} className="flex items-center space-x-2">
+                  <div key={member.id} className="flex items-center space-x-2">
                     <div className="flex-1">
                       <VirtualizedSelect
                         options={sleeveOptions}
                         value={member.sleeveId}
-                        onValueChange={(value) =>
-                          updateMember(index, "sleeveId", value)
-                        }
+                        onValueChange={(value) => updateMember(index, 'sleeveId', value)}
                         placeholder="Select sleeve"
                       />
                     </div>
@@ -501,9 +451,7 @@ export function AddModelModal() {
                         min="0"
                         max="100"
                         value={member.targetWeight / 100}
-                        onChange={(e) =>
-                          updateMember(index, "targetWeight", e.target.value)
-                        }
+                        onChange={(e) => updateMember(index, 'targetWeight', e.target.value)}
                         placeholder="Weight %"
                       />
                     </div>
@@ -525,8 +473,8 @@ export function AddModelModal() {
                 <div className="flex-1"></div>
                 <div
                   className={cn(
-                    "text-base font-medium w-24",
-                    isValidTotal ? "text-green-600" : "text-red-600"
+                    'text-base font-medium w-24',
+                    isValidTotal ? 'text-green-600' : 'text-red-600',
                   )}
                 >
                   {totalPercentage}%
@@ -536,16 +484,14 @@ export function AddModelModal() {
 
               {!isValidTotal && members.some((m) => m.sleeveId) && (
                 <div className="mt-2 text-sm text-red-600 bg-red-50 p-2 rounded-md">
-                  Weights must sum to exactly 100%. Current total:{" "}
-                  {totalPercentage}%
+                  Weights must sum to exactly 100%. Current total: {totalPercentage}%
                 </div>
               )}
 
               {hasDuplicates && (
                 <div className="mt-2 text-sm text-orange-600 bg-orange-50 p-2 rounded-md">
                   <div>
-                    The following sleeves appear multiple times:{" "}
-                    {duplicateNames.join(", ")}
+                    The following sleeves appear multiple times: {duplicateNames.join(', ')}
                   </div>
                 </div>
               )}
@@ -554,13 +500,8 @@ export function AddModelModal() {
         ) : (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <label className="block text-sm font-medium">CSV Data *</label>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={downloadTemplate}
-              >
+              <div className="block text-sm font-medium">CSV Data *</div>
+              <Button type="button" variant="outline" size="sm" onClick={downloadTemplate}>
                 <FileDown className="mr-2 h-4 w-4" />
                 Download Template
               </Button>
@@ -574,21 +515,17 @@ S&P 500 Tech, Semiconductors - 1, 25.5"
             />
             <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-md">
               <input
-                id="update-existing"
+                id={updateExistingId}
                 type="checkbox"
                 checked={updateExisting}
                 onChange={(e) => setUpdateExisting(e.target.checked)}
                 className="w-4 h-4"
               />
-              <label
-                htmlFor="update-existing"
-                className="text-sm font-medium cursor-pointer"
-              >
+              <label htmlFor={updateExistingId} className="text-sm font-medium cursor-pointer">
                 Update existing models
               </label>
               <span className="text-xs text-gray-500">
-                (When enabled, existing models with the same name will be
-                updated)
+                (When enabled, existing models with the same name will be updated)
               </span>
             </div>
           </div>
@@ -601,23 +538,15 @@ S&P 500 Tech, Semiconductors - 1, 25.5"
         )}
 
         <DialogFooter>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => setIsOpen(false)}
-          >
+          <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>
             Cancel
           </Button>
           <Button
             type="button"
-            onClick={mode === "single" ? handleSingleSubmit : handleBulkSubmit}
+            onClick={mode === 'single' ? handleSingleSubmit : handleBulkSubmit}
             disabled={isLoading}
           >
-            {isLoading
-              ? "Creating..."
-              : mode === "single"
-                ? "Create Model"
-                : "Create Models"}
+            {isLoading ? 'Creating...' : mode === 'single' ? 'Create Model' : 'Create Models'}
           </Button>
         </DialogFooter>
       </DialogContent>

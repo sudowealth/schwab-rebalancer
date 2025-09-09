@@ -1,17 +1,11 @@
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "../ui/card";
-import { Input } from "../ui/input";
-import { Button } from "../ui/button";
-import { formatCurrency } from "../../lib/utils";
-import { updateManualCashServerFn, getManualCashServerFn } from "../../lib/server-functions";
-import { useState, useEffect } from "react";
-import { Edit, Check, X } from "lucide-react";
-import { EditAccountModal } from "./edit-account-modal";
+import { Check, Edit, X } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { getManualCashServerFn, updateManualCashServerFn } from '../../lib/server-functions';
+import { formatCurrency } from '../../lib/utils';
+import { Button } from '../ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
+import { Input } from '../ui/input';
+import { EditAccountModal } from './edit-account-modal';
 
 interface AccountSummaryProps {
   members: Array<{
@@ -30,13 +24,13 @@ interface AccountSummaryProps {
 }
 
 const formatAccountType = (type: string): string => {
-  if (!type) return "";
+  if (!type) return '';
   return type
-    .replace(/_/g, " ")
+    .replace(/_/g, ' ')
     .toLowerCase()
-    .split(" ")
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ");
+    .split(' ')
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
 };
 
 export function AccountSummary({
@@ -49,7 +43,7 @@ export function AccountSummary({
 }: AccountSummaryProps) {
   const [manualCashAmounts, setManualCashAmounts] = useState<Record<string, number>>({});
   const [editingAccount, setEditingAccount] = useState<string | null>(null);
-  const [tempAmount, setTempAmount] = useState<string>("");
+  const [tempAmount, setTempAmount] = useState<string>('');
   const [isUpdating, setIsUpdating] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [accountToEdit, setAccountToEdit] = useState<{
@@ -69,7 +63,7 @@ export function AccountSummary({
           const result = await getManualCashServerFn({ data: { accountId: member.accountId } });
           amounts[member.accountId] = result.amount;
         } catch (error) {
-          console.error("Error loading manual cash:", error);
+          console.error('Error loading manual cash:', error);
           amounts[member.accountId] = 0;
         }
       }
@@ -89,11 +83,11 @@ export function AccountSummary({
     try {
       const amount = parseFloat(tempAmount) || 0;
       await updateManualCashServerFn({ data: { accountId, amount } });
-      setManualCashAmounts(prev => ({ ...prev, [accountId]: amount }));
+      setManualCashAmounts((prev) => ({ ...prev, [accountId]: amount }));
       setEditingAccount(null);
       onManualCashUpdate?.();
     } catch (error) {
-      console.error("Error updating manual cash:", error);
+      console.error('Error updating manual cash:', error);
     } finally {
       setIsUpdating(false);
     }
@@ -101,11 +95,11 @@ export function AccountSummary({
 
   const handleCancelEdit = () => {
     setEditingAccount(null);
-    setTempAmount("");
+    setTempAmount('');
   };
 
   const handleEditAccount = (accountId: string) => {
-    const account = members.find(m => m.accountId === accountId);
+    const account = members.find((m) => m.accountId === accountId);
     if (account) {
       setAccountToEdit(account);
       setEditModalOpen(true);
@@ -124,9 +118,7 @@ export function AccountSummary({
     <Card>
       <CardHeader>
         <CardTitle>Account Summary</CardTitle>
-        <CardDescription>
-          Click on an account to see detailed holdings
-        </CardDescription>
+        <CardDescription>Click on an account to see detailed holdings</CardDescription>
       </CardHeader>
       <CardContent>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -135,8 +127,8 @@ export function AccountSummary({
               key={member.id}
               className={`cursor-pointer transition-colors ${
                 selectedAccount === member.accountId
-                  ? "border-primary"
-                  : "hover:border-muted-foreground"
+                  ? 'border-primary'
+                  : 'hover:border-muted-foreground'
               }`}
               onClick={() => onAccountSelect(member.accountId)}
             >
@@ -169,9 +161,7 @@ export function AccountSummary({
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="text-xl font-bold">
-                  {formatCurrency(member.balance || 0)}
-                </div>
+                <div className="text-xl font-bold">{formatCurrency(member.balance || 0)}</div>
                 <div className="mt-2 pt-2 border-t">
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-muted-foreground">Manual Cash:</span>
@@ -185,16 +175,16 @@ export function AccountSummary({
                           step="0.01"
                           min="0"
                         />
-                        <Button 
-                          size="sm" 
+                        <Button
+                          size="sm"
                           onClick={() => handleSaveManualCash(member.accountId)}
                           disabled={isUpdating}
                           className="h-6 px-2 text-xs"
                         >
                           <Check className="h-3 w-3" />
                         </Button>
-                        <Button 
-                          size="sm" 
+                        <Button
+                          size="sm"
                           variant="outline"
                           onClick={handleCancelEdit}
                           disabled={isUpdating}
@@ -208,8 +198,8 @@ export function AccountSummary({
                         <span className="font-medium">
                           {formatCurrency(manualCashAmounts[member.accountId] || 0)}
                         </span>
-                        <Button 
-                          size="sm" 
+                        <Button
+                          size="sm"
                           variant="ghost"
                           onClick={() => handleEditManualCash(member.accountId)}
                           className="h-6 px-1 text-xs hover:bg-muted"
@@ -225,7 +215,7 @@ export function AccountSummary({
           ))}
         </div>
       </CardContent>
-      
+
       <EditAccountModal
         account={accountToEdit}
         open={editModalOpen}

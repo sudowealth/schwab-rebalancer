@@ -1,15 +1,16 @@
-import React, { useState, useEffect } from "react";
-import { Settings, GripVertical } from "lucide-react";
+import { GripVertical, Settings } from 'lucide-react';
+import type React from 'react';
+import { useEffect, useState } from 'react';
+import { Button } from '../../ui/button';
+import { Checkbox } from '../../ui/checkbox';
 import {
   Dialog,
   DialogContent,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-  DialogFooter,
-} from "../../ui/dialog";
-import { Button } from "../../ui/button";
-import { Checkbox } from "../../ui/checkbox";
+} from '../../ui/dialog';
 
 export interface ColumnConfig {
   id: string;
@@ -36,10 +37,8 @@ export const ColumnManagementModal: React.FC<ColumnManagementModalProps> = ({
   }, [columns]);
 
   const handleVisibilityChange = (columnId: string, checked: boolean) => {
-    setLocalColumns(prev =>
-      prev.map(col =>
-        col.id === columnId ? { ...col, visible: checked } : col
-      )
+    setLocalColumns((prev) =>
+      prev.map((col) => (col.id === columnId ? { ...col, visible: checked } : col)),
     );
   };
 
@@ -50,23 +49,23 @@ export const ColumnManagementModal: React.FC<ColumnManagementModalProps> = ({
 
   const handleReset = () => {
     // Reset to default visibility (all visible)
-    const resetColumns = localColumns.map(col => ({ ...col, visible: true }));
+    const resetColumns = localColumns.map((col) => ({ ...col, visible: true }));
     setLocalColumns(resetColumns);
   };
 
   const handleDragStart = (e: React.DragEvent, index: number) => {
     setDraggedIndex(index);
-    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.effectAllowed = 'move';
   };
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
-    e.dataTransfer.dropEffect = "move";
+    e.dataTransfer.dropEffect = 'move';
   };
 
   const handleDrop = (e: React.DragEvent, dropIndex: number) => {
     e.preventDefault();
-    
+
     if (draggedIndex === null || draggedIndex === dropIndex) {
       setDraggedIndex(null);
       return;
@@ -74,13 +73,13 @@ export const ColumnManagementModal: React.FC<ColumnManagementModalProps> = ({
 
     const newColumns = [...localColumns];
     const draggedColumn = newColumns[draggedIndex];
-    
+
     // Remove dragged column
     newColumns.splice(draggedIndex, 1);
-    
+
     // Insert at new position
     newColumns.splice(dropIndex, 0, draggedColumn);
-    
+
     setLocalColumns(newColumns);
     setDraggedIndex(null);
   };
@@ -92,12 +91,7 @@ export const ColumnManagementModal: React.FC<ColumnManagementModalProps> = ({
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button
-          variant="outline"
-          size="icon"
-          aria-label="Manage columns"
-          title="Columns"
-        >
+        <Button variant="outline" size="icon" aria-label="Manage columns" title="Columns">
           <Settings className="h-4 w-4" />
         </Button>
       </DialogTrigger>
@@ -105,51 +99,46 @@ export const ColumnManagementModal: React.FC<ColumnManagementModalProps> = ({
         <DialogHeader>
           <DialogTitle>Manage Table Columns</DialogTitle>
         </DialogHeader>
-        
-        <div className="space-y-2 max-h-96 overflow-y-auto">
+
+        <ul className="space-y-2 max-h-96 overflow-y-auto">
           <p className="text-sm text-gray-600 mb-4">
             Check/uncheck to show/hide columns. Drag to reorder.
           </p>
-          
+
           {localColumns.map((column, index) => (
-            <div
+            <li
               key={column.id}
               className={`flex items-center gap-3 p-2 rounded border ${
-                draggedIndex === index ? "opacity-50" : ""
-              } ${column.locked ? "bg-gray-50" : "bg-white hover:bg-gray-50"}`}
+                draggedIndex === index ? 'opacity-50' : ''
+              } ${column.locked ? 'bg-gray-50' : 'bg-white hover:bg-gray-50'}`}
               draggable={!column.locked}
               onDragStart={(e) => !column.locked && handleDragStart(e, index)}
               onDragOver={handleDragOver}
               onDrop={(e) => handleDrop(e, index)}
               onDragEnd={handleDragEnd}
+              aria-grabbed={draggedIndex === index}
             >
-              {!column.locked && (
-                <GripVertical className="h-4 w-4 text-gray-400 cursor-grab" />
-              )}
-              
+              {!column.locked && <GripVertical className="h-4 w-4 text-gray-400 cursor-grab" />}
+
               <Checkbox
                 id={column.id}
                 checked={column.visible}
-                onCheckedChange={(checked) => 
+                onCheckedChange={(checked) =>
                   !column.locked && handleVisibilityChange(column.id, checked as boolean)
                 }
                 disabled={column.locked}
               />
-              
+
               <label
                 htmlFor={column.id}
-                className={`flex-1 text-sm ${
-                  column.locked ? "text-gray-500" : "cursor-pointer"
-                }`}
+                className={`flex-1 text-sm ${column.locked ? 'text-gray-500' : 'cursor-pointer'}`}
               >
                 {column.label}
-                {column.locked && (
-                  <span className="text-xs text-gray-400 ml-1">(required)</span>
-                )}
+                {column.locked && <span className="text-xs text-gray-400 ml-1">(required)</span>}
               </label>
-            </div>
+            </li>
           ))}
-        </div>
+        </ul>
 
         <DialogFooter className="flex justify-between">
           <Button variant="outline" onClick={handleReset}>
@@ -159,9 +148,7 @@ export const ColumnManagementModal: React.FC<ColumnManagementModalProps> = ({
             <Button variant="outline" onClick={() => setIsOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={handleSave}>
-              Apply Changes
-            </Button>
+            <Button onClick={handleSave}>Apply Changes</Button>
           </div>
         </DialogFooter>
       </DialogContent>

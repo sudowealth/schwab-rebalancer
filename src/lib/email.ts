@@ -1,10 +1,10 @@
-import { Resend } from "resend";
+import { Resend } from 'resend';
 
 let resend: Resend | null = null;
 
 function getResend() {
   // Only initialize on server side
-  if (typeof window !== "undefined") {
+  if (typeof window !== 'undefined') {
     return null; // We're on the client side
   }
 
@@ -23,7 +23,7 @@ export async function sendVerificationEmail({
   url: string;
   name?: string;
 }) {
-  const isDevelopment = process.env.NODE_ENV === "development";
+  const isDevelopment = process.env.NODE_ENV === 'development';
 
   if (isDevelopment) {
     return { success: true };
@@ -31,19 +31,19 @@ export async function sendVerificationEmail({
 
   const resendClient = getResend();
   if (!resendClient) {
-    console.error("Resend not initialized - missing RESEND_API_KEY");
-    return { success: false, error: "Email service not configured" };
+    console.error('Resend not initialized - missing RESEND_API_KEY');
+    return { success: false, error: 'Email service not configured' };
   }
 
   try {
     const { data, error } = await resendClient.emails.send({
-      from: "Tax Loss Harvesting <noreply@your-domain.com>",
+      from: 'Tax Loss Harvesting <noreply@your-domain.com>',
       to: [email],
-      subject: "Verify your email address",
+      subject: 'Verify your email address',
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <h2>Welcome to Tax Loss Harvesting Platform</h2>
-          <p>Hi ${name || "there"},</p>
+          <p>Hi ${name || 'there'},</p>
           <p>Please verify your email address by clicking the link below:</p>
           <p>
             <a href="${url}" style="background-color: #4F46E5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
@@ -57,13 +57,13 @@ export async function sendVerificationEmail({
     });
 
     if (error) {
-      console.error("Failed to send verification email:", error);
+      console.error('Failed to send verification email:', error);
       return { success: false, error };
     }
 
     return { success: true, data };
   } catch (error) {
-    console.error("Error sending verification email:", error);
+    console.error('Error sending verification email:', error);
     return { success: false, error };
   }
 }
@@ -77,7 +77,7 @@ export async function sendPasswordResetEmail({
   url: string;
   name?: string;
 }) {
-  const isDevelopment = process.env.NODE_ENV === "development";
+  const isDevelopment = process.env.NODE_ENV === 'development';
 
   if (isDevelopment) {
     return { success: true };
@@ -85,19 +85,19 @@ export async function sendPasswordResetEmail({
 
   const resendClient = getResend();
   if (!resendClient) {
-    console.error("Resend not initialized - missing RESEND_API_KEY");
-    return { success: false, error: "Email service not configured" };
+    console.error('Resend not initialized - missing RESEND_API_KEY');
+    return { success: false, error: 'Email service not configured' };
   }
 
   try {
     const { data, error } = await resendClient.emails.send({
-      from: "Tax Loss Harvesting <noreply@your-domain.com>",
+      from: 'Tax Loss Harvesting <noreply@your-domain.com>',
       to: [email],
-      subject: "Reset your password",
+      subject: 'Reset your password',
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <h2>Reset Your Password</h2>
-          <p>Hi ${name || "there"},</p>
+          <p>Hi ${name || 'there'},</p>
           <p>We received a request to reset your password. Click the link below to create a new password:</p>
           <p>
             <a href="${url}" style="background-color: #DC2626; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
@@ -111,13 +111,13 @@ export async function sendPasswordResetEmail({
     });
 
     if (error) {
-      console.error("Failed to send password reset email:", error);
+      console.error('Failed to send password reset email:', error);
       return { success: false, error };
     }
 
     return { success: true, data };
   } catch (error) {
-    console.error("Error sending password reset email:", error);
+    console.error('Error sending password reset email:', error);
     return { success: false, error };
   }
 }

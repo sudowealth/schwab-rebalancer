@@ -1,23 +1,17 @@
 import {
-  useReactTable,
-  getCoreRowModel,
-  getSortedRowModel,
-  getFilteredRowModel,
-  flexRender,
   type ColumnDef,
-  type SortingState,
   type ColumnFiltersState,
-} from "@tanstack/react-table";
-import { ChevronUp, ChevronDown, ChevronsUpDown, Filter } from "lucide-react";
-import type { SP500Stock } from "../../lib/schemas";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "../ui/select";
-import { useEffect, useMemo, useState } from "react";
+  flexRender,
+  getCoreRowModel,
+  getFilteredRowModel,
+  getSortedRowModel,
+  type SortingState,
+  useReactTable,
+} from '@tanstack/react-table';
+import { ChevronDown, ChevronsUpDown, ChevronUp, Filter } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import type { SP500Stock } from '../../lib/schemas';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 
 interface SP500TableProps {
   sp500Data: SP500Stock[];
@@ -26,37 +20,30 @@ interface SP500TableProps {
   onIndexChange?: (indexId: string) => void;
 }
 
-export function SP500Table({
-  sp500Data,
-  indices,
-  selectedIndex,
-  onIndexChange,
-}: SP500TableProps) {
-  const [sorting, setSorting] = useState<SortingState>([
-    { id: "ticker", desc: false },
-  ]);
+export function SP500Table({ sp500Data, indices, selectedIndex, onIndexChange }: SP500TableProps) {
+  const [sorting, setSorting] = useState<SortingState>([{ id: 'ticker', desc: false }]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
 
   // Debug logging
   useEffect(() => {
     console.log(
-      `🔍 SP500Table: ${sp500Data?.length || 0} securities, selectedIndex: ${selectedIndex}`
+      `🔍 SP500Table: ${sp500Data?.length || 0} securities, selectedIndex: ${selectedIndex}`,
     );
     if (!sp500Data || sp500Data.length === 0) {
-      console.warn("⚠️ SP500Table: No securities data received");
+      console.warn('⚠️ SP500Table: No securities data received');
     }
-  }, [sp500Data, indices, selectedIndex]);
+  }, [sp500Data, selectedIndex]);
 
   const columns = useMemo<ColumnDef<SP500Stock>[]>(
     () => [
       {
-        accessorKey: "ticker",
-        header: "Ticker",
+        accessorKey: 'ticker',
+        header: 'Ticker',
         cell: ({ getValue }) => getValue() as string,
       },
       {
-        accessorKey: "name",
-        header: "Company Name",
+        accessorKey: 'name',
+        header: 'Company Name',
         cell: ({ getValue, row }) => {
           const name = getValue() as string;
           const ticker = row.original.ticker;
@@ -73,25 +60,25 @@ export function SP500Table({
         },
       },
       {
-        accessorKey: "price",
-        header: "Price",
+        accessorKey: 'price',
+        header: 'Price',
         cell: ({ getValue }) =>
-          `$${(getValue() as number).toLocaleString("en-US", {
+          `$${(getValue() as number).toLocaleString('en-US', {
             minimumFractionDigits: 2,
             maximumFractionDigits: 2,
           })}`,
       },
       {
-        accessorKey: "marketCap",
-        header: "Market Cap",
+        accessorKey: 'marketCap',
+        header: 'Market Cap',
         cell: ({ getValue }) => getValue() as string,
         sortingFn: (rowA, rowB, columnId) => {
           const parseMarketCap = (value: string): number => {
-            const numStr = value.replace(/[^\d.TMB]/g, "");
-            const num = parseFloat(numStr.replace(/[TMB]/g, ""));
-            if (value.includes("T")) {
+            const numStr = value.replace(/[^\d.TMB]/g, '');
+            const num = parseFloat(numStr.replace(/[TMB]/g, ''));
+            if (value.includes('T')) {
               return num * 1000000; // Convert trillions to millions
-            } else if (value.includes("B")) {
+            } else if (value.includes('B')) {
               return num * 1000; // Convert billions to millions
             } else {
               return num; // Already in millions
@@ -103,11 +90,11 @@ export function SP500Table({
         },
       },
       {
-        accessorKey: "peRatio",
-        header: "P/E Ratio",
+        accessorKey: 'peRatio',
+        header: 'P/E Ratio',
         cell: ({ getValue }) => {
           const value = getValue() as number | undefined;
-          return value ? value.toFixed(2) : "N/A";
+          return value ? value.toFixed(2) : 'N/A';
         },
         sortingFn: (rowA, rowB, columnId) => {
           const a = (rowA.getValue(columnId) as number | undefined) || 0;
@@ -116,13 +103,13 @@ export function SP500Table({
         },
       },
       {
-        accessorKey: "industry",
-        header: "Industry",
+        accessorKey: 'industry',
+        header: 'Industry',
         cell: ({ getValue }) => getValue() as string,
       },
       {
-        accessorKey: "sector",
-        header: "Sector",
+        accessorKey: 'sector',
+        header: 'Sector',
         cell: ({ getValue }) => {
           const sector = getValue() as string;
           return (
@@ -133,7 +120,7 @@ export function SP500Table({
         },
       },
     ],
-    []
+    [],
   );
 
   const table = useReactTable({
@@ -164,10 +151,8 @@ export function SP500Table({
             <span>Index</span>
           </div>
           <Select
-            value={selectedIndex || "all"}
-            onValueChange={(value) =>
-              onIndexChange?.(value === "all" ? "" : value)
-            }
+            value={selectedIndex || 'all'}
+            onValueChange={(value) => onIndexChange?.(value === 'all' ? '' : value)}
           >
             <SelectTrigger className="h-7 w-[160px] text-sm border-gray-200 bg-gray-50 hover:bg-gray-100 focus:ring-1 focus:ring-blue-500 focus:border-blue-500">
               <SelectValue placeholder="All Securities" />
@@ -181,9 +166,7 @@ export function SP500Table({
               ))}
             </SelectContent>
           </Select>
-          <span className="text-sm text-gray-500 tabular-nums">
-            {sp500Data.length}
-          </span>
+          <span className="text-sm text-gray-500 tabular-nums">{sp500Data.length}</span>
         </div>
       )}
 
@@ -199,25 +182,19 @@ export function SP500Table({
                     onClick={header.column.getToggleSortingHandler()}
                   >
                     <div className="flex items-center space-x-1">
-                      <span>
-                        {flexRender(
-                          header.column.columnDef.header,
-                          header.getContext()
-                        )}
-                      </span>
+                      <span>{flexRender(header.column.columnDef.header, header.getContext())}</span>
                       {header.column.getIsSorted() && (
                         <span>
-                          {header.column.getIsSorted() === "desc" ? (
+                          {header.column.getIsSorted() === 'desc' ? (
                             <ChevronDown className="w-4 h-4" />
                           ) : (
                             <ChevronUp className="w-4 h-4" />
                           )}
                         </span>
                       )}
-                      {!header.column.getIsSorted() &&
-                        header.column.getCanSort() && (
-                          <ChevronsUpDown className="w-4 h-4 text-gray-400" />
-                        )}
+                      {!header.column.getIsSorted() && header.column.getCanSort() && (
+                        <ChevronsUpDown className="w-4 h-4 text-gray-400" />
+                      )}
                     </div>
                   </th>
                 ))}
@@ -228,10 +205,7 @@ export function SP500Table({
             {table.getRowModel().rows.map((row) => (
               <tr key={row.id}>
                 {row.getVisibleCells().map((cell) => (
-                  <td
-                    key={cell.id}
-                    className="px-6 py-4 whitespace-nowrap text-sm"
-                  >
+                  <td key={cell.id} className="px-6 py-4 whitespace-nowrap text-sm">
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
                   </td>
                 ))}

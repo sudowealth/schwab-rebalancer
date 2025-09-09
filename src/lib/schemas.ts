@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from 'zod';
 
 // Core data schemas
 export const PositionSchema = z.object({
@@ -6,18 +6,12 @@ export const PositionSchema = z.object({
   sleeveId: z.string(),
   sleeveName: z.string(),
   ticker: z.string().min(1).max(5),
-  qty: z.number().positive("Quantity must be positive"),
-  costBasis: z.number().positive("Cost basis must be positive"),
-  currentPrice: z.number().positive("Price must be positive"),
-  marketValue: z
-    .string()
-    .regex(/^\$[\d,]+\.\d{2}$/, "Invalid market value format"),
-  dollarGainLoss: z
-    .string()
-    .regex(/^-?\$[\d,]+\.\d{2}$/, "Invalid gain/loss format"),
-  percentGainLoss: z
-    .string()
-    .regex(/^-?\d+\.\d{2}%$/, "Invalid percentage format"),
+  qty: z.number().positive('Quantity must be positive'),
+  costBasis: z.number().positive('Cost basis must be positive'),
+  currentPrice: z.number().positive('Price must be positive'),
+  marketValue: z.string().regex(/^\$[\d,]+\.\d{2}$/, 'Invalid market value format'),
+  dollarGainLoss: z.string().regex(/^-?\$[\d,]+\.\d{2}$/, 'Invalid gain/loss format'),
+  percentGainLoss: z.string().regex(/^-?\d+\.\d{2}%$/, 'Invalid percentage format'),
   daysHeld: z.number().int().min(0),
   openedAt: z.date(),
   accountId: z.string(),
@@ -31,9 +25,9 @@ export const TransactionSchema = z.object({
   sleeveId: z.string(),
   sleeveName: z.string(),
   ticker: z.string().min(1).max(5),
-  type: z.enum(["BUY", "SELL"]),
-  qty: z.number().positive("Quantity must be positive"),
-  price: z.number().positive("Price must be positive"),
+  type: z.enum(['BUY', 'SELL']),
+  qty: z.number().positive('Quantity must be positive'),
+  price: z.number().positive('Price must be positive'),
   executedAt: z.date(),
   realizedGainLoss: z.number(),
   isLongTerm: z.boolean().optional(),
@@ -45,12 +39,12 @@ export const TransactionSchema = z.object({
 
 export const SP500StockSchema = z.object({
   ticker: z.string().min(1).max(10), // Allow for BRK.B type tickers
-  name: z.string().min(1, "Company name required"),
-  price: z.number().positive("Price must be positive"),
-  marketCap: z.string().regex(/^[\d.]+[BMT]?$/, "Invalid market cap format"),
+  name: z.string().min(1, 'Company name required'),
+  price: z.number().positive('Price must be positive'),
+  marketCap: z.string().regex(/^[\d.]+[BMT]?$/, 'Invalid market cap format'),
   peRatio: z.number().optional(),
-  industry: z.string().min(1, "Industry required"),
-  sector: z.string().min(1, "Sector required"),
+  industry: z.string().min(1, 'Industry required'),
+  sector: z.string().min(1, 'Sector required'),
 });
 
 export const SleeveMemberSchema = z.object({
@@ -65,9 +59,9 @@ export const SleevePositionSchema = z.object({
   id: z.string(),
   sleeveId: z.string(),
   ticker: z.string().min(1).max(10),
-  qty: z.number().positive("Quantity must be positive"),
-  costBasis: z.number().positive("Cost basis must be positive"),
-  currentPrice: z.number().positive("Price must be positive"),
+  qty: z.number().positive('Quantity must be positive'),
+  costBasis: z.number().positive('Cost basis must be positive'),
+  currentPrice: z.number().positive('Price must be positive'),
   marketValue: z.number(),
   dollarGainLoss: z.number(),
   percentGainLoss: z.number(),
@@ -76,7 +70,7 @@ export const SleevePositionSchema = z.object({
 
 export const SleeveSchema = z.object({
   id: z.string(),
-  name: z.string().min(1, "Sleeve name required"),
+  name: z.string().min(1, 'Sleeve name required'),
   members: z.array(SleeveMemberSchema),
   position: SleevePositionSchema.nullable(),
   restrictedInfo: z
@@ -91,9 +85,7 @@ export const RestrictedSecuritySchema = z.object({
   ticker: z.string().min(1).max(10),
   sleeveId: z.string(),
   sleeveName: z.string(),
-  lossAmount: z
-    .string()
-    .regex(/^\$[\d,]+(\.\d{2})?$/, "Invalid loss amount format"),
+  lossAmount: z.string().regex(/^\$[\d,]+(\.\d{2})?$/, 'Invalid loss amount format'),
   soldAt: z.date(),
   blockedUntil: z.date(),
   daysToUnblock: z.number().int().min(0),
@@ -101,15 +93,15 @@ export const RestrictedSecuritySchema = z.object({
 
 export const TradeSchema = z.object({
   id: z.string(),
-  type: z.enum(["BUY", "SELL"]),
+  type: z.enum(['BUY', 'SELL']),
   ticker: z.string().min(1).max(10),
   sleeveId: z.string(),
   sleeveName: z.string(),
-  qty: z.number().positive("Quantity must be positive"),
-  currentPrice: z.number().positive("Price must be positive"),
+  qty: z.number().positive('Quantity must be positive'),
+  currentPrice: z.number().positive('Price must be positive'),
   // Allow negative values for sells and positive for buys. Sign semantics are handled by business logic.
   estimatedValue: z.number(),
-  reason: z.string().min(1, "Reason required"),
+  reason: z.string().min(1, 'Reason required'),
   realizedGainLoss: z.number().optional(),
   replacementTicker: z.string().optional(),
   canExecute: z.boolean(),
@@ -124,16 +116,13 @@ export const ModelMemberSchema = z.object({
   id: z.string(),
   sleeveId: z.string(),
   sleeveName: z.string().optional(),
-  targetWeight: z
-    .number()
-    .min(0)
-    .max(10000, "Target weight cannot exceed 100%"),
+  targetWeight: z.number().min(0).max(10000, 'Target weight cannot exceed 100%'),
   isActive: z.boolean(),
 });
 
 export const ModelSchema = z.object({
   id: z.string(),
-  name: z.string().min(1, "Model name required"),
+  name: z.string().min(1, 'Model name required'),
   description: z.string().optional(),
   isActive: z.boolean(),
   members: z.array(ModelMemberSchema),
@@ -142,13 +131,13 @@ export const ModelSchema = z.object({
 });
 
 export const CreateModelSchema = z.object({
-  name: z.string().min(1, "Model name required"),
+  name: z.string().min(1, 'Model name required'),
   description: z.string().optional(),
   members: z.array(
     z.object({
       sleeveId: z.string(),
       targetWeight: z.number().min(0).max(10000),
-    })
+    }),
   ),
   updateExisting: z.boolean().optional(),
 });
@@ -164,7 +153,7 @@ export const RebalancingGroupMemberSchema = z.object({
 
 export const RebalancingGroupSchema = z.object({
   id: z.string(),
-  name: z.string().min(1, "Group name required"),
+  name: z.string().min(1, 'Group name required'),
   isActive: z.boolean(),
   members: z.array(RebalancingGroupMemberSchema),
   assignedModel: ModelSchema.optional(),
@@ -173,11 +162,11 @@ export const RebalancingGroupSchema = z.object({
 });
 
 export const CreateRebalancingGroupSchema = z.object({
-  name: z.string().min(1, "Group name required"),
+  name: z.string().min(1, 'Group name required'),
   members: z.array(
     z.object({
       accountId: z.string(),
-    })
+    }),
   ),
   updateExisting: z.boolean().optional(),
 });
@@ -211,23 +200,23 @@ export const ModelsSchema = z.array(ModelSchema);
 export const RebalancingGroupsSchema = z.array(RebalancingGroupSchema);
 
 // Order/Blotter data types
-export const OrderSideSchema = z.enum(["BUY", "SELL"]);
-export const OrderTypeSchema = z.enum(["MARKET", "LIMIT", "STOP", "STOP_LIMIT"]);
-export const TifSchema = z.enum(["DAY", "GTC"]);
-export const SessionSchema = z.enum(["NORMAL", "AM", "PM", "ALL"]);
+export const OrderSideSchema = z.enum(['BUY', 'SELL']);
+export const OrderTypeSchema = z.enum(['MARKET', 'LIMIT', 'STOP', 'STOP_LIMIT']);
+export const TifSchema = z.enum(['DAY', 'GTC']);
+export const SessionSchema = z.enum(['NORMAL', 'AM', 'PM', 'ALL']);
 export const OrderStatusSchema = z.enum([
-  "DRAFT",
-  "PREVIEW_OK",
-  "PREVIEW_WARN",
-  "PREVIEW_ERROR",
-  "ACCEPTED",
-  "WORKING",
-  "PARTIALLY_FILLED",
-  "REPLACED",
-  "FILLED",
-  "CANCELED",
-  "REJECTED",
-  "EXPIRED",
+  'DRAFT',
+  'PREVIEW_OK',
+  'PREVIEW_WARN',
+  'PREVIEW_ERROR',
+  'ACCEPTED',
+  'WORKING',
+  'PARTIALLY_FILLED',
+  'REPLACED',
+  'FILLED',
+  'CANCELED',
+  'REJECTED',
+  'EXPIRED',
 ]);
 
 export const OrderSchema = z.object({
@@ -303,19 +292,13 @@ export const OrdersSchema = z.array(OrderSchema);
 export const OrderExecutionsSchema = z.array(OrderExecutionSchema);
 
 // Helper function to validate data with proper error handling
-export function validateData<T>(
-  schema: z.ZodSchema<T>,
-  data: unknown,
-  context: string
-): T {
+export function validateData<T>(schema: z.ZodSchema<T>, data: unknown, context: string): T {
   try {
     return schema.parse(data);
   } catch (error) {
     if (error instanceof z.ZodError) {
       console.error(`Schema validation failed for ${context}:`, error.issues);
-      throw new Error(
-        `Invalid ${context} data: ${error.issues.map((e) => e.message).join(", ")}`
-      );
+      throw new Error(`Invalid ${context} data: ${error.issues.map((e) => e.message).join(', ')}`);
     }
     throw error;
   }
@@ -334,12 +317,8 @@ export type PortfolioMetrics = z.infer<typeof PortfolioMetricsSchema>;
 export type ModelMember = z.infer<typeof ModelMemberSchema>;
 export type Model = z.infer<typeof ModelSchema>;
 export type CreateModel = z.infer<typeof CreateModelSchema>;
-export type RebalancingGroupMember = z.infer<
-  typeof RebalancingGroupMemberSchema
->;
+export type RebalancingGroupMember = z.infer<typeof RebalancingGroupMemberSchema>;
 export type RebalancingGroup = z.infer<typeof RebalancingGroupSchema>;
-export type CreateRebalancingGroup = z.infer<
-  typeof CreateRebalancingGroupSchema
->;
+export type CreateRebalancingGroup = z.infer<typeof CreateRebalancingGroupSchema>;
 export type Order = z.infer<typeof OrderSchema>;
 export type OrderExecution = z.infer<typeof OrderExecutionSchema>;

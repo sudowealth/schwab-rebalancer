@@ -1,18 +1,12 @@
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '~/components/ui/card';
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from "~/components/ui/dialog";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "~/components/ui/card";
-import { TaxCalculationDetail } from "~/lib/tax-calculations";
+} from '~/components/ui/dialog';
+import type { TaxCalculationDetail } from '~/lib/tax-calculations';
 
 export type { TaxCalculationDetail };
 
@@ -21,7 +15,7 @@ interface ExtendedTaxCalculationInputs {
   ordinaryIncome: number;
   capitalGains: number;
   dividends: number;
-  filingStatus: "single" | "married_filing_jointly" | "head_of_household";
+  filingStatus: 'single' | 'married_filing_jointly' | 'head_of_household';
   isShowingFullCalculation?: boolean;
   combinedQualifiedIncome?: number;
   combinedTotalTax?: number;
@@ -37,12 +31,12 @@ interface TaxDetailModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   taxType:
-    | "federalIncome"
-    | "californiaIncome"
-    | "federalCapitalGains"
-    | "californiaCapitalGains"
-    | "federalDividend"
-    | "californiaDividend"
+    | 'federalIncome'
+    | 'californiaIncome'
+    | 'federalCapitalGains'
+    | 'californiaCapitalGains'
+    | 'federalDividend'
+    | 'californiaDividend'
     | null;
   year: number;
   amount: number;
@@ -50,9 +44,9 @@ interface TaxDetailModalProps {
 }
 
 function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   }).format(amount);
@@ -74,24 +68,21 @@ export function TaxDetailModal({
   }
 
   const taxTypeLabels = {
-    federalIncome: "Federal Income Tax",
-    californiaIncome: "California Income Tax",
-    federalCapitalGains: "Federal Capital Gains Tax",
-    californiaCapitalGains: "California Capital Gains Tax",
-    federalDividend: "Federal Dividend Tax",
-    californiaDividend: "California Dividend Tax",
+    federalIncome: 'Federal Income Tax',
+    californiaIncome: 'California Income Tax',
+    federalCapitalGains: 'Federal Capital Gains Tax',
+    californiaCapitalGains: 'California Capital Gains Tax',
+    federalDividend: 'Federal Dividend Tax',
+    californiaDividend: 'California Dividend Tax',
   };
 
   const taxTypeDescriptions = {
-    federalIncome: "Tax on ordinary income (401k withdrawals, wages, interest)",
-    californiaIncome: "California state tax on all income types",
-    federalCapitalGains:
-      "Federal tax on capital gains from taxable account withdrawals",
-    californiaCapitalGains:
-      "California tax on capital gains (taxed as ordinary income)",
-    federalDividend: "Federal tax on qualified dividends (preferential rates)",
-    californiaDividend:
-      "California tax on dividends (taxed as ordinary income)",
+    federalIncome: 'Tax on ordinary income (401k withdrawals, wages, interest)',
+    californiaIncome: 'California state tax on all income types',
+    federalCapitalGains: 'Federal tax on capital gains from taxable account withdrawals',
+    californiaCapitalGains: 'California tax on capital gains (taxed as ordinary income)',
+    federalDividend: 'Federal tax on qualified dividends (preferential rates)',
+    californiaDividend: 'California tax on dividends (taxed as ordinary income)',
   };
 
   return (
@@ -119,16 +110,13 @@ export function TaxDetailModal({
               <div>
                 <div className="text-sm text-gray-600">
                   {calculation.inputs.isShowingFullCalculation
-                    ? "Total Gross Income"
-                    : "Gross Income"}
+                    ? 'Total Gross Income'
+                    : 'Gross Income'}
                 </div>
-                <div className="text-lg font-semibold">
-                  {formatCurrency(calculation.income)}
-                </div>
+                <div className="text-lg font-semibold">{formatCurrency(calculation.income)}</div>
                 {calculation.inputs.isShowingFullCalculation && (
                   <div className="text-xs text-gray-500">
-                    {formatCurrency(calculation.inputs.componentShare ?? 0)} from
-                    this component
+                    {formatCurrency(calculation.inputs.componentShare ?? 0)} from this component
                   </div>
                 )}
               </div>
@@ -144,24 +132,19 @@ export function TaxDetailModal({
                   {formatCurrency(calculation.taxableIncome)}
                 </div>
                 {calculation.inputs.isShowingFullCalculation && (
-                  <div className="text-xs text-gray-500">
-                    Used for bracket determination
-                  </div>
+                  <div className="text-xs text-gray-500">Used for bracket determination</div>
                 )}
               </div>
               <div>
                 <div className="text-sm text-gray-600">
-                  {calculation.inputs.isShowingFullCalculation
-                    ? "Component Tax"
-                    : "Total Tax"}
+                  {calculation.inputs.isShowingFullCalculation ? 'Component Tax' : 'Total Tax'}
                 </div>
                 <div className="text-lg font-semibold text-red-600">
                   {formatCurrency(calculation.totalTax)}
                 </div>
                 {calculation.inputs.isShowingFullCalculation && (
                   <div className="text-xs text-gray-500">
-                    of {formatCurrency(calculation.inputs.combinedTotalTax || 0)}{" "}
-                    total
+                    of {formatCurrency(calculation.inputs.combinedTotalTax || 0)} total
                   </div>
                 )}
               </div>
@@ -181,37 +164,23 @@ export function TaxDetailModal({
           <Card>
             <CardHeader>
               <CardTitle>Income Sources</CardTitle>
-              <CardDescription>
-                How this income was categorized for tax calculation
-              </CardDescription>
+              <CardDescription>How this income was categorized for tax calculation</CardDescription>
             </CardHeader>
             <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <div className="text-sm text-gray-600">Ordinary Income</div>
-                <div className="text-base">
-                  {formatCurrency(calculation.inputs.ordinaryIncome)}
-                </div>
-                <div className="text-xs text-gray-500">
-                  401k withdrawals, wages, interest
-                </div>
+                <div className="text-base">{formatCurrency(calculation.inputs.ordinaryIncome)}</div>
+                <div className="text-xs text-gray-500">401k withdrawals, wages, interest</div>
               </div>
               <div>
                 <div className="text-sm text-gray-600">Capital Gains</div>
-                <div className="text-base">
-                  {formatCurrency(calculation.inputs.capitalGains)}
-                </div>
-                <div className="text-xs text-gray-500">
-                  Realized gains from taxable account
-                </div>
+                <div className="text-base">{formatCurrency(calculation.inputs.capitalGains)}</div>
+                <div className="text-xs text-gray-500">Realized gains from taxable account</div>
               </div>
               <div>
                 <div className="text-sm text-gray-600">Dividends</div>
-                <div className="text-base">
-                  {formatCurrency(calculation.inputs.dividends)}
-                </div>
-                <div className="text-xs text-gray-500">
-                  Dividend income from investments
-                </div>
+                <div className="text-base">{formatCurrency(calculation.inputs.dividends)}</div>
+                <div className="text-xs text-gray-500">Dividend income from investments</div>
               </div>
             </CardContent>
           </Card>
@@ -222,8 +191,8 @@ export function TaxDetailModal({
               <CardTitle>Tax Bracket Calculation</CardTitle>
               <CardDescription>
                 {calculation.inputs.combinedQualifiedIncome
-                  ? "IRS combined qualified dividends and capital gains calculation"
-                  : "Progressive tax calculation by bracket"}
+                  ? 'IRS combined qualified dividends and capital gains calculation'
+                  : 'Progressive tax calculation by bracket'}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -238,35 +207,28 @@ export function TaxDetailModal({
                       {/* We need to calculate the full brackets here */}
                       {(() => {
                         // Calculate what the full brackets would look like
-                        const combinedAmount =
-                          calculation.inputs.combinedQualifiedIncome;
+                        const combinedAmount = calculation.inputs.combinedQualifiedIncome;
 
                         // Reconstruct full brackets from proportional ones
-                        const fullBrackets = calculation.brackets.map(
-                          (bracket) => {
-                            const componentAmount =
-                              calculation.inputs.componentShare ?? 0;
-                            const proportion = componentAmount / combinedAmount;
-                            return {
-                              ...bracket,
-                              fullTaxableAmount:
-                                bracket.taxableAmount / proportion,
-                              fullTaxOwed: bracket.taxOwed / proportion,
-                            };
-                          }
-                        );
+                        const fullBrackets = calculation.brackets.map((bracket) => {
+                          const componentAmount = calculation.inputs.componentShare ?? 0;
+                          const proportion = componentAmount / combinedAmount;
+                          return {
+                            ...bracket,
+                            fullTaxableAmount: bracket.taxableAmount / proportion,
+                            fullTaxOwed: bracket.taxOwed / proportion,
+                          };
+                        });
 
                         return fullBrackets.map((bracket, index) => (
                           <div
-                            key={index}
+                            key={`${bracket.minIncome}-${bracket.maxIncome ?? 'inf'}-${bracket.rate}-${index}`}
                             className="flex items-center justify-between p-3 border rounded bg-gray-50"
                           >
                             <div className="flex-1">
                               <div className="font-medium">
-                                {formatCurrency(bracket.minIncome)} -{" "}
-                                {bracket.maxIncome
-                                  ? formatCurrency(bracket.maxIncome)
-                                  : "∞"}
+                                {formatCurrency(bracket.minIncome)} -{' '}
+                                {bracket.maxIncome ? formatCurrency(bracket.maxIncome) : '∞'}
                               </div>
                               <div className="text-sm text-gray-600">
                                 {formatPercentage(bracket.rate)} tax rate
@@ -286,7 +248,7 @@ export function TaxDetailModal({
                     </div>
                     <div className="mt-2 p-2 bg-blue-50 rounded text-sm">
                       <strong>
-                        Total Combined Tax:{" "}
+                        Total Combined Tax:{' '}
                         {formatCurrency(calculation.inputs.combinedTotalTax || 0)}
                       </strong>
                     </div>
@@ -294,25 +256,18 @@ export function TaxDetailModal({
 
                   {/* Allocation Breakdown */}
                   <div>
-                    <h4 className="font-medium text-gray-900 mb-3">
-                      Allocation to Components:
-                    </h4>
+                    <h4 className="font-medium text-gray-900 mb-3">Allocation to Components:</h4>
                     <div className="space-y-2">
                       {(() => {
-                        const combinedAmount =
-                          calculation.inputs.combinedQualifiedIncome;
+                        const combinedAmount = calculation.inputs.combinedQualifiedIncome;
                         const capitalGains = calculation.inputs.capitalGains;
                         const dividends = calculation.inputs.dividends;
                         const totalTax = calculation.inputs.combinedTotalTax || 0;
 
-                        const capitalGainsPercent =
-                          (capitalGains / combinedAmount) * 100;
-                        const dividendsPercent =
-                          (dividends / combinedAmount) * 100;
-                        const capitalGainsTax =
-                          totalTax * (capitalGains / combinedAmount);
-                        const dividendsTax =
-                          totalTax * (dividends / combinedAmount);
+                        const capitalGainsPercent = (capitalGains / combinedAmount) * 100;
+                        const dividendsPercent = (dividends / combinedAmount) * 100;
+                        const capitalGainsTax = totalTax * (capitalGains / combinedAmount);
+                        const dividendsTax = totalTax * (dividends / combinedAmount);
 
                         return (
                           <>
@@ -320,8 +275,8 @@ export function TaxDetailModal({
                               <div className="flex-1">
                                 <div className="font-medium">Capital Gains</div>
                                 <div className="text-sm text-gray-600">
-                                  {formatCurrency(capitalGains)} (
-                                  {capitalGainsPercent.toFixed(1)}% of total)
+                                  {formatCurrency(capitalGains)} ({capitalGainsPercent.toFixed(1)}%
+                                  of total)
                                 </div>
                               </div>
                               <div className="text-right">
@@ -335,12 +290,10 @@ export function TaxDetailModal({
                             </div>
                             <div className="flex items-center justify-between p-3 border rounded">
                               <div className="flex-1">
-                                <div className="font-medium">
-                                  Qualified Dividends
-                                </div>
+                                <div className="font-medium">Qualified Dividends</div>
                                 <div className="text-sm text-gray-600">
-                                  {formatCurrency(dividends)} (
-                                  {dividendsPercent.toFixed(1)}% of total)
+                                  {formatCurrency(dividends)} ({dividendsPercent.toFixed(1)}% of
+                                  total)
                                 </div>
                               </div>
                               <div className="text-right">
@@ -362,24 +315,20 @@ export function TaxDetailModal({
                 <div className="space-y-2">
                   {calculation.brackets.map((bracket, index) => (
                     <div
-                      key={index}
+                      key={`${bracket.minIncome}-${bracket.maxIncome ?? 'inf'}-${bracket.rate}-${index}`}
                       className="flex items-center justify-between p-3 border rounded"
                     >
                       <div className="flex-1">
                         <div className="font-medium">
-                          {formatCurrency(bracket.minIncome)} -{" "}
-                          {bracket.maxIncome
-                            ? formatCurrency(bracket.maxIncome)
-                            : "∞"}
+                          {formatCurrency(bracket.minIncome)} -{' '}
+                          {bracket.maxIncome ? formatCurrency(bracket.maxIncome) : '∞'}
                         </div>
                         <div className="text-sm text-gray-600">
                           {formatPercentage(bracket.rate)} tax rate
                         </div>
                       </div>
                       <div className="text-right">
-                        <div className="font-medium">
-                          {formatCurrency(bracket.taxableAmount)}
-                        </div>
+                        <div className="font-medium">{formatCurrency(bracket.taxableAmount)}</div>
                         <div className="text-sm text-gray-600">
                           = {formatCurrency(bracket.taxOwed)} tax
                         </div>

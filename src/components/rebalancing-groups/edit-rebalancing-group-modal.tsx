@@ -1,33 +1,21 @@
-import { useState, useEffect } from "react";
-import { X } from "lucide-react";
+import { useRouter } from '@tanstack/react-router';
+import { X } from 'lucide-react';
+import { useEffect, useId, useState } from 'react';
+import type { RebalancingGroup } from '../../lib/schemas';
 import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "../ui/dialog";
-import { Button } from "../ui/button";
-import { Input } from "../ui/input";
-import { Label } from "../ui/label";
-import { Badge } from "../ui/badge";
-import { VirtualizedSelect } from "../ui/virtualized-select-fixed";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "../ui/select";
-import {
-  updateRebalancingGroupServerFn,
+  assignModelToGroupServerFn,
   getAccountsForRebalancingGroupsServerFn,
   getModelsServerFn,
-  assignModelToGroupServerFn,
   unassignModelFromGroupServerFn,
-} from "../../lib/server-functions";
-import { useRouter } from "@tanstack/react-router";
-import type { RebalancingGroup } from "../../lib/schemas";
+  updateRebalancingGroupServerFn,
+} from '../../lib/server-functions';
+import { Badge } from '../ui/badge';
+import { Button } from '../ui/button';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '../ui/dialog';
+import { Input } from '../ui/input';
+import { Label } from '../ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import { VirtualizedSelect } from '../ui/virtualized-select-fixed';
 
 interface Account {
   id: string;
@@ -59,16 +47,15 @@ export function EditRebalancingGroupModal({
   onOpenChange,
   onClose,
 }: EditRebalancingGroupModalProps) {
-  const [groupName, setGroupName] = useState("");
-  const [selectedAccounts, setSelectedAccounts] = useState<Set<string>>(
-    new Set()
-  );
-  const [selectedModelId, setSelectedModelId] = useState<string>("");
+  const [groupName, setGroupName] = useState('');
+  const [selectedAccounts, setSelectedAccounts] = useState<Set<string>>(new Set());
+  const [selectedModelId, setSelectedModelId] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState('');
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [models, setModels] = useState<Model[]>([]);
   const router = useRouter();
+  const groupNameId = useId();
 
   // Initialize form with group data
   useEffect(() => {
@@ -83,20 +70,20 @@ export function EditRebalancingGroupModal({
         setAccounts(
           accountsData.map((account) => ({
             ...account,
-            type: account.type || "",
-          }))
+            type: account.type || '',
+          })),
         );
         setModels(modelsData);
       } catch (err) {
-        console.error("Failed to load data:", err);
-        setError("Failed to load data");
+        console.error('Failed to load data:', err);
+        setError('Failed to load data');
       }
     };
 
     if (group && open) {
       setGroupName(group.name);
       setSelectedAccounts(new Set(group.members.map((m) => m.accountId)));
-      setSelectedModelId(group.assignedModel?.id || "");
+      setSelectedModelId(group.assignedModel?.id || '');
       loadData();
     }
   }, [group, open]);
@@ -113,22 +100,22 @@ export function EditRebalancingGroupModal({
 
   const handleSubmit = async () => {
     if (!groupName.trim()) {
-      setError("Group name is required");
+      setError('Group name is required');
       return;
     }
 
     if (selectedAccounts.size === 0) {
-      setError("Please select at least one account");
+      setError('Please select at least one account');
       return;
     }
 
     if (!selectedModelId) {
-      setError("Please select a model for this group");
+      setError('Please select a model for this group');
       return;
     }
 
     setIsLoading(true);
-    setError("");
+    setError('');
 
     try {
       const members = Array.from(selectedAccounts).map((accountId) => ({
@@ -145,7 +132,7 @@ export function EditRebalancingGroupModal({
       });
 
       // Handle model assignment changes
-      const currentModelId = group.assignedModel?.id || "";
+      const currentModelId = group.assignedModel?.id || '';
 
       if (selectedModelId !== currentModelId) {
         if (currentModelId && currentModelId !== selectedModelId) {
@@ -168,28 +155,24 @@ export function EditRebalancingGroupModal({
       onClose();
       router.invalidate();
     } catch (err: unknown) {
-      console.error("Failed to update rebalancing group:", err);
-      setError(
-        err instanceof Error
-          ? err.message
-          : "Failed to update rebalancing group"
-      );
+      console.error('Failed to update rebalancing group:', err);
+      setError(err instanceof Error ? err.message : 'Failed to update rebalancing group');
     } finally {
       setIsLoading(false);
     }
   };
 
   const formatBalance = (balance: number): string => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
     }).format(balance);
   };
 
   const resetForm = () => {
-    setError("");
+    setError('');
   };
 
   const handleOpenChange = (open: boolean) => {
@@ -208,9 +191,9 @@ export function EditRebalancingGroupModal({
         </DialogHeader>
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="group-name">Name</Label>
+            <Label htmlFor={groupNameId}>Name</Label>
             <Input
-              id="group-name"
+              id={groupNameId}
               value={groupName}
               onChange={(e) => setGroupName(e.target.value)}
               placeholder="e.g., Miller, John and Jane - Retirement"
@@ -227,29 +210,17 @@ export function EditRebalancingGroupModal({
                   const account = accounts.find((a) => a.id === accountId);
                   if (!account) return null;
                   return (
-                    <Badge
-                      key={accountId}
-                      variant="secondary"
-                      className="flex items-center gap-2"
-                    >
+                    <Badge key={accountId} variant="secondary" className="flex items-center gap-2">
                       <div className="flex items-center gap-2">
                         <span>{account.name}</span>
                         {account.accountNumber && (
-                          <span className="text-xs text-gray-500">
-                            ({account.accountNumber})
-                          </span>
+                          <span className="text-xs text-gray-500">({account.accountNumber})</span>
                         )}
                         <Badge
-                          variant={
-                            account.dataSource === "SCHWAB"
-                              ? "default"
-                              : "outline"
-                          }
+                          variant={account.dataSource === 'SCHWAB' ? 'default' : 'outline'}
                           className="text-xs px-1 py-0"
                         >
-                          {account.dataSource === "SCHWAB"
-                            ? "Schwab"
-                            : "Manual"}
+                          {account.dataSource === 'SCHWAB' ? 'Schwab' : 'Manual'}
                         </Badge>
                       </div>
                       <button
@@ -272,7 +243,7 @@ export function EditRebalancingGroupModal({
                 .filter((account) => !selectedAccounts.has(account.id))
                 .map((account) => ({
                   value: account.id,
-                  label: `${account.name}${account.accountNumber ? ` (${account.accountNumber})` : ""} • ${account.dataSource === "SCHWAB" ? "Schwab" : "Manual"} - ${formatBalance(account.balance)}`,
+                  label: `${account.name}${account.accountNumber ? ` (${account.accountNumber})` : ''} • ${account.dataSource === 'SCHWAB' ? 'Schwab' : 'Manual'} - ${formatBalance(account.balance)}`,
                   disabled: account.isAssigned,
                   disabledReason: account.isAssigned
                     ? `This account is unavailable as it is already used in the '${account.assignedGroupName}' rebalancing group`
@@ -290,11 +261,7 @@ export function EditRebalancingGroupModal({
           </div>
           <div className="space-y-2">
             <Label htmlFor="model-select">Model</Label>
-            <Select
-              value={selectedModelId}
-              onValueChange={setSelectedModelId}
-              disabled={isLoading}
-            >
+            <Select value={selectedModelId} onValueChange={setSelectedModelId} disabled={isLoading}>
               <SelectTrigger>
                 <SelectValue placeholder="Select a model for this group" />
               </SelectTrigger>
@@ -304,9 +271,7 @@ export function EditRebalancingGroupModal({
                     <div className="flex flex-col items-start">
                       <span className="font-medium">{model.name}</span>
                       {model.description && (
-                        <span className="text-xs text-gray-500">
-                          {model.description}
-                        </span>
+                        <span className="text-xs text-gray-500">{model.description}</span>
                       )}
                     </div>
                   </SelectItem>
@@ -314,22 +279,14 @@ export function EditRebalancingGroupModal({
               </SelectContent>
             </Select>
           </div>
-          {error && (
-            <div className="text-sm text-red-600 bg-red-50 p-2 rounded">
-              {error}
-            </div>
-          )}
+          {error && <div className="text-sm text-red-600 bg-red-50 p-2 rounded">{error}</div>}
         </div>
         <DialogFooter>
-          <Button
-            variant="outline"
-            onClick={() => handleOpenChange(false)}
-            disabled={isLoading}
-          >
+          <Button variant="outline" onClick={() => handleOpenChange(false)} disabled={isLoading}>
             Cancel
           </Button>
           <Button onClick={handleSubmit} disabled={isLoading}>
-            {isLoading ? "Updating..." : "Update Group"}
+            {isLoading ? 'Updating...' : 'Update Group'}
           </Button>
         </DialogFooter>
       </DialogContent>

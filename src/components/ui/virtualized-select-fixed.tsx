@@ -1,10 +1,10 @@
-import * as React from "react";
-import { useVirtualizer } from "@tanstack/react-virtual";
-import { Check, ChevronsUpDown, Search, CircleSlash } from "lucide-react";
-import { cn } from "../../lib/utils";
-import { Button } from "./button";
-import { Popover, PopoverContent, PopoverTrigger } from "./popover";
-import { SimpleTooltip } from "./simple-tooltip";
+import { useVirtualizer } from '@tanstack/react-virtual';
+import { Check, ChevronsUpDown, CircleSlash, Search } from 'lucide-react';
+import * as React from 'react';
+import { cn } from '../../lib/utils';
+import { Button } from './button';
+import { Popover, PopoverContent, PopoverTrigger } from './popover';
+import { SimpleTooltip } from './simple-tooltip';
 
 export interface Option {
   value: string;
@@ -27,13 +27,13 @@ export function VirtualizedSelect({
   options,
   value,
   onValueChange,
-  placeholder = "Select an option...",
-  searchPlaceholder = "Search...",
-  emptyMessage = "No option found.",
+  placeholder = 'Select an option...',
+  searchPlaceholder = 'Search...',
+  emptyMessage = 'No option found.',
   className,
 }: VirtualizedSelectProps) {
   const [open, setOpen] = React.useState(false);
-  const [searchValue, setSearchValue] = React.useState("");
+  const [searchValue, setSearchValue] = React.useState('');
   const [forceRender, setForceRender] = React.useState(0);
   const [highlightedIndex, setHighlightedIndex] = React.useState(-1);
   const parentRef = React.useRef<HTMLDivElement>(null);
@@ -52,8 +52,7 @@ export function VirtualizedSelect({
 
     return options.filter(
       (option) =>
-        option.value.toLowerCase().includes(search) ||
-        option.label.toLowerCase().includes(search),
+        option.value.toLowerCase().includes(search) || option.label.toLowerCase().includes(search),
     );
   }, [options, searchValue]);
 
@@ -77,7 +76,7 @@ export function VirtualizedSelect({
   // Reset highlighted index when options change
   React.useEffect(() => {
     setHighlightedIndex(-1);
-  }, [filteredOptions]);
+  }, []);
 
   // Scroll highlighted item into view
   React.useEffect(() => {
@@ -92,7 +91,7 @@ export function VirtualizedSelect({
   const handleSelect = (optionValue: string) => {
     onValueChange?.(optionValue);
     setOpen(false);
-    setSearchValue("");
+    setSearchValue('');
     setHighlightedIndex(-1);
   };
 
@@ -135,7 +134,7 @@ export function VirtualizedSelect({
       case 'Escape':
         e.preventDefault();
         setOpen(false);
-        setSearchValue("");
+        setSearchValue('');
         setHighlightedIndex(-1);
         break;
     }
@@ -148,7 +147,7 @@ export function VirtualizedSelect({
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          className={cn("w-full justify-between", className)}
+          className={cn('w-full justify-between', className)}
         >
           {selectedOption ? selectedOption.label : placeholder}
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -167,26 +166,21 @@ export function VirtualizedSelect({
             value={searchValue}
             onChange={(e) => setSearchValue(e.target.value)}
             className="flex h-10 w-full bg-transparent py-3 text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"
-            autoFocus
           />
         </div>
 
         {options.length === 0 ? (
-          <div className="py-6 text-center text-sm text-muted-foreground">
-            Loading options...
-          </div>
+          <div className="py-6 text-center text-sm text-muted-foreground">Loading options...</div>
         ) : filteredOptions.length === 0 ? (
-          <div className="py-6 text-center text-sm text-muted-foreground">
-            {emptyMessage}
-          </div>
+          <div className="py-6 text-center text-sm text-muted-foreground">{emptyMessage}</div>
         ) : (
           <div
             ref={parentRef}
             className="h-[300px] overflow-y-auto overflow-x-hidden"
             key={forceRender}
             style={{
-              scrollBehavior: "auto",
-              overscrollBehavior: "contain",
+              scrollBehavior: 'auto',
+              overscrollBehavior: 'contain',
             }}
             onWheel={(e) => {
               // Ensure wheel events are handled properly
@@ -196,8 +190,8 @@ export function VirtualizedSelect({
             <div
               style={{
                 height: rowVirtualizer.getTotalSize(),
-                width: "100%",
-                position: "relative",
+                width: '100%',
+                position: 'relative',
               }}
             >
               {rowVirtualizer.getVirtualItems().map((virtualRow) => {
@@ -210,21 +204,23 @@ export function VirtualizedSelect({
                   <div
                     key={virtualRow.key}
                     style={{
-                      position: "absolute",
+                      position: 'absolute',
                       top: 0,
                       left: 0,
-                      width: "100%",
+                      width: '100%',
                       height: `${virtualRow.size}px`,
                       transform: `translateY(${virtualRow.start}px)`,
                     }}
                   >
                     <button
                       className={cn(
-                        "relative flex w-full cursor-default select-none items-center px-2 py-1.5 text-sm outline-none transition-colors",
-                        option.disabled ? "opacity-50 cursor-not-allowed" : "hover:bg-accent hover:text-accent-foreground",
-                        !option.disabled && "focus:bg-accent focus:text-accent-foreground",
-                        isSelected && "bg-accent text-accent-foreground",
-                        isHighlighted && !option.disabled && "bg-accent text-accent-foreground",
+                        'relative flex w-full cursor-default select-none items-center px-2 py-1.5 text-sm outline-none transition-colors',
+                        option.disabled
+                          ? 'opacity-50 cursor-not-allowed'
+                          : 'hover:bg-accent hover:text-accent-foreground',
+                        !option.disabled && 'focus:bg-accent focus:text-accent-foreground',
+                        isSelected && 'bg-accent text-accent-foreground',
+                        isHighlighted && !option.disabled && 'bg-accent text-accent-foreground',
                       )}
                       onClick={() => !option.disabled && handleSelect(option.value)}
                       type="button"
@@ -234,14 +230,16 @@ export function VirtualizedSelect({
                         <div className="flex items-center flex-1">
                           <Check
                             className={cn(
-                              "mr-2 h-4 w-4 flex-shrink-0",
-                              isSelected && !option.disabled ? "opacity-100" : "opacity-0",
+                              'mr-2 h-4 w-4 flex-shrink-0',
+                              isSelected && !option.disabled ? 'opacity-100' : 'opacity-0',
                             )}
                           />
                           <span className="block truncate">{option.label}</span>
                         </div>
                         {option.disabled && (
-                          <SimpleTooltip content={option.disabledReason || "This option is unavailable"}>
+                          <SimpleTooltip
+                            content={option.disabledReason || 'This option is unavailable'}
+                          >
                             <CircleSlash className="h-4 w-4 text-red-500 flex-shrink-0 ml-2" />
                           </SimpleTooltip>
                         )}

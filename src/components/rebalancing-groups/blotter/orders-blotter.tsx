@@ -1,49 +1,42 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import type { Order } from "../../../lib/schemas";
-import { getGroupOrdersServerFn } from "../../../lib/server-functions";
-import { Card } from "../../ui/card";
-import { Badge } from "../../ui/badge";
-import { Button } from "../../ui/button";
-import { EditOrderModal } from "./edit-order-modal";
 import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "../../ui/dialog";
-import {
-  deleteOrderServerFn,
-  previewOrderServerFn,
-  submitOrderServerFn,
-} from "../../../lib/server-functions";
-import {
+  ArrowDownCircle,
+  ArrowUpCircle,
+  CheckCircle2,
   ChevronDown,
   Eye,
-  Upload,
-  ArrowUpCircle,
-  ArrowDownCircle,
-  Trash2,
   Loader2,
-  CheckCircle2,
-} from "lucide-react";
-import { Popover, PopoverContent, PopoverTrigger } from "../../ui/popover";
+  Trash2,
+  Upload,
+} from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import type { Order } from '../../../lib/schemas';
+import {
+  deleteOrderServerFn,
+  getGroupOrdersServerFn,
+  previewOrderServerFn,
+  submitOrderServerFn,
+} from '../../../lib/server-functions';
+import { Badge } from '../../ui/badge';
+import { Button } from '../../ui/button';
+import { Card } from '../../ui/card';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '../../ui/dialog';
+import { Popover, PopoverContent, PopoverTrigger } from '../../ui/popover';
+import { EditOrderModal } from './edit-order-modal';
 
 const BUCKETS: Record<string, string[]> = {
-  Draft: ["DRAFT"],
-  Pending_Clear: ["PREVIEW_OK"],
-  Pending_Warn: ["PREVIEW_WARN"],
-  Pending_Error: ["PREVIEW_ERROR"],
-  Open: ["ACCEPTED", "WORKING", "PARTIALLY_FILLED", "REPLACED"],
-  Done: ["FILLED", "CANCELED"],
-  Failed: ["REJECTED", "EXPIRED"],
+  Draft: ['DRAFT'],
+  Pending_Clear: ['PREVIEW_OK'],
+  Pending_Warn: ['PREVIEW_WARN'],
+  Pending_Error: ['PREVIEW_ERROR'],
+  Open: ['ACCEPTED', 'WORKING', 'PARTIALLY_FILLED', 'REPLACED'],
+  Done: ['FILLED', 'CANCELED'],
+  Failed: ['REJECTED', 'EXPIRED'],
 } as const;
 
 type BucketKey = keyof typeof BUCKETS;
 
-function summarize(orders: Array<Pick<Order, "status">>) {
-  const c = (s: readonly string[]) =>
-    orders.filter((o) => s.includes(o.status)).length;
+function summarize(orders: Array<Pick<Order, 'status'>>) {
+  const c = (s: readonly string[]) => orders.filter((o) => s.includes(o.status)).length;
   const draft = c(BUCKETS.Draft);
   const pendingClear = c(BUCKETS.Pending_Clear);
   const pendingWarn = c(BUCKETS.Pending_Warn);
@@ -67,42 +60,23 @@ function summarize(orders: Array<Pick<Order, "status">>) {
 
 function StatusBadge({ order }: { order: Order }) {
   const s = order.status;
-  const base =
-    "inline-flex items-center px-2 py-0.5 rounded text-xs font-medium";
-  if (s === "DRAFT")
-    return <span className={`${base} bg-gray-100 text-gray-800`}>Draft</span>;
-  if (s === "PREVIEW_OK")
-    return (
-      <span className={`${base} bg-green-100 text-green-800`}>Preview OK</span>
-    );
-  if (s === "PREVIEW_WARN")
-    return (
-      <span className={`${base} bg-yellow-100 text-yellow-800`}>
-        Preview Warn
-      </span>
-    );
-  if (s === "PREVIEW_ERROR")
-    return (
-      <span className={`${base} bg-red-100 text-red-800`}>Preview Error</span>
-    );
-  if (["ACCEPTED", "WORKING"].includes(s))
+  const base = 'inline-flex items-center px-2 py-0.5 rounded text-xs font-medium';
+  if (s === 'DRAFT') return <span className={`${base} bg-gray-100 text-gray-800`}>Draft</span>;
+  if (s === 'PREVIEW_OK')
+    return <span className={`${base} bg-green-100 text-green-800`}>Preview OK</span>;
+  if (s === 'PREVIEW_WARN')
+    return <span className={`${base} bg-yellow-100 text-yellow-800`}>Preview Warn</span>;
+  if (s === 'PREVIEW_ERROR')
+    return <span className={`${base} bg-red-100 text-red-800`}>Preview Error</span>;
+  if (['ACCEPTED', 'WORKING'].includes(s))
     return <span className={`${base} bg-blue-100 text-blue-800`}>Working</span>;
-  if (s === "PARTIALLY_FILLED")
-    return (
-      <span className={`${base} bg-yellow-100 text-yellow-800`}>Partial</span>
-    );
-  if (s === "FILLED")
-    return (
-      <span className={`${base} bg-green-100 text-green-800`}>Filled</span>
-    );
-  if (s === "CANCELED")
-    return (
-      <span className={`${base} bg-gray-200 text-gray-700`}>Canceled</span>
-    );
-  if (s === "REJECTED")
-    return <span className={`${base} bg-red-100 text-red-800`}>Rejected</span>;
-  if (s === "EXPIRED")
-    return <span className={`${base} bg-gray-200 text-gray-700`}>Expired</span>;
+  if (s === 'PARTIALLY_FILLED')
+    return <span className={`${base} bg-yellow-100 text-yellow-800`}>Partial</span>;
+  if (s === 'FILLED') return <span className={`${base} bg-green-100 text-green-800`}>Filled</span>;
+  if (s === 'CANCELED')
+    return <span className={`${base} bg-gray-200 text-gray-700`}>Canceled</span>;
+  if (s === 'REJECTED') return <span className={`${base} bg-red-100 text-red-800`}>Rejected</span>;
+  if (s === 'EXPIRED') return <span className={`${base} bg-gray-200 text-gray-700`}>Expired</span>;
   return <span className={`${base} bg-gray-100 text-gray-800`}>{s}</span>;
 }
 
@@ -125,21 +99,19 @@ export function OrdersBlotter({
   const [previewView, setPreviewView] = useState<Order | null>(null);
   const [previewingId, setPreviewingId] = useState<string | null>(null);
   const [, setLastUpdated] = useState<Date | null>(null);
-  const [priceOverrides, setPriceOverrides] = useState<Record<string, number>>(
-    {}
-  );
+  const [priceOverrides, setPriceOverrides] = useState<Record<string, number>>({});
   const [bulkBusy, setBulkBusy] = useState(false);
   const [confirmBulk, setConfirmBulk] = useState<null | {
-    type: "submit" | "submit_buys" | "submit_sells" | "delete";
+    type: 'submit' | 'submit_buys' | 'submit_sells' | 'delete';
   }>(null);
   const [bulkAction, setBulkAction] = useState<
-    null | "preview" | "submit" | "submit_buys" | "submit_sells" | "delete"
+    null | 'preview' | 'submit' | 'submit_buys' | 'submit_sells' | 'delete'
   >(null);
   const [bulkResultMsg, setBulkResultMsg] = useState<string | null>(null);
 
   const mergedPrices = useMemo(
     () => ({ ...(prices || {}), ...priceOverrides }),
-    [prices, priceOverrides]
+    [prices, priceOverrides],
   );
 
   const load = useCallback(async () => {
@@ -166,23 +138,18 @@ export function OrdersBlotter({
     const i = setInterval(load, 30000);
     // Listen for immediate refresh events after adding to blotter
     const onRefresh = (e: Event) => {
-      const detail = (e as CustomEvent).detail as
-        | { groupId?: string }
-        | undefined;
+      const detail = (e as CustomEvent).detail as { groupId?: string } | undefined;
       if (!detail || !detail.groupId || detail.groupId === groupId) {
         load();
       }
     };
-    if (typeof window !== "undefined") {
-      window.addEventListener("orders:refresh", onRefresh as EventListener);
+    if (typeof window !== 'undefined') {
+      window.addEventListener('orders:refresh', onRefresh as EventListener);
     }
     return () => {
       clearInterval(i);
-      if (typeof window !== "undefined") {
-        window.removeEventListener(
-          "orders:refresh",
-          onRefresh as EventListener
-        );
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('orders:refresh', onRefresh as EventListener);
       }
     };
   }, [groupId, load]);
@@ -205,9 +172,9 @@ export function OrdersBlotter({
                 {bulkBusy ? (
                   <span className="inline-flex items-center gap-2">
                     <Loader2 className="h-3 w-3 animate-spin" />
-                    {bulkAction === "preview" && "Previewing..."}
-                    {bulkAction === "submit" && "Submitting..."}
-                    {bulkAction === "delete" && "Deleting..."}
+                    {bulkAction === 'preview' && 'Previewing...'}
+                    {bulkAction === 'submit' && 'Submitting...'}
+                    {bulkAction === 'delete' && 'Deleting...'}
                   </span>
                 ) : (
                   <span className="inline-flex items-center gap-1">
@@ -218,15 +185,15 @@ export function OrdersBlotter({
             </PopoverTrigger>
             <PopoverContent className="w-48 p-1" align="end">
               <button
+                type="button"
                 className="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 rounded disabled:opacity-50"
                 disabled={bulkBusy}
                 onClick={async () => {
                   setBulkBusy(true);
-                  setBulkAction("preview");
+                  setBulkAction('preview');
                   try {
                     const targets = orders.filter(
-                      (o) =>
-                        o.status === "DRAFT" || o.status.startsWith("PREVIEW_")
+                      (o) => o.status === 'DRAFT' || o.status.startsWith('PREVIEW_'),
                     );
                     let ok = 0;
                     for (const o of targets) {
@@ -243,9 +210,7 @@ export function OrdersBlotter({
                     } catch (e) {
                       console.warn(e);
                     }
-                    setBulkResultMsg(
-                      `Previewed ${ok} order${ok === 1 ? "" : "s"}`
-                    );
+                    setBulkResultMsg(`Previewed ${ok} order${ok === 1 ? '' : 's'}`);
                     setTimeout(() => setBulkResultMsg(null), 4000);
                   } finally {
                     setBulkBusy(false);
@@ -254,7 +219,7 @@ export function OrdersBlotter({
                 }}
               >
                 <span className="inline-flex items-center gap-2">
-                  {bulkBusy && bulkAction === "preview" ? (
+                  {bulkBusy && bulkAction === 'preview' ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
                   ) : (
                     <Eye className="h-4 w-4" />
@@ -263,12 +228,13 @@ export function OrdersBlotter({
                 </span>
               </button>
               <button
+                type="button"
                 className="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 rounded disabled:opacity-50"
                 disabled={bulkBusy}
-                onClick={() => setConfirmBulk({ type: "submit" })}
+                onClick={() => setConfirmBulk({ type: 'submit' })}
               >
                 <span className="inline-flex items-center gap-2">
-                  {bulkBusy && bulkAction === "submit" ? (
+                  {bulkBusy && bulkAction === 'submit' ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
                   ) : (
                     <Upload className="h-4 w-4" />
@@ -277,12 +243,13 @@ export function OrdersBlotter({
                 </span>
               </button>
               <button
+                type="button"
                 className="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 rounded disabled:opacity-50"
                 disabled={bulkBusy}
-                onClick={() => setConfirmBulk({ type: "submit_buys" })}
+                onClick={() => setConfirmBulk({ type: 'submit_buys' })}
               >
                 <span className="inline-flex items-center gap-2">
-                  {bulkBusy && bulkAction === "submit_buys" ? (
+                  {bulkBusy && bulkAction === 'submit_buys' ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
                   ) : (
                     <ArrowUpCircle className="h-4 w-4" />
@@ -291,12 +258,13 @@ export function OrdersBlotter({
                 </span>
               </button>
               <button
+                type="button"
                 className="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 rounded disabled:opacity-50"
                 disabled={bulkBusy}
-                onClick={() => setConfirmBulk({ type: "submit_sells" })}
+                onClick={() => setConfirmBulk({ type: 'submit_sells' })}
               >
                 <span className="inline-flex items-center gap-2">
-                  {bulkBusy && bulkAction === "submit_sells" ? (
+                  {bulkBusy && bulkAction === 'submit_sells' ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
                   ) : (
                     <ArrowDownCircle className="h-4 w-4" />
@@ -306,12 +274,13 @@ export function OrdersBlotter({
               </button>
               <div className="my-1 h-px bg-gray-200" />
               <button
+                type="button"
                 className="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 rounded text-red-700 hover:text-red-800 disabled:opacity-50"
                 disabled={bulkBusy}
-                onClick={() => setConfirmBulk({ type: "delete" })}
+                onClick={() => setConfirmBulk({ type: 'delete' })}
               >
                 <span className="inline-flex items-center gap-2">
-                  {bulkBusy && bulkAction === "delete" ? (
+                  {bulkBusy && bulkAction === 'delete' ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
                   ) : (
                     <Trash2 className="h-4 w-4" />
@@ -323,8 +292,7 @@ export function OrdersBlotter({
           </Popover>
           {bulkResultMsg ? (
             <span className="text-xs text-gray-600 inline-flex items-center gap-1">
-              <CheckCircle2 className="h-3 w-3 text-emerald-600" />{" "}
-              {bulkResultMsg}
+              <CheckCircle2 className="h-3 w-3 text-emerald-600" /> {bulkResultMsg}
             </span>
           ) : null}
         </div>
@@ -340,36 +308,35 @@ export function OrdersBlotter({
         </Badge>
         <Badge
           variant="outline"
-          onClick={() => setActiveBucket("Draft")}
+          onClick={() => setActiveBucket('Draft')}
           className="cursor-pointer bg-gray-100 text-gray-800 hover:bg-gray-200"
         >
           Draft ({summary.draft})
         </Badge>
         <Badge
           variant="outline"
-          onClick={() => setActiveBucket("Pending_Clear")}
+          onClick={() => setActiveBucket('Pending_Clear')}
           className="cursor-pointer bg-green-100 text-green-800 hover:bg-green-200"
         >
-          Pending{" "}
-          {summary.pending.total > 0 ? `(${summary.pending.total})` : "(0)"}
+          Pending {summary.pending.total > 0 ? `(${summary.pending.total})` : '(0)'}
         </Badge>
         <Badge
           variant="outline"
-          onClick={() => setActiveBucket("Open")}
+          onClick={() => setActiveBucket('Open')}
           className="cursor-pointer bg-blue-100 text-blue-800 hover:bg-blue-200"
         >
           Open ({summary.open})
         </Badge>
         <Badge
           variant="outline"
-          onClick={() => setActiveBucket("Done")}
+          onClick={() => setActiveBucket('Done')}
           className="cursor-pointer bg-emerald-100 text-emerald-800 hover:bg-emerald-200"
         >
           Done ({summary.done})
         </Badge>
         <Badge
           variant="outline"
-          onClick={() => setActiveBucket("Failed")}
+          onClick={() => setActiveBucket('Failed')}
           className="cursor-pointer bg-red-100 text-red-800 hover:bg-red-200"
         >
           Failed ({summary.failed})
@@ -396,29 +363,26 @@ export function OrdersBlotter({
               {filtered.map((o) => {
                 // Est. Value logic per status
                 let estValue: number | undefined;
-                if (o.status === "DRAFT") {
+                if (o.status === 'DRAFT') {
                   const px = mergedPrices?.[o.symbol] ?? o.limit ?? o.stop ?? 0;
                   estValue = (o.qty || 0) * (px || 0);
-                } else if (
-                  typeof o.filledNotional === "number" &&
-                  o.filledNotional > 0
-                ) {
+                } else if (typeof o.filledNotional === 'number' && o.filledNotional > 0) {
                   estValue = o.filledNotional;
-                } else if (typeof o.previewOrderValue === "number") {
+                } else if (typeof o.previewOrderValue === 'number') {
                   estValue = o.previewOrderValue;
                 } else {
                   estValue = (o.qty || 0) * (o.limit || o.stop || 0);
                 }
                 let displayPrice: string;
-                if (o.status === "DRAFT") {
-                  if (o.type === "MARKET") {
+                if (o.status === 'DRAFT') {
+                  if (o.type === 'MARKET') {
                     const px = mergedPrices?.[o.symbol] ?? 0;
                     displayPrice = px
                       ? px.toLocaleString(undefined, {
                           minimumFractionDigits: 2,
                           maximumFractionDigits: 4,
                         })
-                      : "-";
+                      : '-';
                   } else {
                     const px = o.limit ?? o.stop ?? 0;
                     displayPrice = px.toLocaleString(undefined, {
@@ -428,8 +392,8 @@ export function OrdersBlotter({
                   }
                 } else {
                   displayPrice =
-                    o.type === "MARKET"
-                      ? "MKT"
+                    o.type === 'MARKET'
+                      ? 'MKT'
                       : (o.limit ?? o.stop ?? 0).toLocaleString(undefined, {
                           minimumFractionDigits: 2,
                           maximumFractionDigits: 4,
@@ -441,11 +405,9 @@ export function OrdersBlotter({
                     <td className="p-2">
                       {acct ? (
                         <div className="flex flex-col">
-                          <span className="font-medium leading-tight">
-                            {acct.name}
-                          </span>
+                          <span className="font-medium leading-tight">{acct.name}</span>
                           <span className="text-xs text-gray-500 leading-tight">
-                            {acct.number || ""}
+                            {acct.number || ''}
                           </span>
                         </div>
                       ) : (
@@ -465,14 +427,13 @@ export function OrdersBlotter({
                     <td className="p-2 font-medium">{o.symbol}</td>
                     <td className="p-2">
                       <span
-                        className={`px-2 py-0.5 rounded text-xs font-medium ${o.side === "SELL" ? "bg-red-100 text-red-800" : "bg-green-100 text-green-800"}`}
+                        className={`px-2 py-0.5 rounded text-xs font-medium ${o.side === 'SELL' ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}`}
                       >
                         {o.side}
                       </span>
                     </td>
                     <td className="p-2 text-right">
-                      {o.status === "PARTIALLY_FILLED" &&
-                      typeof o.quantity === "number"
+                      {o.status === 'PARTIALLY_FILLED' && typeof o.quantity === 'number'
                         ? `${o.filledQuantity}/${o.quantity}`
                         : o.qty}
                     </td>
@@ -481,12 +442,11 @@ export function OrdersBlotter({
                     <td className="p-2 text-right">
                       {estValue
                         ? `$${estValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                        : "-"}
+                        : '-'}
                     </td>
                     <td className="p-2">
                       <div className="flex gap-2">
-                        {(o.status === "DRAFT" ||
-                          o.status.startsWith("PREVIEW_")) && (
+                        {(o.status === 'DRAFT' || o.status.startsWith('PREVIEW_')) && (
                           <>
                             <Button
                               size="sm"
@@ -507,78 +467,82 @@ export function OrdersBlotter({
                                     data: { id: o.id },
                                   });
                                 } catch (e) {
-                                  console.error("Preview error", e);
+                                  console.error('Preview error', e);
                                   // Fall through to load and show details if error
                                 } finally {
                                   const data = (await load()) as Order[];
                                   setPreviewingId(null);
-                                  const updated = (data || []).find(
-                                    (x) => x.id === o.id
-                                  );
+                                  const updated = (data || []).find((x) => x.id === o.id);
                                   if (
                                     updated &&
-                                    (updated.status === "PREVIEW_ERROR" ||
-                                      updated.status === "PREVIEW_WARN")
+                                    (updated.status === 'PREVIEW_ERROR' ||
+                                      updated.status === 'PREVIEW_WARN')
                                   ) {
                                     setPreviewView(updated);
                                   }
                                   // Try to extract a price from preview json and override locally for consistency
                                   try {
-                                    if (updated && updated.previewJson) {
-                                      const body = JSON.parse(
-                                        updated.previewJson
-                                      );
+                                    if (updated?.previewJson) {
+                                      const body: unknown = JSON.parse(updated.previewJson);
                                       const findNum = (
-                                        obj: any,
-                                        keys: string[]
+                                        obj: unknown,
+                                        keys: string[],
                                       ): number | null => {
-                                        if (!obj || typeof obj !== "object")
-                                          return null;
-                                        for (const k of Object.keys(obj)) {
+                                        if (!obj || typeof obj !== 'object') return null;
+                                        const rec = obj as Record<string, unknown>;
+                                        for (const k of Object.keys(rec)) {
                                           const key = k.toLowerCase();
-                                          const v = (obj as any)[k];
+                                          const v = rec[k];
                                           if (
                                             keys.includes(key) &&
-                                            typeof v === "number" &&
-                                            isFinite(v) &&
+                                            typeof v === 'number' &&
+                                            Number.isFinite(v) &&
                                             v > 0
                                           )
                                             return v;
-                                          if (v && typeof v === "object") {
+                                          if (v && typeof v === 'object') {
                                             const nested = findNum(v, keys);
-                                            if (nested && nested > 0)
-                                              return nested;
+                                            if (nested && nested > 0) return nested;
                                           }
                                         }
                                         return null;
                                       };
                                       const last = findNum(body, [
-                                        "lastprice",
-                                        "last",
-                                        "last_price",
-                                        "lasttradeprice",
+                                        'lastprice',
+                                        'last',
+                                        'last_price',
+                                        'lasttradeprice',
                                       ]);
                                       const mark = findNum(body, [
-                                        "mark",
-                                        "markprice",
-                                        "mark_price",
+                                        'mark',
+                                        'markprice',
+                                        'mark_price',
                                       ]);
-                                      const orderValue = body?.orderStrategy
-                                        ?.orderBalance?.orderValue as
-                                        | number
-                                        | undefined;
+                                      const getPath = (o: unknown, path: string[]): unknown => {
+                                        let cur: unknown = o;
+                                        for (const p of path) {
+                                          if (!cur || typeof cur !== 'object') return undefined;
+                                          cur = (cur as Record<string, unknown>)[p];
+                                        }
+                                        return cur;
+                                      };
+                                      const orderValue = getPath(body, [
+                                        'orderStrategy',
+                                        'orderBalance',
+                                        'orderValue',
+                                      ]) as number | undefined;
                                       const derived =
                                         !last &&
                                         !mark &&
-                                        typeof updated.qty === "number" &&
+                                        typeof updated.qty === 'number' &&
                                         updated.qty > 0 &&
-                                        typeof orderValue === "number" &&
+                                        typeof orderValue === 'number' &&
                                         orderValue > 0
                                           ? orderValue / updated.qty
                                           : null;
                                       // Prefer mark for MARKET, else prefer last
                                       let chosen: number | null = null;
-                                      if (updated.type === "MARKET") {
+                                      if (updated.type === 'MARKET') {
                                         chosen =
                                           mark && mark > 0
                                             ? mark
@@ -608,21 +572,18 @@ export function OrdersBlotter({
                                 }
                               }}
                             >
-                              {previewingId === o.id
-                                ? "Previewing..."
-                                : "Preview"}
+                              {previewingId === o.id ? 'Previewing...' : 'Preview'}
                             </Button>
-                            {o.status === "PREVIEW_OK" ||
-                            o.status === "PREVIEW_WARN" ? (
+                            {o.status === 'PREVIEW_OK' || o.status === 'PREVIEW_WARN' ? (
                               <Button
                                 size="sm"
                                 className="h-7 px-2 py-1 text-xs"
                                 variant="secondary"
                                 onClick={async () => {
                                   try {
-                                    if (o.status === "PREVIEW_WARN") {
+                                    if (o.status === 'PREVIEW_WARN') {
                                       const ok = window.confirm(
-                                        "This order has warnings from the broker preview. Submit anyway?"
+                                        'This order has warnings from the broker preview. Submit anyway?',
                                       );
                                       if (!ok) return;
                                     }
@@ -630,10 +591,8 @@ export function OrdersBlotter({
                                       data: { id: o.id },
                                     });
                                   } catch (e) {
-                                    console.error("Submit error", e);
-                                    window.alert(
-                                      String(e instanceof Error ? e.message : e)
-                                    );
+                                    console.error('Submit error', e);
+                                    window.alert(String(e instanceof Error ? e.message : e));
                                   } finally {
                                     await load();
                                   }
@@ -695,16 +654,13 @@ export function OrdersBlotter({
       />
 
       {/* Delete confirmation */}
-      <Dialog
-        open={!!confirmDelete}
-        onOpenChange={(v) => !v && setConfirmDelete(null)}
-      >
+      <Dialog open={!!confirmDelete} onOpenChange={(v) => !v && setConfirmDelete(null)}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Delete Order?</DialogTitle>
           </DialogHeader>
           <div className="text-sm text-gray-700">
-            Are you sure you want to delete the draft order for{" "}
+            Are you sure you want to delete the draft order for{' '}
             <span className="font-medium">{confirmDelete?.symbol}</span>?
           </div>
           <DialogFooter>
@@ -732,39 +688,36 @@ export function OrdersBlotter({
       </Dialog>
 
       {/* Bulk confirmation dialog */}
-      <Dialog
-        open={!!confirmBulk}
-        onOpenChange={(v) => !v && setConfirmBulk(null)}
-      >
+      <Dialog open={!!confirmBulk} onOpenChange={(v) => !v && setConfirmBulk(null)}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              {confirmBulk?.type === "submit"
-                ? "Submit All Orders?"
-                : confirmBulk?.type === "submit_buys"
-                  ? "Submit All Buys?"
-                  : confirmBulk?.type === "submit_sells"
-                    ? "Submit All Sells?"
-                    : "Delete All Draft/Pending Orders?"}
+              {confirmBulk?.type === 'submit'
+                ? 'Submit All Orders?'
+                : confirmBulk?.type === 'submit_buys'
+                  ? 'Submit All Buys?'
+                  : confirmBulk?.type === 'submit_sells'
+                    ? 'Submit All Sells?'
+                    : 'Delete All Draft/Pending Orders?'}
             </DialogTitle>
           </DialogHeader>
-          {confirmBulk?.type === "submit" ||
-          confirmBulk?.type === "submit_buys" ||
-          confirmBulk?.type === "submit_sells" ? (
+          {confirmBulk?.type === 'submit' ||
+          confirmBulk?.type === 'submit_buys' ||
+          confirmBulk?.type === 'submit_sells' ? (
             <div className="text-sm text-gray-700">
-              This will preview all Draft/Pending orders. Any that return
-              Preview OK will be submitted{" "}
-              {confirmBulk?.type === "submit_buys"
-                ? "(only Buys)"
-                : confirmBulk?.type === "submit_sells"
-                  ? "(only Sells)"
-                  : ""}
+              This will preview all Draft/Pending orders. Any that return Preview OK will be
+              submitted{' '}
+              {confirmBulk?.type === 'submit_buys'
+                ? '(only Buys)'
+                : confirmBulk?.type === 'submit_sells'
+                  ? '(only Sells)'
+                  : ''}
               . Continue?
             </div>
           ) : (
             <div className="text-sm text-gray-700">
-              This will delete all Draft and Pending (Preview) orders in this
-              group. This cannot be undone. Continue?
+              This will delete all Draft and Pending (Preview) orders in this group. This cannot be
+              undone. Continue?
             </div>
           )}
           <DialogFooter>
@@ -775,25 +728,19 @@ export function OrdersBlotter({
             >
               Cancel
             </Button>
-            {confirmBulk?.type === "submit" ||
-            confirmBulk?.type === "submit_buys" ||
-            confirmBulk?.type === "submit_sells" ? (
+            {confirmBulk?.type === 'submit' ||
+            confirmBulk?.type === 'submit_buys' ||
+            confirmBulk?.type === 'submit_sells' ? (
               <Button
                 className="h-8 px-3 py-1 text-xs"
                 disabled={bulkBusy}
                 onClick={async () => {
                   setBulkBusy(true);
-                  setBulkAction(
-                    confirmBulk?.type as
-                      | "submit"
-                      | "submit_buys"
-                      | "submit_sells"
-                  );
+                  setBulkAction(confirmBulk?.type as 'submit' | 'submit_buys' | 'submit_sells');
                   try {
                     // 1) Preview all draft/pending
                     const targets = orders.filter(
-                      (o) =>
-                        o.status === "DRAFT" || o.status.startsWith("PREVIEW_")
+                      (o) => o.status === 'DRAFT' || o.status.startsWith('PREVIEW_'),
                     );
                     let previewed = 0;
                     for (const o of targets) {
@@ -807,11 +754,9 @@ export function OrdersBlotter({
                     const updated = (await load()) as Order[];
                     // 2) Submit all PREVIEW_OK
                     const toSubmit = updated.filter((o) => {
-                      if (o.status !== "PREVIEW_OK") return false;
-                      if (confirmBulk?.type === "submit_buys")
-                        return o.side === "BUY";
-                      if (confirmBulk?.type === "submit_sells")
-                        return o.side === "SELL";
+                      if (o.status !== 'PREVIEW_OK') return false;
+                      if (confirmBulk?.type === 'submit_buys') return o.side === 'BUY';
+                      if (confirmBulk?.type === 'submit_sells') return o.side === 'SELL';
                       return true;
                     });
                     let submitted = 0;
@@ -829,18 +774,16 @@ export function OrdersBlotter({
                     } catch (e) {
                       console.warn(e);
                     }
-                    if (confirmBulk?.type === "submit_buys") {
+                    if (confirmBulk?.type === 'submit_buys') {
                       setBulkResultMsg(
-                        `Previewed ${previewed}, submitted ${submitted} buy${submitted === 1 ? "" : "s"}`
+                        `Previewed ${previewed}, submitted ${submitted} buy${submitted === 1 ? '' : 's'}`,
                       );
-                    } else if (confirmBulk?.type === "submit_sells") {
+                    } else if (confirmBulk?.type === 'submit_sells') {
                       setBulkResultMsg(
-                        `Previewed ${previewed}, submitted ${submitted} sell${submitted === 1 ? "" : "s"}`
+                        `Previewed ${previewed}, submitted ${submitted} sell${submitted === 1 ? '' : 's'}`,
                       );
                     } else {
-                      setBulkResultMsg(
-                        `Previewed ${previewed}, submitted ${submitted}`
-                      );
+                      setBulkResultMsg(`Previewed ${previewed}, submitted ${submitted}`);
                     }
                     setTimeout(() => setBulkResultMsg(null), 4000);
                   } finally {
@@ -859,11 +802,10 @@ export function OrdersBlotter({
                 disabled={bulkBusy}
                 onClick={async () => {
                   setBulkBusy(true);
-                  setBulkAction("delete");
+                  setBulkAction('delete');
                   try {
                     const targets = orders.filter(
-                      (o) =>
-                        o.status === "DRAFT" || o.status.startsWith("PREVIEW_")
+                      (o) => o.status === 'DRAFT' || o.status.startsWith('PREVIEW_'),
                     );
                     let deleted = 0;
                     for (const o of targets) {
@@ -875,9 +817,7 @@ export function OrdersBlotter({
                       }
                     }
                     await load();
-                    setBulkResultMsg(
-                      `Deleted ${deleted} order${deleted === 1 ? "" : "s"}`
-                    );
+                    setBulkResultMsg(`Deleted ${deleted} order${deleted === 1 ? '' : 's'}`);
                     setTimeout(() => setBulkResultMsg(null), 4000);
                   } finally {
                     setBulkBusy(false);
@@ -894,14 +834,11 @@ export function OrdersBlotter({
       </Dialog>
 
       {/* Preview Details */}
-      <Dialog
-        open={!!previewView}
-        onOpenChange={(v) => !v && setPreviewView(null)}
-      >
+      <Dialog open={!!previewView} onOpenChange={(v) => !v && setPreviewView(null)}>
         <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              Preview Details{previewView ? ` — ${previewView.symbol}` : ""}
+              Preview Details{previewView ? ` — ${previewView.symbol}` : ''}
             </DialogTitle>
           </DialogHeader>
           {previewView && (
@@ -912,97 +849,109 @@ export function OrdersBlotter({
               </div>
               {(() => {
                 // Parse body if present
-                let body: any = null;
+                let body: unknown = null;
                 try {
-                  body = previewView.previewJson
-                    ? JSON.parse(previewView.previewJson)
-                    : null;
+                  body = previewView.previewJson ? JSON.parse(previewView.previewJson) : null;
                 } catch (e) {
                   console.warn(e);
                 }
 
                 // Extract validation messages
-                const rawWarns: Array<any> =
-                  body?.orderValidationResult?.warns || [];
-                const rawRejects: Array<any> =
-                  body?.orderValidationResult?.rejects || [];
+                const getArray = (v: unknown): unknown[] => (Array.isArray(v) ? v : []);
+                const fromObj = (o: unknown, path: string[]): unknown => {
+                  let cur: unknown = o;
+                  for (const p of path) {
+                    if (!cur || typeof cur !== 'object') return undefined;
+                    cur = (cur as Record<string, unknown>)[p];
+                  }
+                  return cur;
+                };
+                const rawWarns = getArray(fromObj(body, ['orderValidationResult', 'warns']));
+                const rawRejects = getArray(fromObj(body, ['orderValidationResult', 'rejects']));
                 const items: Array<{
-                  level: "error" | "warn";
+                  level: 'error' | 'warn';
                   message: string;
                   code?: string;
                 }> = [];
 
-                const add = (level: "error" | "warn", entry: any) => {
+                const add = (level: 'error' | 'warn', entry: unknown) => {
+                  const rec = (
+                    entry && typeof entry === 'object' ? (entry as Record<string, unknown>) : {}
+                  ) as Record<string, unknown>;
                   const code: string | undefined =
-                    entry?.code ||
-                    entry?.errorCode ||
-                    entry?.validationCode ||
+                    (rec.code as string | undefined) ||
+                    (rec.errorCode as string | undefined) ||
+                    (rec.validationCode as string | undefined) ||
                     undefined;
                   const msgCandidates = [
-                    entry?.message,
-                    entry?.text,
-                    entry?.title,
-                    entry?.description,
-                    entry?.activityMessage,
+                    rec.message,
+                    rec.text,
+                    rec.title,
+                    rec.description,
+                    rec.activityMessage,
                   ];
                   const picked = msgCandidates.find(
-                    (m) => typeof m === "string" && m.trim().length > 0
+                    (m) => typeof m === 'string' && m.trim().length > 0,
                   ) as string | undefined;
                   const msg = picked || (code ? `Code ${code}` : undefined);
                   if (msg) items.push({ level, message: msg, code });
                 };
-                rawRejects.forEach((r) => add("error", r));
-                rawWarns.forEach((w) => add("warn", w));
+                rawRejects.forEach((r) => {
+                  add('error', r);
+                });
+                rawWarns.forEach((w) => {
+                  add('warn', w);
+                });
 
                 // Include top-level errors if present
-                const topErrors: Array<any> = Array.isArray(body?.errors)
-                  ? body.errors
-                  : [];
+                const topErrors = getArray(fromObj(body, ['errors']));
                 topErrors.forEach((e) => {
-                  const code = e?.id || e?.code;
+                  const rec = (
+                    e && typeof e === 'object' ? (e as Record<string, unknown>) : {}
+                  ) as Record<string, unknown>;
+                  const code = (rec.id as string | undefined) || (rec.code as string | undefined);
                   const msg =
-                    (typeof e?.title === "string" && e.title) ||
-                    (typeof e?.message === "string" && e.message) ||
-                    (typeof e?.detail === "string" && e.detail) ||
-                    (typeof e?.activityMessage === "string" &&
-                      e.activityMessage) ||
+                    (typeof rec.title === 'string' && rec.title) ||
+                    (typeof rec.message === 'string' && rec.message) ||
+                    (typeof rec.detail === 'string' && rec.detail) ||
+                    (typeof rec.activityMessage === 'string' && rec.activityMessage) ||
                     (code ? `Code ${code}` : undefined);
-                  if (msg) items.push({ level: "error", message: msg, code });
+                  if (msg) items.push({ level: 'error', message: msg, code });
                 });
 
                 // Also include activity messages from order activity collection if present
-                const activities: Array<any> = Array.isArray(
-                  body?.orderStrategy?.orderActivityCollection
-                )
-                  ? body.orderStrategy.orderActivityCollection
-                  : [];
+                const activities = getArray(
+                  fromObj(body, ['orderStrategy', 'orderActivityCollection']),
+                );
                 activities.forEach((a) => {
-                  const code = a?.id || a?.code;
+                  const rec = (
+                    a && typeof a === 'object' ? (a as Record<string, unknown>) : {}
+                  ) as Record<string, unknown>;
+                  const code = (rec.id as string | undefined) || (rec.code as string | undefined);
                   const msg =
-                    (typeof a?.activityMessage === "string" &&
-                      a.activityMessage) ||
-                    (typeof a?.message === "string" && a.message) ||
+                    (typeof rec.activityMessage === 'string' && rec.activityMessage) ||
+                    (typeof rec.message === 'string' && rec.message) ||
                     undefined;
-                  if (msg) items.push({ level: "warn", message: msg, code });
+                  if (msg) items.push({ level: 'warn', message: msg, code });
                 });
 
                 // Fallback to previewFirstMessage (cleaned) if no structured messages
                 const cleanFallback = (() => {
-                  const f = previewView.previewFirstMessage || "";
-                  if (!f) return "";
+                  const f = previewView.previewFirstMessage || '';
+                  if (!f) return '';
                   // Remove noisy prefixes
-                  let s = f
-                    .replace(/^Error:\s*/i, "")
-                    .replace(/Preview failed:\s*/i, "")
+                  const s = f
+                    .replace(/^Error:\s*/i, '')
+                    .replace(/Preview failed:\s*/i, '')
                     .trim();
                   // If it contains a JSON payload, try extracting its message/title
-                  const firstBrace = s.indexOf("{");
-                  const lastBrace = s.lastIndexOf("}");
+                  const firstBrace = s.indexOf('{');
+                  const lastBrace = s.lastIndexOf('}');
                   if (firstBrace >= 0 && lastBrace > firstBrace) {
                     try {
                       const j = JSON.parse(s.slice(firstBrace, lastBrace + 1));
-                      if (typeof j?.message === "string") return j.message;
-                      if (typeof j?.title === "string") return j.title;
+                      if (typeof j?.message === 'string') return j.message;
+                      if (typeof j?.title === 'string') return j.title;
                     } catch (e) {
                       console.warn(e);
                     }
@@ -1013,20 +962,21 @@ export function OrdersBlotter({
                 // Deduplicate messages by level|code|message
                 const seen = new Set<string>();
                 const unique = items.filter((it) => {
-                  const key = `${it.level}|${it.code || ""}|${it.message}`;
+                  const key = `${it.level}|${it.code || ''}|${it.message}`;
                   if (seen.has(key)) return false;
                   seen.add(key);
                   return true;
                 });
 
-                const errors = unique.filter((i) => i.level === "error");
-                const warns = unique.filter((i) => i.level === "warn");
+                const errors = unique.filter((i) => i.level === 'error');
+                const warns = unique.filter((i) => i.level === 'warn');
 
-                const orderValue = body?.orderStrategy?.orderBalance
-                  ?.orderValue as number | undefined;
+                const orderValue = fromObj(body, ['orderStrategy', 'orderBalance', 'orderValue']) as
+                  | number
+                  | undefined;
                 return (
                   <div className="space-y-3">
-                    {typeof orderValue === "number" && (
+                    {typeof orderValue === 'number' && (
                       <div>
                         <span className="font-medium">Estimated Value:</span> $
                         {orderValue.toLocaleString(undefined, {
@@ -1041,12 +991,10 @@ export function OrdersBlotter({
                         <div className="font-medium text-red-800">Errors</div>
                         <ul className="list-disc pl-5 mt-1 space-y-1">
                           {errors.map((e, i) => (
-                            <li key={`e-${i}`} className="text-red-700">
+                            <li key={`${e.code || ''}-${e.message}-${i}`} className="text-red-700">
                               {e.message}
                               {e.code ? (
-                                <span className="ml-2 text-[11px] text-red-500">
-                                  ({e.code})
-                                </span>
+                                <span className="ml-2 text-[11px] text-red-500">({e.code})</span>
                               ) : null}
                             </li>
                           ))}
@@ -1056,17 +1004,16 @@ export function OrdersBlotter({
 
                     {warns.length > 0 && (
                       <div>
-                        <div className="font-medium text-yellow-800">
-                          Warnings
-                        </div>
+                        <div className="font-medium text-yellow-800">Warnings</div>
                         <ul className="list-disc pl-5 mt-1 space-y-1">
                           {warns.map((w, i) => (
-                            <li key={`w-${i}`} className="text-yellow-700">
+                            <li
+                              key={`${w.code || ''}-${w.message}-${i}`}
+                              className="text-yellow-700"
+                            >
                               {w.message}
                               {w.code ? (
-                                <span className="ml-2 text-[11px] text-yellow-600">
-                                  ({w.code})
-                                </span>
+                                <span className="ml-2 text-[11px] text-yellow-600">({w.code})</span>
                               ) : null}
                             </li>
                           ))}
@@ -1074,25 +1021,17 @@ export function OrdersBlotter({
                       </div>
                     )}
 
-                    {errors.length === 0 &&
-                      warns.length === 0 &&
-                      cleanFallback && (
-                        <div className="text-red-700">{cleanFallback}</div>
-                      )}
+                    {errors.length === 0 && warns.length === 0 && cleanFallback && (
+                      <div className="text-red-700">{cleanFallback}</div>
+                    )}
 
-                    {errors.length === 0 &&
-                      warns.length === 0 &&
-                      !cleanFallback && (
-                        <div className="text-gray-600">
-                          No warnings or errors.
-                        </div>
-                      )}
+                    {errors.length === 0 && warns.length === 0 && !cleanFallback && (
+                      <div className="text-gray-600">No warnings or errors.</div>
+                    )}
 
                     {body && (
                       <details className="mt-1">
-                        <summary className="cursor-pointer text-gray-700">
-                          Raw response
-                        </summary>
+                        <summary className="cursor-pointer text-gray-700">Raw response</summary>
                         <div className="mt-2 max-h-64 overflow-x-auto overflow-y-auto rounded bg-gray-50 p-2">
                           <pre className="text-[11px] leading-snug whitespace-pre-wrap break-words">
                             {JSON.stringify(body, null, 2)}

@@ -1,4 +1,4 @@
-import { auth } from "./auth";
+import { auth } from './auth';
 
 export interface ServerAuthContext {
   user: {
@@ -12,7 +12,9 @@ export interface ServerAuthContext {
  * Server-side authentication check for use within server function handlers
  * This approach may be more compatible with Better Auth than middleware
  */
-export async function requireServerAuth(headers: Headers | Record<string, string>): Promise<ServerAuthContext> {
+export async function requireServerAuth(
+  headers: Headers | Record<string, string>,
+): Promise<ServerAuthContext> {
   try {
     console.log('Server auth: Checking session with headers:', {
       hasHeaders: !!headers,
@@ -33,31 +35,33 @@ export async function requireServerAuth(headers: Headers | Record<string, string
     });
 
     if (!session?.user?.id) {
-      throw new Error("Authentication required");
+      throw new Error('Authentication required');
     }
 
     return {
       user: {
         id: session.user.id,
         email: session.user.email,
-        role: (session.user as { role?: string }).role || "user",
+        role: (session.user as { role?: string }).role || 'user',
       },
     };
   } catch (error) {
     console.error('Server auth error:', error);
-    throw new Error("Authentication required");
+    throw new Error('Authentication required');
   }
 }
 
 /**
  * Admin-only server authentication check
  */
-export async function requireServerAdmin(headers: Headers | Record<string, string>): Promise<ServerAuthContext> {
+export async function requireServerAdmin(
+  headers: Headers | Record<string, string>,
+): Promise<ServerAuthContext> {
   const authContext = await requireServerAuth(headers);
-  
+
   if (authContext.user.role !== 'admin') {
-    throw new Error("Admin access required");
+    throw new Error('Admin access required');
   }
-  
+
   return authContext;
 }

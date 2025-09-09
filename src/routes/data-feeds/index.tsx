@@ -1,9 +1,8 @@
-import React from "react";
-import { createFileRoute, redirect } from "@tanstack/react-router";
-import { SchwabIntegrationSimple } from "../../components/SchwabIntegrationSimple";
-import { getDashboardDataServerFn } from "../../lib/server-functions";
+import { createFileRoute, redirect } from '@tanstack/react-router';
+import { SchwabIntegrationSimple } from '../../components/SchwabIntegrationSimple';
+import { getDashboardDataServerFn } from '../../lib/server-functions';
 
-export const Route = createFileRoute("/data-feeds/")({
+export const Route = createFileRoute('/data-feeds/')({
   component: DataFeedsPage,
   loader: async () => {
     try {
@@ -13,11 +12,8 @@ export const Route = createFileRoute("/data-feeds/")({
       return { authenticated: true };
     } catch (error) {
       // If authentication error, redirect to login
-      if (
-        error instanceof Error &&
-        error.message.includes("Authentication required")
-      ) {
-        throw redirect({ to: "/login", search: { reset: "" } });
+      if (error instanceof Error && error.message.includes('Authentication required')) {
+        throw redirect({ to: '/login', search: { reset: '' } });
       }
       // Re-throw other errors
       throw error;

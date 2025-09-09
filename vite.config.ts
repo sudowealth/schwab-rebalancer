@@ -1,70 +1,68 @@
-import { tanstackStart } from "@tanstack/react-start/plugin/vite";
-import { defineConfig } from "vite";
-import tsConfigPaths from "vite-tsconfig-paths";
-import viteReact from "@vitejs/plugin-react";
+import { tanstackStart } from '@tanstack/react-start/plugin/vite';
+import viteReact from '@vitejs/plugin-react';
+import { defineConfig } from 'vite';
+import tsConfigPaths from 'vite-tsconfig-paths';
 
 export default defineConfig({
   server: {
     port: 3000,
     host: '0.0.0.0',
-    allowedHosts: [
-      'localhost',
-      '127.0.0.1'
-    ],
+    allowedHosts: ['localhost', '127.0.0.1'],
   },
   ssr: {
-    external: ["better-sqlite3"],
+    external: ['better-sqlite3'],
   },
   optimizeDeps: {
-    exclude: ["better-sqlite3"],
+    exclude: ['better-sqlite3'],
   },
   build: {
     rollupOptions: {
-      external: ["better-sqlite3"],
+      external: ['better-sqlite3'],
     },
   },
   plugins: [
     tsConfigPaths({
-      projects: ["./tsconfig.json"],
+      projects: ['./tsconfig.json'],
     }),
     tanstackStart({
-      target: "cloudflare-module",
+      target: 'cloudflare-module',
       customViteReactPlugin: true,
     }),
     viteReact(),
     {
-      name: "auth-middleware",
+      name: 'auth-middleware',
       configureServer(server) {
         server.middlewares.use(async (req, res, next) => {
           // Only handle /api/auth/* routes
-          if (!req.url?.startsWith("/api/auth/")) {
+          if (!req.url?.startsWith('/api/auth/')) {
             return next();
           }
 
           try {
             // Read the request body for POST requests
-            let body = "";
-            if (req.method !== "GET" && req.method !== "HEAD") {
+            let body = '';
+            if (req.method !== 'GET' && req.method !== 'HEAD') {
               const chunks: Buffer[] = [];
-              req.on("data", (chunk) => chunks.push(chunk));
-              await new Promise((resolve) => req.on("end", resolve));
+              req.on('data', (chunk) => chunks.push(chunk));
+              await new Promise((resolve) => req.on('end', resolve));
               body = Buffer.concat(chunks).toString();
             }
 
             // Create a proper Request object for Better Auth
             // Detect HTTPS from headers or host
-            const protocol = req.headers['x-forwarded-proto'] || 
-                           (req.headers.host?.includes('127.0.0.1') ? 'https' : 'http');
+            const protocol =
+              req.headers['x-forwarded-proto'] ||
+              (req.headers.host?.includes('127.0.0.1') ? 'https' : 'http');
             const host = req.headers.host;
             const url = new URL(req.url, `${protocol}://${host}`);
-            
+
             const headers = new Headers();
             Object.entries(req.headers).forEach(([key, value]) => {
-              if (typeof value === "string") {
+              if (typeof value === 'string') {
                 headers.set(key, value);
               }
             });
-            
+
             // Add proxy headers if present
             if (req.headers['x-forwarded-for']) {
               headers.set('x-forwarded-for', req.headers['x-forwarded-for'] as string);
@@ -80,9 +78,9 @@ export default defineConfig({
             });
 
             // Set NODE_ENV for the auth module
-            process.env.NODE_ENV = "development";
+            process.env.NODE_ENV = 'development';
 
-            const { auth } = await import("./src/lib/auth");
+            const { auth } = await import('./src/lib/auth');
             const response = await auth.handler(request);
 
             // Set response status
@@ -97,21 +95,17 @@ export default defineConfig({
             const responseBody = await response.text();
             res.end(responseBody);
           } catch (error) {
-            console.error("❌ Auth middleware error:", error);
-            const errorObj =
-              error instanceof Error ? error : new Error(String(error));
-            console.error("Error stack:", errorObj.stack);
+            console.error('❌ Auth middleware error:', error);
+            const errorObj = error instanceof Error ? error : new Error(String(error));
+            console.error('Error stack:', errorObj.stack);
             res.statusCode = 500;
-            res.setHeader("Content-Type", "application/json");
+            res.setHeader('Content-Type', 'application/json');
             res.end(
               JSON.stringify({
-                error: "Internal server error",
+                error: 'Internal server error',
                 message: errorObj.message,
-                stack:
-                  process.env.NODE_ENV === "development"
-                    ? errorObj.stack
-                    : undefined,
-              })
+                stack: process.env.NODE_ENV === 'development' ? errorObj.stack : undefined,
+              }),
             );
           }
         });

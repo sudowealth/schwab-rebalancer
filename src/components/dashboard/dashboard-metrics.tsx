@@ -1,4 +1,4 @@
-import { Wallet, TrendingUp, Flame } from "lucide-react";
+import { Flame, TrendingUp, Wallet } from 'lucide-react';
 
 interface PortfolioMetrics {
   totalMarketValue: number;
@@ -33,9 +33,9 @@ export function DashboardMetrics({ metrics }: DashboardMetricsProps) {
                 </dt>
                 <dd className="text-lg font-medium text-gray-900">
                   $
-                  {metrics?.totalMarketValue.toLocaleString("en-US", {
+                  {metrics?.totalMarketValue.toLocaleString('en-US', {
                     minimumFractionDigits: 2,
-                  }) || "0.00"}
+                  }) || '0.00'}
                 </dd>
               </dl>
             </div>
@@ -49,7 +49,7 @@ export function DashboardMetrics({ metrics }: DashboardMetricsProps) {
             <div className="flex-shrink-0">
               <div
                 className={`w-8 h-8 rounded-md flex items-center justify-center ${
-                  (metrics?.totalGain || 0) >= 0 ? "bg-green-500" : "bg-red-500"
+                  (metrics?.totalGain || 0) >= 0 ? 'bg-green-500' : 'bg-red-500'
                 }`}
               >
                 <TrendingUp className="w-5 h-5 text-white" />
@@ -57,30 +57,24 @@ export function DashboardMetrics({ metrics }: DashboardMetricsProps) {
             </div>
             <div className="ml-5 w-0 flex-1 -mt-1">
               <dl>
-                <dt className="text-sm font-medium text-gray-500 truncate">
-                  YTD Total Gain/Loss
-                </dt>
+                <dt className="text-sm font-medium text-gray-500 truncate">YTD Total Gain/Loss</dt>
                 <dd
                   className={`text-lg font-medium ${
-                    (metrics?.totalGain || 0) >= 0
-                      ? "text-green-600"
-                      : "text-red-600"
+                    (metrics?.totalGain || 0) >= 0 ? 'text-green-600' : 'text-red-600'
                   }`}
                 >
                   $
-                  {(metrics?.totalGain || 0).toLocaleString("en-US", {
+                  {(metrics?.totalGain || 0).toLocaleString('en-US', {
                     minimumFractionDigits: 2,
-                  })}{" "}
+                  })}{' '}
                   ({(metrics?.totalGainPercent || 0).toFixed(2)}%)
                 </dd>
                 <dd className="text-xs text-gray-500 mt-1">
-                  Unrealized: $
-                  {(metrics?.unrealizedGain || 0).toLocaleString("en-US")} (
+                  Unrealized: ${(metrics?.unrealizedGain || 0).toLocaleString('en-US')} (
                   {(metrics?.unrealizedGainPercent || 0).toFixed(2)}%)
                 </dd>
                 <dd className="text-xs text-gray-500">
-                  Realized: $
-                  {(metrics?.realizedGain || 0).toLocaleString("en-US")} (
+                  Realized: ${(metrics?.realizedGain || 0).toLocaleString('en-US')} (
                   {(metrics?.realizedGainPercent || 0).toFixed(2)}%)
                 </dd>
               </dl>
@@ -99,12 +93,10 @@ export function DashboardMetrics({ metrics }: DashboardMetricsProps) {
             </div>
             <div className="ml-5 w-0 flex-1 -mt-1">
               <dl>
-                <dt className="text-sm font-medium text-gray-500 truncate">
-                  Harvestable Losses
-                </dt>
+                <dt className="text-sm font-medium text-gray-500 truncate">Harvestable Losses</dt>
                 <dd className="text-lg font-medium text-yellow-600">
                   $
-                  {(metrics?.harvestablelosses || 0).toLocaleString("en-US", {
+                  {(metrics?.harvestablelosses || 0).toLocaleString('en-US', {
                     minimumFractionDigits: 2,
                   })}
                 </dd>
