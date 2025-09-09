@@ -180,7 +180,7 @@ function RegisterPage() {
           {!userCreationCheck?.allowed && userCreationCheck?.reason && (
             <div className="mt-4 bg-red-50 border border-red-200 rounded-md p-4">
               <div className="flex">
-                <div className="flex-shrink-0">
+                <div className="shrink-0">
                   <Ban className="h-5 w-5 text-red-600" />
                 </div>
                 <div className="ml-3">
@@ -202,7 +202,7 @@ function RegisterPage() {
           {userCreationCheck?.allowed && firstUserCheck?.isFirstUser && (
             <div className="mt-4 bg-blue-50 border border-blue-200 rounded-md p-4">
               <div className="flex">
-                <div className="flex-shrink-0">
+                <div className="shrink-0">
                   <Crown className="h-5 w-5 text-blue-600" />
                 </div>
                 <div className="ml-3">

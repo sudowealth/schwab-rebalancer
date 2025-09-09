@@ -77,7 +77,7 @@ export function AllocationChart({
                 cx="50%"
                 cy="50%"
                 labelLine={false}
-                label={({ percentage }) => (percentage > 3 ? `${percentage.toFixed(1)}%` : '')}
+                label={false}
                 outerRadius={120}
                 fill="#8884d8"
                 dataKey="value"
@@ -138,7 +138,7 @@ export function AllocationChart({
                 }}
               >
                 <div
-                  className="w-3 h-3 rounded-sm flex-shrink-0"
+                  className="w-3 h-3 rounded-sm shrink-0"
                   style={{ backgroundColor: entry.color }}
                 />
                 <span className="truncate" title={entry.name}>

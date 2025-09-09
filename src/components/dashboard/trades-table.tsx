@@ -184,7 +184,7 @@ export function TradesTable({ trades, onTickerClick, onSleeveClick }: TradesTabl
     <div>
       <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-md">
         <div className="flex">
-          <div className="flex-shrink-0">
+          <div className="shrink-0">
             <Info className="h-5 w-5 text-blue-400" />
           </div>
           <div className="ml-3">

@@ -114,7 +114,7 @@ export const TableHeaders: React.FC<TableHeadersProps> = ({
               <button
                 type="button"
                 onClick={onToggleExpandAll}
-                className="text-gray-400 hover:text-gray-600 flex-shrink-0"
+                className="text-gray-400 hover:text-gray-600 shrink-0"
               >
                 {isAllExpanded ? (
                   <ChevronDown className="h-4 w-4" />

@@ -53,7 +53,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center">
-                <div className="flex-shrink-0">
+                <div className="shrink-0">
                   {toast.type === 'success' && (
                     <svg
                       className="h-5 w-5 text-green-400"
@@ -107,12 +107,12 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
                   <p className="text-sm font-medium">{toast.message}</p>
                 </div>
               </div>
-              <div className="ml-4 flex-shrink-0">
+              <div className="ml-4 shrink-0">
                 <button
                   type="button"
                   onClick={() => removeToast(toast.id)}
                   className={`
-                    inline-flex rounded-md p-1.5 hover:bg-opacity-20 focus:outline-none
+                    inline-flex rounded-md p-1.5 hover:bg-black/20 focus:outline-none
                     ${
                       toast.type === 'success'
                         ? 'text-green-500 hover:bg-green-100'

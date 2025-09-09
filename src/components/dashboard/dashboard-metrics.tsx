@@ -21,7 +21,7 @@ export function DashboardMetrics({ metrics }: DashboardMetricsProps) {
       <div className="bg-white overflow-hidden shadow rounded-lg">
         <div className="p-5">
           <div className="flex items-start">
-            <div className="flex-shrink-0">
+            <div className="shrink-0">
               <div className="w-8 h-8 bg-blue-500 rounded-md flex items-center justify-center">
                 <Wallet className="w-5 h-5 text-white" />
               </div>
@@ -46,7 +46,7 @@ export function DashboardMetrics({ metrics }: DashboardMetricsProps) {
       <div className="bg-white overflow-hidden shadow rounded-lg">
         <div className="p-5">
           <div className="flex items-start">
-            <div className="flex-shrink-0">
+            <div className="shrink-0">
               <div
                 className={`w-8 h-8 rounded-md flex items-center justify-center ${
                   (metrics?.totalGain || 0) >= 0 ? 'bg-green-500' : 'bg-red-500'
@@ -86,7 +86,7 @@ export function DashboardMetrics({ metrics }: DashboardMetricsProps) {
       <div className="bg-white overflow-hidden shadow rounded-lg">
         <div className="p-5">
           <div className="flex items-start">
-            <div className="flex-shrink-0">
+            <div className="shrink-0">
               <div className="w-8 h-8 bg-yellow-500 rounded-md flex items-center justify-center">
                 <Flame className="w-5 h-5 text-white" />
               </div>

@@ -19,7 +19,7 @@ export function WashSaleTooltip({ washSaleInfo, className = '' }: WashSaleToolti
 
   return (
     <SimpleTooltip content={tooltipContent}>
-      <AlertTriangle className={`h-3 w-3 text-yellow-500 flex-shrink-0 ${className}`} />
+      <AlertTriangle className={`h-3 w-3 text-yellow-500 shrink-0 ${className}`} />
     </SimpleTooltip>
   );
 }
@@ -53,7 +53,7 @@ export function WashSaleRuleInfo({ className = '' }: WashSaleRuleInfoProps) {
   return (
     <div className={`bg-blue-50 border border-blue-200 rounded-md p-4 ${className}`}>
       <div className="flex">
-        <div className="flex-shrink-0">
+        <div className="shrink-0">
           <Info className="h-5 w-5 text-blue-400" />
         </div>
         <div className="ml-3">

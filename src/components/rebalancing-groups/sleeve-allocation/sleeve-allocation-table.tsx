@@ -222,7 +222,7 @@ export function SleeveAllocationTable({
                 <button
                   type="button"
                   onClick={() => onSleeveExpansionToggle(sleeveKey)}
-                  className="text-gray-400 hover:text-gray-600 flex-shrink-0"
+                  className="text-gray-400 hover:text-gray-600 shrink-0"
                 >
                   {isSleeveExpanded ? (
                     <ChevronDown className="h-4 w-4" />
@@ -270,7 +270,7 @@ export function SleeveAllocationTable({
                 <button
                   type="button"
                   onClick={() => onAccountExpansionToggle(accountKey || '')}
-                  className="p-1 hover:bg-gray-200 rounded flex-shrink-0"
+                  className="p-1 hover:bg-gray-200 rounded shrink-0"
                 >
                   {isAccountExpanded ? (
                     <ChevronDown className="h-4 w-4" />
@@ -1211,7 +1211,7 @@ export function SleeveAllocationTable({
                               onClick={() =>
                                 onSleeveExpansionToggle(`${accountKey}-${sleeve.sleeveId}`)
                               }
-                              className="p-1 hover:bg-gray-200 rounded flex-shrink-0"
+                              className="p-1 hover:bg-gray-200 rounded shrink-0"
                             >
                               {expandedSleeves.has(`${accountKey}-${sleeve.sleeveId}`) ? (
                                 <ChevronDown className="h-4 w-4" />

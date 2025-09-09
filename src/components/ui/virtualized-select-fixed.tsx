@@ -154,7 +154,7 @@ export function VirtualizedSelect({
         </Button>
       </PopoverTrigger>
       <PopoverContent
-        className="w-[--radix-popover-trigger-width] p-0"
+        className="w-(--radix-popover-trigger-width) p-0"
         align="start"
         onKeyDown={handleKeyDown}
       >
@@ -230,7 +230,7 @@ export function VirtualizedSelect({
                         <div className="flex items-center flex-1">
                           <Check
                             className={cn(
-                              'mr-2 h-4 w-4 flex-shrink-0',
+                              'mr-2 h-4 w-4 shrink-0',
                               isSelected && !option.disabled ? 'opacity-100' : 'opacity-0',
                             )}
                           />
@@ -240,7 +240,7 @@ export function VirtualizedSelect({
                           <SimpleTooltip
                             content={option.disabledReason || 'This option is unavailable'}
                           >
-                            <CircleSlash className="h-4 w-4 text-red-500 flex-shrink-0 ml-2" />
+                            <CircleSlash className="h-4 w-4 text-red-500 shrink-0 ml-2" />
                           </SimpleTooltip>
                         )}
                       </div>

@@ -151,7 +151,7 @@ function SleevesComponent() {
           return (
             <button
               type="button"
-              className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 text-left"
+              className="fixed inset-0 bg-gray-600/50 overflow-y-auto h-full w-full z-50 text-left"
               aria-label="Close security details"
               onClick={() => setShowSecurityModal(false)}
               onKeyDown={(e) => {
