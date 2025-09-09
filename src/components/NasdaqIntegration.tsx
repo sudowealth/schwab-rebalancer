@@ -62,57 +62,33 @@ export function NasdaqIntegration() {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Download className="h-5 w-5" />
-          Nasdaq Securities Import
+          Import Equities Securities
         </CardTitle>
         <CardDescription>
-          Import securities data from Nasdaq Trader's comprehensive listings. Choose between
-          NASDAQ-listed securities or other exchange listings.
+          Seed the database with equities securities tickers and names from{' '}
+          <a
+            href="https://nasdaqtrader.com/dynamic/symdir/nasdaqlisted.txt"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-600 hover:underline"
+          >
+            NASDAQ-listed securities
+          </a>{' '}
+          (~3,000) and{' '}
+          <a
+            href="https://nasdaqtrader.com/dynamic/symdir/otherlisted.txt"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-600 hover:underline"
+          >
+            other exchange securities
+          </a>{' '}
+          (~10,000) as provided by Nasdaq Trader. Only imports securities that don't already exist.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="text-sm text-gray-600">
-          <p className="mb-2">
-            <strong>Data Sources:</strong>
-          </p>
-          <ul className="text-xs space-y-1 mb-2">
-            <li>
-              •{' '}
-              <a
-                href="https://nasdaqtrader.com/dynamic/symdir/nasdaqlisted.txt"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-600 hover:underline"
-              >
-                NASDAQ Listed Securities
-              </a>{' '}
-              (~3,000 securities directly listed on NASDAQ)
-            </li>
-            <li>
-              •{' '}
-              <a
-                href="https://nasdaqtrader.com/dynamic/symdir/otherlisted.txt"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-600 hover:underline"
-              >
-                Other Listed Securities
-              </a>{' '}
-              (~10,000 securities from NYSE, AMEX, and other exchanges)
-            </li>
-          </ul>
-          <p className="mb-2">
-            <strong>Format:</strong> Pipe-delimited text file with ACT Symbol, Security Name,
-            Exchange, etc.
-          </p>
-          <p>
-            <strong>Note:</strong> Only imports securities that don't already exist in your
-            database. Test issues are automatically skipped.
-          </p>
-        </div>
-
         {/* Feed Type Selector */}
         <div className="space-y-2">
-          <div className="text-sm font-medium">Feed Type:</div>
           <div className="flex flex-wrap gap-4">
             <div className="flex items-center gap-2">
               <input

@@ -1,6 +1,8 @@
 import { createFileRoute, redirect } from '@tanstack/react-router';
 import { NasdaqIntegration } from '../../components/NasdaqIntegration';
-import { SchwabIntegrationSimple } from '../../components/SchwabIntegrationSimple';
+import { SchwabIntegration } from '../../components/SchwabIntegration';
+import { SyncHistory } from '../../components/SyncHistory';
+import { YahooIntegration } from '../../components/YahooIntegration';
 import { getDashboardDataServerFn } from '../../lib/server-functions';
 
 export const Route = createFileRoute('/data-feeds/')({
@@ -38,11 +40,19 @@ function DataFeedsPage() {
 
       <div className="space-y-8">
         <section>
-          <SchwabIntegrationSimple />
+          <SchwabIntegration />
+        </section>
+
+        <section>
+          <YahooIntegration />
         </section>
 
         <section>
           <NasdaqIntegration />
+        </section>
+
+        <section>
+          <SyncHistory />
         </section>
       </div>
     </div>
