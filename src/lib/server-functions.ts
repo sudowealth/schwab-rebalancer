@@ -1,4 +1,5 @@
 import { createServerFn } from '@tanstack/react-start';
+import { eq, sql } from 'drizzle-orm';
 import { requireAdmin, requireAuth } from './auth-utils';
 import { CASH_TICKER, isAnyCashTicker, isBaseCashTicker, MANUAL_CASH_TICKER } from './constants';
 import type { AccountHoldingsResult } from './db-api';
@@ -2812,3 +2813,221 @@ export const cleanupExpiredSessionsServerFn = createServerFn({
 
   return { success: true, cleanedSessions: cleanedCount };
 });
+
+// Server function to import Nasdaq securities - runs ONLY on server
+export const importNasdaqSecuritiesServerFn = createServerFn({
+  method: 'POST',
+})
+  .validator(
+    (data: {
+      limit?: number;
+      skipExisting?: boolean;
+      feedType?: 'all' | 'nasdaqonly' | 'nonnasdaq';
+    }) => data,
+  )
+  .handler(async ({ data }) => {
+    await requireAuth();
+
+    const { limit, skipExisting = true, feedType = 'all' } = data;
+
+    try {
+      // Determine URLs to fetch based on feed type
+      const urls: string[] = [];
+      if (feedType === 'all') {
+        urls.push(
+          'https://nasdaqtrader.com/dynamic/symdir/nasdaqlisted.txt',
+          'https://nasdaqtrader.com/dynamic/symdir/otherlisted.txt',
+        );
+      } else if (feedType === 'nasdaqonly') {
+        urls.push('https://nasdaqtrader.com/dynamic/symdir/nasdaqlisted.txt');
+      } else if (feedType === 'nonnasdaq') {
+        urls.push('https://nasdaqtrader.com/dynamic/symdir/otherlisted.txt');
+      }
+
+      // Fetch data from all URLs
+      const fetchPromises = urls.map(async (url) => {
+        const response = await fetch(url);
+        if (!response.ok) {
+          throw new Error(
+            `Failed to fetch Nasdaq data from ${url}: ${response.status} ${response.statusText}`,
+          );
+        }
+        return response.text();
+      });
+
+      const responses = await Promise.all(fetchPromises);
+
+      // Combine all lines from all responses
+      const allLines: string[] = [];
+      for (const responseText of responses) {
+        const lines = responseText.split('\n').filter((line) => line.trim());
+        allLines.push(...lines.slice(1)); // Skip header from each file
+      }
+
+      // Parse pipe-delimited data based on feed type
+      interface NasdaqSecurity {
+        ticker: string;
+        securityName: string;
+        exchange?: string;
+        marketCategory?: string;
+        etf: string;
+        roundLotSize: string;
+        testIssue: string;
+        financialStatus?: string;
+      }
+
+      const parsedSecurities: NasdaqSecurity[] = [];
+      for (const line of allLines) {
+        const parts = line.split('|');
+        if (parts.length >= 7) {
+          // Determine format based on ETF field position
+          // otherlisted.txt: ACT Symbol|Security Name|Exchange|CQS Symbol|ETF|Round Lot Size|Test Issue|NASDAQ Symbol
+          // nasdaqlisted.txt: Symbol|Security Name|Market Category|Test Issue|Financial Status|Round Lot Size|ETF|NextShares
+
+          if (parts.length === 8) {
+            // Check if this looks like nasdaqlisted format (Test Issue field at index 3)
+            const testIssueField = parts[3]?.trim() || '';
+            if (testIssueField === 'N' || testIssueField === 'Y') {
+              // nasdaqlisted.txt format: ETF at index 6
+              parsedSecurities.push({
+                ticker: parts[0]?.trim() || '',
+                securityName: parts[1]?.trim() || '',
+                marketCategory: parts[2]?.trim() || '',
+                testIssue: parts[3]?.trim() || '',
+                financialStatus: parts[4]?.trim() || '',
+                roundLotSize: parts[5]?.trim() || '',
+                etf: parts[6]?.trim() || '',
+                exchange: 'NASDAQ', // nasdaqlisted.txt is specifically NASDAQ securities
+              });
+            } else {
+              // otherlisted.txt format: ETF at index 4
+              parsedSecurities.push({
+                ticker: parts[0]?.trim() || parts[7]?.trim() || '', // Use ACT Symbol or NASDAQ Symbol as fallback
+                securityName: parts[1]?.trim() || '',
+                exchange: parts[2]?.trim() || '',
+                etf: parts[4]?.trim() || '',
+                roundLotSize: parts[5]?.trim() || '',
+                testIssue: parts[6]?.trim() || '',
+              });
+            }
+          } else if (parts.length === 7) {
+            // nasdaqlisted.txt without NextShares field: ETF at index 6
+            parsedSecurities.push({
+              ticker: parts[0]?.trim() || '',
+              securityName: parts[1]?.trim() || '',
+              marketCategory: parts[2]?.trim() || '',
+              testIssue: parts[3]?.trim() || '',
+              financialStatus: parts[4]?.trim() || '',
+              roundLotSize: parts[5]?.trim() || '',
+              etf: parts[6]?.trim() || '',
+              exchange: 'NASDAQ',
+            });
+          }
+        }
+      }
+
+      // Apply limit if specified
+      const securitiesToProcess = limit ? parsedSecurities.slice(0, limit) : parsedSecurities;
+
+      // Import to database
+      const { getDatabase } = await import('./db-config');
+      const db = getDatabase();
+      const schema = await import('../db/schema');
+      const { clearCache } = await import('./db-api');
+
+      let importedCount = 0;
+      let skippedCount = 0;
+      const errors: string[] = [];
+
+      for (const security of securitiesToProcess) {
+        try {
+          // Skip test issues
+          if (security.testIssue === 'Y') {
+            skippedCount++;
+            continue;
+          }
+
+          // Use ticker field (already determined based on feed type)
+          const ticker = security.ticker;
+          if (!ticker) {
+            skippedCount++;
+            continue;
+          }
+
+          // Validate ticker format: must be 9 characters or less and all uppercase
+          if (ticker.length > 9) {
+            skippedCount++;
+            continue;
+          }
+
+          if (ticker !== ticker.toUpperCase()) {
+            skippedCount++;
+            continue;
+          }
+
+          // Check if security already exists
+          if (skipExisting) {
+            const existing = await db
+              .select()
+              .from(schema.security)
+              .where(eq(schema.security.ticker, ticker))
+              .limit(1);
+
+            if (existing.length > 0) {
+              skippedCount++;
+              continue;
+            }
+          }
+
+          // Determine asset type
+          let assetType = 'EQUITY';
+          let assetTypeSub = null;
+
+          if (security.etf === 'Y') {
+            assetType = 'EQUITY';
+            assetTypeSub = 'ETF';
+          }
+
+          // Create a descriptive name
+          const exchangeInfo = security.exchange || security.marketCategory || 'NASDAQ';
+          const name = security.securityName || `${ticker} - ${exchangeInfo}`;
+
+          // Insert security
+          await db.insert(schema.security).values({
+            ticker: ticker,
+            name: name,
+            price: 1, // Will be updated by price sync
+            marketCap: null,
+            peRatio: null,
+            industry: null,
+            sector: null,
+            assetType: assetType,
+            assetTypeSub: assetTypeSub,
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+          });
+
+          importedCount++;
+        } catch (error) {
+          const errorMsg = `Failed to import ${security.ticker}: ${getErrorMessage(error)}`;
+          errors.push(errorMsg);
+          logError(error, errorMsg);
+        }
+      }
+
+      // Clear cache to refresh data
+      clearCache();
+
+      return {
+        success: true,
+        imported: importedCount,
+        skipped: skippedCount,
+        errors: errors,
+        totalParsed: parsedSecurities.length,
+        totalProcessed: securitiesToProcess.length,
+      };
+    } catch (error) {
+      logError(error, 'Failed to import Nasdaq securities');
+      throw new DatabaseError('Failed to import Nasdaq securities', error);
+    }
+  });

@@ -114,9 +114,6 @@ function RootDocument({ children }: { children: React.ReactNode }) {
                       Planning
                     </Link>
 
-                    {/* Admin Link */}
-                    <AdminLink />
-
                     {/* Settings Dropdown */}
                     <div className="relative">
                       <NavigationMenu>
@@ -125,6 +122,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
                             <NavigationMenuTrigger>Settings</NavigationMenuTrigger>
                             <NavigationMenuContent>
                               <ul className="grid w-[200px] gap-3 p-4">
+                                <AdminSettingsLink />
                                 <li>
                                   <NavigationMenuLink asChild>
                                     <Link
@@ -173,7 +171,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
   );
 }
 
-function AdminLink() {
+function AdminSettingsLink() {
   const { isAdmin } = useAuth();
 
   if (!isAdmin) {
@@ -181,15 +179,16 @@ function AdminLink() {
   }
 
   return (
-    <Link
-      to="/admin"
-      className={cn(
-        navigationMenuTriggerStyle(),
-        'no-underline text-red-600 hover:text-red-700 hover:bg-red-50',
-      )}
-    >
-      Admin
-    </Link>
+    <li>
+      <NavigationMenuLink asChild>
+        <Link
+          to="/admin"
+          className="block text-sm leading-none px-2 py-1.5 rounded-sm hover:bg-accent text-red-600 hover:text-red-700"
+        >
+          Admin
+        </Link>
+      </NavigationMenuLink>
+    </li>
   );
 }
 

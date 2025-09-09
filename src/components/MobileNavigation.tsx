@@ -59,23 +59,6 @@ export function MobileNavigation() {
               </Link>
             ))}
 
-            {/* Admin Menu */}
-            {isAdmin && (
-              <Link
-                to="/admin"
-                onClick={handleLinkClick}
-                className={cn(
-                  'text-gray-700 hover:text-gray-900 hover:bg-gray-50 px-3 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-2',
-                )}
-                activeProps={{
-                  className: 'bg-red-50 text-red-600 border-l-4 border-red-500',
-                }}
-              >
-                <Shield className="h-4 w-4" />
-                Admin
-              </Link>
-            )}
-
             {/* Settings Menu */}
             <div>
               <button
@@ -92,6 +75,16 @@ export function MobileNavigation() {
               </button>
               {settingsOpen && (
                 <div className="ml-4 mt-2 space-y-1">
+                  {isAdmin && (
+                    <Link
+                      to="/admin"
+                      onClick={handleLinkClick}
+                      className="flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:text-red-700 hover:bg-red-50 rounded-md transition-colors"
+                    >
+                      <Shield className="h-4 w-4" />
+                      Admin
+                    </Link>
+                  )}
                   <Link
                     to="/settings/security-mapping"
                     onClick={handleLinkClick}

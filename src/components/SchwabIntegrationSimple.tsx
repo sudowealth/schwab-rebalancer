@@ -780,26 +780,6 @@ export function SchwabIntegrationSimple() {
         </Card>
       )}
 
-      {!isConnected && (
-        <Card className="border-dashed">
-          <CardContent className="pt-6">
-            <div className="text-center space-y-2">
-              <ExternalLink className="h-8 w-8 mx-auto text-muted-foreground" />
-              <h3 className="font-medium">Connect Your Schwab Account</h3>
-              <p className="text-sm text-muted-foreground max-w-md mx-auto">
-                Link your Charles Schwab account to automatically import your accounts and holdings.
-                Your credentials are encrypted and stored securely.
-              </p>
-              <div className="pt-2">
-                <Button onClick={handleConnect} disabled={isConnecting}>
-                  {isConnecting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                  Get Started
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
       <Dialog open={changesModalOpen} onOpenChange={setChangesModalOpen}>
         <DialogContent className="max-w-3xl">
           <DialogHeader>

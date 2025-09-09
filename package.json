@@ -36,7 +36,8 @@
     "db:migrate:prod": "wrangler d1 migrations apply tax-loss-harvesting",
     "db:studio": "drizzle-kit studio",
     "seed": "tsx src/lib/seeds/main.ts",
-    "generate-key": "tsx scripts/generate-encryption-key.ts"
+    "generate-key": "tsx scripts/generate-encryption-key.ts",
+    "precommit": "biome check --write"
   },
   "dependencies": {
     "@cloudflare/workers-types": "^4.20250819.0",

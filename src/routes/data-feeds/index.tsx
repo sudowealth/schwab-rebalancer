@@ -1,4 +1,5 @@
 import { createFileRoute, redirect } from '@tanstack/react-router';
+import { NasdaqIntegration } from '../../components/NasdaqIntegration';
 import { SchwabIntegrationSimple } from '../../components/SchwabIntegrationSimple';
 import { getDashboardDataServerFn } from '../../lib/server-functions';
 
@@ -38,6 +39,10 @@ function DataFeedsPage() {
       <div className="space-y-8">
         <section>
           <SchwabIntegrationSimple />
+        </section>
+
+        <section>
+          <NasdaqIntegration />
         </section>
       </div>
     </div>
