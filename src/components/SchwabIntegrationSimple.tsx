@@ -283,6 +283,9 @@ export function SchwabIntegrationSimple() {
     console.log('🔗 [UI] User clicked Connect Schwab Account button');
     setIsConnecting(true);
 
+    // Store return URL for conditional redirect after OAuth
+    sessionStorage.setItem('schwabReturnUrl', window.location.pathname);
+
     // Ensure HTTPS for Schwab OAuth (required by Schwab)
     let redirectUri = `${window.location.origin}/schwab/callback`;
     if (window.location.hostname === 'localhost' && !redirectUri.startsWith('https:')) {

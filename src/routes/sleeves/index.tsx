@@ -65,9 +65,7 @@ function SleevesComponent() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Sleeves</h1>
-            <p className="mt-2 text-sm text-gray-600">
-              Manage your 150 three-stock sleeves for tax-loss harvesting
-            </p>
+            <p className="mt-2 text-sm text-gray-600">Manage your model sleeves</p>
           </div>
           <AddSleeveModal />
         </div>

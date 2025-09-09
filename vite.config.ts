@@ -113,5 +113,21 @@ export default defineConfig({
         });
       },
     },
+    {
+      name: 'print-local-https-url',
+      configureServer(server) {
+        const originalPrint = server.printUrls;
+        server.printUrls = () => {
+          originalPrint();
+          server.config.logger.info(
+            '  ➜  Local HTTPS (Needed for Schwab OAuth): https://127.0.0.1/',
+            {
+              clear: false,
+              timestamp: false,
+            },
+          );
+        };
+      },
+    },
   ],
 });

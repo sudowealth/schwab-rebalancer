@@ -82,7 +82,7 @@ function RebalancingGroupsComponent() {
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Rebalancing Groups</h1>
             <p className="mt-2 text-sm text-gray-600">
-              Manage account groups for portfolio rebalancing and model assignment
+              Manage account groups for portfolio rebalancing
             </p>
           </div>
           <AddRebalancingGroupModal />

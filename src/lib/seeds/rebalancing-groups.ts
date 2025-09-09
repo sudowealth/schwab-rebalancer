@@ -35,7 +35,7 @@ export async function seedRebalancingGroups(db: ReturnType<typeof drizzle>, user
 
   console.log(`✅ Using user ID for rebalancing groups: ${targetUserId}`);
 
-  // Clear existing rebalancing groups and model assignments
+  // Clear existing rebalancing groups
   await db.delete(schema.rebalancingGroupMember);
   await db.delete(schema.modelGroupAssignment);
   await db.delete(schema.rebalancingGroup);

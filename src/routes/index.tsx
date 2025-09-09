@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute, redirect } from '@tanstack/react-router';
 import { Loader2 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
+import { SchwabConnectionSection } from '../components/dashboard/schwab-connection-section';
 import { DashboardMetrics } from '../components/dashboard/dashboard-metrics';
 import { PositionsTable } from '../components/dashboard/positions-table';
 import { SecurityModal } from '../components/dashboard/security-modal';
@@ -225,7 +226,7 @@ function DashboardComponent() {
               Welcome back,{' '}
               {isClient ? session?.user?.name || session?.user?.email || 'User' : 'User'}
             </h1>
-            <p className="mt-2 text-sm text-gray-600">Tax-loss harvesting portfolio overview</p>
+            <p className="mt-2 text-sm text-gray-600">Portfolio overview</p>
           </div>
           <Button onClick={handleSeedData} disabled={seedMutation.isPending}>
             {seedMutation.isPending ? (
@@ -238,6 +239,11 @@ function DashboardComponent() {
             )}
           </Button>
         </div>
+      </div>
+
+      {/* Schwab Connection Section - only shows when not connected */}
+      <div className="mb-8">
+        <SchwabConnectionSection />
       </div>
 
       <DashboardMetrics metrics={metrics} />

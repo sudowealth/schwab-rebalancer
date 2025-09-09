@@ -16,19 +16,24 @@ export const Route = createFileRoute('/schwab/callback')({
 
 function SchwabCallbackPage() {
   const router = useRouter();
-  const { code, error } = Route.useSearch();
+  const { code, state, error } = Route.useSearch();
   const [isProcessing, setIsProcessing] = useState(true);
   const [callbackError, setCallbackError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
+  // Get return URL from sessionStorage
+  const returnUrl = sessionStorage.getItem('schwabReturnUrl') || '/';
+
   useEffect(() => {
     const processCallback = async () => {
       if (error) {
+        sessionStorage.removeItem('schwabReturnUrl');
         setCallbackError(`Schwab OAuth error: ${error}`);
         setIsProcessing(false);
         return;
       }
       if (!code) {
+        sessionStorage.removeItem('schwabReturnUrl');
         setCallbackError('Authorization code not found in the callback');
         setIsProcessing(false);
         return;
@@ -47,18 +52,35 @@ function SchwabCallbackPage() {
         setSuccess(true);
         setIsProcessing(false);
         setTimeout(() => {
-          router.navigate({ to: '/data-feeds' });
+          // Determine where to redirect based on returnUrl, default to home page
+          const redirectTo = returnUrl === '/data-feeds' ? '/data-feeds' : '/';
+          console.log('🔄 [Callback] Redirecting to:', redirectTo);
+
+          // Clean up sessionStorage
+          sessionStorage.removeItem('schwabReturnUrl');
+
+          // Preserve OAuth callback parameters so the destination page can detect the connection
+          router.navigate({
+            to: redirectTo,
+            search: { code, state },
+          });
         }, 2000);
       } catch (err) {
+        // Clean up sessionStorage on error
+        sessionStorage.removeItem('schwabReturnUrl');
         setCallbackError(err instanceof Error ? err.message : 'Failed to connect to Schwab');
         setIsProcessing(false);
       }
     };
 
     processCallback();
-  }, [code, error, router]);
+  }, [code, state, error, returnUrl, router]);
 
-  const handleRetry = () => router.navigate({ to: '/data-feeds' });
+  const handleRetry = () => {
+    const redirectTo = returnUrl === '/data-feeds' ? '/data-feeds' : '/';
+    sessionStorage.removeItem('schwabReturnUrl');
+    router.navigate({ to: redirectTo });
+  };
 
   return (
     <div className="container mx-auto py-8">
@@ -89,7 +111,7 @@ function SchwabCallbackPage() {
                   accounts and holdings.
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  Redirecting you back to the integration page...
+                  Redirecting you back to the dashboard...
                 </p>
               </div>
             )}
@@ -102,7 +124,7 @@ function SchwabCallbackPage() {
                   Please try connecting again or contact support if the issue persists.
                 </p>
                 <Button onClick={handleRetry} className="w-full">
-                  Back to Integration
+                  Back to Dashboard
                 </Button>
               </div>
             )}
