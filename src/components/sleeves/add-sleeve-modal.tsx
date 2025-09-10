@@ -15,8 +15,21 @@ import { useSleeveForm } from '../../hooks/useSleeveForm';
 import { createSleeveServerFn } from '../../lib/server-functions';
 import { SleeveForm } from './SleeveForm';
 
-export function AddSleeveModal() {
-  const [isOpen, setIsOpen] = useState(false);
+interface AddSleeveModalProps {
+  isOpen?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  onSleeveCreated?: () => void;
+}
+
+export function AddSleeveModal({
+  isOpen: externalIsOpen,
+  onOpenChange: externalOnOpenChange,
+  onSleeveCreated,
+}: AddSleeveModalProps = {}) {
+  const [internalIsOpen, setInternalIsOpen] = useState(false);
+  const isControlled = externalIsOpen !== undefined;
+  const isOpen = isControlled ? externalIsOpen : internalIsOpen;
+  const setIsOpen = isControlled ? externalOnOpenChange || (() => {}) : setInternalIsOpen;
   const [mode, setMode] = useState<'single' | 'bulk'>('single');
   const [csvData, setCsvData] = useState('');
   const csvDataId = useId();
@@ -75,6 +88,7 @@ export function AddSleeveModal() {
 
       setIsOpen(false);
       resetForm();
+      onSleeveCreated?.();
     },
   });
 
@@ -109,12 +123,14 @@ export function AddSleeveModal() {
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogTrigger asChild>
-        <Button onClick={() => setIsOpen(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          Add Sleeve
-        </Button>
-      </DialogTrigger>
+      {!isControlled && (
+        <DialogTrigger asChild>
+          <Button onClick={() => setIsOpen(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Add Sleeve
+          </Button>
+        </DialogTrigger>
+      )}
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Add New Sleeve</DialogTitle>

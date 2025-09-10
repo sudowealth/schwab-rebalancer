@@ -15,6 +15,7 @@ import { Input } from '../../components/ui/input';
 import { type Option, VirtualizedSelect } from '../../components/ui/virtualized-select-fixed';
 import { createModelServerFn, getAvailableSleevesServerFn } from '../../lib/server-functions';
 import { cn } from '../../lib/utils';
+import { AddSleeveModal } from '../sleeves/add-sleeve-modal';
 
 interface ModelMember {
   id: string;
@@ -27,8 +28,27 @@ type WeightMember = { sleeveId: string; targetWeight: number };
 // Use function return types instead of manual interfaces
 type Sleeve = Awaited<ReturnType<typeof getAvailableSleevesServerFn>>[number];
 
-export function AddModelModal() {
-  const [isOpen, setIsOpen] = useState(false);
+interface AddModelModalProps {
+  buttonText?: string;
+  size?: 'default' | 'sm' | 'lg' | 'icon';
+  variant?: 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost' | 'link';
+  isOpen?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  onModelCreated?: () => void;
+}
+
+export function AddModelModal({
+  buttonText = 'Add Model',
+  size = 'default',
+  variant = 'default',
+  isOpen: externalIsOpen,
+  onOpenChange: externalOnOpenChange,
+  onModelCreated,
+}: AddModelModalProps = {}) {
+  const [internalIsOpen, setInternalIsOpen] = useState(false);
+  const isControlled = externalIsOpen !== undefined;
+  const isOpen = isControlled ? externalIsOpen : internalIsOpen;
+  const setIsOpen = isControlled ? externalOnOpenChange || (() => {}) : setInternalIsOpen;
   const [mode, setMode] = useState<'single' | 'bulk'>('single');
   const [modelName, setModelName] = useState('');
   const [description, setDescription] = useState('');
@@ -44,6 +64,7 @@ export function AddModelModal() {
   const [sleeveOptions, setSleeveOptions] = useState<Option[]>([]);
   const [csvData, setCsvData] = useState('');
   const [updateExisting, setUpdateExisting] = useState(false);
+  const [showAddSleeveModal, setShowAddSleeveModal] = useState(false);
   const router = useRouter();
   const modelNameId = `${useId()}-model-name`;
   const descriptionId = `${useId()}-description`;
@@ -56,10 +77,13 @@ export function AddModelModal() {
         const sleeveList = await getAvailableSleevesServerFn();
         setSleeves(sleeveList);
         // Convert to Option format for VirtualizedSelect
-        const options = sleeveList.map((sleeve) => ({
-          value: sleeve.id,
-          label: sleeve.name,
-        }));
+        const options = [
+          { value: 'create-new-sleeve', label: '+ New Sleeve' },
+          ...sleeveList.map((sleeve) => ({
+            value: sleeve.id,
+            label: sleeve.name,
+          })),
+        ];
         setSleeveOptions(options);
       } catch (err) {
         console.error('Failed to load sleeves:', err);
@@ -67,6 +91,23 @@ export function AddModelModal() {
     };
     loadSleeves();
   }, []);
+
+  const refreshSleeves = async () => {
+    try {
+      const sleeveList = await getAvailableSleevesServerFn();
+      setSleeves(sleeveList);
+      const options = [
+        { value: 'create-new-sleeve', label: '+ New Sleeve' },
+        ...sleeveList.map((sleeve) => ({
+          value: sleeve.id,
+          label: sleeve.name,
+        })),
+      ];
+      setSleeveOptions(options);
+    } catch (err) {
+      console.error('Failed to refresh sleeves:', err);
+    }
+  };
 
   const resetForm = () => {
     setModelName('');
@@ -183,6 +224,7 @@ export function AddModelModal() {
 
       resetForm();
       setIsOpen(false);
+      onModelCreated?.();
       router.invalidate();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
@@ -313,6 +355,7 @@ export function AddModelModal() {
 
       resetForm();
       setIsOpen(false);
+      onModelCreated?.();
       router.invalidate();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
@@ -360,12 +403,14 @@ export function AddModelModal() {
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogTrigger asChild>
-        <Button>
-          <Plus className="mr-2 h-4 w-4" />
-          Add Model
-        </Button>
-      </DialogTrigger>
+      {!isControlled && (
+        <DialogTrigger asChild>
+          <Button size={size} variant={variant}>
+            <Plus className="mr-2 h-4 w-4" />
+            {buttonText}
+          </Button>
+        </DialogTrigger>
+      )}
       <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Add New Model</DialogTitle>
@@ -440,7 +485,13 @@ export function AddModelModal() {
                       <VirtualizedSelect
                         options={sleeveOptions}
                         value={member.sleeveId}
-                        onValueChange={(value) => updateMember(index, 'sleeveId', value)}
+                        onValueChange={(value) => {
+                          if (value === 'create-new-sleeve') {
+                            setShowAddSleeveModal(true);
+                          } else {
+                            updateMember(index, 'sleeveId', value);
+                          }
+                        }}
                         placeholder="Select sleeve"
                       />
                     </div>
@@ -550,6 +601,16 @@ S&P 500 Tech, Semiconductors - 1, 25.5"
           </Button>
         </DialogFooter>
       </DialogContent>
+
+      {/* Add Sleeve Modal */}
+      <AddSleeveModal
+        isOpen={showAddSleeveModal}
+        onOpenChange={setShowAddSleeveModal}
+        onSleeveCreated={() => {
+          refreshSleeves();
+          setShowAddSleeveModal(false);
+        }}
+      />
     </Dialog>
   );
 }

@@ -7,6 +7,7 @@ import {
   getAccountsForRebalancingGroupsServerFn,
   getModelsServerFn,
 } from '../../lib/server-functions';
+import { AddModelModal } from '../models/add-model-modal';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import {
@@ -53,6 +54,7 @@ export function AddRebalancingGroupModal() {
   const [error, setError] = useState('');
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [models, setModels] = useState<Model[]>([]);
+  const [showAddModelModal, setShowAddModelModal] = useState(false);
   const router = useRouter();
 
   const loadData = useCallback(async () => {
@@ -74,12 +76,28 @@ export function AddRebalancingGroupModal() {
     }
   }, []);
 
+  const refreshModels = useCallback(async () => {
+    try {
+      const modelsData = await getModelsServerFn();
+      setModels(modelsData);
+    } catch (err) {
+      console.error('Failed to refresh models:', err);
+    }
+  }, []);
+
   // Load data when modal opens
   useEffect(() => {
     if (isOpen) {
       loadData();
     }
   }, [isOpen, loadData]);
+
+  // Refresh models when they might have been updated
+  useEffect(() => {
+    if (isOpen) {
+      refreshModels();
+    }
+  }, [isOpen, refreshModels]);
 
   const handleAccountToggle = (accountId: string) => {
     const newSelection = new Set(selectedAccounts);
@@ -249,11 +267,28 @@ export function AddRebalancingGroupModal() {
           </div>
           <div className="space-y-2">
             <Label htmlFor="model-select">Model</Label>
-            <Select value={selectedModelId} onValueChange={setSelectedModelId} disabled={isLoading}>
+            <Select
+              value={selectedModelId}
+              onValueChange={(value) => {
+                if (value === 'create-new') {
+                  setShowAddModelModal(true);
+                  setSelectedModelId(''); // Clear selection
+                } else {
+                  setSelectedModelId(value);
+                }
+              }}
+              disabled={isLoading}
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Select a model for this group" />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="create-new">
+                  <div className="flex items-center gap-2">
+                    <Plus className="h-4 w-4" />
+                    <span>New Model</span>
+                  </div>
+                </SelectItem>
                 {models.map((model) => (
                   <SelectItem key={model.id} value={model.id}>
                     <div className="flex flex-col items-start">
@@ -278,6 +313,16 @@ export function AddRebalancingGroupModal() {
           </Button>
         </DialogFooter>
       </DialogContent>
+
+      {/* Add Model Modal */}
+      <AddModelModal
+        isOpen={showAddModelModal}
+        onOpenChange={setShowAddModelModal}
+        onModelCreated={() => {
+          refreshModels();
+          setShowAddModelModal(false);
+        }}
+      />
     </Dialog>
   );
 }

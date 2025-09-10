@@ -147,9 +147,13 @@ export function VirtualizedSelect({
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          className={cn('w-full justify-between', className)}
+          className={cn('w-full justify-between font-normal', className)}
         >
-          {selectedOption ? selectedOption.label : placeholder}
+          {selectedOption ? (
+            <span className="truncate">{selectedOption.label}</span>
+          ) : (
+            <span className="text-gray-500">{placeholder}</span>
+          )}
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
