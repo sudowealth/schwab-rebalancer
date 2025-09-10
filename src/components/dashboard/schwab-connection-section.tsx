@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ExternalLink, Loader2 } from 'lucide-react';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   getHeldPositionTickersServerFn,
   getSchwabCredentialsStatusServerFn,
@@ -33,7 +33,7 @@ export function SchwabConnectionSection() {
       });
     },
     onSuccess: (data: { authUrl?: string }) => {
-      if (data.authUrl) {
+      if (data.authUrl && typeof window !== 'undefined') {
         window.location.href = data.authUrl;
       }
     },
@@ -138,6 +138,8 @@ export function SchwabConnectionSection() {
   }, [queryClient, syncAccountsMutation, syncHoldingsMutation, syncPricesMutation]);
 
   const handleConnect = async () => {
+    if (typeof window === 'undefined') return;
+
     setIsConnecting(true);
 
     // Store return URL for conditional redirect after OAuth
@@ -154,10 +156,17 @@ export function SchwabConnectionSection() {
 
   const isConnected = credentialsStatus?.hasCredentials || false;
 
-  // Check if we just returned from OAuth callback
-  const urlParams = new URLSearchParams(window.location.search);
-  const hasOAuthCallback = urlParams.has('code') || urlParams.has('state');
+  // State for OAuth callback detection
+  const [hasOAuthCallback, setHasOAuthCallback] = useState(false);
   const [hasRunInitialSync, setHasRunInitialSync] = useState(false);
+
+  // Check if we just returned from OAuth callback (client-side only)
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      setHasOAuthCallback(urlParams.has('code') || urlParams.has('state'));
+    }
+  }, []);
 
   // Trigger sync after successful OAuth connection
   React.useEffect(() => {
@@ -166,11 +175,13 @@ export function SchwabConnectionSection() {
       setHasRunInitialSync(true);
       runFullSync();
 
-      // Clean up URL parameters
-      const url = new URL(window.location.href);
-      url.searchParams.delete('code');
-      url.searchParams.delete('state');
-      window.history.replaceState({}, document.title, url.pathname + url.hash);
+      // Clean up URL parameters (client-side only)
+      if (typeof window !== 'undefined') {
+        const url = new URL(window.location.href);
+        url.searchParams.delete('code');
+        url.searchParams.delete('state');
+        window.history.replaceState({}, document.title, url.pathname + url.hash);
+      }
     }
   }, [isConnected, hasOAuthCallback, hasRunInitialSync, isSyncing, runFullSync]);
 
