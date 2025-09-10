@@ -1,8 +1,119 @@
 import { useQuery } from '@tanstack/react-query';
-import { Loader2 } from 'lucide-react';
+import { Download, Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
+
+async function exportSyncToExcel(log: unknown) {
+  try {
+    const ExcelJS = await import('exceljs');
+    const logData = log as Record<string, unknown>;
+
+    const workbook = new ExcelJS.Workbook();
+    workbook.creator = 'Schwab Rebalancer';
+    workbook.created = new Date();
+
+    // Summary sheet
+    const summarySheet = workbook.addWorksheet('Summary');
+    summarySheet.columns = [
+      { header: 'Property', key: 'property', width: 20 },
+      { header: 'Value', key: 'value', width: 30 },
+    ];
+
+    summarySheet.addRow(['Sync Type', String(logData.syncType || '')]);
+    summarySheet.addRow(['Started At', new Date(String(logData.startedAt || '')).toLocaleString()]);
+    summarySheet.addRow(['Status', String(logData.status || '')]);
+    summarySheet.addRow(['Records Processed', Number(logData.recordsProcessed || 0)]);
+    if (logData.errorMessage) {
+      summarySheet.addRow(['Error Message', String(logData.errorMessage)]);
+    }
+
+    // Details sheet
+    const detailsSheet = workbook.addWorksheet('Details');
+    detailsSheet.columns = [
+      { header: 'Entity ID', key: 'entityId', width: 20 },
+      { header: 'Ticker', key: 'ticker', width: 15 },
+      { header: 'Operation', key: 'operation', width: 15 },
+      { header: 'Field', key: 'field', width: 20 },
+      { header: 'Old Value', key: 'oldValue', width: 25 },
+      { header: 'New Value', key: 'newValue', width: 25 },
+    ];
+
+    const details = logData.details as unknown[];
+    const list = Array.isArray(details) ? details : [];
+
+    list.forEach((detail) => {
+      const detailData = detail as Record<string, unknown>;
+      let changes: Record<string, unknown> = {};
+
+      try {
+        const changesRaw = detailData.changes;
+        changes = changesRaw
+          ? typeof changesRaw === 'string'
+            ? JSON.parse(changesRaw)
+            : changesRaw
+          : {};
+      } catch {
+        // Ignore parsing errors
+      }
+
+      Object.entries(changes).forEach(([field, changeValue]) => {
+        let oldValue = '';
+        let newValue = '';
+
+        if (
+          changeValue &&
+          typeof changeValue === 'object' &&
+          ('old' in changeValue || 'new' in changeValue)
+        ) {
+          const changeObj = changeValue as Record<string, unknown>;
+          const oldV = changeObj.old;
+          const newVRaw = changeObj.new;
+          oldValue = oldV !== undefined && oldV !== null ? String(oldV) : '';
+          newValue =
+            newVRaw !== undefined && newVRaw !== null ? String(newVRaw) : String(oldV || '');
+        } else {
+          newValue = changeValue !== undefined && changeValue !== null ? String(changeValue) : '';
+        }
+
+        detailsSheet.addRow({
+          entityId: String(detailData.entityId || ''),
+          ticker: String(detailData.ticker || ''),
+          operation: String(detailData.operation || 'UPDATE'),
+          field,
+          oldValue,
+          newValue,
+        });
+      });
+    });
+
+    // Generate file name
+    const timestamp = new Date(String(logData.startedAt || ''))
+      .toISOString()
+      .slice(0, 19)
+      .replace(/:/g, '-');
+    const fileName = `sync-${String(logData.syncType || '').toLowerCase()}-${timestamp}.xlsx`;
+
+    // Save file
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    });
+
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+  } catch (error) {
+    console.error('Failed to export Excel file:', error);
+    alert('Failed to export Excel file. Please try again.');
+  }
+}
 
 export function SyncHistory() {
   const [expandedLogId, setExpandedLogId] = useState<string | undefined>(undefined);
@@ -55,7 +166,7 @@ export function SyncHistory() {
 
               if (runningLog) {
                 return (
-                  <div className="p-3 grid grid-cols-[auto_1fr_auto_auto_1fr] items-center gap-3 text-sm">
+                  <div className="p-3 grid grid-cols-[auto_1fr_auto_auto_1fr_auto] items-center gap-3 text-sm">
                     <span className="px-2 py-0.5 rounded border text-xs">
                       {runningLog.syncType}
                     </span>
@@ -65,6 +176,7 @@ export function SyncHistory() {
                     <span className="justify-self-start">
                       <Loader2 className="h-4 w-4 animate-spin" />
                     </span>
+                    <div></div>
                   </div>
                 );
               }
@@ -80,7 +192,7 @@ export function SyncHistory() {
                   <div key={log.id} className="text-sm">
                     <button
                       type="button"
-                      className="p-3 grid grid-cols-[auto_1fr_auto_auto_1fr] gap-3 items-center cursor-pointer select-none w-full text-left bg-transparent"
+                      className="p-3 grid grid-cols-[auto_1fr_auto_auto_1fr_auto] gap-3 items-center cursor-pointer select-none w-full text-left bg-transparent"
                       onClick={() => {
                         setExpandedLogId((prev) => {
                           const next = prev === log.id ? undefined : log.id;
@@ -114,6 +226,18 @@ export function SyncHistory() {
                       <span className="text-red-600 truncate max-w-[320px]">
                         {log.errorMessage ?? ''}
                       </span>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 w-6 p-0 opacity-60 hover:opacity-100"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          exportSyncToExcel(log);
+                        }}
+                        title="Export to Excel"
+                      >
+                        <Download className="h-3 w-3" />
+                      </Button>
                     </button>
                     {isExpanded && (
                       <div className="px-2 pb-2">
