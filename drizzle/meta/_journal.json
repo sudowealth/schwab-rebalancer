@@ -99,6 +99,13 @@
       "when": 1754604819044,
       "tag": "0013_right_genesis",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "6",
+      "when": 1757524494600,
+      "tag": "0014_rename_isrestricted_to_islegacy",
+      "breakpoints": true
     }
   ]
 }

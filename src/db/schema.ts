@@ -125,7 +125,7 @@ export const sleeveMember = sqliteTable('sleeve_member', {
     .references(() => security.ticker, { onDelete: 'cascade' }),
   rank: integer('rank').notNull(),
   isActive: integer('isActive', { mode: 'boolean' }).notNull().default(true),
-  isRestricted: integer('isRestricted', { mode: 'boolean' }).notNull().default(false),
+  isLegacy: integer('isLegacy', { mode: 'boolean' }).notNull().default(false),
   createdAt: integer('createdAt').notNull(),
   updatedAt: integer('updatedAt').notNull(),
 });

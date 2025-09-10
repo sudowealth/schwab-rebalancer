@@ -52,7 +52,7 @@ export const SleeveMemberSchema = z.object({
   ticker: z.string().min(1).max(10),
   rank: z.number().int().positive(),
   isActive: z.boolean(),
-  isRestricted: z.boolean(),
+  isLegacy: z.boolean(),
 });
 
 export const SleevePositionSchema = z.object({

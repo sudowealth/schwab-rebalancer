@@ -549,7 +549,7 @@ function RebalancingGroupDetail() {
           ticker: member.ticker,
           rank: member.rank || 1,
           isActive: member.isActive,
-          isRestricted: false, // We don't have this data in our current structure
+          isLegacy: false, // We don't have this data in our current structure
         })) || [],
       position: null, // We don't have position data in the sleeve members structure
     };

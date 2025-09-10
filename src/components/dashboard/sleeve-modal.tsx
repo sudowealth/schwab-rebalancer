@@ -5,7 +5,7 @@ interface SleeveMember {
   ticker: string;
   rank: number;
   isActive: boolean;
-  isRestricted: boolean;
+  isLegacy: boolean;
 }
 
 interface SleevePosition {
@@ -144,9 +144,9 @@ export function SleeveModal({ isOpen, onClose, sleeve }: SleeveModalProps) {
                         </span>
                       </div>
                       <div className="flex items-center space-x-1">
-                        {member.isRestricted && (
-                          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">
-                            Restricted
+                        {member.isLegacy && (
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800">
+                            Legacy
                           </span>
                         )}
                         {sleeve.position?.ticker === member.ticker && (

@@ -573,7 +573,7 @@ export const getSleeves = async (userId?: string) => {
         ticker: schema.sleeveMember.ticker,
         rank: schema.sleeveMember.rank,
         isActive: schema.sleeveMember.isActive,
-        isRestricted: schema.sleeveMember.isRestricted,
+        isLegacy: schema.sleeveMember.isLegacy,
       })
       .from(schema.sleeveMember)
       .where(eq(schema.sleeveMember.sleeveId, sleeve.id))
@@ -637,7 +637,7 @@ export const getSleeves = async (userId?: string) => {
         ticker: m.ticker,
         rank: m.rank,
         isActive: !!m.isActive,
-        isRestricted: !!m.isRestricted || restrictedTickers.has(m.ticker),
+        isLegacy: !!m.isLegacy || restrictedTickers.has(m.ticker),
       })),
       position,
       restrictedInfo: restrictedTickers.get(position?.ticker || ''),
@@ -884,7 +884,7 @@ export const getProposedTrades = async (userId?: string) => {
         (member) =>
           member.ticker !== position.ticker &&
           member.isActive &&
-          !member.isRestricted &&
+          !member.isLegacy &&
           !restrictedTickers.has(member.ticker),
       );
 
@@ -898,7 +898,7 @@ export const getProposedTrades = async (userId?: string) => {
         const restrictedMembers = sleeve.members.filter(
           (member) =>
             member.ticker !== position.ticker &&
-            (member.isRestricted || restrictedTickers.has(member.ticker)),
+            (member.isLegacy || restrictedTickers.has(member.ticker)),
         );
         const inactiveMembers = sleeve.members.filter(
           (member) => member.ticker !== position.ticker && !member.isActive,
@@ -1027,7 +1027,7 @@ export const getProposedTrades = async (userId?: string) => {
 // Create a new sleeve with members
 export const createSleeve = async (
   name: string,
-  members: Array<{ ticker: string; rank: number }>,
+  members: Array<{ ticker: string; rank: number; isLegacy?: boolean }>,
   userId: string,
 ): Promise<string> => {
   const sleeveId = `sleeve_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
@@ -1087,7 +1087,7 @@ export const createSleeve = async (
       ticker: member.ticker,
       rank: member.rank,
       isActive: true,
-      isRestricted: false,
+      isLegacy: member.isLegacy ?? false,
       createdAt: now,
       updatedAt: now,
     }));
@@ -1131,7 +1131,7 @@ export const getAvailableSecurities = async (): Promise<
 export const updateSleeve = async (
   sleeveId: string,
   name: string,
-  members: Array<{ ticker: string; rank: number }>,
+  members: Array<{ ticker: string; rank: number; isLegacy?: boolean }>,
 ): Promise<void> => {
   // Check if sleeve exists
   const existingSleeve = await db
@@ -1202,7 +1202,7 @@ export const updateSleeve = async (
       ticker: member.ticker,
       rank: member.rank,
       isActive: true,
-      isRestricted: false,
+      isLegacy: member.isLegacy ?? false,
       createdAt: now,
       updatedAt: now,
     }));

@@ -1,6 +1,3 @@
-import { useRouter } from '@tanstack/react-router';
-import { Plus, X } from 'lucide-react';
-import { useEffect, useId, useState } from 'react';
 import { Button } from '../../components/ui/button';
 import {
   Dialog,
@@ -10,12 +7,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from '../../components/ui/dialog';
-import { Input } from '../../components/ui/input';
-import { type Option, VirtualizedSelect } from '../../components/ui/virtualized-select-fixed';
+import { useSleeveForm } from '../../hooks/useSleeveForm';
 import type { Sleeve } from '../../lib/schemas';
-import { getAvailableSecuritiesServerFn, updateSleeveServerFn } from '../../lib/server-functions';
-
-type Security = Awaited<ReturnType<typeof getAvailableSecuritiesServerFn>>[number];
+import { updateSleeveServerFn } from '../../lib/server-functions';
+import { SleeveForm } from './SleeveForm';
 
 interface EditSleeveModalProps {
   isOpen: boolean;
@@ -24,148 +19,67 @@ interface EditSleeveModalProps {
 }
 
 export function EditSleeveModal({ isOpen, onClose, sleeve }: EditSleeveModalProps) {
-  const [sleeveName, setSleeveName] = useState('');
-  const [members, setMembers] = useState<Array<{ ticker: string; rank: number }>>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [securities, setSecurities] = useState<Security[]>([]);
-  const [securityOptions, setSecurityOptions] = useState<Option[]>([]);
-  const router = useRouter();
-  const sleeveNameId = `${useId()}-sleeve-name`;
-
-  // Load available securities when component mounts
-  useEffect(() => {
-    const loadSecurities = async () => {
-      try {
-        const securityList = await getAvailableSecuritiesServerFn();
-        setSecurities(securityList);
-        // Convert to Option format for VirtualizedSelect
-        const options = securityList.map((security) => ({
-          value: security.ticker,
-          label: `${security.ticker} - ${security.name}`,
-        }));
-        setSecurityOptions(options);
-      } catch (err) {
-        console.error('Failed to load securities:', err);
+  const {
+    sleeveName,
+    setSleeveName,
+    targetSecurity,
+    setTargetSecurity,
+    alternateSecurities,
+    legacySecurities,
+    isLoading,
+    error,
+    resetForm,
+    handleSubmit,
+    addAlternateSecurity,
+    updateAlternateSecurity,
+    removeAlternateSecurity,
+    addLegacySecurity,
+    updateLegacySecurity,
+    removeLegacySecurity,
+    getFilteredSecurityOptions,
+  } = useSleeveForm({
+    initialData: sleeve,
+    onSubmit: async (formData) => {
+      if (!sleeve) {
+        throw new Error('No sleeve selected for editing');
       }
-    };
-    loadSecurities();
-  }, []);
 
-  // Load sleeve data when sleeve prop changes
-  useEffect(() => {
-    if (sleeve) {
-      setSleeveName(sleeve.name);
-      setMembers(
-        sleeve.members.map((member) => ({
-          ticker: member.ticker,
-          rank: member.rank,
+      // Combine all securities into members format for submission
+      const members = [
+        // Add target security (rank 1, not legacy)
+        ...(formData.targetSecurity.trim()
+          ? [{ ticker: formData.targetSecurity.trim(), rank: 1, isLegacy: false }]
+          : []),
+        // Add alternate securities (not legacy)
+        ...formData.alternateSecurities.map((alt) => ({
+          ticker: alt.ticker.trim(),
+          rank: alt.rank,
+          isLegacy: false,
         })),
-      );
-      setError('');
-    }
-  }, [sleeve]);
+        // Add legacy securities (legacy)
+        ...formData.legacySecurities.map((leg) => ({
+          ticker: leg.ticker.trim(),
+          rank: leg.rank,
+          isLegacy: true,
+        })),
+      ].filter((m) => m.ticker.length > 0);
 
-  const resetForm = () => {
-    setSleeveName('');
-    setMembers([]);
-    setError('');
-  };
-
-  const validateMembers = (membersToValidate: Array<{ ticker: string; rank: number }>) => {
-    const errors: string[] = [];
-
-    if (membersToValidate.length === 0) {
-      errors.push('At least one member is required');
-    }
-
-    const ranks = membersToValidate.map((m) => m.rank);
-    const uniqueRanks = [...new Set(ranks)];
-    if (ranks.length !== uniqueRanks.length) {
-      errors.push('All members must have unique ranks');
-    }
-
-    const tickers = membersToValidate
-      .map((m) => m.ticker.toUpperCase())
-      .filter((t) => t.length > 0);
-    const uniqueTickers = [...new Set(tickers)];
-    if (tickers.length !== uniqueTickers.length) {
-      errors.push('All members must have unique tickers');
-    }
-
-    const validTickers = new Set(securities.map((s) => s.ticker));
-    const invalidTickers = tickers.filter((ticker) => !validTickers.has(ticker));
-    if (invalidTickers.length > 0) {
-      errors.push(`Invalid tickers: ${invalidTickers.join(', ')}`);
-    }
-
-    return errors;
-  };
-
-  const handleSubmit = async () => {
-    if (!sleeve) {
-      setError('No sleeve selected for editing');
-      return;
-    }
-
-    if (!sleeveName.trim()) {
-      setError('Sleeve name is required');
-      return;
-    }
-
-    const validMembers = members.filter((m) => m.ticker.trim().length > 0);
-    const errors = validateMembers(validMembers);
-
-    if (errors.length > 0) {
-      setError(errors.join('. '));
-      return;
-    }
-
-    setIsLoading(true);
-    setError('');
-
-    try {
       await updateSleeveServerFn({
         data: {
           sleeveId: sleeve.id,
-          name: sleeveName.trim(),
-          members: validMembers.map((m) => ({
-            ticker: m.ticker.toUpperCase().trim(),
+          name: formData.sleeveName.trim(),
+          members: members.map((m) => ({
+            ticker: m.ticker.toUpperCase(),
             rank: m.rank,
+            isLegacy: m.isLegacy,
           })),
         },
       });
 
       onClose();
       resetForm();
-      router.invalidate(); // Refresh the data
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update sleeve');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const updateMember = (index: number, field: 'ticker' | 'rank', value: string | number) => {
-    const newMembers = [...members];
-    if (field === 'ticker') {
-      newMembers[index][field] = String(value).toUpperCase();
-    } else {
-      newMembers[index][field] = Number(value);
-    }
-    setMembers(newMembers);
-  };
-
-  const addMember = () => {
-    const maxRank = Math.max(...members.map((m) => m.rank), 0);
-    setMembers([...members, { ticker: '', rank: maxRank + 1 }]);
-  };
-
-  const removeMember = (index: number) => {
-    if (members.length > 1) {
-      setMembers(members.filter((_, i) => i !== index));
-    }
-  };
+    },
+  });
 
   const handleClose = () => {
     resetForm();
@@ -184,74 +98,22 @@ export function EditSleeveModal({ isOpen, onClose, sleeve }: EditSleeveModalProp
           <DialogDescription>Update the sleeve name and member securities.</DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
-          <div>
-            <label htmlFor={sleeveNameId} className="block text-sm font-medium text-gray-700 mb-1">
-              Sleeve Name
-            </label>
-            <Input
-              id={sleeveNameId}
-              value={sleeveName}
-              onChange={(e) => setSleeveName(e.target.value)}
-              placeholder="Enter sleeve name"
-            />
-          </div>
-
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <div className="block text-sm font-medium text-gray-700">Members (by rank)</div>
-              <Button onClick={addMember} size="sm" variant="outline">
-                <Plus className="h-3 w-3 mr-1" />
-                Add Member
-              </Button>
-            </div>
-
-            <div className="space-y-2">
-              {members.map((member, index) => (
-                <div
-                  key={`${member.rank}-${member.ticker || 'empty'}`}
-                  className="flex items-center space-x-2"
-                >
-                  <div className="w-16">
-                    <Input
-                      type="number"
-                      value={member.rank}
-                      onChange={(e) => updateMember(index, 'rank', e.target.value)}
-                      placeholder="Rank"
-                      min="1"
-                    />
-                  </div>
-                  <div className="flex-1">
-                    <VirtualizedSelect
-                      options={securityOptions}
-                      value={member.ticker}
-                      onValueChange={(value) => updateMember(index, 'ticker', value)}
-                      placeholder="Select a ticker..."
-                      searchPlaceholder="Search tickers..."
-                      emptyMessage="No ticker found."
-                    />
-                  </div>
-                  {members.length > 1 && (
-                    <Button
-                      type="button"
-                      onClick={() => removeMember(index)}
-                      variant="outline"
-                      className="h-10 w-10 p-0"
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {error && (
-            <div className="p-3 bg-red-50 border border-red-200 rounded-md">
-              <p className="text-sm text-red-600">{error}</p>
-            </div>
-          )}
-        </div>
+        <SleeveForm
+          sleeveName={sleeveName}
+          setSleeveName={setSleeveName}
+          targetSecurity={targetSecurity}
+          setTargetSecurity={setTargetSecurity}
+          alternateSecurities={alternateSecurities}
+          legacySecurities={legacySecurities}
+          addAlternateSecurity={addAlternateSecurity}
+          updateAlternateSecurity={updateAlternateSecurity}
+          removeAlternateSecurity={removeAlternateSecurity}
+          addLegacySecurity={addLegacySecurity}
+          updateLegacySecurity={updateLegacySecurity}
+          removeLegacySecurity={removeLegacySecurity}
+          error={error}
+          getFilteredSecurityOptions={getFilteredSecurityOptions}
+        />
 
         <DialogFooter>
           <Button variant="outline" onClick={handleClose}>
