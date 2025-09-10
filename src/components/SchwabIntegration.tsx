@@ -4,7 +4,7 @@ import {
   CheckCircle,
   ChevronDown,
   Download,
-  ExternalLink,
+  Landmark,
   Loader2,
   RefreshCw,
   Upload,
@@ -492,7 +492,7 @@ export function SchwabIntegration() {
         <div className="flex items-start justify-between gap-4">
           <div>
             <CardTitle className="flex items-center gap-2">
-              <ExternalLink className="h-5 w-5" />
+              <Landmark className="h-5 w-5" />
               Schwab
             </CardTitle>
             <CardDescription>
@@ -564,7 +564,7 @@ export function SchwabIntegration() {
                 {syncAccountsMutation.isPending ? (
                   <Loader2 className="h-4 w-4 animate-spin mr-2" />
                 ) : (
-                  <Download className="h-4 w-4 mr-2" />
+                  ''
                 )}
                 Accounts
               </Button>
@@ -578,7 +578,7 @@ export function SchwabIntegration() {
                 {syncHoldingsMutation.isPending ? (
                   <Loader2 className="h-4 w-4 animate-spin mr-2" />
                 ) : (
-                  <Upload className="h-4 w-4 mr-2" />
+                  ''
                 )}
                 Holdings
               </Button>
@@ -592,7 +592,7 @@ export function SchwabIntegration() {
                 {syncTransactionsMutation.isPending ? (
                   <Loader2 className="h-4 w-4 animate-spin mr-2" />
                 ) : (
-                  <Download className="h-4 w-4 mr-2" />
+                  ''
                 )}
                 Transactions
               </Button>
@@ -610,7 +610,7 @@ export function SchwabIntegration() {
                     {syncPricesMutation.isPending ? (
                       <Loader2 className="h-4 w-4 animate-spin mr-2" />
                     ) : (
-                      <Download className="h-4 w-4 mr-2" />
+                      ''
                     )}
                     <span>Securities</span>
                     <ChevronDown className="h-4 w-4 ml-2 opacity-70" />

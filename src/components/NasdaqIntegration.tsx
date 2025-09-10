@@ -1,6 +1,6 @@
 import { useMutation } from '@tanstack/react-query';
-import { AlertCircle, CheckCircle, Download, Loader2 } from 'lucide-react';
-import { useId, useState } from 'react';
+import { AlertCircle, CheckCircle, Loader2, RefreshCw, TrendingUp } from 'lucide-react';
+import { useState } from 'react';
 import {
   getSchwabCredentialsStatusServerFn,
   importNasdaqSecuritiesServerFn,
@@ -33,10 +33,6 @@ export function NasdaqIntegration() {
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
   const [schwabSyncResult, setSchwabSyncResult] = useState<SchwabSyncResult | null>(null);
   const [isSchwabSyncing, setIsSchwabSyncing] = useState(false);
-
-  const allId = useId();
-  const nasdaqonlyId = useId();
-  const nonnasdaqId = useId();
 
   const importMutation = useMutation({
     mutationFn: async (options: {
@@ -96,11 +92,13 @@ export function NasdaqIntegration() {
     },
   });
 
-  const handleImport = async (limit?: number) => {
+  const handleImport = async (limit?: number, feedType?: 'all' | 'nasdaqonly' | 'nonnasdaq') => {
     setImportResult(null);
     setSchwabSyncResult(null);
     setSelectedLimit(limit || null);
-    await importMutation.mutateAsync({ limit, skipExisting: true, feedType: selectedFeedType });
+    const feedTypeToUse = feedType || selectedFeedType;
+    setSelectedFeedType(feedTypeToUse);
+    await importMutation.mutateAsync({ limit, skipExisting: true, feedType: feedTypeToUse });
   };
 
   const isLoading = importMutation.isPending;
@@ -109,8 +107,8 @@ export function NasdaqIntegration() {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <Download className="h-5 w-5" />
-          Import Equities Securities
+          <TrendingUp className="h-5 w-5" />
+          Equity Securities
         </CardTitle>
         <CardDescription>
           Update the database with the names and tickers of ETFs and Stocks that appear on the{' '}
@@ -135,87 +133,62 @@ export function NasdaqIntegration() {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Feed Type Selector */}
-        <div className="space-y-2">
-          <div className="flex flex-wrap gap-4">
-            <div className="flex items-center gap-2">
-              <input
-                type="radio"
-                id={allId}
-                name="feedType"
-                value="all"
-                checked={selectedFeedType === 'all'}
-                onChange={(e) => setSelectedFeedType(e.target.value as 'all')}
-                className="text-blue-600"
-              />
-              <label htmlFor={allId} className="text-sm cursor-pointer">
-                All
-              </label>
-            </div>
-            <div className="flex items-center gap-2">
-              <input
-                type="radio"
-                id={nasdaqonlyId}
-                name="feedType"
-                value="nasdaqonly"
-                checked={selectedFeedType === 'nasdaqonly'}
-                onChange={(e) => setSelectedFeedType(e.target.value as 'nasdaqonly')}
-                className="text-blue-600"
-              />
-              <label htmlFor={nasdaqonlyId} className="text-sm cursor-pointer">
-                NASDAQ Only
-              </label>
-            </div>
-            <div className="flex items-center gap-2">
-              <input
-                type="radio"
-                id={nonnasdaqId}
-                name="feedType"
-                value="nonnasdaq"
-                checked={selectedFeedType === 'nonnasdaq'}
-                onChange={(e) => setSelectedFeedType(e.target.value as 'nonnasdaq')}
-                className="text-blue-600"
-              />
-              <label htmlFor={nonnasdaqId} className="text-sm cursor-pointer">
-                Non-NASDAQ
-              </label>
-            </div>
-          </div>
-          <p className="text-xs text-gray-500">
-            {selectedFeedType === 'all'
-              ? 'Combines both NASDAQ-listed and other exchange securities'
-              : selectedFeedType === 'nasdaqonly'
-                ? 'Includes only securities directly listed on the NASDAQ exchange'
-                : 'Includes securities from all other exchanges (NYSE, AMEX, etc.) excluding direct NASDAQ listings'}
-          </p>
-        </div>
-
-        <div className="flex gap-3">
+        {/* Import Options */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
           <Button
-            onClick={() => handleImport(10)}
-            disabled={isLoading}
             variant="outline"
-            className="flex items-center gap-2"
+            className="w-full"
+            onClick={() => handleImport(undefined, 'all')}
+            disabled={isLoading}
           >
-            {isLoading && selectedLimit === 10 ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
+            {isLoading && selectedLimit === null && selectedFeedType === 'all' ? (
+              <Loader2 className="h-4 w-4 animate-spin mr-2 shrink-0" />
             ) : (
-              <Download className="h-4 w-4" />
+              <RefreshCw className="h-4 w-4 mr-2 shrink-0" />
             )}
-            Import First 10
+            All
           </Button>
 
           <Button
-            onClick={() => handleImport()}
+            variant="outline"
+            className="w-full"
+            onClick={() => handleImport(undefined, 'nasdaqonly')}
             disabled={isLoading}
-            className="flex items-center gap-2"
           >
-            {isLoading && selectedLimit === null ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
+            {isLoading && selectedLimit === null && selectedFeedType === 'nasdaqonly' ? (
+              <Loader2 className="h-4 w-4 animate-spin mr-2 shrink-0" />
             ) : (
-              <Download className="h-4 w-4" />
+              ''
             )}
-            Import All
+            NASDAQ
+          </Button>
+
+          <Button
+            variant="outline"
+            className="w-full"
+            onClick={() => handleImport(undefined, 'nonnasdaq')}
+            disabled={isLoading}
+          >
+            {isLoading && selectedLimit === null && selectedFeedType === 'nonnasdaq' ? (
+              <Loader2 className="h-4 w-4 animate-spin mr-2 shrink-0" />
+            ) : (
+              ''
+            )}
+            Non-NASDAQ
+          </Button>
+
+          <Button
+            variant="outline"
+            className="w-full"
+            onClick={() => handleImport(10, 'all')}
+            disabled={isLoading}
+          >
+            {isLoading && selectedLimit === 10 && selectedFeedType === 'all' ? (
+              <Loader2 className="h-4 w-4 animate-spin mr-2 shrink-0" />
+            ) : (
+              ''
+            )}
+            First 10
           </Button>
         </div>
 
@@ -318,10 +291,10 @@ export function NasdaqIntegration() {
                   }...`
                 : `Importing all securities from ${
                     selectedFeedType === 'all'
-                      ? 'All Markets'
+                      ? 'All Markets (~13,000)'
                       : selectedFeedType === 'nasdaqonly'
-                        ? 'NASDAQ'
-                        : 'Non-NASDAQ Exchanges'
+                        ? 'NASDAQ (~3,000)'
+                        : 'Non-NASDAQ Exchanges (~10,000)'
                   }... This may take a few minutes.`}
           </div>
         )}

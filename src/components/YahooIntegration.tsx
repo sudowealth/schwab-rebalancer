@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Download, Loader2, RefreshCw } from 'lucide-react';
+import { Download, Loader2, RefreshCw, DollarSign } from 'lucide-react';
 import { useState } from 'react';
 import { syncYahooFundamentalsServerFn } from '../lib/server-functions';
 import { Button } from './ui/button';
@@ -50,7 +50,7 @@ export function YahooIntegration() {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <RefreshCw className="h-5 w-5" />
+          <DollarSign className="h-5 w-5" />
           Yahoo Finance
         </CardTitle>
         <CardDescription>
@@ -68,7 +68,7 @@ export function YahooIntegration() {
             {isRunning ? (
               <Loader2 className="h-4 w-4 animate-spin mr-2 shrink-0" />
             ) : (
-              <Download className="h-4 w-4 mr-2 shrink-0" />
+              <RefreshCw className="h-4 w-4 mr-2 shrink-0" />
             )}
             All
           </Button>
@@ -81,7 +81,7 @@ export function YahooIntegration() {
             {isRunning ? (
               <Loader2 className="h-4 w-4 animate-spin mr-2 shrink-0" />
             ) : (
-              <Download className="h-4 w-4 mr-2 shrink-0" />
+              ""
             )}
             Missing Data
           </Button>
@@ -94,7 +94,7 @@ export function YahooIntegration() {
             {isRunning ? (
               <Loader2 className="h-4 w-4 animate-spin mr-2 shrink-0" />
             ) : (
-              <Download className="h-4 w-4 mr-2 shrink-0" />
+              ""
             )}
             Held & Missing Data
           </Button>
@@ -107,7 +107,7 @@ export function YahooIntegration() {
             {isRunning ? (
               <Loader2 className="h-4 w-4 animate-spin mr-2 shrink-0" />
             ) : (
-              <Download className="h-4 w-4 mr-2 shrink-0" />
+              ""
             )}
             All Held
           </Button>
@@ -120,7 +120,7 @@ export function YahooIntegration() {
             {isRunning ? (
               <Loader2 className="h-4 w-4 animate-spin mr-2 shrink-0" />
             ) : (
-              <Download className="h-4 w-4 mr-2 shrink-0" />
+              ""
             )}
             Five Held
           </Button>
@@ -133,7 +133,7 @@ export function YahooIntegration() {
             {isRunning ? (
               <Loader2 className="h-4 w-4 animate-spin mr-2 shrink-0" />
             ) : (
-              <Download className="h-4 w-4 mr-2 shrink-0" />
+              ""
             )}
             Sleeve Missing Data
           </Button>
