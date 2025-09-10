@@ -1120,6 +1120,7 @@ export const getAvailableSecurities = async (): Promise<
       name: schema.security.name,
     })
     .from(schema.security)
+    .where(sql`${schema.security.ticker} NOT IN ('$$$', 'MCASH')`)
     .orderBy(schema.security.ticker);
 
   setCache(cacheKey, securities);
