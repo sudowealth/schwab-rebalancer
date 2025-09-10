@@ -1,23 +1,63 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ChevronDown, Download, ExternalLink, Loader2, RefreshCw, Upload, X } from 'lucide-react';
-import { useState } from 'react';
+import {
+  AlertCircle,
+  CheckCircle,
+  ChevronDown,
+  Download,
+  ExternalLink,
+  Loader2,
+  RefreshCw,
+  Upload,
+  X,
+} from 'lucide-react';
+import { useEffect, useState } from 'react';
 import {
   getHeldPositionTickersServerFn,
   getSchwabCredentialsStatusServerFn,
   getSchwabOAuthUrlServerFn,
+  importNasdaqSecuritiesServerFn,
   revokeSchwabCredentialsServerFn,
   syncSchwabAccountsServerFn,
   syncSchwabHoldingsServerFn,
   syncSchwabPricesServerFn,
   syncSchwabTransactionsServerFn,
+  syncYahooFundamentalsServerFn,
 } from '../lib/server-functions';
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 
+interface ImportResult {
+  success: boolean;
+  imported: number;
+  skipped: number;
+  errors: string[];
+  totalParsed: number;
+  totalProcessed: number;
+  importedTickers?: string[];
+}
+
+interface SchwabSyncResult {
+  success: boolean;
+  recordsProcessed: number;
+  errorMessage?: string;
+}
+
+interface YahooSyncResult {
+  success: boolean;
+  recordsProcessed: number;
+  errorMessage?: string;
+}
+
 export function SchwabIntegration() {
   const [isConnecting, setIsConnecting] = useState(false);
   const [pricesMenuOpen, setPricesMenuOpen] = useState(false);
+  const [importResult, setImportResult] = useState<ImportResult | null>(null);
+  const [schwabSyncResult, setSchwabSyncResult] = useState<SchwabSyncResult | null>(null);
+  const [yahooSyncResult, setYahooSyncResult] = useState<YahooSyncResult | null>(null);
+  const [isImportingEquities, setIsImportingEquities] = useState(false);
+  const [isSyncingYahoo, setIsSyncingYahoo] = useState(false);
+  const [hasTriggeredAutoImport, setHasTriggeredAutoImport] = useState(false);
   const queryClient = useQueryClient();
 
   // Query to check credentials status
@@ -37,13 +77,15 @@ export function SchwabIntegration() {
         data: { redirectUri },
       });
     },
-    onSuccess: (data: { authUrl?: string }) => {
+    onSuccess: async (data: { authUrl?: string }) => {
       console.log('✅ [UI] OAuth URL received:', data.authUrl);
       if (data.authUrl) {
         console.log('🌐 [UI] Redirecting to Schwab OAuth page');
+        // Note: The import will happen after the user returns from OAuth and the connection is established
         window.location.href = data.authUrl;
       } else {
         console.warn('⚠️ [UI] No auth URL returned from server');
+        setIsConnecting(false);
       }
     },
     onError: (error) => {
@@ -191,6 +233,141 @@ export function SchwabIntegration() {
     },
   });
 
+  // Mutation to import equities securities
+  const importEquitiesMutation = useMutation({
+    mutationFn: async () => {
+      console.log('📊 [UI] Starting equities securities import');
+      return await importNasdaqSecuritiesServerFn({
+        data: { skipExisting: true, feedType: 'all' },
+      });
+    },
+    onSuccess: async (result) => {
+      console.log('✅ [UI] Equities import completed successfully:', result);
+      setImportResult(result);
+
+      // If import was successful and we imported some securities, check if Schwab is connected
+      if (
+        result.success &&
+        result.imported > 0 &&
+        result.importedTickers &&
+        result.importedTickers.length > 0
+      ) {
+        try {
+          // Schwab is connected (we just connected), trigger price sync for only the newly imported securities
+          setIsImportingEquities(true);
+          console.log(
+            '🔄 [UI] Starting automatic Schwab price sync for newly imported securities:',
+            result.importedTickers,
+          );
+          const syncResult = await syncSchwabPricesServerFn({
+            data: { symbols: result.importedTickers },
+          });
+          setSchwabSyncResult(syncResult);
+          console.log('✅ [UI] Schwab price sync completed:', syncResult);
+
+          // After Schwab sync completes, trigger Yahoo Finance sync for missing data
+          if (syncResult.success && syncResult.recordsProcessed > 0) {
+            setIsSyncingYahoo(true);
+            console.log('🔄 [UI] Starting Yahoo Finance sync for held securities missing data');
+
+            try {
+              // First sync held securities missing fundamentals
+              const heldResult = await yahooSyncMutation.mutateAsync(
+                'missing-fundamentals-holdings',
+              );
+              console.log('✅ [UI] Yahoo sync for held securities completed:', heldResult);
+
+              // Then sync sleeve securities missing fundamentals
+              const sleeveResult = await yahooSyncMutation.mutateAsync(
+                'missing-fundamentals-sleeves',
+              );
+              console.log('✅ [UI] Yahoo sync for sleeve securities completed:', sleeveResult);
+
+              // Combine results - show the most recent one
+              setYahooSyncResult(sleeveResult);
+            } catch (yahooError) {
+              console.error('❌ [UI] Yahoo Finance sync failed:', yahooError);
+              setYahooSyncResult({
+                success: false,
+                recordsProcessed: 0,
+                errorMessage:
+                  yahooError instanceof Error ? yahooError.message : 'Yahoo sync failed',
+              });
+            } finally {
+              setIsSyncingYahoo(false);
+            }
+          }
+        } catch (error) {
+          console.error('❌ [UI] Schwab price sync failed:', error);
+          setSchwabSyncResult({
+            success: false,
+            recordsProcessed: 0,
+            errorMessage: error instanceof Error ? error.message : 'Unknown error occurred',
+          });
+        } finally {
+          setIsImportingEquities(false);
+        }
+      }
+    },
+    onError: (error) => {
+      console.error('❌ [UI] Equities import failed:', error);
+      setImportResult({
+        success: false,
+        imported: 0,
+        skipped: 0,
+        errors: [error instanceof Error ? error.message : 'Unknown error occurred'],
+        totalParsed: 0,
+        totalProcessed: 0,
+      });
+    },
+  });
+
+  // Mutation to sync Yahoo Finance fundamentals
+  const yahooSyncMutation = useMutation({
+    mutationFn: async (scope: 'missing-fundamentals-holdings' | 'missing-fundamentals-sleeves') => {
+      console.log('📊 [UI] Starting Yahoo Finance sync for scope:', scope);
+      return await syncYahooFundamentalsServerFn({
+        data: { scope },
+      });
+    },
+    onSuccess: (result) => {
+      console.log('✅ [UI] Yahoo Finance sync completed successfully:', result);
+      setYahooSyncResult(result);
+    },
+    onError: (error) => {
+      console.error('❌ [UI] Yahoo Finance sync failed:', error);
+      setYahooSyncResult({
+        success: false,
+        recordsProcessed: 0,
+        errorMessage: error instanceof Error ? error.message : 'Unknown error occurred',
+      });
+    },
+  });
+
+  // Effect to handle automatic equities import after Schwab connection
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const hasOAuthCallback = urlParams.has('code') && urlParams.has('state');
+
+    // If Schwab is connected, we have OAuth callback params, and we haven't triggered auto-import yet
+    if (
+      credentialsStatus?.hasCredentials &&
+      hasOAuthCallback &&
+      !hasTriggeredAutoImport &&
+      !importEquitiesMutation.isPending
+    ) {
+      console.log('🔄 [UI] Detected fresh Schwab connection, triggering automatic equities import');
+
+      // Clean up URL parameters
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, document.title, newUrl);
+
+      // Trigger automatic import
+      setHasTriggeredAutoImport(true);
+      importEquitiesMutation.mutate();
+    }
+  }, [credentialsStatus?.hasCredentials, hasTriggeredAutoImport, importEquitiesMutation]);
+
   const handleConnect = async () => {
     console.log('🔗 [UI] User clicked Connect Schwab Account button');
     setIsConnecting(true);
@@ -295,7 +472,11 @@ export function SchwabIntegration() {
     syncAccountsMutation.isPending ||
     syncHoldingsMutation.isPending ||
     syncPricesMutation.isPending ||
-    syncAllMutation.isPending;
+    syncAllMutation.isPending ||
+    importEquitiesMutation.isPending ||
+    yahooSyncMutation.isPending ||
+    isImportingEquities ||
+    isSyncingYahoo;
 
   console.log('📊 [UI] Component state:', {
     isConnected,
@@ -474,6 +655,139 @@ export function SchwabIntegration() {
                 </PopoverContent>
               </Popover>
             </div>
+          </div>
+        )}
+
+        {/* Import Results */}
+        {importResult && (
+          <div
+            className={`relative w-full rounded-lg border p-4 mt-4 ${
+              importResult.success ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'
+            }`}
+          >
+            <div className="flex items-start gap-3">
+              {importResult.success ? (
+                <CheckCircle className="h-5 w-5 text-green-600 mt-0.5 flex-shrink-0" />
+              ) : (
+                <AlertCircle className="h-5 w-5 text-red-600 mt-0.5 flex-shrink-0" />
+              )}
+              <div className="flex-1">
+                <div>
+                  <div className="font-medium mb-2">
+                    {importResult.success ? 'Equities Import Completed!' : 'Equities Import Failed'}
+                  </div>
+                  <div className="space-y-1 text-sm">
+                    <div>Total securities parsed: {importResult.totalParsed.toLocaleString()}</div>
+                    <div>Securities processed: {importResult.totalProcessed.toLocaleString()}</div>
+                    <div className="text-green-700">
+                      Imported: {importResult.imported.toLocaleString()}
+                    </div>
+                    <div className="text-blue-700">
+                      Skipped: {importResult.skipped.toLocaleString()}
+                    </div>
+                    {importResult.errors.length > 0 && (
+                      <div className="text-red-700">
+                        Errors: {importResult.errors.length}
+                        {importResult.errors.length > 0 && (
+                          <details className="mt-1">
+                            <summary className="cursor-pointer text-xs">Show errors</summary>
+                            <ul className="mt-1 space-y-1 max-h-32 overflow-y-auto">
+                              {importResult.errors.map((error) => (
+                                <li key={error} className="text-xs text-red-600">
+                                  {error}
+                                </li>
+                              ))}
+                            </ul>
+                          </details>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Schwab Price Sync Result */}
+        {schwabSyncResult && (
+          <div
+            className={`relative w-full rounded-lg border p-4 mt-4 ${
+              schwabSyncResult.success ? 'border-blue-200 bg-blue-50' : 'border-red-200 bg-red-50'
+            }`}
+          >
+            <div className="flex items-start gap-3">
+              {schwabSyncResult.success ? (
+                <CheckCircle className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
+              ) : (
+                <AlertCircle className="h-5 w-5 text-red-600 mt-0.5 flex-shrink-0" />
+              )}
+              <div className="flex-1">
+                <div>
+                  <div className="font-medium mb-2">
+                    {schwabSyncResult.success
+                      ? 'Schwab Price Sync Completed!'
+                      : 'Schwab Price Sync Failed'}
+                  </div>
+                  <div className="space-y-1 text-sm">
+                    <div>
+                      Securities updated: {schwabSyncResult.recordsProcessed.toLocaleString()}
+                    </div>
+                    {schwabSyncResult.errorMessage && (
+                      <div className="text-red-700">Error: {schwabSyncResult.errorMessage}</div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Yahoo Finance Sync Result */}
+        {yahooSyncResult && (
+          <div
+            className={`relative w-full rounded-lg border p-4 mt-4 ${
+              yahooSyncResult.success
+                ? 'border-orange-200 bg-orange-50'
+                : 'border-red-200 bg-red-50'
+            }`}
+          >
+            <div className="flex items-start gap-3">
+              {yahooSyncResult.success ? (
+                <CheckCircle className="h-5 w-5 text-orange-600 mt-0.5 flex-shrink-0" />
+              ) : (
+                <AlertCircle className="h-5 w-5 text-red-600 mt-0.5 flex-shrink-0" />
+              )}
+              <div className="flex-1">
+                <div>
+                  <div className="font-medium mb-2">
+                    {yahooSyncResult.success
+                      ? 'Yahoo Finance Sync Completed!'
+                      : 'Yahoo Finance Sync Failed'}
+                  </div>
+                  <div className="space-y-1 text-sm">
+                    <div>
+                      Securities updated: {yahooSyncResult.recordsProcessed.toLocaleString()}
+                    </div>
+                    {yahooSyncResult.errorMessage && (
+                      <div className="text-red-700">Error: {yahooSyncResult.errorMessage}</div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Loading indicator for automatic import */}
+        {(importEquitiesMutation.isPending || isImportingEquities || isSyncingYahoo) && (
+          <div className="flex items-center gap-2 text-sm text-gray-600 mt-4">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            {isSyncingYahoo
+              ? 'Updating fundamentals for held and sleeve securities via Yahoo Finance...'
+              : isImportingEquities
+                ? 'Updating prices for newly imported securities via Schwab...'
+                : 'Importing equities securities from NASDAQ...'}
           </div>
         )}
       </CardContent>

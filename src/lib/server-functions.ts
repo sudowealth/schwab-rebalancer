@@ -1673,7 +1673,8 @@ export const syncYahooFundamentalsServerFn = createServerFn({ method: 'POST' })
         | 'all-holdings'
         | 'five-holdings'
         | 'missing-fundamentals'
-        | 'missing-fundamentals-holdings';
+        | 'missing-fundamentals-holdings'
+        | 'missing-fundamentals-sleeves';
       symbols?: string[];
     }) => data,
   )
@@ -1752,6 +1753,28 @@ export const syncYahooFundamentalsServerFn = createServerFn({ method: 'POST' })
           .from(schema.security);
         symbols = rows
           .filter((r) => held.has(r.ticker))
+          .filter((r) => (!r.sector || !r.industry) && !isAnyCashTicker(r.ticker))
+          .map((r) => r.ticker);
+      } else if (scope === 'missing-fundamentals-sleeves') {
+        // Securities used in sleeves that are missing sector or industry
+        const sleeveSecurities = await db
+          .select({
+            ticker: schema.sleeveMember.ticker,
+          })
+          .from(schema.sleeveMember)
+          .innerJoin(schema.sleeve, eq(schema.sleeveMember.sleeveId, schema.sleeve.id))
+          .where(eq(schema.sleeve.userId, user.id));
+        const sleeveTickers = new Set(sleeveSecurities.map((s) => s.ticker));
+
+        const rows = await db
+          .select({
+            ticker: schema.security.ticker,
+            sector: schema.security.sector,
+            industry: schema.security.industry,
+          })
+          .from(schema.security);
+        symbols = rows
+          .filter((r) => sleeveTickers.has(r.ticker))
           .filter((r) => (!r.sector || !r.industry) && !isAnyCashTicker(r.ticker))
           .map((r) => r.ticker);
       } else {

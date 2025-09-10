@@ -113,14 +113,14 @@ export function NasdaqIntegration() {
           Import Equities Securities
         </CardTitle>
         <CardDescription>
-          Seed the database with equities securities tickers and names from{' '}
+          Update the database with the names and tickers of ETFs and Stocks that appear on the{' '}
           <a
             href="https://nasdaqtrader.com/dynamic/symdir/nasdaqlisted.txt"
             target="_blank"
             rel="noopener noreferrer"
             className="text-blue-600 hover:underline"
           >
-            NASDAQ-listed securities
+            NASDAQ
           </a>{' '}
           (~3,000) and{' '}
           <a
@@ -129,9 +129,9 @@ export function NasdaqIntegration() {
             rel="noopener noreferrer"
             className="text-blue-600 hover:underline"
           >
-            other exchange securities
+            other exchanges
           </a>{' '}
-          (~10,000) as provided by Nasdaq Trader. Only imports securities that don't already exist.
+          (~10,000) via Nasdaq Trader.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">

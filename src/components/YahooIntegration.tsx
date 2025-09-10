@@ -20,7 +20,8 @@ export function YahooIntegration() {
         | 'all-holdings'
         | 'five-holdings'
         | 'missing-fundamentals'
-        | 'missing-fundamentals-holdings',
+        | 'missing-fundamentals-holdings'
+        | 'missing-fundamentals-sleeves',
     ): Promise<{ success: boolean; recordsProcessed: number; errorMessage?: string }> => {
       const result = (await syncYahooFundamentalsServerFn({ data: { scope } })) as {
         success?: boolean;
@@ -57,7 +58,7 @@ export function YahooIntegration() {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-6 gap-3">
           <Button
             variant="outline"
             className="w-full"
@@ -122,6 +123,19 @@ export function YahooIntegration() {
               <Download className="h-4 w-4 mr-2 shrink-0" />
             )}
             Five Held
+          </Button>
+          <Button
+            variant="outline"
+            className="w-full"
+            onClick={() => yahooMutation.mutate('missing-fundamentals-sleeves')}
+            disabled={isRunning}
+          >
+            {isRunning ? (
+              <Loader2 className="h-4 w-4 animate-spin mr-2 shrink-0" />
+            ) : (
+              <Download className="h-4 w-4 mr-2 shrink-0" />
+            )}
+            Sleeve Missing Data
           </Button>
         </div>
 
