@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { createFileRoute, redirect } from '@tanstack/react-router';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { DashboardMetrics } from '../components/dashboard/dashboard-metrics';
 import { PositionsTable } from '../components/dashboard/positions-table';
 import { SchwabConnectionSection } from '../components/dashboard/schwab-connection-section';
@@ -34,12 +34,9 @@ function DashboardComponent() {
   const { data: session } = useSession();
   const loaderData = Route.useLoaderData();
   const [activeTab, setActiveTab] = useState<'positions' | 'transactions'>('positions');
-  const [isClient, setIsClient] = useState(false);
 
-  // Prevent hydration mismatches for user-specific content
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
+  // Use server-loaded user data as fallback/initial data
+  const userData = loaderData.user || session?.user;
 
   // Note: Server-side auth check in loader ensures user is authenticated
   // No client-side redirect needed
@@ -125,8 +122,7 @@ function DashboardComponent() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">
-              Welcome back,{' '}
-              {isClient ? session?.user?.name || session?.user?.email || 'User' : 'User'}
+              Welcome back, {userData?.name || userData?.email || 'User'}
             </h1>
             <p className="mt-2 text-sm text-gray-600">Portfolio overview</p>
           </div>
@@ -135,7 +131,7 @@ function DashboardComponent() {
 
       {/* Schwab Connection Section - only shows when not connected */}
       <div className="mb-8">
-        <SchwabConnectionSection />
+        <SchwabConnectionSection initialCredentialsStatus={loaderData.schwabCredentialsStatus} />
       </div>
 
       <DashboardMetrics metrics={metrics} />

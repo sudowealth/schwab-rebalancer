@@ -43,7 +43,7 @@ export const getDashboardDataServerFn = createServerFn({
 
   // Import server-only functions
   const { loadDashboardData } = await import('./server-only');
-  const data = await loadDashboardData(user.id);
+  const data = await loadDashboardData(user.id, user);
   return data;
 });
 

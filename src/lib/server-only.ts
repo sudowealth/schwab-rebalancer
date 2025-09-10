@@ -1,7 +1,10 @@
 // Server-only wrapper to prevent client-side imports
 // This file uses dynamic imports to ensure database modules are never bundled for client
 
-export async function loadDashboardData(userId?: string) {
+export async function loadDashboardData(
+  userId?: string,
+  user?: { id: string; name?: string; email: string },
+) {
   // Double-check we're on the server
   if (typeof window !== 'undefined') {
     console.warn('loadDashboardData called on client, returning empty data');
@@ -30,6 +33,8 @@ export async function loadDashboardData(userId?: string) {
       sleeves: [],
       indices: [],
       indexMembers: [],
+      user: null,
+      schwabCredentialsStatus: { hasCredentials: false },
     };
   }
 
@@ -68,6 +73,20 @@ export async function loadDashboardData(userId?: string) {
       console.warn('⚠️ SP500 data is empty in server-only loader!');
     }
 
+    // Load Schwab credentials status
+    let schwabCredentialsStatus = { hasCredentials: false };
+    if (userId) {
+      try {
+        const { getSchwabApiService } = await import('./schwab-api');
+        const schwabApi = getSchwabApiService();
+        const hasCredentials = await schwabApi.hasValidCredentials(userId);
+        schwabCredentialsStatus = { hasCredentials };
+        console.log('📊 Schwab credentials status loaded:', hasCredentials);
+      } catch (error) {
+        console.warn('⚠️ Failed to load Schwab credentials status:', error);
+      }
+    }
+
     return {
       positions,
       metrics,
@@ -77,6 +96,8 @@ export async function loadDashboardData(userId?: string) {
       sleeves,
       indices,
       indexMembers,
+      user,
+      schwabCredentialsStatus,
     };
   } catch (error) {
     console.error('❌ Error loading dashboard data:', error);
@@ -106,6 +127,8 @@ export async function loadDashboardData(userId?: string) {
       sleeves: [],
       indices: [],
       indexMembers: [],
+      user: null,
+      schwabCredentialsStatus: { hasCredentials: false },
     };
   }
 }

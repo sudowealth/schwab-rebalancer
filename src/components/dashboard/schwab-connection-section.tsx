@@ -13,7 +13,13 @@ import {
 import { Button } from '../ui/button';
 import { Card, CardContent } from '../ui/card';
 
-export function SchwabConnectionSection() {
+interface SchwabConnectionSectionProps {
+  initialCredentialsStatus?: { hasCredentials: boolean };
+}
+
+export function SchwabConnectionSection({
+  initialCredentialsStatus,
+}: SchwabConnectionSectionProps) {
   const [isConnecting, setIsConnecting] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncStep, setSyncStep] = useState<string>('');
@@ -23,6 +29,7 @@ export function SchwabConnectionSection() {
   const { data: credentialsStatus, isLoading: statusLoading } = useQuery({
     queryKey: ['schwab-credentials-status'],
     queryFn: () => getSchwabCredentialsStatusServerFn(),
+    initialData: initialCredentialsStatus,
   });
 
   // Mutation to start OAuth flow
