@@ -20,6 +20,7 @@ export interface RebalanceSecurityData {
   isTaxable: boolean;
   unrealizedGain?: number;
   rank?: number;
+  isLegacy?: boolean;
 }
 
 export interface InternalRebalanceSleeveData {
@@ -168,6 +169,21 @@ export function calculateAllocationRebalance(
     const targetVal = (sec.targetPct / 100) * portfolioMV; // Convert percentage to decimal
 
     if (currentVal > targetVal + 0.01) {
+      // Handle legacy securities specially - don't sell if they have restrictions or unrealized gains
+      if (sec.isLegacy) {
+        const isRestricted = restrictionChecker.isSecurityRestricted(sec.securityId).isRestricted;
+        const hasUnrealizedGain = sec.unrealizedGain && sec.unrealizedGain > 0;
+        const wouldIncurTaxableGain = sec.isTaxable && hasUnrealizedGain;
+
+        // Skip selling legacy security if it's restricted OR would incur taxable gain
+        if (isRestricted || wouldIncurTaxableGain) {
+          console.log(
+            `🛡️ Skipping legacy security ${sec.securityId} - restricted: ${isRestricted}, taxable gain: ${wouldIncurTaxableGain}`,
+          );
+          return;
+        }
+      }
+
       const extraVal = currentVal - targetVal;
       const rawQty = extraVal / sec.price;
 
@@ -474,6 +490,23 @@ export function calculateSleeveBasedAllocationRebalance(
 
       for (const security of sellOrder) {
         if (remainingSellValue <= 0.01 || security.currentQty <= 0) continue;
+
+        // Handle legacy securities specially - don't sell if they have restrictions or unrealized gains
+        if (security.isLegacy) {
+          const isRestricted = restrictionChecker.isSecurityRestricted(
+            security.securityId,
+          ).isRestricted;
+          const hasUnrealizedGain = security.unrealizedGain && security.unrealizedGain > 0;
+          const wouldIncurTaxableGain = security.isTaxable && hasUnrealizedGain;
+
+          // Skip selling legacy security if it's restricted OR would incur taxable gain
+          if (isRestricted || wouldIncurTaxableGain) {
+            console.log(
+              `🛡️ Skipping legacy security ${security.securityId} - restricted: ${isRestricted}, taxable gain: ${wouldIncurTaxableGain}`,
+            );
+            continue;
+          }
+        }
 
         const securityValue = security.currentQty * security.price;
 
@@ -873,12 +906,15 @@ export function calculateTLHSwap(
   });
 
   // Find taxable securities with unrealized losses
+  // Skip legacy securities that have restrictions or would incur taxable gains
   const lossSecurities = securities.filter(
     (sec) =>
       sec.isTaxable &&
       sec.unrealizedGain &&
       sec.unrealizedGain < 0 &&
-      !restrictionChecker.isSecurityRestricted(sec.securityId).isRestricted,
+      !restrictionChecker.isSecurityRestricted(sec.securityId).isRestricted &&
+      // Skip legacy securities that would incur taxable gains or have restrictions
+      (!sec.isLegacy || (sec.isLegacy && sec.unrealizedGain >= 0)),
   );
 
   // Create replacement map
