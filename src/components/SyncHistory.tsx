@@ -209,15 +209,15 @@ export function SyncHistory() {
                         {new Date(log.startedAt).toLocaleString()}
                       </span>
                       <span
-                        className={
-                          (log.status === 'RUNNING'
+                        className={`${
+                          log.status === 'RUNNING'
                             ? 'text-amber-600'
                             : log.status === 'SUCCESS'
                               ? 'text-green-600'
                               : log.status === 'PARTIAL'
                                 ? 'text-amber-700'
-                                : 'text-red-600') + ' w-[96px]'
-                        }
+                                : 'text-red-600'
+                        } w-[96px]`}
                       >
                         {log.status}
                       </span>

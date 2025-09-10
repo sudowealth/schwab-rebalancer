@@ -137,6 +137,14 @@ function RootDocument({ children }: { children: React.ReactNode }) {
                                   <NavigationMenuLink asChild>
                                     <Link
                                       to="/settings/securities"
+                                      search={{
+                                        page: 1,
+                                        pageSize: 100,
+                                        sortBy: 'ticker',
+                                        sortOrder: 'asc',
+                                        search: '',
+                                        index: '',
+                                      }}
                                       className="block text-sm leading-none px-2 py-1.5 rounded-sm hover:bg-accent hover:text-accent-foreground"
                                     >
                                       Securities

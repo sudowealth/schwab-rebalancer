@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { createFileRoute, redirect } from '@tanstack/react-router';
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { SecuritiesTable } from '../../components/dashboard/securities-table';
 import { ExportButton } from '../../components/ui/export-button';
 import { getIndices, getSnP500Data } from '../../lib/api';
@@ -9,6 +9,20 @@ import { getDashboardDataServerFn } from '../../lib/server-functions';
 
 export const Route = createFileRoute('/settings/securities')({
   component: SecuritiesComponent,
+  validateSearch: (search) => ({
+    page:
+      typeof search.page === 'string'
+        ? Number.parseInt(search.page, 10) || 1
+        : (search.page as number) || 1,
+    pageSize:
+      typeof search.pageSize === 'string'
+        ? Number.parseInt(search.pageSize, 10) || 100
+        : (search.pageSize as number) || 100,
+    sortBy: (search.sortBy as string) || 'ticker',
+    sortOrder: ((search.sortOrder as string) === 'desc' ? 'desc' : 'asc') as 'asc' | 'desc',
+    search: typeof search.search === 'string' ? search.search : '',
+    index: typeof search.index === 'string' ? search.index : '',
+  }),
   loader: async ({ context: _context }) => {
     try {
       // Try to load dashboard data (will fail if not authenticated)
@@ -26,7 +40,8 @@ export const Route = createFileRoute('/settings/securities')({
 
 function SecuritiesComponent() {
   const loaderData = Route.useLoaderData();
-  const [selectedIndex, setSelectedIndex] = useState<string>('');
+  const search = Route.useSearch();
+  const navigate = Route.useNavigate();
 
   const { data: securitiesData, isLoading: securitiesLoading } = useQuery({
     queryKey: ['securitiesData'],
@@ -45,23 +60,29 @@ function SecuritiesComponent() {
   // Client-side filtering of securities data
   const filteredSecurities = useMemo(() => {
     if (!securitiesData || securitiesData.length === 0) return [];
-    if (!selectedIndex) return securitiesData;
+    if (!search.index) return securitiesData;
 
     // Get index members from loader data
     const indexMembers = loaderData.indexMembers || [];
 
     // Filter securities based on index membership
     const membersInIndex = indexMembers
-      .filter((member) => member.indexId === selectedIndex)
+      .filter((member) => member.indexId === search.index)
       .map((member) => member.securityId);
 
     return securitiesData.filter((security) => membersInIndex.includes(security.ticker));
-  }, [securitiesData, selectedIndex, loaderData.indexMembers]);
+  }, [securitiesData, search.index, loaderData.indexMembers]);
 
   const isLoading = securitiesLoading || indicesLoading;
 
   const handleIndexChange = (indexId: string) => {
-    setSelectedIndex(indexId);
+    navigate({
+      search: (prev) => ({
+        ...prev,
+        index: indexId === 'all' ? '' : indexId,
+        page: 1, // Reset to first page when changing index
+      }),
+    });
   };
 
   if (isLoading) {
@@ -102,8 +123,10 @@ function SecuritiesComponent() {
           <SecuritiesTable
             sp500Data={filteredSecurities || []}
             indices={indices || []}
-            selectedIndex={selectedIndex}
+            selectedIndex={search.index}
             onIndexChange={handleIndexChange}
+            searchParams={search}
+            navigate={navigate}
           />
         </div>
       </div>
