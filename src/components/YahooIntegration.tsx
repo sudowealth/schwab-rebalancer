@@ -65,11 +65,11 @@ export function YahooIntegration() {
             disabled={isRunning}
           >
             {isRunning ? (
-              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              <Loader2 className="h-4 w-4 animate-spin mr-2 shrink-0" />
             ) : (
-              <Download className="h-4 w-4 mr-2" />
+              <Download className="h-4 w-4 mr-2 shrink-0" />
             )}
-            All Securities
+            All
           </Button>
           <Button
             variant="outline"
@@ -78,11 +78,11 @@ export function YahooIntegration() {
             disabled={isRunning}
           >
             {isRunning ? (
-              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              <Loader2 className="h-4 w-4 animate-spin mr-2 shrink-0" />
             ) : (
-              <Download className="h-4 w-4 mr-2" />
+              <Download className="h-4 w-4 mr-2 shrink-0" />
             )}
-            Securities Missing Data
+            Missing Data
           </Button>
           <Button
             variant="outline"
@@ -91,11 +91,11 @@ export function YahooIntegration() {
             disabled={isRunning}
           >
             {isRunning ? (
-              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              <Loader2 className="h-4 w-4 animate-spin mr-2 shrink-0" />
             ) : (
-              <Download className="h-4 w-4 mr-2" />
+              <Download className="h-4 w-4 mr-2 shrink-0" />
             )}
-            Held Securities Missing Data
+            Held & Missing Data
           </Button>
           <Button
             variant="outline"
@@ -104,11 +104,11 @@ export function YahooIntegration() {
             disabled={isRunning}
           >
             {isRunning ? (
-              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              <Loader2 className="h-4 w-4 animate-spin mr-2 shrink-0" />
             ) : (
-              <Download className="h-4 w-4 mr-2" />
+              <Download className="h-4 w-4 mr-2 shrink-0" />
             )}
-            Held Securities
+            All Held
           </Button>
           <Button
             variant="outline"
@@ -117,11 +117,11 @@ export function YahooIntegration() {
             disabled={isRunning}
           >
             {isRunning ? (
-              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              <Loader2 className="h-4 w-4 animate-spin mr-2 shrink-0" />
             ) : (
-              <Download className="h-4 w-4 mr-2" />
+              <Download className="h-4 w-4 mr-2 shrink-0" />
             )}
-            Five Held Securities
+            Five Held
           </Button>
         </div>
 

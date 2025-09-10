@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 
 async function exportSyncToExcel(log: unknown) {
   try {
@@ -156,7 +157,7 @@ export function SyncHistory() {
       </CardHeader>
       <CardContent>
         <div className="rounded-md border bg-white">
-          <div className="max-h-60 overflow-auto divide-y">
+          <div className="max-h-[30rem] overflow-auto divide-y">
             {/* Optimistic in-progress row */}
             {(() => {
               // Check if any sync is running by looking for RUNNING status in logs
@@ -166,13 +167,13 @@ export function SyncHistory() {
 
               if (runningLog) {
                 return (
-                  <div className="p-3 grid grid-cols-[auto_1fr_auto_auto_1fr_auto] items-center gap-3 text-sm">
-                    <span className="px-2 py-0.5 rounded border text-xs">
+                  <div className="p-2 grid grid-cols-[auto_1fr_auto_auto_1fr_auto] items-center gap-2 text-sm">
+                    <span className="px-2 py-0.5 rounded border text-xs w-[110px]">
                       {runningLog.syncType}
                     </span>
                     <span className="text-muted-foreground">{new Date().toLocaleString()}</span>
-                    <span className="text-amber-600">RUNNING</span>
-                    <span className="text-muted-foreground">&nbsp;</span>
+                    <span className="text-amber-600 w-[96px]">RUNNING</span>
+                    <span className="text-muted-foreground w-[96px]">&nbsp;</span>
                     <span className="justify-self-start">
                       <Loader2 className="h-4 w-4 animate-spin" />
                     </span>
@@ -192,7 +193,7 @@ export function SyncHistory() {
                   <div key={log.id} className="text-sm">
                     <button
                       type="button"
-                      className="p-3 grid grid-cols-[auto_1fr_auto_auto_1fr_auto] gap-3 items-center cursor-pointer select-none w-full text-left bg-transparent"
+                      className="p-2 grid grid-cols-[auto_1fr_auto_auto_1fr_auto] gap-2 items-center cursor-pointer select-none w-full text-left bg-transparent"
                       onClick={() => {
                         setExpandedLogId((prev) => {
                           const next = prev === log.id ? undefined : log.id;
@@ -201,24 +202,26 @@ export function SyncHistory() {
                         setHasExpandedSelection(true);
                       }}
                     >
-                      <span className="px-2 py-0.5 rounded border text-xs">{log.syncType}</span>
+                      <span className="px-2 py-0.5 rounded border text-xs w-[110px]">
+                        {log.syncType}
+                      </span>
                       <span className="text-muted-foreground">
                         {new Date(log.startedAt).toLocaleString()}
                       </span>
                       <span
                         className={
-                          log.status === 'RUNNING'
+                          (log.status === 'RUNNING'
                             ? 'text-amber-600'
                             : log.status === 'SUCCESS'
                               ? 'text-green-600'
                               : log.status === 'PARTIAL'
                                 ? 'text-amber-700'
-                                : 'text-red-600'
+                                : 'text-red-600') + ' w-[96px]'
                         }
                       >
                         {log.status}
                       </span>
-                      <span className="text-muted-foreground">
+                      <span className="text-muted-foreground w-[96px]">
                         {typeof log.recordsProcessed === 'number'
                           ? `${log.recordsProcessed} items`
                           : '\u00A0'}
@@ -242,119 +245,101 @@ export function SyncHistory() {
                     {isExpanded && (
                       <div className="px-2 pb-2">
                         <div className="rounded border bg-white">
-                          <div className="grid grid-cols-3 gap-2 px-3 py-2 text-[11px] font-medium text-muted-foreground border-b bg-muted/30 justify-items-start">
-                            <div className="text-left">Entity</div>
-                            <div className="text-left">Operation</div>
-                            <div className="text-left">Changes</div>
-                          </div>
-                          <div className="max-h-[220px] overflow-auto">
-                            {(() => {
-                              const details = (log as { details?: unknown[] }).details;
-                              const list = (
-                                log.syncType === 'SECURITIES' ? (details ?? []) : (details ?? [])
-                              ) as Array<{
-                                changes?: string | Record<string, unknown>;
-                                entityId?: string;
-                                ticker?: string;
-                                operation?: string;
-                              }>;
-                              return list.map((d, i: number) => {
-                                let changes: Record<string, unknown> = {};
-                                try {
-                                  changes = d.changes
-                                    ? typeof d.changes === 'string'
-                                      ? JSON.parse(d.changes)
-                                      : d.changes
-                                    : {};
-                                } catch {
-                                  // Ignore
-                                }
-                                const summarize = (obj: Record<string, unknown>) => {
-                                  const entries = Object.entries(
-                                    obj || ({} as Record<string, unknown>),
-                                  );
-                                  if (entries.length === 0) return '';
-
-                                  const fmt = (val: unknown) =>
-                                    typeof val === 'number'
-                                      ? Number.isInteger(val)
-                                        ? String(val)
-                                        : (val as number).toFixed(2)
-                                      : (val ?? '');
-                                  const equal = (a: unknown, b: unknown) => {
-                                    if (a === undefined || a === null) return false;
-                                    if (b === undefined || b === null) return false;
-                                    if (typeof a === 'number' && typeof b === 'number') {
-                                      return Math.abs(a - b) < 1e-9;
-                                    }
-                                    return String(a) === String(b);
-                                  };
-
-                                  const parts = entries.slice(0, 3).map(([k, v]) => {
-                                    const hasOldNew =
-                                      v && typeof v === 'object' && ('old' in v || 'new' in v);
-                                    if (hasOldNew) {
-                                      const { old: oldV, new: newVRaw } = v as {
-                                        old?: unknown;
-                                        new?: unknown;
-                                      };
-                                      const newV = newVRaw ?? oldV;
-                                      if (equal(oldV, newV)) {
-                                        return `${k}: ${fmt(newV)}`;
+                          <Table wrapperClassName="max-h-[260px]">
+                            <TableHeader>
+                              <TableRow className="bg-muted/30">
+                                <TableHead className="w-[40ch] h-9 px-3 text-[11px]">Entity</TableHead>
+                                <TableHead className="w-[12ch] h-9 px-3 text-[11px]">Operation</TableHead>
+                                <TableHead className="h-9 px-3 text-[11px]">Changes</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody className="[&>tr>td]:px-3 [&>tr>td]:py-2">
+                              {(() => {
+                                const details = (log as { details?: unknown[] }).details;
+                                const list = (
+                                  log.syncType === 'SECURITIES' ? (details ?? []) : (details ?? [])
+                                ) as Array<{
+                                  changes?: string | Record<string, unknown>;
+                                  entityId?: string;
+                                  ticker?: string;
+                                  operation?: string;
+                                }>;
+                                return list.map((d, i: number) => {
+                                  let changes: Record<string, unknown> = {};
+                                  try {
+                                    changes = d.changes
+                                      ? typeof d.changes === 'string'
+                                        ? JSON.parse(d.changes)
+                                        : d.changes
+                                      : {};
+                                  } catch {
+                                    // Ignore
+                                  }
+                                  const summarize = (obj: Record<string, unknown>) => {
+                                    const entries = Object.entries(obj || ({} as Record<string, unknown>));
+                                    if (entries.length === 0) return '';
+                                    const fmt = (val: unknown) =>
+                                      typeof val === 'number'
+                                        ? Number.isInteger(val)
+                                          ? String(val)
+                                          : (val as number).toFixed(2)
+                                        : (val ?? '');
+                                    const equal = (a: unknown, b: unknown) => {
+                                      if (a === undefined || a === null) return false;
+                                      if (b === undefined || b === null) return false;
+                                      if (typeof a === 'number' && typeof b === 'number') {
+                                        return Math.abs(a - b) < 1e-9;
                                       }
-                                      const left =
-                                        oldV !== undefined && oldV !== null
-                                          ? `${fmt(oldV)} → `
-                                          : '';
-                                      return `${k}: ${left}${fmt(newV)}`;
-                                    }
-                                    return `${k}: ${fmt(v)}`;
-                                  });
-
-                                  return parts.join('; ') + (entries.length > 3 ? ' …' : '');
-                                };
-                                return (
-                                  <div
-                                    key={d.entityId ?? d.ticker ?? `${d.operation ?? 'op'}-${i}`}
-                                    className="grid grid-cols-3 gap-2 px-3 py-2 text-xs border-t first:border-t-0 justify-items-start"
-                                  >
-                                    <div className="font-medium text-left">
-                                      {d.entityId ?? d.ticker ?? ''}
-                                    </div>
-                                    <div className="uppercase text-muted-foreground text-left">
-                                      {d.operation ?? 'UPDATE'}
-                                    </div>
-                                    <div className="text-left">
-                                      {(() => {
-                                        const summary = summarize(changes);
-                                        const isTruncated = summary.endsWith(' …');
-                                        if (isTruncated) {
-                                          return (
-                                            <button
-                                              type="button"
-                                              className="underline text-blue-600 hover:text-blue-700 text-left"
-                                              onClick={() => {
-                                                setChangesModalTitle(
-                                                  `${d.entityId ?? d.ticker ?? 'Entity'} changes`,
-                                                );
-                                                setChangesModalText(
-                                                  JSON.stringify(changes, null, 2),
-                                                );
-                                                setChangesModalOpen(true);
-                                              }}
-                                            >
-                                              {summary}
-                                            </button>
-                                          );
+                                      return String(a) === String(b);
+                                    };
+                                    const parts = entries.slice(0, 3).map(([k, v]) => {
+                                      const hasOldNew = v && typeof v === 'object' && ('old' in v || 'new' in v);
+                                      if (hasOldNew) {
+                                        const { old: oldV, new: newVRaw } = v as { old?: unknown; new?: unknown };
+                                        const newV = newVRaw ?? oldV;
+                                        if (equal(oldV, newV)) {
+                                          return `${k}: ${fmt(newV)}`;
                                         }
-                                        return <span className="block text-left">{summary}</span>;
-                                      })()}
-                                    </div>
-                                  </div>
-                                );
-                              });
-                            })()}
-                          </div>
+                                        const left = oldV !== undefined && oldV !== null ? `${fmt(oldV)} → ` : '';
+                                        return `${k}: ${left}${fmt(newV)}`;
+                                      }
+                                      return `${k}: ${fmt(v)}`;
+                                    });
+                                    return parts.join('; ') + (entries.length > 3 ? ' …' : '');
+                                  };
+                                  const summary = summarize(changes);
+                                  return (
+                                    <TableRow
+                                      key={d.entityId ?? d.ticker ?? `${d.operation ?? 'op'}-${i}`}
+                                      className="text-xs"
+                                    >
+                                      <TableCell className="w-[40ch] font-medium break-words">
+                                        {d.entityId ?? d.ticker ?? ''}
+                                      </TableCell>
+                                      <TableCell className="w-[12ch] uppercase text-muted-foreground">
+                                        {d.operation ?? 'UPDATE'}
+                                      </TableCell>
+                                      <TableCell>
+                                        <button
+                                          type="button"
+                                          className="text-blue-600 hover:text-blue-700 hover:underline cursor-pointer text-left rounded px-1 -mx-1 transition-colors hover:bg-blue-50/40"
+                                          onClick={() => {
+                                            setChangesModalTitle(
+                                              `${d.entityId ?? d.ticker ?? 'Entity'} changes`,
+                                            );
+                                            setChangesModalText(JSON.stringify(changes, null, 2));
+                                            setChangesModalOpen(true);
+                                          }}
+                                        >
+                                          {summary || '(no changes summary)'}
+                                        </button>
+                                      </TableCell>
+                                    </TableRow>
+                                  );
+                                });
+                              })()}
+                            </TableBody>
+                          </Table>
                         </div>
                       </div>
                     )}
