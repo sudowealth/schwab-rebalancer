@@ -126,16 +126,6 @@ function RootDocument({ children }: { children: React.ReactNode }) {
                                 <li>
                                   <NavigationMenuLink asChild>
                                     <Link
-                                      to="/settings/security-mapping"
-                                      className="block text-sm leading-none px-2 py-1.5 rounded-sm hover:bg-accent hover:text-accent-foreground"
-                                    >
-                                      Security Mapping
-                                    </Link>
-                                  </NavigationMenuLink>
-                                </li>
-                                <li>
-                                  <NavigationMenuLink asChild>
-                                    <Link
                                       to="/data-feeds"
                                       className="block text-sm leading-none px-2 py-1.5 rounded-sm hover:bg-accent hover:text-accent-foreground"
                                     >

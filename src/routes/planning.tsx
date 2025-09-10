@@ -164,22 +164,24 @@ function PlanningPage() {
   const endingReal = planResult.summary.finalRealValue;
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Financial Planning</h1>
-          <p className="text-gray-600">
-            Comprehensive financial planning simulation with real-time calculations
-          </p>
+    <div className="px-4 py-8">
+      <div className="mb-8">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Financial Planning</h1>
+            <p className="mt-2 text-sm text-gray-600">
+              Comprehensive financial planning simulation with real-time calculations
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            onClick={() => setShowTaxModal(true)}
+            className="flex items-center gap-2"
+          >
+            <Settings className="h-4 w-4" />
+            Configure Tax Brackets
+          </Button>
         </div>
-        <Button
-          variant="outline"
-          onClick={() => setShowTaxModal(true)}
-          className="flex items-center gap-2"
-        >
-          <Settings className="h-4 w-4" />
-          Configure Tax Brackets
-        </Button>
       </div>
 
       {/* Input Parameters Accordion */}

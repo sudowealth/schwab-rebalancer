@@ -248,8 +248,12 @@ export function SyncHistory() {
                           <Table wrapperClassName="max-h-[260px]">
                             <TableHeader>
                               <TableRow className="bg-muted/30">
-                                <TableHead className="w-[40ch] h-9 px-3 text-[11px]">Entity</TableHead>
-                                <TableHead className="w-[12ch] h-9 px-3 text-[11px]">Operation</TableHead>
+                                <TableHead className="w-[40ch] h-9 px-3 text-[11px]">
+                                  Entity
+                                </TableHead>
+                                <TableHead className="w-[12ch] h-9 px-3 text-[11px]">
+                                  Operation
+                                </TableHead>
                                 <TableHead className="h-9 px-3 text-[11px]">Changes</TableHead>
                               </TableRow>
                             </TableHeader>
@@ -276,7 +280,9 @@ export function SyncHistory() {
                                     // Ignore
                                   }
                                   const summarize = (obj: Record<string, unknown>) => {
-                                    const entries = Object.entries(obj || ({} as Record<string, unknown>));
+                                    const entries = Object.entries(
+                                      obj || ({} as Record<string, unknown>),
+                                    );
                                     if (entries.length === 0) return '';
                                     const fmt = (val: unknown) =>
                                       typeof val === 'number'
@@ -293,14 +299,21 @@ export function SyncHistory() {
                                       return String(a) === String(b);
                                     };
                                     const parts = entries.slice(0, 3).map(([k, v]) => {
-                                      const hasOldNew = v && typeof v === 'object' && ('old' in v || 'new' in v);
+                                      const hasOldNew =
+                                        v && typeof v === 'object' && ('old' in v || 'new' in v);
                                       if (hasOldNew) {
-                                        const { old: oldV, new: newVRaw } = v as { old?: unknown; new?: unknown };
+                                        const { old: oldV, new: newVRaw } = v as {
+                                          old?: unknown;
+                                          new?: unknown;
+                                        };
                                         const newV = newVRaw ?? oldV;
                                         if (equal(oldV, newV)) {
                                           return `${k}: ${fmt(newV)}`;
                                         }
-                                        const left = oldV !== undefined && oldV !== null ? `${fmt(oldV)} → ` : '';
+                                        const left =
+                                          oldV !== undefined && oldV !== null
+                                            ? `${fmt(oldV)} → `
+                                            : '';
                                         return `${k}: ${left}${fmt(newV)}`;
                                       }
                                       return `${k}: ${fmt(v)}`;

@@ -86,13 +86,6 @@ export function MobileNavigation() {
                     </Link>
                   )}
                   <Link
-                    to="/settings/security-mapping"
-                    onClick={handleLinkClick}
-                    className="block px-3 py-2 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-md transition-colors"
-                  >
-                    Security Mapping
-                  </Link>
-                  <Link
                     to="/data-feeds"
                     onClick={handleLinkClick}
                     className="block px-3 py-2 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-md transition-colors"

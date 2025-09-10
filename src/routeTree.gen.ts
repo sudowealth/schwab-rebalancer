@@ -23,7 +23,6 @@ import { Route as RebalancingGroupsIndexRouteImport } from './routes/rebalancing
 import { Route as ModelsIndexRouteImport } from './routes/models/index'
 import { Route as DataFeedsIndexRouteImport } from './routes/data-feeds/index'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
-import { Route as SettingsSecurityMappingRouteImport } from './routes/settings/security-mapping'
 import { Route as SchwabCallbackRouteImport } from './routes/schwab/callback'
 import { Route as RebalancingGroupsGroupIdRouteImport } from './routes/rebalancing-groups/$groupId'
 import { Route as DemoSchwabOauthRouteImport } from './routes/demo/schwab-oauth'
@@ -101,11 +100,6 @@ const AdminIndexRoute = AdminIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AdminRoute,
 } as any)
-const SettingsSecurityMappingRoute = SettingsSecurityMappingRouteImport.update({
-  id: '/settings/security-mapping',
-  path: '/settings/security-mapping',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const SchwabCallbackRoute = SchwabCallbackRouteImport.update({
   id: '/callback',
   path: '/callback',
@@ -153,7 +147,6 @@ export interface FileRoutesByFullPath {
   '/demo/schwab-oauth': typeof DemoSchwabOauthRoute
   '/rebalancing-groups/$groupId': typeof RebalancingGroupsGroupIdRoute
   '/schwab/callback': typeof SchwabCallbackRoute
-  '/settings/security-mapping': typeof SettingsSecurityMappingRoute
   '/admin/': typeof AdminIndexRoute
   '/data-feeds/': typeof DataFeedsIndexRoute
   '/models': typeof ModelsIndexRoute
@@ -174,7 +167,6 @@ export interface FileRoutesByTo {
   '/demo/schwab-oauth': typeof DemoSchwabOauthRoute
   '/rebalancing-groups/$groupId': typeof RebalancingGroupsGroupIdRoute
   '/schwab/callback': typeof SchwabCallbackRoute
-  '/settings/security-mapping': typeof SettingsSecurityMappingRoute
   '/admin': typeof AdminIndexRoute
   '/data-feeds': typeof DataFeedsIndexRoute
   '/models': typeof ModelsIndexRoute
@@ -198,7 +190,6 @@ export interface FileRoutesById {
   '/demo/schwab-oauth': typeof DemoSchwabOauthRoute
   '/rebalancing-groups/$groupId': typeof RebalancingGroupsGroupIdRoute
   '/schwab/callback': typeof SchwabCallbackRoute
-  '/settings/security-mapping': typeof SettingsSecurityMappingRoute
   '/admin/': typeof AdminIndexRoute
   '/data-feeds/': typeof DataFeedsIndexRoute
   '/models/': typeof ModelsIndexRoute
@@ -223,7 +214,6 @@ export interface FileRouteTypes {
     | '/demo/schwab-oauth'
     | '/rebalancing-groups/$groupId'
     | '/schwab/callback'
-    | '/settings/security-mapping'
     | '/admin/'
     | '/data-feeds/'
     | '/models'
@@ -244,7 +234,6 @@ export interface FileRouteTypes {
     | '/demo/schwab-oauth'
     | '/rebalancing-groups/$groupId'
     | '/schwab/callback'
-    | '/settings/security-mapping'
     | '/admin'
     | '/data-feeds'
     | '/models'
@@ -267,7 +256,6 @@ export interface FileRouteTypes {
     | '/demo/schwab-oauth'
     | '/rebalancing-groups/$groupId'
     | '/schwab/callback'
-    | '/settings/security-mapping'
     | '/admin/'
     | '/data-feeds/'
     | '/models/'
@@ -288,7 +276,6 @@ export interface RootRouteChildren {
   SchwabRoute: typeof SchwabRouteWithChildren
   DemoSchwabOauthRoute: typeof DemoSchwabOauthRoute
   RebalancingGroupsGroupIdRoute: typeof RebalancingGroupsGroupIdRoute
-  SettingsSecurityMappingRoute: typeof SettingsSecurityMappingRoute
   ModelsIndexRoute: typeof ModelsIndexRoute
   RebalancingGroupsIndexRoute: typeof RebalancingGroupsIndexRoute
   SleevesIndexRoute: typeof SleevesIndexRoute
@@ -395,13 +382,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminIndexRouteImport
       parentRoute: typeof AdminRoute
     }
-    '/settings/security-mapping': {
-      id: '/settings/security-mapping'
-      path: '/settings/security-mapping'
-      fullPath: '/settings/security-mapping'
-      preLoaderRoute: typeof SettingsSecurityMappingRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/schwab/callback': {
       id: '/schwab/callback'
       path: '/callback'
@@ -496,7 +476,6 @@ const rootRouteChildren: RootRouteChildren = {
   SchwabRoute: SchwabRouteWithChildren,
   DemoSchwabOauthRoute: DemoSchwabOauthRoute,
   RebalancingGroupsGroupIdRoute: RebalancingGroupsGroupIdRoute,
-  SettingsSecurityMappingRoute: SettingsSecurityMappingRoute,
   ModelsIndexRoute: ModelsIndexRoute,
   RebalancingGroupsIndexRoute: RebalancingGroupsIndexRoute,
   SleevesIndexRoute: SleevesIndexRoute,

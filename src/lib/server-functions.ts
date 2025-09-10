@@ -106,7 +106,12 @@ export const seedDemoDataServerFn = createServerFn({ method: 'POST' }).handler(a
 
 // Server function to create a new sleeve - runs ONLY on server
 export const createSleeveServerFn = createServerFn({ method: 'POST' })
-  .validator((data: { name: string; members: Array<{ ticker: string; rank: number; isLegacy?: boolean }> }) => data)
+  .validator(
+    (data: {
+      name: string;
+      members: Array<{ ticker: string; rank: number; isLegacy?: boolean }>;
+    }) => data,
+  )
   .handler(async ({ data }) => {
     try {
       const { user } = await requireAuth();
@@ -160,8 +165,11 @@ export const getAvailableSecuritiesServerFn = createServerFn({
 // Server function to update a sleeve - runs ONLY on server
 export const updateSleeveServerFn = createServerFn({ method: 'POST' })
   .validator(
-    (data: { sleeveId: string; name: string; members: Array<{ ticker: string; rank: number; isLegacy?: boolean }> }) =>
-      data,
+    (data: {
+      sleeveId: string;
+      name: string;
+      members: Array<{ ticker: string; rank: number; isLegacy?: boolean }>;
+    }) => data,
   )
   .handler(async ({ data }) => {
     await requireAuth();
