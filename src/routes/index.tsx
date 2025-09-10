@@ -1,33 +1,19 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute, redirect } from '@tanstack/react-router';
 import { Loader2 } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { DashboardMetrics } from '../components/dashboard/dashboard-metrics';
 import { PositionsTable } from '../components/dashboard/positions-table';
 import { SchwabConnectionSection } from '../components/dashboard/schwab-connection-section';
 import { SecurityModal } from '../components/dashboard/security-modal';
 import { SleeveModal } from '../components/dashboard/sleeve-modal';
-import { SP500Table } from '../components/dashboard/sp500-table';
-import { TradesTable } from '../components/dashboard/trades-table';
 import { TransactionsTable } from '../components/dashboard/transactions-table';
 import { Button } from '../components/ui/button';
 import { ExportButton } from '../components/ui/export-button';
 import { useToast } from '../components/ui/toast';
-import {
-  getIndices,
-  getPortfolioMetrics,
-  getPositions,
-  getProposedTrades,
-  getSnP500Data,
-  getTransactions,
-} from '../lib/api';
+import { getPortfolioMetrics, getPositions, getTransactions } from '../lib/api';
 import { useSession } from '../lib/auth-client';
-import {
-  exportPositionsToExcel,
-  exportSP500ToExcel,
-  exportTradestoExcel,
-  exportTransactionsToExcel,
-} from '../lib/excel-export';
+import { exportPositionsToExcel, exportTransactionsToExcel } from '../lib/excel-export';
 import {
   getDashboardDataServerFn,
   getSleevesServerFn,
@@ -56,9 +42,7 @@ function DashboardComponent() {
   const loaderData = Route.useLoaderData();
   const queryClient = useQueryClient();
   const { showToast } = useToast();
-  const [activeTab, setActiveTab] = useState<
-    'positions' | 'transactions' | 'trades' | 'securities'
-  >('trades');
+  const [activeTab, setActiveTab] = useState<'positions' | 'transactions'>('positions');
   const [isClient, setIsClient] = useState(false);
 
   // Prevent hydration mismatches for user-specific content
@@ -73,7 +57,6 @@ function DashboardComponent() {
   const [showSleeveModal, setShowSleeveModal] = useState(false);
   const [selectedTicker, setSelectedTicker] = useState<string | null>(null);
   const [showSecurityModal, setShowSecurityModal] = useState(false);
-  const [selectedIndex, setSelectedIndex] = useState<string>('');
 
   const seedMutation = useMutation({
     mutationFn: seedDemoDataServerFn,
@@ -120,20 +103,6 @@ function DashboardComponent() {
     staleTime: 1000 * 60 * 5, // 5 minutes
   });
 
-  const { data: securitiesData, isLoading: securitiesLoading } = useQuery({
-    queryKey: ['securitiesData'],
-    queryFn: getSnP500Data,
-    initialData: loaderData.sp500Data,
-    staleTime: 1000 * 60 * 60, // 1 hour
-  });
-
-  const { data: proposedTrades, isLoading: tradesLoading } = useQuery({
-    queryKey: ['proposedTrades'],
-    queryFn: getProposedTrades,
-    initialData: loaderData.proposedTrades,
-    staleTime: 1000 * 60 * 5, // 5 minutes
-  });
-
   const { data: sleeves, isLoading: sleevesLoading } = useQuery({
     queryKey: ['sleeves'],
     queryFn: getSleevesServerFn,
@@ -141,37 +110,7 @@ function DashboardComponent() {
     staleTime: 1000 * 60 * 5, // 5 minutes
   });
 
-  const { data: indices, isLoading: indicesLoading } = useQuery({
-    queryKey: ['indices'],
-    queryFn: getIndices,
-    initialData: loaderData.indices,
-    staleTime: 1000 * 60 * 60, // 1 hour
-  });
-
-  // Client-side filtering of securities data
-  const filteredSecurities = useMemo(() => {
-    if (!securitiesData || securitiesData.length === 0) return [];
-    if (!selectedIndex) return securitiesData;
-
-    // Get index members from loader data
-    const indexMembers = loaderData.indexMembers || [];
-
-    // Filter securities based on index membership
-    const membersInIndex = indexMembers
-      .filter((member) => member.indexId === selectedIndex)
-      .map((member) => member.securityId);
-
-    return securitiesData.filter((security) => membersInIndex.includes(security.ticker));
-  }, [securitiesData, selectedIndex, loaderData.indexMembers]);
-
-  const isLoading =
-    positionsLoading ||
-    metricsLoading ||
-    transactionsLoading ||
-    securitiesLoading ||
-    tradesLoading ||
-    sleevesLoading ||
-    indicesLoading;
+  const isLoading = positionsLoading || metricsLoading || transactionsLoading || sleevesLoading;
 
   const handleTickerClick = (ticker: string) => {
     setSelectedTicker(ticker);
@@ -181,10 +120,6 @@ function DashboardComponent() {
   const handleSleeveClick = (sleeveId: string) => {
     setSelectedSleeve(sleeveId);
     setShowSleeveModal(true);
-  };
-
-  const handleIndexChange = (indexId: string) => {
-    setSelectedIndex(indexId);
   };
 
   if (isLoading) {
@@ -257,19 +192,6 @@ function DashboardComponent() {
                 Positions & Transactions
               </h3>
               <div className="flex space-x-2">
-                {activeTab === 'trades' && proposedTrades && proposedTrades.length > 0 && (
-                  <ExportButton
-                    onExport={() =>
-                      exportTradestoExcel(
-                        proposedTrades.map((trade) => ({
-                          ...trade,
-                          action: trade.type as 'BUY' | 'SELL',
-                        })),
-                      )
-                    }
-                    label="Export Trades"
-                  />
-                )}
                 {activeTab === 'positions' && positions && positions.length > 0 && (
                   <ExportButton
                     onExport={() => exportPositionsToExcel(positions)}
@@ -282,31 +204,10 @@ function DashboardComponent() {
                     label="Export Transactions"
                   />
                 )}
-                {activeTab === 'securities' &&
-                  filteredSecurities &&
-                  filteredSecurities.length > 0 && (
-                    <ExportButton
-                      onExport={() => exportSP500ToExcel(filteredSecurities)}
-                      label="Export Securities"
-                    />
-                  )}
               </div>
             </div>
             <div className="border-b border-gray-200">
               <nav className="-mb-px flex space-x-2 sm:space-x-8 overflow-x-auto">
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('trades')}
-                  className={`shrink-0 py-2 px-2 sm:px-1 border-b-2 font-medium text-xs sm:text-sm ${
-                    activeTab === 'trades'
-                      ? 'border-blue-500 text-blue-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
-                >
-                  <span className="hidden sm:inline">Trades</span>
-                  <span className="sm:hidden">Trades</span>
-                  <span className="ml-1">({proposedTrades?.length || 0})</span>
-                </button>
                 <button
                   type="button"
                   onClick={() => setActiveTab('positions')}
@@ -333,35 +234,13 @@ function DashboardComponent() {
                   <span className="sm:hidden">Txns</span>
                   <span className="ml-1">({transactions?.length || 0})</span>
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('securities')}
-                  className={`shrink-0 py-2 px-2 sm:px-1 border-b-2 font-medium text-xs sm:text-sm ${
-                    activeTab === 'securities'
-                      ? 'border-blue-500 text-blue-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
-                >
-                  <span className="hidden sm:inline">Securities</span>
-                  <span className="sm:hidden">Securities</span>
-                  <span className="ml-1">({filteredSecurities?.length || 0})</span>
-                </button>
               </nav>
             </div>
           </div>
 
-          {activeTab === 'trades' && (
-            <TradesTable
-              trades={proposedTrades || []}
-              onTickerClick={handleTickerClick}
-              onSleeveClick={handleSleeveClick}
-            />
-          )}
-
           {activeTab === 'positions' && (
             <PositionsTable
               positions={positions || []}
-              proposedTrades={proposedTrades}
               onTickerClick={handleTickerClick}
               onSleeveClick={handleSleeveClick}
             />
@@ -372,15 +251,6 @@ function DashboardComponent() {
               transactions={transactions || []}
               onTickerClick={handleTickerClick}
               onSleeveClick={handleSleeveClick}
-            />
-          )}
-
-          {activeTab === 'securities' && (
-            <SP500Table
-              sp500Data={filteredSecurities || []}
-              indices={indices || []}
-              selectedIndex={selectedIndex}
-              onIndexChange={handleIndexChange}
             />
           )}
         </div>
@@ -396,10 +266,9 @@ function DashboardComponent() {
         isOpen={showSecurityModal}
         onClose={() => setShowSecurityModal(false)}
         ticker={selectedTicker}
-        sp500Data={securitiesData}
+        sp500Data={[]}
         positions={positions}
         transactions={transactions}
-        proposedTrades={proposedTrades}
       />
     </div>
   );

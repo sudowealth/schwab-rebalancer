@@ -1,10 +1,5 @@
 import ExcelJS from 'exceljs';
-import type {
-  PositionsResult,
-  ProposedTradesResult,
-  SP500DataResult,
-  TransactionsResult,
-} from './db-api';
+import type { PositionsResult, SP500DataResult, TransactionsResult } from './db-api';
 
 export interface ExcelExportOptions {
   filename?: string;
@@ -14,7 +9,6 @@ export interface ExcelExportOptions {
 
 type Position = PositionsResult[number];
 type Transaction = TransactionsResult[number];
-type Trade = ProposedTradesResult[number];
 type Stock = SP500DataResult[number];
 
 interface Security {
@@ -174,25 +168,6 @@ export async function exportTransactionsToExcel(
     filename,
     sheetName: 'Transactions',
   });
-}
-
-export async function exportTradestoExcel(trades: Trade[], filename = 'trades') {
-  const columns = [
-    { header: 'Action', accessor: 'type' as const },
-    { header: 'Ticker', accessor: 'ticker' as const },
-    { header: 'Sleeve', accessor: 'sleeveName' as const },
-    { header: 'Quantity', accessor: 'qty' as const },
-    { header: 'Current Price', accessor: 'currentPrice' as const },
-    { header: 'Estimated Value', accessor: 'estimatedValue' as const },
-    { header: 'Reason', accessor: 'reason' as const },
-    {
-      header: 'Can Execute',
-      accessor: (row: Trade) => (row.canExecute ? 'Yes' : 'No'),
-    },
-    { header: 'Blocking Reason', accessor: 'blockingReason' as const },
-  ];
-
-  await exportTableToExcel(trades, columns, { filename, sheetName: 'Trades' });
 }
 
 export async function exportSP500ToExcel(stocks: Stock[], filename = 'sp500-stocks') {

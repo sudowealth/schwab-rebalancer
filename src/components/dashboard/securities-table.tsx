@@ -13,24 +13,29 @@ import { useEffect, useMemo, useState } from 'react';
 import type { SP500Stock } from '../../lib/schemas';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 
-interface SP500TableProps {
+interface SecuritiesTableProps {
   sp500Data: SP500Stock[];
   indices?: Array<{ id: string; name: string }>;
   selectedIndex?: string;
   onIndexChange?: (indexId: string) => void;
 }
 
-export function SP500Table({ sp500Data, indices, selectedIndex, onIndexChange }: SP500TableProps) {
+export function SecuritiesTable({
+  sp500Data,
+  indices,
+  selectedIndex,
+  onIndexChange,
+}: SecuritiesTableProps) {
   const [sorting, setSorting] = useState<SortingState>([{ id: 'ticker', desc: false }]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
 
   // Debug logging
   useEffect(() => {
     console.log(
-      `🔍 SP500Table: ${sp500Data?.length || 0} securities, selectedIndex: ${selectedIndex}`,
+      `🔍 SecuritiesTable: ${sp500Data?.length || 0} securities, selectedIndex: ${selectedIndex}`,
     );
     if (!sp500Data || sp500Data.length === 0) {
-      console.warn('⚠️ SP500Table: No securities data received');
+      console.warn('⚠️ SecuritiesTable: No securities data received');
     }
   }, [sp500Data, selectedIndex]);
 
@@ -52,7 +57,8 @@ export function SP500Table({ sp500Data, indices, selectedIndex, onIndexChange }:
               href={`https://finance.yahoo.com/quote/${ticker}/`}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
+              className="text-blue-600 hover:text-blue-800 hover:underline cursor-pointer block truncate max-w-[200px]"
+              title={name}
             >
               {name}
             </a>
