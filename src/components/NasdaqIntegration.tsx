@@ -1,7 +1,11 @@
 import { useMutation } from '@tanstack/react-query';
 import { AlertCircle, CheckCircle, Download, Loader2 } from 'lucide-react';
 import { useId, useState } from 'react';
-import { importNasdaqSecuritiesServerFn } from '../lib/server-functions';
+import {
+  getSchwabCredentialsStatusServerFn,
+  importNasdaqSecuritiesServerFn,
+  syncSchwabPricesServerFn,
+} from '../lib/server-functions';
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 
@@ -12,6 +16,13 @@ interface ImportResult {
   errors: string[];
   totalParsed: number;
   totalProcessed: number;
+  importedTickers?: string[];
+}
+
+interface SchwabSyncResult {
+  success: boolean;
+  recordsProcessed: number;
+  errorMessage?: string;
 }
 
 export function NasdaqIntegration() {
@@ -20,6 +31,8 @@ export function NasdaqIntegration() {
     'all',
   );
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
+  const [schwabSyncResult, setSchwabSyncResult] = useState<SchwabSyncResult | null>(null);
+  const [isSchwabSyncing, setIsSchwabSyncing] = useState(false);
 
   const allId = useId();
   const nasdaqonlyId = useId();
@@ -33,8 +46,42 @@ export function NasdaqIntegration() {
     }) => {
       return await importNasdaqSecuritiesServerFn({ data: options });
     },
-    onSuccess: (result) => {
+    onSuccess: async (result) => {
       setImportResult(result);
+
+      // If import was successful and we imported some securities, check if Schwab is connected
+      if (
+        result.success &&
+        result.imported > 0 &&
+        result.importedTickers &&
+        result.importedTickers.length > 0
+      ) {
+        try {
+          const schwabStatus = await getSchwabCredentialsStatusServerFn();
+          if (schwabStatus?.hasCredentials) {
+            // Schwab is connected, trigger price sync for only the newly imported securities
+            setIsSchwabSyncing(true);
+            console.log(
+              '🔄 Starting automatic Schwab price sync for newly imported securities:',
+              result.importedTickers,
+            );
+            const syncResult = await syncSchwabPricesServerFn({
+              data: { symbols: result.importedTickers },
+            });
+            setSchwabSyncResult(syncResult);
+            console.log('✅ Schwab price sync completed:', syncResult);
+          }
+        } catch (error) {
+          console.error('❌ Schwab price sync failed:', error);
+          setSchwabSyncResult({
+            success: false,
+            recordsProcessed: 0,
+            errorMessage: error instanceof Error ? error.message : 'Unknown error occurred',
+          });
+        } finally {
+          setIsSchwabSyncing(false);
+        }
+      }
     },
     onError: (error) => {
       console.error('Import failed:', error);
@@ -51,6 +98,7 @@ export function NasdaqIntegration() {
 
   const handleImport = async (limit?: number) => {
     setImportResult(null);
+    setSchwabSyncResult(null);
     setSelectedLimit(limit || null);
     await importMutation.mutateAsync({ limit, skipExisting: true, feedType: selectedFeedType });
   };
@@ -221,24 +269,60 @@ export function NasdaqIntegration() {
           </div>
         )}
 
-        {isLoading && (
+        {/* Schwab Price Sync Result */}
+        {schwabSyncResult && (
+          <div
+            className={`relative w-full rounded-lg border p-4 ${
+              schwabSyncResult.success ? 'border-blue-200 bg-blue-50' : 'border-red-200 bg-red-50'
+            }`}
+          >
+            <div className="flex items-start gap-3">
+              {schwabSyncResult.success ? (
+                <CheckCircle className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
+              ) : (
+                <AlertCircle className="h-5 w-5 text-red-600 mt-0.5 flex-shrink-0" />
+              )}
+              <div className="flex-1">
+                <div>
+                  <div className="font-medium mb-2">
+                    {schwabSyncResult.success
+                      ? 'Schwab price sync completed for newly imported securities!'
+                      : 'Schwab price sync failed for newly imported securities'}
+                  </div>
+                  <div className="space-y-1 text-sm">
+                    <div>
+                      Securities updated: {schwabSyncResult.recordsProcessed.toLocaleString()}
+                    </div>
+                    {schwabSyncResult.errorMessage && (
+                      <div className="text-red-700">Error: {schwabSyncResult.errorMessage}</div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {(isLoading || isSchwabSyncing) && (
           <div className="flex items-center gap-2 text-sm text-gray-600">
             <Loader2 className="h-4 w-4 animate-spin" />
-            {selectedLimit
-              ? `Importing first ${selectedLimit} securities from ${
-                  selectedFeedType === 'all'
-                    ? 'All Markets'
-                    : selectedFeedType === 'nasdaqonly'
-                      ? 'NASDAQ'
-                      : 'Non-NASDAQ Exchanges'
-                }...`
-              : `Importing all securities from ${
-                  selectedFeedType === 'all'
-                    ? 'All Markets'
-                    : selectedFeedType === 'nasdaqonly'
-                      ? 'NASDAQ'
-                      : 'Non-NASDAQ Exchanges'
-                }... This may take a few minutes.`}
+            {isSchwabSyncing
+              ? 'Updating prices for newly imported securities via Schwab...'
+              : selectedLimit
+                ? `Importing first ${selectedLimit} securities from ${
+                    selectedFeedType === 'all'
+                      ? 'All Markets'
+                      : selectedFeedType === 'nasdaqonly'
+                        ? 'NASDAQ'
+                        : 'Non-NASDAQ Exchanges'
+                  }...`
+                : `Importing all securities from ${
+                    selectedFeedType === 'all'
+                      ? 'All Markets'
+                      : selectedFeedType === 'nasdaqonly'
+                        ? 'NASDAQ'
+                        : 'Non-NASDAQ Exchanges'
+                  }... This may take a few minutes.`}
           </div>
         )}
       </CardContent>

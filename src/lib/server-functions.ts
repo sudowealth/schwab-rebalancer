@@ -1,5 +1,5 @@
 import { createServerFn } from '@tanstack/react-start';
-import { eq, sql } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { requireAdmin, requireAuth } from './auth-utils';
 import { CASH_TICKER, isAnyCashTicker, isBaseCashTicker, MANUAL_CASH_TICKER } from './constants';
 import type { AccountHoldingsResult } from './db-api';
@@ -2938,6 +2938,7 @@ export const importNasdaqSecuritiesServerFn = createServerFn({
       let importedCount = 0;
       let skippedCount = 0;
       const errors: string[] = [];
+      const importedTickers: string[] = [];
 
       for (const security of securitiesToProcess) {
         try {
@@ -3008,6 +3009,7 @@ export const importNasdaqSecuritiesServerFn = createServerFn({
           });
 
           importedCount++;
+          importedTickers.push(ticker);
         } catch (error) {
           const errorMsg = `Failed to import ${security.ticker}: ${getErrorMessage(error)}`;
           errors.push(errorMsg);
@@ -3025,6 +3027,7 @@ export const importNasdaqSecuritiesServerFn = createServerFn({
         errors: errors,
         totalParsed: parsedSecurities.length,
         totalProcessed: securitiesToProcess.length,
+        importedTickers: importedTickers,
       };
     } catch (error) {
       logError(error, 'Failed to import Nasdaq securities');
