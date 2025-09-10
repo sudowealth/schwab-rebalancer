@@ -1,6 +1,5 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { createFileRoute, redirect } from '@tanstack/react-router';
-import { Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { DashboardMetrics } from '../components/dashboard/dashboard-metrics';
 import { PositionsTable } from '../components/dashboard/positions-table';
@@ -8,17 +7,11 @@ import { SchwabConnectionSection } from '../components/dashboard/schwab-connecti
 import { SecurityModal } from '../components/dashboard/security-modal';
 import { SleeveModal } from '../components/dashboard/sleeve-modal';
 import { TransactionsTable } from '../components/dashboard/transactions-table';
-import { Button } from '../components/ui/button';
 import { ExportButton } from '../components/ui/export-button';
-import { useToast } from '../components/ui/toast';
 import { getPortfolioMetrics, getPositions, getTransactions } from '../lib/api';
 import { useSession } from '../lib/auth-client';
 import { exportPositionsToExcel, exportTransactionsToExcel } from '../lib/excel-export';
-import {
-  getDashboardDataServerFn,
-  getSleevesServerFn,
-  seedDemoDataServerFn,
-} from '../lib/server-functions';
+import { getDashboardDataServerFn, getSleevesServerFn } from '../lib/server-functions';
 
 export const Route = createFileRoute('/')({
   component: DashboardComponent,
@@ -40,8 +33,6 @@ export const Route = createFileRoute('/')({
 function DashboardComponent() {
   const { data: session } = useSession();
   const loaderData = Route.useLoaderData();
-  const queryClient = useQueryClient();
-  const { showToast } = useToast();
   const [activeTab, setActiveTab] = useState<'positions' | 'transactions'>('positions');
   const [isClient, setIsClient] = useState(false);
 
@@ -57,30 +48,6 @@ function DashboardComponent() {
   const [showSleeveModal, setShowSleeveModal] = useState(false);
   const [selectedTicker, setSelectedTicker] = useState<string | null>(null);
   const [showSecurityModal, setShowSecurityModal] = useState(false);
-
-  const seedMutation = useMutation({
-    mutationFn: seedDemoDataServerFn,
-    onSuccess: async () => {
-      // Show success toast
-      showToast('Demo portfolio seeded successfully!', 'success');
-
-      // Clear all cache and force fresh data fetch
-      queryClient.clear();
-
-      // Wait a moment for database changes to propagate
-      setTimeout(() => {
-        window.location.reload();
-      }, 500);
-    },
-    onError: (error) => {
-      console.error('❌ Seeding failed:', error);
-      showToast('Failed to seed demo portfolio', 'error');
-    },
-  });
-
-  const handleSeedData = () => {
-    seedMutation.mutate(undefined);
-  };
 
   const { data: positions, isLoading: positionsLoading } = useQuery({
     queryKey: ['positions'],
@@ -163,16 +130,6 @@ function DashboardComponent() {
             </h1>
             <p className="mt-2 text-sm text-gray-600">Portfolio overview</p>
           </div>
-          <Button onClick={handleSeedData} disabled={seedMutation.isPending}>
-            {seedMutation.isPending ? (
-              <>
-                <Loader2 className="animate-spin mr-2 h-4 w-4" />
-                Seeding...
-              </>
-            ) : (
-              'Seed Demo Portfolio'
-            )}
-          </Button>
         </div>
       </div>
 

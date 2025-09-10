@@ -104,6 +104,89 @@ export const seedDemoDataServerFn = createServerFn({ method: 'POST' }).handler(a
   };
 });
 
+// Server function to seed accounts data - runs ONLY on server
+export const seedAccountsDataServerFn = createServerFn({ method: 'POST' }).handler(async () => {
+  const { user } = await requireAuth();
+
+  const { getDatabase } = await import('./db-config');
+  const db = getDatabase();
+  const { seedAccounts } = await import('./seeds/accounts');
+  const { seedHoldings } = await import('./seeds/holdings');
+  const { seedTransactions } = await import('./seeds/transactions');
+
+  await seedAccounts(db, user.id);
+  await seedHoldings(db, user.id);
+  await seedTransactions(db, user.id);
+
+  const { cleanupDatabase } = await import('./db-config');
+  cleanupDatabase();
+
+  return {
+    success: true,
+    message: 'Accounts data seeded successfully',
+  };
+});
+
+// Server function to seed securities data - runs ONLY on server
+export const seedSecuritiesDataServerFn = createServerFn({ method: 'POST' }).handler(async () => {
+  await requireAuth();
+
+  const { getDatabase } = await import('./db-config');
+  const db = getDatabase();
+  const { seedSecurities, seedIndices } = await import('./seeds/securities');
+
+  await seedSecurities(db);
+  await seedIndices(db);
+
+  const { cleanupDatabase } = await import('./db-config');
+  cleanupDatabase();
+
+  return {
+    success: true,
+    message: 'Securities data seeded successfully',
+  };
+});
+
+// Server function to seed models data - runs ONLY on server
+export const seedModelsDataServerFn = createServerFn({ method: 'POST' }).handler(async () => {
+  const { user } = await requireAuth();
+
+  const { getDatabase } = await import('./db-config');
+  const db = getDatabase();
+  const { seedSleeves } = await import('./seeds/sleeves');
+  const { seedModels } = await import('./seeds/models');
+
+  await seedSleeves(db, user.id);
+  await seedModels(db, user.id);
+
+  const { cleanupDatabase } = await import('./db-config');
+  cleanupDatabase();
+
+  return {
+    success: true,
+    message: 'Models data seeded successfully',
+  };
+});
+
+// Server function to seed rebalancing groups data - runs ONLY on server
+export const seedRebalancingGroupsDataServerFn = createServerFn({ method: 'POST' }).handler(async () => {
+  const { user } = await requireAuth();
+
+  const { getDatabase } = await import('./db-config');
+  const db = getDatabase();
+  const { seedRebalancingGroups } = await import('./seeds/rebalancing-groups');
+
+  await seedRebalancingGroups(db, user.id);
+
+  const { cleanupDatabase } = await import('./db-config');
+  cleanupDatabase();
+
+  return {
+    success: true,
+    message: 'Rebalancing groups data seeded successfully',
+  };
+});
+
 // Server function to create a new sleeve - runs ONLY on server
 export const createSleeveServerFn = createServerFn({ method: 'POST' })
   .validator(
