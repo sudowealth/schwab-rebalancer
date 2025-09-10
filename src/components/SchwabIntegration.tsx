@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ChevronDown, Download, ExternalLink, Loader2, RefreshCw, Upload } from 'lucide-react';
+import { ChevronDown, Download, ExternalLink, Loader2, RefreshCw, Upload, X } from 'lucide-react';
 import { useState } from 'react';
 import {
   getHeldPositionTickersServerFn,
@@ -149,7 +149,7 @@ export function SchwabIntegration() {
       // 3) Prices for held tickers
       const heldTickers = await getHeldPositionTickersServerFn();
       console.log(
-        `📊 [UI] Found ${heldTickers.length} held position tickers for price sync during Sync All`,
+        `📊 [UI] Found ${heldTickers.length} held position tickers for price sync during All`,
         heldTickers,
       );
       if (heldTickers.length === 0) {
@@ -308,56 +308,58 @@ export function SchwabIntegration() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <ExternalLink className="h-5 w-5" />
-          Schwab
-        </CardTitle>
-        <CardDescription>
-          Connect your Charles Schwab account to automatically import accounts, holdings, and
-          prices.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="font-medium">Connection Status:</span>
-            {statusLoading ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <span
-                className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                  isConnected
-                    ? 'bg-green-100 text-green-800 border border-green-200'
-                    : 'bg-gray-100 text-gray-800 border border-gray-200'
-                }`}
-              >
-                {isConnected ? 'Connected' : 'Not Connected'}
-              </span>
-            )}
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <ExternalLink className="h-5 w-5" />
+              Schwab
+            </CardTitle>
+            <CardDescription>
+              Connect your Charles Schwab account to automatically import accounts, holdings, and
+              prices.
+            </CardDescription>
           </div>
 
-          {isConnected ? (
-            <Button
-              variant="outline"
-              onClick={handleDisconnect}
-              disabled={revokeMutation.isPending}
-            >
-              {revokeMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-              Disconnect
-            </Button>
-          ) : (
-            <Button onClick={handleConnect} disabled={isConnecting || oauthMutation.isPending}>
-              {isConnecting || oauthMutation.isPending ? (
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-              ) : null}
-              Connect Schwab Account
-            </Button>
-          )}
+          <div className="min-w-[120px] flex items-center justify-end">
+            {statusLoading ? (
+              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+            ) : isConnected ? (
+              <div className="relative inline-flex items-center">
+                <span className="px-3 pr-7 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800 border border-green-200">
+                  Connected
+                </span>
+                <button
+                  type="button"
+                  aria-label="Disconnect Schwab"
+                  onClick={handleDisconnect}
+                  disabled={revokeMutation.isPending}
+                  className="absolute right-0.5 inline-flex h-5 w-5 items-center justify-center rounded-full text-green-700 hover:text-green-900 hover:bg-green-200/70 focus:outline-none disabled:opacity-50"
+                >
+                  {revokeMutation.isPending ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <X className="h-3.5 w-3.5" />
+                  )}
+                </button>
+              </div>
+            ) : (
+              <Button onClick={handleConnect} disabled={isConnecting || oauthMutation.isPending}>
+                {isConnecting || oauthMutation.isPending ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    Connecting...
+                  </>
+                ) : (
+                  'Connect'
+                )}
+              </Button>
+            )}
+          </div>
         </div>
-
+      </CardHeader>
+      <CardContent className="space-y-4">
         {isConnected && (
-          <div className="border-t pt-4 space-y-3">
-            <h4 className="font-medium">Data Synchronization</h4>
+          <div className="space-y-3">
             <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
               <Button
                 variant="outline"
@@ -370,7 +372,7 @@ export function SchwabIntegration() {
                 ) : (
                   <RefreshCw className="h-4 w-4 mr-2" />
                 )}
-                Sync All
+                All
               </Button>
               <Button
                 variant="outline"
@@ -383,7 +385,7 @@ export function SchwabIntegration() {
                 ) : (
                   <Download className="h-4 w-4 mr-2" />
                 )}
-                Sync Accounts
+                Accounts
               </Button>
 
               <Button
@@ -397,7 +399,7 @@ export function SchwabIntegration() {
                 ) : (
                   <Upload className="h-4 w-4 mr-2" />
                 )}
-                Sync Holdings
+                Holdings
               </Button>
 
               <Button
@@ -411,7 +413,7 @@ export function SchwabIntegration() {
                 ) : (
                   <Download className="h-4 w-4 mr-2" />
                 )}
-                Sync Transactions
+                Transactions
               </Button>
 
               <Popover open={pricesMenuOpen} onOpenChange={setPricesMenuOpen}>
@@ -429,7 +431,7 @@ export function SchwabIntegration() {
                     ) : (
                       <Download className="h-4 w-4 mr-2" />
                     )}
-                    <span>Update Securities</span>
+                    <span>Securities</span>
                     <ChevronDown className="h-4 w-4 ml-2 opacity-70" />
                   </Button>
                 </PopoverTrigger>

@@ -1581,6 +1581,49 @@ export const revokeSchwabCredentialsServerFn = createServerFn({
   }
 });
 
+// Server function to delete a sync log
+export const deleteSyncLogServerFn = createServerFn({ method: 'POST' })
+  .validator(
+    (data: { logId: string }) => data,
+  )
+  .handler(async ({ data }) => {
+    const { logId } = data;
+    try {
+      const { user } = await requireAuth();
+
+      const { getDatabase } = await import('./db-config');
+      const db = getDatabase();
+      const schema = await import('../db/schema');
+      const { eq } = await import('drizzle-orm');
+
+      // First verify the log belongs to the user
+      const log = await db
+        .select()
+        .from(schema.syncLog)
+        .where(eq(schema.syncLog.id, logId))
+        .limit(1);
+
+      if (!log || log.length === 0) {
+        throw new Error('Sync log not found');
+      }
+
+      if (log[0].userId !== user.id) {
+        throw new Error('Unauthorized to delete this sync log');
+      }
+
+      // Delete the log (syncLogDetail will be deleted automatically due to CASCADE)
+      await db
+        .delete(schema.syncLog)
+        .where(eq(schema.syncLog.id, logId));
+
+      console.log('🗑️ [ServerFn] Deleted sync log:', logId);
+      return { success: true, logId };
+    } catch (error) {
+      console.error('Error deleting sync log:', error);
+      throw new Error(`Failed to delete sync log: ${getErrorMessage(error)}`);
+    }
+  });
+
 // Server function to get sync logs
 export const getSyncLogsServerFn = createServerFn({ method: 'GET' }).handler(async () => {
   try {

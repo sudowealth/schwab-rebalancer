@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { Download, Loader2 } from 'lucide-react';
+import { Download, Loader2, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
@@ -116,12 +116,31 @@ async function exportSyncToExcel(log: unknown) {
   }
 }
 
+async function deleteSyncLog(logId: string) {
+  try {
+    const { deleteSyncLogServerFn } = await import('../lib/server-functions');
+    await deleteSyncLogServerFn({ data: { logId } });
+    // Refresh the sync logs by invalidating the query
+    // This will automatically update the UI
+    window.location.reload();
+  } catch (error) {
+    console.error('Failed to delete sync log:', error);
+    alert('Failed to delete sync log. Please try again.');
+  }
+}
+
 export function SyncHistory() {
   const [expandedLogId, setExpandedLogId] = useState<string | undefined>(undefined);
   const [hasExpandedSelection, setHasExpandedSelection] = useState(false);
   const [changesModalOpen, setChangesModalOpen] = useState(false);
   const [changesModalTitle, setChangesModalTitle] = useState<string>('');
   const [changesModalText, setChangesModalText] = useState<string>('');
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [deleteModalLog, setDeleteModalLog] = useState<{
+    id: string;
+    syncType: string;
+    startedAt: string;
+  } | null>(null);
 
   // Query recent sync logs, refresh more frequently when syncing
   const { data: syncLogs } = useQuery({
@@ -229,18 +248,37 @@ export function SyncHistory() {
                       <span className="text-red-600 truncate max-w-[320px]">
                         {log.errorMessage ?? ''}
                       </span>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-6 w-6 p-0 opacity-60 hover:opacity-100"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          exportSyncToExcel(log);
-                        }}
-                        title="Export to Excel"
-                      >
-                        <Download className="h-3 w-3" />
-                      </Button>
+                      <div className="flex gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 w-6 p-0 opacity-60 hover:opacity-100"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            exportSyncToExcel(log);
+                          }}
+                          title="Export to Excel"
+                        >
+                          <Download className="h-3 w-3" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 w-6 p-0 opacity-60 hover:opacity-100 text-red-500 hover:text-red-600"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setDeleteModalLog({
+                              id: log.id,
+                              syncType: log.syncType,
+                              startedAt: log.startedAt.toISOString(),
+                            });
+                            setDeleteModalOpen(true);
+                          }}
+                          title="Delete sync log"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </div>
                     </button>
                     {isExpanded && (
                       <div className="px-2 pb-2">
@@ -372,6 +410,55 @@ export function SyncHistory() {
           <pre className="mt-2 max-h-[60vh] overflow-auto rounded bg-muted p-3 text-xs">
             {changesModalText}
           </pre>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={deleteModalOpen} onOpenChange={setDeleteModalOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Delete Sync Log</DialogTitle>
+          </DialogHeader>
+          <div className="mt-2">
+            <p className="text-sm text-muted-foreground">
+              Are you sure you want to delete this sync log?
+            </p>
+            {deleteModalLog && (
+              <div className="mt-3 p-3 bg-muted rounded-md">
+                <div className="text-sm">
+                  <div>
+                    <strong>Type:</strong> {deleteModalLog.syncType}
+                  </div>
+                  <div>
+                    <strong>Started:</strong> {new Date(deleteModalLog.startedAt).toLocaleString()}
+                  </div>
+                </div>
+              </div>
+            )}
+            <p className="text-sm text-muted-foreground mt-3">This action cannot be undone.</p>
+          </div>
+          <div className="flex gap-2 justify-end mt-4">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setDeleteModalOpen(false);
+                setDeleteModalLog(null);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={async () => {
+                if (deleteModalLog) {
+                  await deleteSyncLog(deleteModalLog.id);
+                  setDeleteModalOpen(false);
+                  setDeleteModalLog(null);
+                }
+              }}
+            >
+              Delete
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </Card>
