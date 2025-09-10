@@ -199,7 +199,7 @@ export function AddRebalancingGroupModal() {
 
             {/* Selected Accounts Display */}
             {selectedAccounts.size > 0 && (
-              <div className="flex flex-wrap gap-2 p-3 bg-gray-50 rounded-md mb-2">
+              <div className="flex flex-wrap gap-2 py-3 rounded-md mb-2">
                 {Array.from(selectedAccounts).map((accountId) => {
                   const account = accounts.find((a) => a.id === accountId);
                   if (!account) return null;
@@ -210,12 +210,6 @@ export function AddRebalancingGroupModal() {
                         {account.accountNumber && (
                           <span className="text-xs text-gray-500">({account.accountNumber})</span>
                         )}
-                        <Badge
-                          variant={account.dataSource === 'SCHWAB' ? 'default' : 'outline'}
-                          className="text-xs px-1 py-0"
-                        >
-                          {account.dataSource === 'SCHWAB' ? 'Schwab' : 'Manual'}
-                        </Badge>
                       </div>
                       <button
                         type="button"
