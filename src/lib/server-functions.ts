@@ -1,6 +1,8 @@
 import { createServerFn } from '@tanstack/react-start';
 import { getWebRequest } from '@tanstack/react-start/server';
-import { eq, sql } from 'drizzle-orm';
+import { eq, inArray, sql } from 'drizzle-orm';
+import type { drizzle } from 'drizzle-orm/better-sqlite3';
+import * as schema from '../db/schema';
 import { requireAdmin, requireAuth } from './auth-utils';
 import { CASH_TICKER, isAnyCashTicker, isBaseCashTicker, MANUAL_CASH_TICKER } from './constants';
 import type { AccountHoldingsResult } from './db-api';
@@ -103,6 +105,49 @@ export const seedDemoDataServerFn = createServerFn({ method: 'POST' }).handler(a
   };
 });
 
+// Helper function to filter imported tickers to only include those in holdings, indices, or sleeves
+async function filterImportedTickersForPriceSync(
+  db: ReturnType<typeof drizzle>,
+  importedTickers: string[],
+): Promise<string[]> {
+  if (importedTickers.length === 0) {
+    return [];
+  }
+
+  // Get all tickers from holdings
+  const holdingsTickers = await db
+    .select({ ticker: schema.holding.ticker })
+    .from(schema.holding)
+    .where(inArray(schema.holding.ticker, importedTickers));
+
+  // Get all tickers from sleeve members
+  const sleeveTickers = await db
+    .select({ ticker: schema.sleeveMember.ticker })
+    .from(schema.sleeveMember)
+    .where(inArray(schema.sleeveMember.ticker, importedTickers));
+
+  // Get all tickers from index members
+  const indexTickers = await db
+    .select({ ticker: schema.indexMember.securityId })
+    .from(schema.indexMember)
+    .where(inArray(schema.indexMember.securityId, importedTickers));
+
+  // Combine all unique tickers
+  const relevantTickers = new Set<string>();
+
+  for (const row of holdingsTickers) {
+    relevantTickers.add(row.ticker);
+  }
+  for (const row of sleeveTickers) {
+    relevantTickers.add(row.ticker);
+  }
+  for (const row of indexTickers) {
+    relevantTickers.add(row.ticker);
+  }
+
+  return Array.from(relevantTickers);
+}
+
 // Server function to seed securities data - runs ONLY on server
 export const seedSecuritiesDataServerFn = createServerFn({ method: 'POST' }).handler(async () => {
   await requireAuth();
@@ -110,6 +155,7 @@ export const seedSecuritiesDataServerFn = createServerFn({ method: 'POST' }).han
   const { getDatabase } = await import('./db-config');
   const db = getDatabase();
   const { seedSecurities } = await import('./seeds/securities');
+  const { seedSP500Securities } = await import('./seeds/sp500-model-seeder');
 
   // Seed cash securities first
   await seedSecurities(db);
@@ -128,7 +174,12 @@ export const seedSecuritiesDataServerFn = createServerFn({ method: 'POST' }).han
     );
   }
 
-  // Check if Schwab is connected and trigger price sync for newly imported securities
+  // Seed S&P 500 securities after equity sync
+  console.log('🔄 Seeding S&P 500 securities...');
+  await seedSP500Securities(db);
+  console.log('✅ S&P 500 securities seeding completed');
+
+  // Check if Schwab is connected and trigger price sync for newly imported securities that appear in holdings, indices, or sleeves
   let schwabSyncResult = null;
   if (
     equitySyncResult.success &&
@@ -139,14 +190,31 @@ export const seedSecuritiesDataServerFn = createServerFn({ method: 'POST' }).han
     try {
       const schwabStatus = await getSchwabCredentialsStatusServerFn();
       if (schwabStatus?.hasCredentials) {
-        console.log(
-          '🔄 Starting automatic Schwab price sync for newly imported securities:',
+        // Filter tickers to only include those that appear in holdings, indices, or sleeves
+        const relevantTickers = await filterImportedTickersForPriceSync(
+          db,
           equitySyncResult.importedTickers,
         );
-        schwabSyncResult = await syncSchwabPricesServerFn({
-          data: { symbols: equitySyncResult.importedTickers },
-        });
-        console.log('✅ Schwab price sync completed:', schwabSyncResult);
+
+        if (relevantTickers.length > 0) {
+          console.log(
+            '🔄 Starting automatic Schwab price sync for relevant newly imported securities:',
+            relevantTickers,
+          );
+          schwabSyncResult = await syncSchwabPricesServerFn({
+            data: { symbols: relevantTickers },
+          });
+          console.log('✅ Schwab price sync completed:', schwabSyncResult);
+        } else {
+          console.log(
+            'ℹ️ No newly imported securities found in holdings, indices, or sleeves - skipping Schwab price sync',
+          );
+          schwabSyncResult = {
+            success: true,
+            recordsProcessed: 0,
+            message: 'No relevant securities to sync',
+          };
+        }
       }
     } catch (error) {
       console.error('❌ Schwab price sync failed:', error);
@@ -158,13 +226,41 @@ export const seedSecuritiesDataServerFn = createServerFn({ method: 'POST' }).han
     }
   }
 
+  // Run Yahoo sync for held/sleeve securities missing data
+  let yahooSyncResult = null;
+  try {
+    console.log('🔄 Starting Yahoo sync for held/sleeve securities missing data...');
+    yahooSyncResult = await syncYahooFundamentalsServerFn({
+      data: { scope: 'held-sleeve-securities-missing-data' },
+    });
+    console.log('✅ Yahoo sync completed:', yahooSyncResult);
+  } catch (error) {
+    console.error('❌ Yahoo sync failed:', error);
+    yahooSyncResult = {
+      success: false,
+      recordsProcessed: 0,
+      errorMessage: error instanceof Error ? error.message : 'Unknown error occurred',
+    };
+  }
+
   return {
     success: true,
-    message: schwabSyncResult
-      ? `Securities data seeded successfully. Cash securities seeded, ${equitySyncResult.imported} equity securities imported from NASDAQ feeds, and prices updated for ${schwabSyncResult.recordsProcessed} securities via Schwab.`
-      : `Securities data seeded successfully. Cash securities seeded and ${equitySyncResult.imported} equity securities imported from NASDAQ feeds.`,
+    message: (() => {
+      let message = `Securities data seeded successfully. Cash securities seeded, ${equitySyncResult.imported} equity securities imported from NASDAQ feeds, and S&P 500 securities seeded.`;
+
+      if (schwabSyncResult?.recordsProcessed && schwabSyncResult.recordsProcessed > 0) {
+        message += ` Prices updated for ${schwabSyncResult.recordsProcessed} securities via Schwab.`;
+      }
+
+      if (yahooSyncResult?.recordsProcessed && yahooSyncResult.recordsProcessed > 0) {
+        message += ` Yahoo data synced for ${yahooSyncResult.recordsProcessed} securities.`;
+      }
+
+      return message;
+    })(),
     equitySyncResult,
     schwabSyncResult,
+    yahooSyncResult,
   };
 });
 

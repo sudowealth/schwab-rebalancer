@@ -26,11 +26,19 @@ interface SchwabSyncResult {
   errorMessage?: string;
 }
 
+interface YahooSyncResult {
+  success: boolean;
+  recordsProcessed: number;
+  errorMessage?: string;
+  logId?: string;
+}
+
 interface SeedSecuritiesResult {
   success: boolean;
   message: string;
   equitySyncResult: ImportResult;
   schwabSyncResult?: SchwabSyncResult | null;
+  yahooSyncResult?: YahooSyncResult | null;
 }
 
 interface SeedModelsResult {
@@ -172,7 +180,9 @@ export function SeedDataSection() {
             content="Seeds securities data:
 • Cash instruments ($$$, MCASH)
 • All ETFs and stocks via NASDAQ feeds (~13,000 securities)
-• Automatic price sync via Schwab (if connected)"
+• S&P 500 index and securities seeding
+• Schwab price sync for held/index/sleeve securities (if connected)
+• Yahoo sync for held/sleeve securities missing data"
           >
             <Button
               onClick={handleSeedSecurities}
