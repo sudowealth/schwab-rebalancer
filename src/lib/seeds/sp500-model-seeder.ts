@@ -1,4 +1,4 @@
-import { eq, inArray, or } from 'drizzle-orm';
+import { and, eq, inArray, like } from 'drizzle-orm';
 import type { drizzle } from 'drizzle-orm/better-sqlite3';
 import * as schema from '../../db/schema';
 
@@ -287,13 +287,13 @@ export async function seedSleeves(db: ReturnType<typeof drizzle>, userId?: strin
   const { sleeves: dynamicSleeves, sleeveMembers: dynamicMembers } =
     await generateDynamicSleeves(db);
 
-  // Clear existing data for this user
-  const existingSleeves = await db
+  // Clear existing dynamic S&P 500 sleeves for this user (only sleeves created by this seeder)
+  const existingDynamicSleeves = await db
     .select({ id: schema.sleeve.id })
     .from(schema.sleeve)
-    .where(eq(schema.sleeve.userId, targetUserId));
+    .where(and(eq(schema.sleeve.userId, targetUserId), like(schema.sleeve.id, 'sleeve_dynamic_%')));
 
-  const sleeveIdsToDelete = existingSleeves.map((s) => s.id);
+  const sleeveIdsToDelete = existingDynamicSleeves.map((s) => s.id);
 
   if (sleeveIdsToDelete.length > 0) {
     // Delete related data first (foreign key constraints)
@@ -458,16 +458,11 @@ export async function seedModels(db: ReturnType<typeof drizzle>, userId?: string
   const modelData = await getModelData(db, userId);
   const modelIdsToInsert = modelData.map((m) => m.id);
 
-  // Get all models that either belong to this user OR have IDs we want to use
+  // Only delete models that have the same ID as the S&P 500 model we're creating
   const modelsToDelete = await db
     .select({ id: schema.model.id })
     .from(schema.model)
-    .where(
-      or(
-        eq(schema.model.userId, userId || 'demo-user'),
-        inArray(schema.model.id, modelIdsToInsert),
-      ),
-    );
+    .where(inArray(schema.model.id, modelIdsToInsert));
 
   if (modelsToDelete.length > 0) {
     console.log('⚠️  Clearing existing models to avoid ID conflicts...');

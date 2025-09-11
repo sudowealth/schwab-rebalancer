@@ -3,6 +3,7 @@ import { AlertCircle, CheckCircle, Database, Loader2, Package, TrendingUp, X } f
 import { useState } from 'react';
 import {
   seedDemoDataServerFn,
+  seedGlobalEquityModelServerFn,
   seedModelsDataServerFn,
   seedSecuritiesDataServerFn,
 } from '../lib/server-functions';
@@ -52,6 +53,7 @@ export function SeedDataSection() {
   const queryClient = useQueryClient();
   const [securitiesResult, setSecuritiesResult] = useState<SeedSecuritiesResult | null>(null);
   const [modelsResult, setModelsResult] = useState<SeedModelsResult | null>(null);
+  const [globalEquityResult, setGlobalEquityResult] = useState<SeedModelsResult | null>(null);
   const [isSchwabSyncing, setIsSchwabSyncing] = useState(false);
 
   const seedAllMutation = useMutation({
@@ -101,6 +103,21 @@ export function SeedDataSection() {
     },
   });
 
+  const seedGlobalEquityMutation = useMutation({
+    mutationFn: seedGlobalEquityModelServerFn,
+    onSuccess: (data: SeedModelsResult) => {
+      setGlobalEquityResult(data);
+      // Invalidate models query specifically - this will trigger a refetch
+      queryClient.invalidateQueries({ queryKey: ['models'] });
+      // Also clear any cached models data
+      queryClient.removeQueries({ queryKey: ['models'] });
+    },
+    onError: (error) => {
+      console.error('Error seeding Global Equity Model data:', error);
+      setGlobalEquityResult(null);
+    },
+  });
+
   const handleSeedAll = () => {
     seedAllMutation.mutate(undefined);
   };
@@ -111,6 +128,10 @@ export function SeedDataSection() {
 
   const handleSeedModels = () => {
     seedModelsMutation.mutate(undefined);
+  };
+
+  const handleSeedGlobalEquityModel = () => {
+    seedGlobalEquityMutation.mutate(undefined);
   };
 
   return (
@@ -203,8 +224,7 @@ export function SeedDataSection() {
             content="Seeds complete S&P 500 ecosystem:
 • S&P 500 securities + index
 • Industry-based sleeves
-• Equal-weighted allocation model
-• Shows detailed seeding results"
+• Equal-weighted allocation model"
           >
             <Button
               onClick={handleSeedModels}
@@ -215,6 +235,26 @@ export function SeedDataSection() {
               {seedModelsMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               <Package className="mr-2 h-4 w-4" />
               S&P 500 Model
+            </Button>
+          </SimpleTooltip>
+
+          <SimpleTooltip
+            content="Seeds Global Equity Model ecosystem:
+• Global equity ETFs and alternatives
+• Geographic-based sleeves (US/Intl/Emerging)
+• Weighted allocation model (VTI 40%, VXUS 20%, etc.)"
+          >
+            <Button
+              onClick={handleSeedGlobalEquityModel}
+              disabled={seedGlobalEquityMutation.isPending}
+              variant="outline"
+              size="sm"
+            >
+              {seedGlobalEquityMutation.isPending && (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              )}
+              <Package className="mr-2 h-4 w-4" />
+              Global Equity Model
             </Button>
           </SimpleTooltip>
         </div>
@@ -385,15 +425,68 @@ export function SeedDataSection() {
           </div>
         )}
 
+        {/* Global Equity Model Results */}
+        {globalEquityResult && (
+          <div
+            className={`relative w-full rounded-lg border p-4 ${
+              globalEquityResult.success
+                ? 'border-green-200 bg-green-50'
+                : 'border-red-200 bg-red-50'
+            }`}
+          >
+            {/* Close button */}
+            <button
+              type="button"
+              onClick={() => setGlobalEquityResult(null)}
+              className="absolute top-3 right-3 p-1 rounded-full hover:bg-gray-200 transition-colors"
+              aria-label="Close Global Equity model result"
+            >
+              <X className="h-4 w-4 text-gray-500" />
+            </button>
+            <div className="flex items-start gap-3">
+              {globalEquityResult.success ? (
+                <CheckCircle className="h-5 w-5 text-green-600 mt-0.5 flex-shrink-0" />
+              ) : (
+                <AlertCircle className="h-5 w-5 text-red-600 mt-0.5 flex-shrink-0" />
+              )}
+              <div className="flex-1">
+                <div>
+                  <div className="font-medium mb-2">
+                    {globalEquityResult.success
+                      ? 'Global Equity Model seeded successfully!'
+                      : 'Global Equity Model seeding failed'}
+                  </div>
+                  <div className="space-y-1 text-sm">
+                    <div className="text-green-700">
+                      Models created: {globalEquityResult.models.toLocaleString()}
+                    </div>
+                    <div className="text-blue-700">
+                      Sleeves created: {globalEquityResult.sleeves.toLocaleString()}
+                    </div>
+                    <div className="text-purple-700">
+                      Sleeve members: {globalEquityResult.sleeveMembers.toLocaleString()}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Loading State */}
-        {(seedSecuritiesMutation.isPending || isSchwabSyncing || seedModelsMutation.isPending) && (
+        {(seedSecuritiesMutation.isPending ||
+          isSchwabSyncing ||
+          seedModelsMutation.isPending ||
+          seedGlobalEquityMutation.isPending) && (
           <div className="flex items-center gap-2 text-sm text-gray-600">
             <Loader2 className="h-4 w-4 animate-spin" />
             {isSchwabSyncing
               ? 'Updating prices for newly imported securities via Schwab...'
               : seedSecuritiesMutation.isPending
                 ? 'Importing all securities from NASDAQ feeds (~13,000). This may take a few minutes.'
-                : 'Seeding S&P 500 Model ecosystem. This may take a moment...'}
+                : seedModelsMutation.isPending
+                  ? 'Seeding S&P 500 Model ecosystem. This may take a moment...'
+                  : 'Seeding Global Equity Model ecosystem. This may take a moment...'}
           </div>
         )}
       </CardContent>

@@ -177,31 +177,6 @@ export function SyncHistory() {
       <CardContent>
         <div className="rounded-md border bg-white">
           <div className="max-h-[30rem] overflow-auto divide-y">
-            {/* Optimistic in-progress row */}
-            {(() => {
-              // Check if any sync is running by looking for RUNNING status in logs
-              const runningLog = Array.isArray(syncLogs)
-                ? syncLogs.find((l: { status?: string }) => l?.status === 'RUNNING')
-                : null;
-
-              if (runningLog) {
-                return (
-                  <div className="p-2 grid grid-cols-[auto_1fr_auto_auto_1fr_auto] items-center gap-2 text-sm">
-                    <span className="px-2 py-0.5 rounded border text-xs w-[110px]">
-                      {runningLog.syncType}
-                    </span>
-                    <span className="text-muted-foreground">{new Date().toLocaleString()}</span>
-                    <span className="text-amber-600 w-[96px]">RUNNING</span>
-                    <span className="text-muted-foreground w-[96px]">&nbsp;</span>
-                    <span className="justify-self-start">
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    </span>
-                    <div></div>
-                  </div>
-                );
-              }
-              return null;
-            })()}
             {(syncLogs ?? []).length === 0 ? (
               <div className="p-3 text-sm text-muted-foreground">No recent syncs.</div>
             ) : (
@@ -212,7 +187,7 @@ export function SyncHistory() {
                   <div key={log.id} className="text-sm">
                     <button
                       type="button"
-                      className="p-2 grid grid-cols-[auto_1fr_auto_auto_1fr_auto] gap-2 items-center cursor-pointer select-none w-full text-left bg-transparent"
+                      className="p-2 grid grid-cols-[auto_1fr_7rem_8rem_1fr_auto] gap-2 items-center cursor-pointer select-none w-full text-left bg-transparent"
                       onClick={() => {
                         setExpandedLogId((prev) => {
                           const next = prev === log.id ? undefined : log.id;
@@ -228,7 +203,7 @@ export function SyncHistory() {
                         {new Date(log.startedAt).toLocaleString()}
                       </span>
                       <span
-                        className={`${
+                        className={`flex items-center gap-1 w-[112px] ${
                           log.status === 'RUNNING'
                             ? 'text-amber-600'
                             : log.status === 'SUCCESS'
@@ -236,15 +211,29 @@ export function SyncHistory() {
                               : log.status === 'PARTIAL'
                                 ? 'text-amber-700'
                                 : 'text-red-600'
-                        } w-[96px]`}
+                        }`}
                       >
                         {log.status}
+                        {log.status === 'RUNNING' ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : null}
                       </span>
-                      <span className="text-muted-foreground w-[96px]">
-                        {typeof log.recordsProcessed === 'number'
-                          ? `${log.recordsProcessed} items`
-                          : '\u00A0'}
-                      </span>
+                      {(() => {
+                        // Live count while RUNNING based on details' success; otherwise use stored recordsProcessed
+                        const details =
+                          (log as { details?: Array<{ success?: boolean }> }).details || [];
+                        const processedNow =
+                          log.status === 'RUNNING'
+                            ? details.filter((d) => d.success).length
+                            : typeof log.recordsProcessed === 'number'
+                              ? log.recordsProcessed
+                              : undefined;
+                        return (
+                          <span className="text-muted-foreground w-[128px]">
+                            {processedNow !== undefined ? `${processedNow} items` : '\u00A0'}
+                          </span>
+                        );
+                      })()}
                       <span className="text-red-600 truncate max-w-[320px]">
                         {log.errorMessage ?? ''}
                       </span>

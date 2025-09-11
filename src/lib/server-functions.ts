@@ -283,6 +283,29 @@ export const seedModelsDataServerFn = createServerFn({ method: 'POST' }).handler
   };
 });
 
+// Server function to seed Global Equity Model data - runs ONLY on server
+export const seedGlobalEquityModelServerFn = createServerFn({ method: 'POST' }).handler(
+  async () => {
+    const { user } = await requireAuth();
+
+    const { getDatabase } = await import('./db-config');
+    const db = getDatabase();
+    const { seedGlobalEquitySleeves, seedGlobalEquityModelData } = await import(
+      './seeds/global-equity-model-seeder'
+    );
+
+    const sleevesResult = await seedGlobalEquitySleeves(db, user.id);
+    const modelsResult = await seedGlobalEquityModelData(db, user.id);
+
+    return {
+      success: true,
+      models: modelsResult.models,
+      sleeves: sleevesResult.sleeves,
+      sleeveMembers: sleevesResult.sleeveMembers,
+    };
+  },
+);
+
 // Server function to create a new sleeve - runs ONLY on server
 export const createSleeveServerFn = createServerFn({ method: 'POST' })
   .validator(
@@ -1853,9 +1876,9 @@ export const syncYahooFundamentalsServerFn = createServerFn({ method: 'POST' })
         // Combine held and sleeve securities
         const combinedTickers = new Set([...heldTickers, ...sleeveTickers]);
 
-        // Filter for securities that are missing fundamentals data
+        // Filter for securities that are missing fundamentals data or have placeholder price of 1
         const missingDataSecurities = await db
-          .select({ ticker: schema.security.ticker })
+          .select({ ticker: schema.security.ticker, price: schema.security.price })
           .from(schema.security)
           .where(
             and(
@@ -1864,6 +1887,7 @@ export const syncYahooFundamentalsServerFn = createServerFn({ method: 'POST' })
                 isNull(schema.security.sector),
                 isNull(schema.security.industry),
                 isNull(schema.security.marketCap),
+                eq(schema.security.price, 1),
               ),
             ),
           );
@@ -1886,17 +1910,22 @@ export const syncYahooFundamentalsServerFn = createServerFn({ method: 'POST' })
         const sleeveTickers = new Set(sleeveSecurities.map((s) => s.ticker));
         symbols = Array.from(sleeveTickers).filter((t) => !isAnyCashTicker(t));
       } else if (scope === 'missing-fundamentals') {
-        // Securities missing sector, industry, or marketCap
+        // Securities missing sector, industry, marketCap, or have placeholder price of 1
         const rows = await db
           .select({
             ticker: schema.security.ticker,
             sector: schema.security.sector,
             industry: schema.security.industry,
             marketCap: schema.security.marketCap,
+            price: schema.security.price,
           })
           .from(schema.security);
         symbols = rows
-          .filter((r) => (!r.sector || !r.industry || !r.marketCap) && !isAnyCashTicker(r.ticker))
+          .filter(
+            (r) =>
+              (!r.sector || !r.industry || !r.marketCap || r.price === 1) &&
+              !isAnyCashTicker(r.ticker),
+          )
           .map((r) => r.ticker);
       } else if (scope === 'missing-fundamentals-holdings') {
         // Held securities that are missing sector, industry, or marketCap
@@ -1909,11 +1938,16 @@ export const syncYahooFundamentalsServerFn = createServerFn({ method: 'POST' })
             sector: schema.security.sector,
             industry: schema.security.industry,
             marketCap: schema.security.marketCap,
+            price: schema.security.price,
           })
           .from(schema.security);
         symbols = rows
           .filter((r) => held.has(r.ticker))
-          .filter((r) => (!r.sector || !r.industry || !r.marketCap) && !isAnyCashTicker(r.ticker))
+          .filter(
+            (r) =>
+              (!r.sector || !r.industry || !r.marketCap || r.price === 1) &&
+              !isAnyCashTicker(r.ticker),
+          )
           .map((r) => r.ticker);
       } else if (scope === 'missing-fundamentals-sleeves') {
         // Get securities used in sleeves that are missing fundamentals, plus model securities missing fundamentals (excluding ETFs)
@@ -1944,20 +1978,25 @@ export const syncYahooFundamentalsServerFn = createServerFn({ method: 'POST' })
             sector: schema.security.sector,
             industry: schema.security.industry,
             marketCap: schema.security.marketCap,
+            price: schema.security.price,
             assetTypeSub: schema.security.assetTypeSub,
           })
           .from(schema.security);
 
         const sleeveSymbols = rows
           .filter((r) => sleeveTickers.has(r.ticker))
-          .filter((r) => (!r.sector || !r.industry || !r.marketCap) && !isAnyCashTicker(r.ticker))
+          .filter(
+            (r) =>
+              (!r.sector || !r.industry || !r.marketCap || r.price === 1) &&
+              !isAnyCashTicker(r.ticker),
+          )
           .map((r) => r.ticker);
 
         const modelSymbols = rows
           .filter((r) => modelTickers.has(r.ticker))
           .filter(
             (r) =>
-              (!r.sector || !r.industry || !r.marketCap) &&
+              (!r.sector || !r.industry || !r.marketCap || r.price === 1) &&
               r.assetTypeSub !== 'ETF' &&
               !isAnyCashTicker(r.ticker),
           )
