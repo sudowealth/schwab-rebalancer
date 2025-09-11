@@ -107,12 +107,6 @@ function RootDocument({ children }: { children: React.ReactNode }) {
                     >
                       Sleeves
                     </Link>
-                    <Link
-                      to="/planning"
-                      className={cn(navigationMenuTriggerStyle(), 'no-underline')}
-                    >
-                      Planning
-                    </Link>
 
                     {/* Settings Dropdown */}
                     <div className="relative">

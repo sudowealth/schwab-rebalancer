@@ -17,7 +17,6 @@ export function MobileNavigation() {
     { to: '/models', label: 'Models' },
     { to: '/rebalancing-groups', label: 'Rebalancing Groups' },
     { to: '/sleeves', label: 'Sleeves' },
-    { to: '/planning', label: 'Planning' },
   ];
 
   const handleLinkClick = () => {
