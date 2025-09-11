@@ -21,7 +21,10 @@ export function SeedDataSection() {
     mutationFn: seedDemoDataServerFn,
     onSuccess: (data) => {
       setLastResult(data.summary.message);
+      // Invalidate all queries including models
       queryClient.invalidateQueries();
+      // Clear cached models data specifically
+      queryClient.removeQueries({ queryKey: ['models'] });
     },
     onError: (error) => {
       setLastResult(`Error seeding all data: ${error.message}`);
@@ -54,7 +57,10 @@ export function SeedDataSection() {
     mutationFn: seedModelsDataServerFn,
     onSuccess: (data) => {
       setLastResult(data.message);
-      queryClient.invalidateQueries();
+      // Invalidate models query specifically - this will trigger a refetch
+      queryClient.invalidateQueries({ queryKey: ['models'] });
+      // Also clear any cached models data
+      queryClient.removeQueries({ queryKey: ['models'] });
     },
     onError: (error) => {
       setLastResult(`Error seeding models data: ${error.message}`);
@@ -100,17 +106,48 @@ export function SeedDataSection() {
           Demo Data
         </CardTitle>
         <CardDescription>
-          Populate the database with demo data for development and testing purposes.
+          Populate the database with demo data for development and testing purposes. ETF and stock
+          data comes from{' '}
+          <a
+            href="https://nasdaqtrader.com/dynamic/symdir/nasdaqlisted.txt"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-600 hover:underline"
+          >
+            NASDAQ
+          </a>{' '}
+          (~3,000 securities) and{' '}
+          <a
+            href="https://nasdaqtrader.com/dynamic/symdir/otherlisted.txt"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-600 hover:underline"
+          >
+            other exchanges
+          </a>{' '}
+          (~10,000 securities) via Nasdaq Trader while the S&P 500 constituents data comes from{' '}
+          <a
+            href="https://raw.githubusercontent.com/datasets/s-and-p-500-companies/refs/heads/main/data/constituents.csv"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-600 hover:underline"
+          >
+            Dataset's GitHub repo
+          </a>
+          .
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex flex-wrap gap-3">
           <SimpleTooltip
-            content="Seeds all tables:
-• Securities & Indices
-• Accounts & Holdings
+            content="Seeds all tables in order:
+• Cash instruments + S&P 500 securities
+• All ETFs and stocks via NASDAQ feeds (~13,000 securities)
+• Market indices
+• Accounts & holdings
 • Transactions
-• Sleeves & Models"
+• Industry sleeves + allocation models
+• Rebalancing groups"
           >
             <Button
               onClick={handleSeedAll}
@@ -144,9 +181,9 @@ export function SeedDataSection() {
           </SimpleTooltip>
 
           <SimpleTooltip
-            content="Seeds market data tables:
-• Securities (S&P 500)
-• Market Indices"
+            content="Seeds securities data:
+• Cash instruments ($$$, MCASH)
+• All ETFs and stocks via NASDAQ feeds (~13,000 securities)"
           >
             <Button
               onClick={handleSeedSecurities}
@@ -163,9 +200,10 @@ export function SeedDataSection() {
           </SimpleTooltip>
 
           <SimpleTooltip
-            content="Seeds portfolio structure tables:
-• Sleeves (security groups)
-• Models (allocation models)"
+            content="Seeds complete S&P 500 ecosystem:
+• S&P 500 securities + index
+• Industry-based sleeves
+• Equal-weighted allocation model"
           >
             <Button
               onClick={handleSeedModels}
@@ -175,7 +213,7 @@ export function SeedDataSection() {
             >
               {seedModelsMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               <Package className="mr-2 h-4 w-4" />
-              Models
+              S&P 500 Model
             </Button>
           </SimpleTooltip>
 

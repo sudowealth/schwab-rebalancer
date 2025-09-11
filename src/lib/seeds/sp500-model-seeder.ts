@@ -1,0 +1,519 @@
+import { eq, inArray, or } from 'drizzle-orm';
+import type { drizzle } from 'drizzle-orm/better-sqlite3';
+import * as schema from '../../db/schema';
+
+// Combined function to seed S&P 500 securities, sleeves, and models
+export async function seedSp500Model(db: ReturnType<typeof drizzle>, userId?: string) {
+  console.log('🚀 Starting complete S&P 500 model seeding process...');
+
+  // Seed S&P 500 securities first (needed for sleeves)
+  await seedSP500Securities(db);
+
+  // Seed sleeves (they're needed by models)
+  await seedSleeves(db, userId);
+
+  // Then seed models (which depend on sleeves)
+  await seedModels(db, userId);
+
+  console.log('🎉 Complete S&P 500 model seeding completed successfully!');
+}
+
+// Function to parse CSV line properly handling quoted fields
+function parseCSVLine(line: string): string[] {
+  const fields: string[] = [];
+  let current = '';
+  let inQuotes = false;
+
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+    const nextChar = line[i + 1];
+
+    if (char === '"') {
+      if (inQuotes && nextChar === '"') {
+        // Escaped quote
+        current += '"';
+        i++; // Skip next quote
+      } else {
+        // Toggle quote state
+        inQuotes = !inQuotes;
+      }
+    } else if (char === ',' && !inQuotes) {
+      // Field separator
+      fields.push(current.trim());
+      current = '';
+    } else {
+      current += char;
+    }
+  }
+
+  // Add the last field
+  fields.push(current.trim());
+
+  return fields;
+}
+
+// Function to fetch S&P 500 data from GitHub CSV
+async function fetchSP500Data(): Promise<
+  Array<{
+    ticker: string;
+    name: string;
+    sector: string;
+    industry: string;
+  }>
+> {
+  console.log('📡 Fetching S&P 500 data from GitHub...');
+
+  const response = await fetch(
+    'https://raw.githubusercontent.com/datasets/s-and-p-500-companies/refs/heads/main/data/constituents.csv',
+  );
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch S&P 500 data: ${response.status} ${response.statusText}`);
+  }
+
+  const csvText = await response.text();
+  const lines = csvText.split('\n').filter((line) => line.trim());
+
+  // Skip header row
+  const dataRows = lines.slice(1);
+
+  const securities = dataRows
+    .map((line) => {
+      const fields = parseCSVLine(line);
+
+      if (fields.length < 8) {
+        console.warn(`Skipping malformed CSV line: ${line}`);
+        return null;
+      }
+
+      const [symbol, security, gicsSector, gicsSubIndustry] = fields;
+
+      return {
+        ticker: symbol,
+        name: security,
+        sector: gicsSector,
+        industry: gicsSubIndustry,
+      };
+    })
+    .filter((item): item is NonNullable<typeof item> => item !== null);
+
+  console.log(`✅ Fetched ${securities.length} securities from GitHub CSV`);
+  return securities;
+}
+
+// Generate data for all S&P 500 companies
+async function generateSP500SecuritiesData(): Promise<
+  Array<{
+    ticker: string;
+    name: string;
+    price: number;
+    industry: string | null;
+    sector: string | null;
+  }>
+> {
+  const sp500Data = await fetchSP500Data();
+
+  return sp500Data.map((company) => ({
+    ticker: company.ticker,
+    name: company.name,
+    price: 1, // Placeholder price
+    industry: company.industry || null,
+    sector: company.sector || null,
+  }));
+}
+
+// Seed S&P 500 securities and index data
+export async function seedSP500Securities(db: ReturnType<typeof drizzle>) {
+  console.log('📊 Seeding S&P 500 securities and index...');
+
+  const now = Date.now();
+
+  // Generate S&P 500 securities data from GitHub CSV
+  const SP500_SECURITIES_DATA = await generateSP500SecuritiesData();
+
+  // Insert S&P 500 securities
+  for (const security of SP500_SECURITIES_DATA) {
+    await db.insert(schema.security).values({
+      ticker: security.ticker,
+      name: security.name,
+      price: security.price,
+      industry: security.industry,
+      sector: security.sector,
+      createdAt: now,
+      updatedAt: now,
+    });
+  }
+
+  console.log(`✅ Seeded ${SP500_SECURITIES_DATA.length} S&P 500 securities`);
+
+  // Seed S&P 500 index and members
+  await db.insert(schema.index).values({
+    id: 'sp500',
+    name: 'S&P 500',
+    createdAt: now,
+    updatedAt: now,
+  });
+
+  // Insert all S&P 500 companies as index members
+  for (const security of SP500_SECURITIES_DATA) {
+    await db.insert(schema.indexMember).values({
+      id: `sp500-${security.ticker}`,
+      indexId: 'sp500',
+      securityId: security.ticker,
+      createdAt: now,
+      updatedAt: now,
+    });
+  }
+
+  console.log(`✅ Seeded SP500 index with ${SP500_SECURITIES_DATA.length} members`);
+}
+
+const createdAt = Date.now();
+
+// Function to generate sleeves dynamically from S&P 500 data
+export async function generateDynamicSleeves(db: ReturnType<typeof drizzle>) {
+  console.log('📊 Generating sleeves from S&P 500 data...');
+
+  // Get all S&P 500 securities with industry and market cap data
+  const sp500Securities = await db
+    .select({
+      ticker: schema.security.ticker,
+      industry: schema.security.industry,
+      marketCap: schema.security.marketCap,
+    })
+    .from(schema.security)
+    .innerJoin(schema.indexMember, eq(schema.security.ticker, schema.indexMember.securityId))
+    .innerJoin(schema.index, eq(schema.indexMember.indexId, schema.index.id))
+    .where(eq(schema.index.name, 'S&P 500'))
+    .orderBy(schema.security.ticker);
+
+  // Filter out securities without industry data (market cap is optional)
+  const validSecurities = sp500Securities.filter(
+    (sec) => sec.industry && sec.industry.trim().length > 0,
+  );
+
+  console.log(`✅ Found ${validSecurities.length} S&P 500 securities with industry data`);
+
+  // Group securities by industry
+  const industryGroups = new Map<string, Array<{ ticker: string; marketCap: number | null }>>();
+
+  for (const security of validSecurities) {
+    const industry = security.industry;
+    const marketCap = security.marketCap;
+
+    // Type guard to ensure we have industry data
+    if (!industry || industry.trim().length === 0) {
+      continue;
+    }
+
+    if (!industryGroups.has(industry)) {
+      industryGroups.set(industry, []);
+    }
+    const industrySecurities = industryGroups.get(industry);
+    if (industrySecurities) {
+      industrySecurities.push({
+        ticker: security.ticker,
+        marketCap: marketCap,
+      });
+    }
+  }
+
+  console.log(`✅ Grouped into ${industryGroups.size} unique industries`);
+
+  // Generate sleeves data
+  const sleeves: Array<{ id: string; name: string }> = [];
+  const sleeveMembers: Array<{ id: string; sleeveId: string; ticker: string; rank: number }> = [];
+
+  let sleeveIndex = 1;
+  let memberIndex = 1;
+
+  for (const [industry, securities] of industryGroups) {
+    // Sort securities: those with market cap first (by market cap descending),
+    // then those without market cap (alphabetically by ticker)
+    securities.sort((a, b) => {
+      // Both have market cap: sort by market cap descending
+      if (a.marketCap !== null && b.marketCap !== null) {
+        return b.marketCap - a.marketCap;
+      }
+      // Only a has market cap: a comes first
+      if (a.marketCap !== null && b.marketCap === null) {
+        return -1;
+      }
+      // Only b has market cap: b comes first
+      if (a.marketCap === null && b.marketCap !== null) {
+        return 1;
+      }
+      // Neither has market cap: sort alphabetically by ticker
+      return a.ticker.localeCompare(b.ticker);
+    });
+
+    // Create sleeve for this industry
+    const sleeveId = `sleeve_dynamic_${Date.now()}_${sleeveIndex}`;
+    const sleeveName = `${industry}`;
+
+    sleeves.push({
+      id: sleeveId,
+      name: sleeveName,
+    });
+
+    // Add securities to sleeve with ranks (1 = highest priority)
+    for (let i = 0; i < securities.length; i++) {
+      sleeveMembers.push({
+        id: `member_dynamic_${Date.now()}_${memberIndex}`,
+        sleeveId,
+        ticker: securities[i].ticker,
+        rank: i + 1, // Rank starts at 1 (highest priority)
+      });
+      memberIndex++;
+    }
+
+    sleeveIndex++;
+  }
+
+  console.log(`✅ Generated ${sleeves.length} sleeves with ${sleeveMembers.length} total members`);
+
+  return { sleeves, sleeveMembers };
+}
+
+export async function seedSleeves(db: ReturnType<typeof drizzle>, userId?: string) {
+  console.log('📂 Seeding sleeves...');
+
+  const now = Date.now();
+
+  const targetUserId = userId || 'demo-user';
+  console.log(`✅ Using user ID for sleeves: ${targetUserId}`);
+
+  // Generate dynamic sleeves from S&P 500 data
+  const { sleeves: dynamicSleeves, sleeveMembers: dynamicMembers } =
+    await generateDynamicSleeves(db);
+
+  // Clear existing data for this user
+  const existingSleeves = await db
+    .select({ id: schema.sleeve.id })
+    .from(schema.sleeve)
+    .where(eq(schema.sleeve.userId, targetUserId));
+
+  const sleeveIdsToDelete = existingSleeves.map((s) => s.id);
+
+  if (sleeveIdsToDelete.length > 0) {
+    // Delete related data first (foreign key constraints)
+    await db
+      .delete(schema.restrictedSecurity)
+      .where(inArray(schema.restrictedSecurity.sleeveId, sleeveIdsToDelete));
+    await db
+      .delete(schema.sleeveMember)
+      .where(inArray(schema.sleeveMember.sleeveId, sleeveIdsToDelete));
+    await db.delete(schema.sleeve).where(inArray(schema.sleeve.id, sleeveIdsToDelete));
+  }
+
+  console.log('✅ Cleared existing sleeve data');
+
+  // Insert sleeves
+  for (const sleeve of dynamicSleeves) {
+    await db.insert(schema.sleeve).values({
+      id: sleeve.id,
+      userId: targetUserId, // Use target user ID
+      name: sleeve.name,
+      createdAt: now,
+      updatedAt: now,
+    });
+  }
+
+  console.log('✅ Inserted sleeves');
+
+  // Insert sleeve members
+  for (const member of dynamicMembers) {
+    try {
+      await db.insert(schema.sleeveMember).values({
+        id: member.id,
+        sleeveId: member.sleeveId,
+        ticker: member.ticker,
+        rank: member.rank,
+        createdAt: now,
+        updatedAt: now,
+      });
+    } catch (error) {
+      console.error(`❌ Failed to insert sleeve member ${member.ticker}:`, error);
+    }
+  }
+
+  console.log('✅ Inserted sleeve members');
+
+  console.log(
+    `✅ Seeded ${dynamicSleeves.length} sleeves, ${dynamicMembers.length} sleeve members from S&P 500 data`,
+  );
+
+  // Clear cache for this user to ensure fresh data
+  const { clearCache } = await import('../db-api');
+  clearCache(`sleeves-${userId || 'demo-user'}`);
+
+  return {
+    sleeves: dynamicSleeves.length,
+    sleeveMembers: dynamicMembers.length,
+  };
+}
+
+export const getModelData = async (db: ReturnType<typeof drizzle>, userId?: string) => {
+  // Determine the correct user ID to use
+  let actualUserId = userId || 'demo-user';
+
+  if (actualUserId === 'demo-user') {
+    const users = await db
+      .select({ id: schema.user.id })
+      .from(schema.user)
+      .where(eq(schema.user.email, 'd@d.com'))
+      .limit(1);
+
+    if (users.length > 0) {
+      actualUserId = users[0].id;
+      console.log(`Using real user ID for model: ${actualUserId}`);
+    }
+  }
+
+  return [
+    {
+      id: 'model_sp500_index_replication',
+      userId: actualUserId,
+      name: 'S&P 500 Index Replication',
+      description: null,
+      isActive: true,
+      createdAt,
+      updatedAt: createdAt,
+    },
+  ];
+};
+
+// Function to generate model members dynamically based on existing sleeves
+export async function generateDynamicModelMembers(
+  db: ReturnType<typeof drizzle>,
+  modelId: string,
+  userId?: string,
+) {
+  console.log('📊 Generating model members from existing sleeves...');
+
+  // Get all sleeves from the database for the specified user
+  const targetUserId = userId || 'demo-user';
+
+  // If no userId provided, check if there's a real user in the database
+  let actualUserId = targetUserId;
+  if (targetUserId === 'demo-user') {
+    const users = await db
+      .select({ id: schema.user.id })
+      .from(schema.user)
+      .where(eq(schema.user.email, 'd@d.com'))
+      .limit(1);
+
+    if (users.length > 0) {
+      actualUserId = users[0].id;
+      console.log(`Using real user ID: ${actualUserId}`);
+    }
+  }
+
+  const sleeves = await db
+    .select({
+      id: schema.sleeve.id,
+      name: schema.sleeve.name,
+    })
+    .from(schema.sleeve)
+    .where(eq(schema.sleeve.userId, actualUserId));
+
+  console.log(`✅ Found ${sleeves.length} sleeves to add to model for user ${targetUserId}`);
+
+  // Calculate equal weight for each sleeve (ensure total is exactly 100%)
+  if (sleeves.length === 0) {
+    console.log('❌ No sleeves found for user, cannot create model members');
+    return [];
+  }
+
+  // Calculate precise weights that sum to exactly 1000 (representing 100.0%)
+  const totalWeight = 10000; // Represent 100% as 1000 (for 0.1% precision)
+  const numSleeves = sleeves.length;
+  const baseWeight = Math.floor(totalWeight / numSleeves); // Base weight per sleeve
+  const remainder = totalWeight % numSleeves; // Distribute remainder
+
+  const modelMembers = sleeves.map((sleeve, index) => {
+    // Add 1 to first 'remainder' sleeves to distribute remainder evenly
+    const weight = index < remainder ? baseWeight + 1 : baseWeight;
+
+    return {
+      id: `model_member_dynamic_${Date.now()}_${index}`,
+      modelId,
+      sleeveId: sleeve.id,
+      targetWeight: weight,
+      isActive: true,
+      createdAt,
+      updatedAt: createdAt,
+    };
+  });
+
+  console.log(`✅ Generated ${modelMembers.length} model members with equal weights (total: 100%)`);
+
+  return modelMembers;
+}
+
+export async function seedModels(db: ReturnType<typeof drizzle>, userId?: string) {
+  console.log('🌱 Starting model seeding...');
+
+  // Get model data to insert
+  const modelData = await getModelData(db, userId);
+  const modelIdsToInsert = modelData.map((m) => m.id);
+
+  // Get all models that either belong to this user OR have IDs we want to use
+  const modelsToDelete = await db
+    .select({ id: schema.model.id })
+    .from(schema.model)
+    .where(
+      or(
+        eq(schema.model.userId, userId || 'demo-user'),
+        inArray(schema.model.id, modelIdsToInsert),
+      ),
+    );
+
+  if (modelsToDelete.length > 0) {
+    console.log('⚠️  Clearing existing models to avoid ID conflicts...');
+
+    const modelIdsToDelete = modelsToDelete.map((m) => m.id);
+
+    // Delete model assignments first
+    await db
+      .delete(schema.modelGroupAssignment)
+      .where(inArray(schema.modelGroupAssignment.modelId, modelIdsToDelete));
+
+    // Delete existing model members (due to foreign key constraints)
+    await db
+      .delete(schema.modelMember)
+      .where(inArray(schema.modelMember.modelId, modelIdsToDelete));
+
+    // Then delete models
+    await db.delete(schema.model).where(inArray(schema.model.id, modelIdsToDelete));
+
+    console.log('✅ Cleared existing model data');
+  }
+
+  // Insert models
+  for (const model of modelData) {
+    await db.insert(schema.model).values(model);
+  }
+
+  // Generate and insert model members dynamically
+  const modelMembersData = await generateDynamicModelMembers(
+    db,
+    'model_sp500_index_replication',
+    userId,
+  );
+
+  for (const member of modelMembersData) {
+    await db.insert(schema.modelMember).values(member);
+  }
+
+  console.log(`✅ Seeded ${modelData.length} models, ${modelMembersData.length} model members`);
+
+  // Clear cache for this user to ensure fresh data
+  const { clearCache } = await import('../db-api');
+  clearCache(`models-${userId || 'demo-user'}`);
+
+  return {
+    models: modelData.length,
+    modelMembers: modelMembersData.length,
+  };
+}

@@ -1,4 +1,4 @@
-import { useRouter } from '@tanstack/react-router';
+import { useQueryClient } from '@tanstack/react-query';
 import { FileDown, Plus, Upload, X } from 'lucide-react';
 import { useEffect, useId, useState } from 'react';
 import { Button } from '../../components/ui/button';
@@ -65,7 +65,7 @@ export function AddModelModal({
   const [csvData, setCsvData] = useState('');
   const [updateExisting, setUpdateExisting] = useState(false);
   const [showAddSleeveModal, setShowAddSleeveModal] = useState(false);
-  const router = useRouter();
+  const queryClient = useQueryClient();
   const modelNameId = `${useId()}-model-name`;
   const descriptionId = `${useId()}-description`;
   const updateExistingId = `${useId()}-update-existing`;
@@ -225,7 +225,9 @@ export function AddModelModal({
       resetForm();
       setIsOpen(false);
       onModelCreated?.();
-      router.invalidate();
+
+      // Invalidate models query to refresh the UI immediately
+      queryClient.invalidateQueries({ queryKey: ['models'] });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
@@ -356,7 +358,9 @@ export function AddModelModal({
       resetForm();
       setIsOpen(false);
       onModelCreated?.();
-      router.invalidate();
+
+      // Invalidate models query to refresh the UI immediately
+      queryClient.invalidateQueries({ queryKey: ['models'] });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {

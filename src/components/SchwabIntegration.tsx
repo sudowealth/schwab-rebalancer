@@ -3,11 +3,9 @@ import {
   AlertCircle,
   CheckCircle,
   ChevronDown,
-  Download,
   Landmark,
   Loader2,
   RefreshCw,
-  Upload,
   X,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';

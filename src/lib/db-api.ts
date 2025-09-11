@@ -145,8 +145,11 @@ export const getSnP500Data = async () => {
       async () => {
         const securities = await db.select().from(schema.security);
 
+        // Return empty array if no securities found (e.g., after truncation)
         if (!securities || securities.length === 0) {
-          throw new DatabaseError('No securities found in database');
+          const emptyData: SP500Stock[] = [];
+          setCache(cacheKey, emptyData);
+          return emptyData;
         }
 
         const sp500Data: SP500Stock[] = securities.map((security) => ({

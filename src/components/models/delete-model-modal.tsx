@@ -1,4 +1,4 @@
-import { useRouter } from '@tanstack/react-router';
+import { useQueryClient } from '@tanstack/react-query';
 import { AlertTriangle } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '../../components/ui/button';
@@ -23,7 +23,7 @@ interface DeleteModelModalProps {
 export function DeleteModelModal({ model, open, onOpenChange, onClose }: DeleteModelModalProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
-  const router = useRouter();
+  const queryClient = useQueryClient();
 
   const handleDelete = async () => {
     if (!model) {
@@ -41,8 +41,10 @@ export function DeleteModelModal({ model, open, onOpenChange, onClose }: DeleteM
         },
       });
 
+      // Invalidate models query to refresh the UI immediately
+      queryClient.invalidateQueries({ queryKey: ['models'] });
+
       onClose();
-      router.invalidate(); // Refresh the data
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete model');
     } finally {

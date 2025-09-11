@@ -4,10 +4,9 @@ import { sql } from 'drizzle-orm';
 import { cleanupDatabase, getDatabase } from '../db-config';
 import { seedAccounts } from './accounts';
 import { seedHoldings } from './holdings';
-import { seedModels } from './models';
 import { seedRebalancingGroups } from './rebalancing-groups';
-import { seedIndices, seedSecurities } from './securities';
-import { seedSleeves } from './sleeves';
+import { seedSecurities } from './securities';
+import { seedModels, seedSleeves, seedSP500Securities } from './sp500-model-seeder';
 import { seedTransactions } from './transactions';
 
 // Initialize database connection to D1 local database
@@ -23,8 +22,8 @@ export async function seedDatabase(userId?: string) {
     await db.run(sql`PRAGMA foreign_keys = OFF`);
 
     // Seed data in correct order (due to foreign key constraints)
-    await seedSecurities(db);
-    await seedIndices(db);
+    await seedSP500Securities(db); // S&P 500 securities and index first
+    await seedSecurities(db); // Then ETFs and cash
     await seedAccounts(db, userId);
     await seedSleeves(db, userId);
     await seedModels(db, userId);

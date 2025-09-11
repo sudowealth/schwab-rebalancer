@@ -196,7 +196,7 @@ export function PositionsTable({
   });
 
   if (!positions || positions.length === 0) {
-    return <p className="text-gray-500">No positions found. Consider seeding demo data.</p>;
+    return <p className="text-gray-500">No positions found.</p>;
   }
 
   return (

@@ -1,5 +1,6 @@
 import { createServerFn } from '@tanstack/react-start';
-import { eq } from 'drizzle-orm';
+import { getWebRequest } from '@tanstack/react-start/server';
+import { eq, sql } from 'drizzle-orm';
 import { requireAdmin, requireAuth } from './auth-utils';
 import { CASH_TICKER, isAnyCashTicker, isBaseCashTicker, MANUAL_CASH_TICKER } from './constants';
 import type { AccountHoldingsResult } from './db-api';
@@ -89,8 +90,7 @@ export const seedDemoDataServerFn = createServerFn({ method: 'POST' }).handler(a
 
   const { seedDatabase } = await import('./seeds/main');
   await seedDatabase(user.id);
-  const { cleanupDatabase } = await import('./db-config');
-  cleanupDatabase();
+
   return {
     success: true,
     summary: {
@@ -118,9 +118,6 @@ export const seedAccountsDataServerFn = createServerFn({ method: 'POST' }).handl
   await seedHoldings(db, user.id);
   await seedTransactions(db, user.id);
 
-  const { cleanupDatabase } = await import('./db-config');
-  cleanupDatabase();
-
   return {
     success: true,
     message: 'Accounts data seeded successfully',
@@ -133,17 +130,28 @@ export const seedSecuritiesDataServerFn = createServerFn({ method: 'POST' }).han
 
   const { getDatabase } = await import('./db-config');
   const db = getDatabase();
-  const { seedSecurities, seedIndices } = await import('./seeds/securities');
+  const { seedSecurities } = await import('./seeds/securities');
 
+  // Seed cash securities first
   await seedSecurities(db);
-  await seedIndices(db);
 
-  const { cleanupDatabase } = await import('./db-config');
-  cleanupDatabase();
+  // Then run the equity securities sync to populate ETFs and stocks
+  console.log('🔄 Running equity securities sync...');
+  const equitySyncResult = await importNasdaqSecuritiesServerFn({
+    data: { feedType: 'all', skipExisting: true },
+  });
+
+  if (!equitySyncResult.success) {
+    console.warn('⚠️  Equity securities sync completed with warnings:', equitySyncResult.errors);
+  } else {
+    console.log(
+      `✅ Equity securities sync completed: ${equitySyncResult.imported} imported, ${equitySyncResult.skipped} skipped`,
+    );
+  }
 
   return {
     success: true,
-    message: 'Securities data seeded successfully',
+    message: `Securities data seeded successfully. Cash securities seeded and ${equitySyncResult.imported} equity securities imported from NASDAQ feeds.`,
   };
 });
 
@@ -153,39 +161,34 @@ export const seedModelsDataServerFn = createServerFn({ method: 'POST' }).handler
 
   const { getDatabase } = await import('./db-config');
   const db = getDatabase();
-  const { seedSleeves } = await import('./seeds/sleeves');
-  const { seedModels } = await import('./seeds/models');
+  const { seedSleeves, seedModels } = await import('./seeds/sp500-model-seeder');
 
-  await seedSleeves(db, user.id);
-  await seedModels(db, user.id);
-
-  const { cleanupDatabase } = await import('./db-config');
-  cleanupDatabase();
+  const sleevesResult = await seedSleeves(db, user.id);
+  const modelsResult = await seedModels(db, user.id);
 
   return {
     success: true,
-    message: 'Models data seeded successfully',
+    message: `S&P 500 model data seeded successfully: ${modelsResult.models} models, ${sleevesResult.sleeves} sleeves, and ${sleevesResult.sleeveMembers} sleeve members seeded successfully`,
   };
 });
 
 // Server function to seed rebalancing groups data - runs ONLY on server
-export const seedRebalancingGroupsDataServerFn = createServerFn({ method: 'POST' }).handler(async () => {
-  const { user } = await requireAuth();
+export const seedRebalancingGroupsDataServerFn = createServerFn({ method: 'POST' }).handler(
+  async () => {
+    const { user } = await requireAuth();
 
-  const { getDatabase } = await import('./db-config');
-  const db = getDatabase();
-  const { seedRebalancingGroups } = await import('./seeds/rebalancing-groups');
+    const { getDatabase } = await import('./db-config');
+    const db = getDatabase();
+    const { seedRebalancingGroups } = await import('./seeds/rebalancing-groups');
 
-  await seedRebalancingGroups(db, user.id);
+    await seedRebalancingGroups(db, user.id);
 
-  const { cleanupDatabase } = await import('./db-config');
-  cleanupDatabase();
-
-  return {
-    success: true,
-    message: 'Rebalancing groups data seeded successfully',
-  };
-});
+    return {
+      success: true,
+      message: 'Rebalancing groups data seeded successfully',
+    };
+  },
+);
 
 // Server function to create a new sleeve - runs ONLY on server
 export const createSleeveServerFn = createServerFn({ method: 'POST' })
@@ -1583,9 +1586,7 @@ export const revokeSchwabCredentialsServerFn = createServerFn({
 
 // Server function to delete a sync log
 export const deleteSyncLogServerFn = createServerFn({ method: 'POST' })
-  .validator(
-    (data: { logId: string }) => data,
-  )
+  .validator((data: { logId: string }) => data)
   .handler(async ({ data }) => {
     const { logId } = data;
     try {
@@ -1612,9 +1613,7 @@ export const deleteSyncLogServerFn = createServerFn({ method: 'POST' })
       }
 
       // Delete the log (syncLogDetail will be deleted automatically due to CASCADE)
-      await db
-        .delete(schema.syncLog)
-        .where(eq(schema.syncLog.id, logId));
+      await db.delete(schema.syncLog).where(eq(schema.syncLog.id, logId));
 
       console.log('🗑️ [ServerFn] Deleted sync log:', logId);
       return { success: true, logId };
@@ -3189,5 +3188,96 @@ export const importNasdaqSecuritiesServerFn = createServerFn({
     } catch (error) {
       logError(error, 'Failed to import Nasdaq securities');
       throw new DatabaseError('Failed to import Nasdaq securities', error);
+    }
+  });
+
+export const truncateDataServerFn = createServerFn({ method: 'POST' })
+  .validator((data: { confirmText?: string }) => data)
+  .handler(async ({ data }) => {
+    // Only admins can truncate data
+    const { user } = await requireAdmin();
+
+    // Safety check - require confirmation text
+    if (data.confirmText !== 'TRUNCATE_ALL_DATA') {
+      throw new Error('Confirmation text required: "TRUNCATE_ALL_DATA"');
+    }
+
+    const { getDatabase } = await import('./db-config');
+    const db = getDatabase();
+    const schema = await import('../db/schema');
+
+    try {
+      // Get request info for audit logging before transaction
+      const request = getWebRequest();
+
+      // Start a transaction to ensure all operations succeed or fail together
+      db.transaction((tx) => {
+        // Tables to truncate (all financial data and user-created content)
+        // PRESERVE: user, session, auth_account, verification, audit_log (system-level)
+
+        const tablesToTruncate = [
+          'security',
+          'account',
+          'sleeve',
+          'sleeve_member',
+          'holding',
+          'transaction',
+          'restricted_security',
+          'index',
+          'index_member',
+          'model',
+          'model_group_assignment',
+          'model_member',
+          'rebalancing_group',
+          'rebalancing_group_member',
+          'schwab_credentials',
+          'sync_log',
+          'sync_log_detail',
+          'schwab_holding',
+          'schwab_account',
+          'schwab_security',
+          'schwab_transaction',
+          'trade_order',
+          'order_execution',
+          'financial_plan',
+          'financial_plan_input',
+          'financial_plan_goal',
+          'tax_bracket',
+          'financial_plan_result',
+        ];
+
+        // Truncate each table
+        for (const tableName of tablesToTruncate) {
+          tx.run(sql`DELETE FROM ${sql.identifier(tableName)}`);
+          // Reset auto-increment counters for SQLite
+          tx.run(sql`DELETE FROM sqlite_sequence WHERE name = ${tableName}`);
+        }
+
+        // Log the truncation in audit log
+        tx.insert(schema.auditLog).values({
+          id: crypto.randomUUID(),
+          userId: user.id,
+          action: 'TRUNCATE_ALL_DATA',
+          entityType: 'SYSTEM',
+          entityId: null,
+          metadata: JSON.stringify({
+            truncatedTables: tablesToTruncate.length,
+            tables: tablesToTruncate,
+          }),
+          createdAt: new Date(),
+          ipAddress: request.headers.get('CF-Connecting-IP') || null,
+          userAgent: request.headers.get('User-Agent') || null,
+        });
+      });
+
+      return {
+        success: true,
+        message:
+          'All financial data has been truncated successfully. User accounts and authentication data preserved.',
+        truncatedTables: 29,
+      };
+    } catch (error) {
+      logError(error, 'Failed to truncate data');
+      throw new DatabaseError('Failed to truncate data', error);
     }
   });

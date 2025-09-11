@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Download, Loader2, RefreshCw, DollarSign } from 'lucide-react';
+import { DollarSign, Loader2, RefreshCw } from 'lucide-react';
 import { useState } from 'react';
 import { syncYahooFundamentalsServerFn } from '../lib/server-functions';
 import { Button } from './ui/button';
@@ -78,11 +78,7 @@ export function YahooIntegration() {
             onClick={() => yahooMutation.mutate('missing-fundamentals')}
             disabled={isRunning}
           >
-            {isRunning ? (
-              <Loader2 className="h-4 w-4 animate-spin mr-2 shrink-0" />
-            ) : (
-              ""
-            )}
+            {isRunning ? <Loader2 className="h-4 w-4 animate-spin mr-2 shrink-0" /> : ''}
             Missing Data
           </Button>
           <Button
@@ -91,11 +87,7 @@ export function YahooIntegration() {
             onClick={() => yahooMutation.mutate('missing-fundamentals-holdings')}
             disabled={isRunning}
           >
-            {isRunning ? (
-              <Loader2 className="h-4 w-4 animate-spin mr-2 shrink-0" />
-            ) : (
-              ""
-            )}
+            {isRunning ? <Loader2 className="h-4 w-4 animate-spin mr-2 shrink-0" /> : ''}
             Held & Missing Data
           </Button>
           <Button
@@ -104,11 +96,7 @@ export function YahooIntegration() {
             onClick={() => yahooMutation.mutate('all-holdings')}
             disabled={isRunning}
           >
-            {isRunning ? (
-              <Loader2 className="h-4 w-4 animate-spin mr-2 shrink-0" />
-            ) : (
-              ""
-            )}
+            {isRunning ? <Loader2 className="h-4 w-4 animate-spin mr-2 shrink-0" /> : ''}
             All Held
           </Button>
           <Button
@@ -117,11 +105,7 @@ export function YahooIntegration() {
             onClick={() => yahooMutation.mutate('five-holdings')}
             disabled={isRunning}
           >
-            {isRunning ? (
-              <Loader2 className="h-4 w-4 animate-spin mr-2 shrink-0" />
-            ) : (
-              ""
-            )}
+            {isRunning ? <Loader2 className="h-4 w-4 animate-spin mr-2 shrink-0" /> : ''}
             Five Held
           </Button>
           <Button
@@ -130,11 +114,7 @@ export function YahooIntegration() {
             onClick={() => yahooMutation.mutate('missing-fundamentals-sleeves')}
             disabled={isRunning}
           >
-            {isRunning ? (
-              <Loader2 className="h-4 w-4 animate-spin mr-2 shrink-0" />
-            ) : (
-              ""
-            )}
+            {isRunning ? <Loader2 className="h-4 w-4 animate-spin mr-2 shrink-0" /> : ''}
             Sleeve Missing Data
           </Button>
         </div>
