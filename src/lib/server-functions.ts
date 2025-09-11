@@ -99,28 +99,7 @@ export const seedDemoDataServerFn = createServerFn({ method: 'POST' }).handler(a
       sleevesCreated: 8,
       holdingsSeeded: 7,
       transactionsSeeded: 8,
-      message: 'Full S&P 500 demo portfolio seeded successfully',
     },
-  };
-});
-
-// Server function to seed accounts data - runs ONLY on server
-export const seedAccountsDataServerFn = createServerFn({ method: 'POST' }).handler(async () => {
-  const { user } = await requireAuth();
-
-  const { getDatabase } = await import('./db-config');
-  const db = getDatabase();
-  const { seedAccounts } = await import('./seeds/accounts');
-  const { seedHoldings } = await import('./seeds/holdings');
-  const { seedTransactions } = await import('./seeds/transactions');
-
-  await seedAccounts(db, user.id);
-  await seedHoldings(db, user.id);
-  await seedTransactions(db, user.id);
-
-  return {
-    success: true,
-    message: 'Accounts data seeded successfully',
   };
 });
 
@@ -149,9 +128,43 @@ export const seedSecuritiesDataServerFn = createServerFn({ method: 'POST' }).han
     );
   }
 
+  // Check if Schwab is connected and trigger price sync for newly imported securities
+  let schwabSyncResult = null;
+  if (
+    equitySyncResult.success &&
+    equitySyncResult.imported > 0 &&
+    equitySyncResult.importedTickers &&
+    equitySyncResult.importedTickers.length > 0
+  ) {
+    try {
+      const schwabStatus = await getSchwabCredentialsStatusServerFn();
+      if (schwabStatus?.hasCredentials) {
+        console.log(
+          '🔄 Starting automatic Schwab price sync for newly imported securities:',
+          equitySyncResult.importedTickers,
+        );
+        schwabSyncResult = await syncSchwabPricesServerFn({
+          data: { symbols: equitySyncResult.importedTickers },
+        });
+        console.log('✅ Schwab price sync completed:', schwabSyncResult);
+      }
+    } catch (error) {
+      console.error('❌ Schwab price sync failed:', error);
+      schwabSyncResult = {
+        success: false,
+        recordsProcessed: 0,
+        errorMessage: error instanceof Error ? error.message : 'Unknown error occurred',
+      };
+    }
+  }
+
   return {
     success: true,
-    message: `Securities data seeded successfully. Cash securities seeded and ${equitySyncResult.imported} equity securities imported from NASDAQ feeds.`,
+    message: schwabSyncResult
+      ? `Securities data seeded successfully. Cash securities seeded, ${equitySyncResult.imported} equity securities imported from NASDAQ feeds, and prices updated for ${schwabSyncResult.recordsProcessed} securities via Schwab.`
+      : `Securities data seeded successfully. Cash securities seeded and ${equitySyncResult.imported} equity securities imported from NASDAQ feeds.`,
+    equitySyncResult,
+    schwabSyncResult,
   };
 });
 
@@ -168,27 +181,11 @@ export const seedModelsDataServerFn = createServerFn({ method: 'POST' }).handler
 
   return {
     success: true,
-    message: `S&P 500 model data seeded successfully: ${modelsResult.models} models, ${sleevesResult.sleeves} sleeves, and ${sleevesResult.sleeveMembers} sleeve members seeded successfully`,
+    models: modelsResult.models,
+    sleeves: sleevesResult.sleeves,
+    sleeveMembers: sleevesResult.sleeveMembers,
   };
 });
-
-// Server function to seed rebalancing groups data - runs ONLY on server
-export const seedRebalancingGroupsDataServerFn = createServerFn({ method: 'POST' }).handler(
-  async () => {
-    const { user } = await requireAuth();
-
-    const { getDatabase } = await import('./db-config');
-    const db = getDatabase();
-    const { seedRebalancingGroups } = await import('./seeds/rebalancing-groups');
-
-    await seedRebalancingGroups(db, user.id);
-
-    return {
-      success: true,
-      message: 'Rebalancing groups data seeded successfully',
-    };
-  },
-);
 
 // Server function to create a new sleeve - runs ONLY on server
 export const createSleeveServerFn = createServerFn({ method: 'POST' })
@@ -1669,8 +1666,10 @@ export const syncYahooFundamentalsServerFn = createServerFn({ method: 'POST' })
     (data: {
       scope?:
         | 'all-securities'
+        | 'held-sleeve-securities'
+        | 'held-sleeve-securities-missing-data'
         | 'all-holdings'
-        | 'five-holdings'
+        | 'all-sleeves'
         | 'missing-fundamentals'
         | 'missing-fundamentals-holdings'
         | 'missing-fundamentals-sleeves';
@@ -1719,27 +1718,92 @@ export const syncYahooFundamentalsServerFn = createServerFn({ method: 'POST' })
       let symbols: string[] = [];
       if (Array.isArray(explicitSymbols) && explicitSymbols.length > 0) {
         symbols = explicitSymbols;
-      } else if (scope === 'all-holdings' || scope === 'five-holdings') {
+      } else if (scope === 'held-sleeve-securities') {
+        // All securities that are either held or appear in sleeves
+        const { getPositions } = await import('./db-api');
+        const positions = await getPositions(user.id);
+        const heldTickers = new Set(positions.map((p) => p.ticker));
+
+        const sleeveSecurities = await db
+          .select({
+            ticker: schema.sleeveMember.ticker,
+          })
+          .from(schema.sleeveMember)
+          .innerJoin(schema.sleeve, eq(schema.sleeveMember.sleeveId, schema.sleeve.id))
+          .where(eq(schema.sleeve.userId, user.id));
+
+        const sleeveTickers = new Set(sleeveSecurities.map((s) => s.ticker));
+
+        // Combine held and sleeve securities
+        const combinedTickers = new Set([...heldTickers, ...sleeveTickers]);
+        symbols = Array.from(combinedTickers).filter((t) => !isAnyCashTicker(t));
+      } else if (scope === 'held-sleeve-securities-missing-data') {
+        // All securities that are either held or appear in sleeves AND are missing fundamentals
+        const { getPositions } = await import('./db-api');
+        const { and, or, inArray, isNull } = await import('drizzle-orm');
+        const positions = await getPositions(user.id);
+        const heldTickers = new Set(positions.map((p) => p.ticker));
+
+        const sleeveSecurities = await db
+          .select({
+            ticker: schema.sleeveMember.ticker,
+          })
+          .from(schema.sleeveMember)
+          .innerJoin(schema.sleeve, eq(schema.sleeveMember.sleeveId, schema.sleeve.id))
+          .where(eq(schema.sleeve.userId, user.id));
+
+        const sleeveTickers = new Set(sleeveSecurities.map((s) => s.ticker));
+
+        // Combine held and sleeve securities
+        const combinedTickers = new Set([...heldTickers, ...sleeveTickers]);
+
+        // Filter for securities that are missing fundamentals data
+        const missingDataSecurities = await db
+          .select({ ticker: schema.security.ticker })
+          .from(schema.security)
+          .where(
+            and(
+              inArray(schema.security.ticker, Array.from(combinedTickers)),
+              or(
+                isNull(schema.security.sector),
+                isNull(schema.security.industry),
+                isNull(schema.security.marketCap),
+              ),
+            ),
+          );
+
+        symbols = missingDataSecurities.map((s) => s.ticker).filter((t) => !isAnyCashTicker(t));
+      } else if (scope === 'all-holdings') {
         const { getPositions } = await import('./db-api');
         const positions = await getPositions(user.id);
         const tickers = [...new Set(positions.map((p) => p.ticker))];
-        symbols = (scope === 'five-holdings' ? tickers.slice(0, 5) : tickers).filter(
-          (t) => !isAnyCashTicker(t),
-        );
+        symbols = tickers.filter((t) => !isAnyCashTicker(t));
+      } else if (scope === 'all-sleeves') {
+        // All securities used in sleeves
+        const sleeveSecurities = await db
+          .select({
+            ticker: schema.sleeveMember.ticker,
+          })
+          .from(schema.sleeveMember)
+          .innerJoin(schema.sleeve, eq(schema.sleeveMember.sleeveId, schema.sleeve.id))
+          .where(eq(schema.sleeve.userId, user.id));
+        const sleeveTickers = new Set(sleeveSecurities.map((s) => s.ticker));
+        symbols = Array.from(sleeveTickers).filter((t) => !isAnyCashTicker(t));
       } else if (scope === 'missing-fundamentals') {
-        // Securities missing sector or industry
+        // Securities missing sector, industry, or marketCap
         const rows = await db
           .select({
             ticker: schema.security.ticker,
             sector: schema.security.sector,
             industry: schema.security.industry,
+            marketCap: schema.security.marketCap,
           })
           .from(schema.security);
         symbols = rows
-          .filter((r) => (!r.sector || !r.industry) && !isAnyCashTicker(r.ticker))
+          .filter((r) => (!r.sector || !r.industry || !r.marketCap) && !isAnyCashTicker(r.ticker))
           .map((r) => r.ticker);
       } else if (scope === 'missing-fundamentals-holdings') {
-        // Held securities that are missing sector or industry
+        // Held securities that are missing sector, industry, or marketCap
         const { getPositions } = await import('./db-api');
         const positions = await getPositions(user.id);
         const held = new Set(positions.map((p) => p.ticker));
@@ -1748,14 +1812,15 @@ export const syncYahooFundamentalsServerFn = createServerFn({ method: 'POST' })
             ticker: schema.security.ticker,
             sector: schema.security.sector,
             industry: schema.security.industry,
+            marketCap: schema.security.marketCap,
           })
           .from(schema.security);
         symbols = rows
           .filter((r) => held.has(r.ticker))
-          .filter((r) => (!r.sector || !r.industry) && !isAnyCashTicker(r.ticker))
+          .filter((r) => (!r.sector || !r.industry || !r.marketCap) && !isAnyCashTicker(r.ticker))
           .map((r) => r.ticker);
       } else if (scope === 'missing-fundamentals-sleeves') {
-        // Securities used in sleeves that are missing sector or industry
+        // Get securities used in sleeves that are missing fundamentals, plus model securities missing fundamentals (excluding ETFs)
         const sleeveSecurities = await db
           .select({
             ticker: schema.sleeveMember.ticker,
@@ -1765,17 +1830,45 @@ export const syncYahooFundamentalsServerFn = createServerFn({ method: 'POST' })
           .where(eq(schema.sleeve.userId, user.id));
         const sleeveTickers = new Set(sleeveSecurities.map((s) => s.ticker));
 
+        // Get securities used in models that are missing marketCap and are not ETFs
+        const modelSecurities = await db
+          .select({
+            ticker: schema.sleeveMember.ticker,
+          })
+          .from(schema.modelMember)
+          .innerJoin(schema.sleeve, eq(schema.modelMember.sleeveId, schema.sleeve.id))
+          .innerJoin(schema.sleeveMember, eq(schema.sleeveMember.sleeveId, schema.sleeve.id))
+          .innerJoin(schema.model, eq(schema.modelMember.modelId, schema.model.id))
+          .where(eq(schema.model.userId, user.id));
+        const modelTickers = new Set(modelSecurities.map((s) => s.ticker));
+
         const rows = await db
           .select({
             ticker: schema.security.ticker,
             sector: schema.security.sector,
             industry: schema.security.industry,
+            marketCap: schema.security.marketCap,
+            assetTypeSub: schema.security.assetTypeSub,
           })
           .from(schema.security);
-        symbols = rows
+
+        const sleeveSymbols = rows
           .filter((r) => sleeveTickers.has(r.ticker))
-          .filter((r) => (!r.sector || !r.industry) && !isAnyCashTicker(r.ticker))
+          .filter((r) => (!r.sector || !r.industry || !r.marketCap) && !isAnyCashTicker(r.ticker))
           .map((r) => r.ticker);
+
+        const modelSymbols = rows
+          .filter((r) => modelTickers.has(r.ticker))
+          .filter(
+            (r) =>
+              (!r.sector || !r.industry || !r.marketCap) &&
+              r.assetTypeSub !== 'ETF' &&
+              !isAnyCashTicker(r.ticker),
+          )
+          .map((r) => r.ticker);
+
+        // Combine both sets of symbols
+        symbols = [...new Set([...sleeveSymbols, ...modelSymbols])];
       } else {
         // Default and 'all-securities' -> all securities
         const all = await db.select({ ticker: schema.security.ticker }).from(schema.security);
@@ -1818,7 +1911,9 @@ export const syncYahooFundamentalsServerFn = createServerFn({ method: 'POST' })
       // Fetch and update each symbol
       for (const symbol of symbols) {
         try {
-          const summary = await yahooFinance.quoteSummary(symbol, {
+          // Replace dots with dashes for Yahoo Finance API (e.g., BRK.A -> BRK-A)
+          const yahooTicker = symbol.replace(/\./g, '-');
+          const summary = await yahooFinance.quoteSummary(yahooTicker, {
             modules: ['assetProfile', 'price', 'summaryDetail', 'defaultKeyStatistics'],
           } as unknown as Record<string, unknown>);
 
@@ -1830,21 +1925,15 @@ export const syncYahooFundamentalsServerFn = createServerFn({ method: 'POST' })
           const peRatio = summary.summaryDetail?.trailingPE ?? null;
           const sector = summary.assetProfile?.sector ?? null;
           const industry = summary.assetProfile?.industry ?? null;
-          const yahooName = (summary.price?.longName || summary.price?.shortName || null) as
-            | string
-            | null;
 
           // Read existing values for change set
           const current = await db
             .select({
-              name: schema.security.name,
               price: schema.security.price,
               marketCap: schema.security.marketCap,
               peRatio: schema.security.peRatio,
               sector: schema.security.sector,
               industry: schema.security.industry,
-              assetType: schema.security.assetType,
-              assetTypeSub: schema.security.assetTypeSub,
             })
             .from(schema.security)
             .where(eq(schema.security.ticker, symbol))
@@ -1866,14 +1955,6 @@ export const syncYahooFundamentalsServerFn = createServerFn({ method: 'POST' })
             updateData.price = price;
             changes.price = { old: current[0].price, new: price };
           }
-          // Only update name from Yahoo when the existing name is short (likely a placeholder), e.g. ticker
-          if (yahooName) {
-            const currentName = current[0].name as string | undefined;
-            if (!currentName || currentName.length < 6) {
-              updateData.name = yahooName;
-              changes.name = { old: currentName, new: yahooName };
-            }
-          }
           if (typeof marketCapMillions === 'number') {
             updateData.marketCap = marketCapMillions;
             changes.marketCap = {
@@ -1885,13 +1966,25 @@ export const syncYahooFundamentalsServerFn = createServerFn({ method: 'POST' })
             updateData.peRatio = peRatio;
             changes.peRatio = { old: current[0].peRatio, new: peRatio };
           }
-          if (sector) {
-            updateData.sector = sector;
-            changes.sector = { old: current[0].sector, new: sector };
+          // Only update sector if we have a valid non-empty value and the current value is null/empty
+          if (
+            sector &&
+            typeof sector === 'string' &&
+            sector.trim().length > 0 &&
+            !current[0].sector
+          ) {
+            updateData.sector = sector.trim();
+            changes.sector = { old: current[0].sector, new: sector.trim() };
           }
-          if (industry) {
-            updateData.industry = industry;
-            changes.industry = { old: current[0].industry, new: industry };
+          // Only update industry if we have a valid non-empty value and the current value is null/empty
+          if (
+            industry &&
+            typeof industry === 'string' &&
+            industry.trim().length > 0 &&
+            !current[0].industry
+          ) {
+            updateData.industry = industry.trim();
+            changes.industry = { old: current[0].industry, new: industry.trim() };
           }
 
           if (Object.keys(updateData).length > 0) {
@@ -3281,3 +3374,106 @@ export const truncateDataServerFn = createServerFn({ method: 'POST' })
       throw new DatabaseError('Failed to truncate data', error);
     }
   });
+
+// Get counts for Yahoo Finance sync scopes
+export const getYahooSyncCountsServerFn = createServerFn({ method: 'GET' }).handler(async () => {
+  const { user } = await requireAuth();
+  const { getDatabase } = await import('./db-config');
+  const { count, and, or, inArray, isNull, ne } = await import('drizzle-orm');
+  const db = getDatabase();
+  const schema = await import('../db/schema');
+
+  // Get total securities count
+  const totalSecurities = await db
+    .select({ count: count() })
+    .from(schema.security)
+    .where(ne(schema.security.ticker, CASH_TICKER));
+
+  // Get securities missing fundamentals
+  const missingFundamentals = await db
+    .select({ count: count() })
+    .from(schema.security)
+    .where(
+      and(
+        ne(schema.security.ticker, CASH_TICKER),
+        or(
+          isNull(schema.security.sector),
+          isNull(schema.security.industry),
+          isNull(schema.security.marketCap),
+        ),
+      ),
+    );
+
+  // Get held securities
+  const { getPositions } = await import('./db-api');
+  const positions = await getPositions(user.id);
+  const heldTickers = [...new Set(positions.map((p) => p.ticker))].filter(
+    (t) => !isAnyCashTicker(t),
+  );
+
+  // Get held securities missing fundamentals
+  const heldMissingFundamentals = await db
+    .select({ count: count() })
+    .from(schema.security)
+    .where(
+      and(
+        inArray(schema.security.ticker, heldTickers),
+        or(
+          isNull(schema.security.sector),
+          isNull(schema.security.industry),
+          isNull(schema.security.marketCap),
+        ),
+      ),
+    );
+
+  // Get sleeve securities missing fundamentals
+  const sleeveSecurities = await db
+    .select({
+      ticker: schema.sleeveMember.ticker,
+    })
+    .from(schema.sleeveMember)
+    .innerJoin(schema.sleeve, eq(schema.sleeveMember.sleeveId, schema.sleeve.id))
+    .where(eq(schema.sleeve.userId, user.id));
+
+  const sleeveTickers = new Set(sleeveSecurities.map((s) => s.ticker));
+
+  const sleeveMissingFundamentals = await db
+    .select({ count: count() })
+    .from(schema.security)
+    .where(
+      and(
+        inArray(schema.security.ticker, Array.from(sleeveTickers)),
+        or(
+          isNull(schema.security.sector),
+          isNull(schema.security.industry),
+          isNull(schema.security.marketCap),
+        ),
+      ),
+    );
+
+  // Get held and sleeve securities missing fundamentals
+  const heldSleeveMissingFundamentals = await db
+    .select({ count: count() })
+    .from(schema.security)
+    .where(
+      and(
+        inArray(schema.security.ticker, Array.from(new Set([...heldTickers, ...sleeveTickers]))),
+        or(
+          isNull(schema.security.sector),
+          isNull(schema.security.industry),
+          isNull(schema.security.marketCap),
+        ),
+      ),
+    );
+
+  return {
+    'all-securities': Number(totalSecurities[0]?.count ?? 0),
+    'held-sleeve-securities': heldTickers.length + sleeveTickers.size,
+    'held-sleeve-securities-missing-data': Number(heldSleeveMissingFundamentals[0]?.count ?? 0),
+    'all-holdings': heldTickers.length,
+    'all-sleeves': sleeveTickers.size,
+    'missing-fundamentals': Number(missingFundamentals[0]?.count ?? 0),
+    'missing-fundamentals-holdings': Number(heldMissingFundamentals[0]?.count ?? 0),
+    'missing-fundamentals-sleeves': Number(sleeveMissingFundamentals[0]?.count ?? 0),
+  };
+});

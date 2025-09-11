@@ -8,8 +8,11 @@ interface SimpleTooltipProps {
 
 export function SimpleTooltip({ children, content }: SimpleTooltipProps) {
   const [isVisible, setIsVisible] = React.useState(false);
-  const [position, setPosition] = React.useState({ x: 0, y: 0 });
+  // Anchor stores the trigger's centerX, top and bottom for placement calculations
+  const [anchor, setAnchor] = React.useState({ centerX: 0, top: 0, bottom: 0 });
   const triggerRef = React.useRef<HTMLDivElement>(null);
+  const tooltipRef = React.useRef<HTMLDivElement>(null);
+  const [tooltipSize, setTooltipSize] = React.useState({ width: 0, height: 0 });
 
   // Create or get tooltip container
   const getTooltipContainer = () => {
@@ -27,21 +30,58 @@ export function SimpleTooltip({ children, content }: SimpleTooltipProps) {
     return container;
   };
 
-  const handleMouseEnter = () => {
-    if (triggerRef.current) {
-      const rect = triggerRef.current.getBoundingClientRect();
+  const updateAnchor = React.useCallback(() => {
+    if (!triggerRef.current) return;
+    const rect = triggerRef.current.getBoundingClientRect();
+    setAnchor({ centerX: rect.left + rect.width / 2, top: rect.top, bottom: rect.bottom });
+  }, []);
 
-      setPosition({
-        x: rect.left + rect.width / 2,
-        y: rect.top,
-      });
-      setIsVisible(true);
-    }
+  const handleMouseEnter = () => {
+    updateAnchor();
+    setIsVisible(true);
   };
 
   const handleMouseLeave = () => {
     setIsVisible(false);
   };
+
+  React.useEffect(() => {
+    if (!isVisible) return;
+    const measure = () => {
+      const el = tooltipRef.current;
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      setTooltipSize({ width: rect.width, height: rect.height });
+    };
+    // Measure on next paint
+    const raf = requestAnimationFrame(measure);
+    // Keep tooltip positioned on resize/scroll
+    const onResize = () => {
+      updateAnchor();
+      measure();
+    };
+    window.addEventListener('resize', onResize);
+    window.addEventListener('scroll', onResize, true);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener('resize', onResize);
+      window.removeEventListener('scroll', onResize, true);
+    };
+  }, [isVisible, updateAnchor]);
+
+  // Compute safe, clamped position inside the viewport
+  const margin = 8;
+  const width = tooltipSize.width || 240; // sensible defaults before first measure
+  const height = tooltipSize.height || 40;
+  const vw = typeof window !== 'undefined' ? window.innerWidth : 1024;
+  const vh = typeof window !== 'undefined' ? window.innerHeight : 768;
+  const hasRoomAbove = anchor.top >= height + margin + 2;
+  const desiredTop = hasRoomAbove ? anchor.top - margin - height : anchor.bottom + margin;
+  const clampedTop = Math.max(margin, Math.min(desiredTop, vh - margin - height));
+  const clampedCenterX = Math.max(
+    margin + width / 2,
+    Math.min(anchor.centerX, vw - margin - width / 2),
+  );
 
   return (
     <>
@@ -60,11 +100,12 @@ export function SimpleTooltip({ children, content }: SimpleTooltipProps) {
         typeof document !== 'undefined' &&
         createPortal(
           <div
+            ref={tooltipRef}
             style={{
               position: 'fixed',
-              left: Math.max(10, Math.min(position.x, window.innerWidth - 200)),
-              top: Math.max(10, position.y - 10),
-              transform: 'translate(-50%, -100%)',
+              left: clampedCenterX,
+              top: clampedTop,
+              transform: 'translateX(-50%)',
               zIndex: 999999,
               padding: '6px 12px',
               fontSize: '12px',

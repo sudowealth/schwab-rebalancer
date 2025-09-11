@@ -14,8 +14,10 @@ interface Security {
 
 async function getFinancialData(ticker: string) {
   try {
+    // Replace dots with dashes for Yahoo Finance API (e.g., BRK.A -> BRK-A)
+    const yahooTicker = ticker.replace(/\./g, '-');
     // Use yahoo-finance2's quoteSummary method to get comprehensive data
-    const result = await yahooFinance.quoteSummary(ticker, {
+    const result = await yahooFinance.quoteSummary(yahooTicker, {
       modules: ['assetProfile', 'price', 'summaryDetail', 'defaultKeyStatistics'],
     });
 

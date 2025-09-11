@@ -1,5 +1,4 @@
 import { createFileRoute, redirect } from '@tanstack/react-router';
-import { NasdaqIntegration } from '../../components/NasdaqIntegration';
 import { SchwabIntegration } from '../../components/SchwabIntegration';
 import { SeedDataSection } from '../../components/SeedDataSection';
 import { SyncHistory } from '../../components/SyncHistory';
@@ -50,10 +49,6 @@ function DataFeedsPage() {
 
         <section>
           <YahooIntegration />
-        </section>
-
-        <section>
-          <NasdaqIntegration />
         </section>
 
         <section>

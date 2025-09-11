@@ -426,24 +426,6 @@ export function SchwabIntegration() {
     }
   };
 
-  const handlePricesSyncFive = async () => {
-    try {
-      console.log('🔍 [UI] Fetching held position tickers for partial update');
-      const heldTickers = await getHeldPositionTickersServerFn();
-      const topFive = heldTickers.slice(0, 5);
-      console.log(`🎯 [UI] Updating prices for ${topFive.length} holdings:`, topFive);
-
-      if (topFive.length === 0) {
-        console.warn('⚠️ [UI] No held positions found, skipping partial price sync');
-        return;
-      }
-
-      syncPricesMutation.mutate(topFive);
-    } catch (error) {
-      console.error('❌ [UI] Failed to start partial price sync:', error);
-    }
-  };
-
   const handleSync = (type: string) => {
     console.log('🔄 [UI] User requested sync for type:', type);
     switch (type) {
@@ -638,17 +620,6 @@ export function SchwabIntegration() {
                     >
                       Held Securities
                     </Button>
-                    <Button
-                      variant="ghost"
-                      className="justify-start"
-                      disabled={isSyncing}
-                      onClick={() => {
-                        setPricesMenuOpen(false);
-                        handlePricesSyncFive();
-                      }}
-                    >
-                      Five Held Securities
-                    </Button>
                   </div>
                 </PopoverContent>
               </Popover>
@@ -681,7 +652,7 @@ export function SchwabIntegration() {
                       Imported: {importResult.imported.toLocaleString()}
                     </div>
                     <div className="text-blue-700">
-                      Skipped: {importResult.skipped.toLocaleString()}
+                      Already exist: {importResult.skipped.toLocaleString()}
                     </div>
                     {importResult.errors.length > 0 && (
                       <div className="text-red-700">

@@ -195,10 +195,11 @@ export class PriceSyncService {
         if (newPrice === null) {
           try {
             // Disable yahoo-finance2 strict validation to handle occasional schema drifts
-            const quoteRaw = await yahooFinance.quote(
-              symbol as string,
-              { validateResult: false } as unknown as Record<string, unknown>,
-            );
+            // Replace dots with dashes for Yahoo Finance API (e.g., BRK.A -> BRK-A)
+            const yahooTicker = symbol.replace(/\./g, '-');
+            const quoteRaw = await yahooFinance.quote(yahooTicker, {
+              validateResult: false,
+            } as unknown as Record<string, unknown>);
             const quote = (
               Array.isArray(quoteRaw) ? quoteRaw[0] : (quoteRaw as Record<string, unknown>)
             ) as Record<string, unknown>;
