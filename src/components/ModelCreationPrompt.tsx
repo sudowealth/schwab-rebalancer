@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { AlertCircle, CheckCircle, Layers, Loader2, Plus, TrendingUp } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { seedGlobalEquityModelServerFn } from '../lib/server-functions';
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
@@ -22,6 +22,7 @@ interface ModelCreationPromptProps {
 export function ModelCreationPrompt({ modelsStatus }: ModelCreationPromptProps) {
   const queryClient = useQueryClient();
   const [isCompleted, setIsCompleted] = useState(false);
+  const [shouldHide, setShouldHide] = useState(false);
 
   // Global Equity Model seeding mutation
   const seedGlobalEquityMutation = useMutation({
@@ -30,18 +31,26 @@ export function ModelCreationPrompt({ modelsStatus }: ModelCreationPromptProps) 
       setIsCompleted(true);
       // Invalidate all queries to refresh the dashboard
       queryClient.invalidateQueries();
-      // Set a timeout to hide the component after success
-      setTimeout(() => {
-        setIsCompleted(false);
-      }, 5000);
     },
     onError: (error) => {
       console.error('Error seeding Global Equity Model:', error);
     },
   });
 
-  // Don't show if models already exist and not completed
-  if (modelsStatus?.hasModels && !isCompleted) {
+  // Handle success message timeout and component hiding
+  useEffect(() => {
+    if (isCompleted) {
+      const timeout = setTimeout(() => {
+        setIsCompleted(false);
+        setShouldHide(true);
+      }, 10000);
+
+      return () => clearTimeout(timeout);
+    }
+  }, [isCompleted]);
+
+  // Don't show if models already exist and not completed, or if should hide after timeout
+  if ((modelsStatus?.hasModels && !isCompleted) || shouldHide) {
     return null;
   }
 
@@ -63,9 +72,8 @@ export function ModelCreationPrompt({ modelsStatus }: ModelCreationPromptProps) 
             Create Your Investment Model
           </CardTitle>
           <CardDescription>
-            Now that you have securities in your database, you need an investment model to organize
-            your portfolio. Choose from our pre-built Global Equity Model or create your own custom
-            model.
+            To start generating trading recommendations, we first need to create a model. You can
+            choose from our pre-built Global Equity Model or you can create your own custom models.
           </CardDescription>
         </CardHeader>
         <CardContent>
