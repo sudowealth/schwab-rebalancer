@@ -131,9 +131,10 @@ function DashboardComponent() {
       <div className="mb-8">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">
-              Welcome back, {userData?.name || userData?.email || 'User'}
-            </h1>
+            <h1 className="text-2xl font-bold text-gray-900">Getting Started</h1>
+            <p className="text-sm text-gray-600">
+              Complete these steps to start rebalancing your portfolio at Schwab
+            </p>
           </div>
         </div>
       </div>

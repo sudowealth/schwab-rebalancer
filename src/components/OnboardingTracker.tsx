@@ -19,7 +19,6 @@ import { useSchwabConnection } from '../hooks/useSchwabConnection';
 import { useSecuritiesSeeding } from '../hooks/useSecuritiesSeeding';
 import { checkModelsExistServerFn, checkSecuritiesExistServerFn } from '../lib/server-functions';
 import { Button } from './ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { SimpleTooltip } from './ui/simple-tooltip';
 
 interface OnboardingTask {
@@ -133,80 +132,63 @@ export function OnboardingTracker({
   if (isSyncing) {
     return (
       <div className="mb-8">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Link className="h-5 w-5" />
-              Setting up Your Schwab Data
-            </CardTitle>
-            <CardDescription>
-              We're importing your accounts, holdings, and price data from Schwab
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-col items-center gap-4">
-              <div className="flex items-center gap-3 p-4 bg-blue-50 rounded-lg border border-blue-200 w-full">
-                <Loader2 className="h-6 w-6 animate-spin text-blue-600 flex-shrink-0" />
-                <div>
-                  <h4 className="font-medium text-blue-900 mb-1">Sync in Progress</h4>
-                  <p className="text-sm text-blue-700">{syncStep || 'Preparing your data...'}</p>
-                  <p className="text-xs text-blue-600 mt-1">This may take a few moments</p>
-                </div>
-              </div>
+        <div className="mb-6">
+          <div className="flex items-center gap-2 mb-2">
+            <Link className="h-5 w-5" />
+            <div className="text-xl font-semibold text-gray-900">Setting up Your Schwab Data</div>
+          </div>
+          <p className="text-sm text-gray-600">
+            We're importing your accounts, holdings, and price data from Schwab
+          </p>
+        </div>
+        <div className="flex flex-col items-center gap-4">
+          <div className="flex items-center gap-3 p-4 bg-blue-50 rounded-lg border border-blue-200 w-full">
+            <Loader2 className="h-6 w-6 animate-spin text-blue-600 flex-shrink-0" />
+            <div>
+              <h4 className="font-medium text-blue-900 mb-1">Sync in Progress</h4>
+              <p className="text-sm text-blue-700">{syncStep || 'Preparing your data...'}</p>
+              <p className="text-xs text-blue-600 mt-1">This may take a few moments</p>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="mb-8">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <div className="flex items-center gap-2">Get Started</div>
-            <div className="ml-auto text-sm text-gray-500">
-              {completedTasks} of {totalTasks} complete
-            </div>
-          </CardTitle>
-          <CardDescription>
-            Complete these steps to start rebalancing your portfolio at Schwab
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {tasks.map((task, index) => {
-              const Icon = task.icon;
-              return (
-                <div
-                  key={task.id}
-                  className={`flex items-start gap-4 p-4 rounded-lg border ${
-                    task.completed ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'
-                  }`}
-                >
-                  <div className="flex-shrink-0 mt-1">
-                    {task.completed ? (
-                      <CheckCircle className="h-6 w-6 text-green-600" />
-                    ) : (
-                      <Circle className="h-6 w-6 text-gray-400" />
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <Icon className="h-5 w-5 text-gray-600 flex-shrink-0" />
-                      <h4
-                        className={`font-medium ${
-                          task.completed ? 'text-green-900' : 'text-gray-900'
-                        }`}
-                      >
-                        {index + 1}. {task.title}
-                      </h4>
-                    </div>
-                    <p className={`text-sm ${task.completed ? 'text-green-700' : 'text-gray-600'}`}>
-                      {task.description}
-                    </p>
-                    {!task.completed && task.id === 'connect-schwab' && (
+      <div className="space-y-4">
+        {tasks.map((task, index) => {
+          const Icon = task.icon;
+          return (
+            <div
+              key={task.id}
+              className={`flex items-start gap-4 p-4 rounded-lg border ${
+                task.completed ? 'bg-green-50 border-green-200' : 'bg-white border-gray-200'
+              }`}
+            >
+              <div className="flex-shrink-0 mt-1">
+                {task.completed ? (
+                  <CheckCircle className="h-6 w-6 text-green-600" />
+                ) : (
+                  <Circle className="h-6 w-6 text-gray-400" />
+                )}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  <Icon className="h-5 w-5 text-gray-600 flex-shrink-0" />
+                  <h4
+                    className={`font-medium ${task.completed ? 'text-green-900' : 'text-gray-900'}`}
+                  >
+                    {index + 1}. {task.title}
+                  </h4>
+                </div>
+                <p className={`text-sm ${task.completed ? 'text-green-700' : 'text-gray-600'}`}>
+                  {task.description}
+                </p>
+                {(() => {
+                  if (!task.completed && task.id === 'connect-schwab') {
+                    return (
                       <div className="mt-3">
                         <Button
                           size="sm"
@@ -232,8 +214,10 @@ export function OnboardingTracker({
                           </p>
                         )}
                       </div>
-                    )}
-                    {!task.completed && task.id === 'securities-import' && (
+                    );
+                  }
+                  if (!task.completed && task.id === 'securities-import') {
+                    return (
                       <div className="mt-3 space-y-3">
                         {/* Loading State */}
                         {isSeeding && (
@@ -287,8 +271,10 @@ export function OnboardingTracker({
                           </div>
                         )}
                       </div>
-                    )}
-                    {!task.completed && task.id === 'create-model' && (
+                    );
+                  }
+                  if (!task.completed && task.id === 'create-model') {
+                    return (
                       <div className="mt-3 space-y-3">
                         {/* Model Creation Options */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -374,8 +360,10 @@ export function OnboardingTracker({
                           </div>
                         </div>
                       </div>
-                    )}
-                    {!task.completed && task.id === 'create-rebalancing-group' && (
+                    );
+                  }
+                  if (!task.completed && task.id === 'create-rebalancing-group') {
+                    return (
                       <div className="mt-3">
                         {(() => {
                           const hasSchwabConnection = isConnected;
@@ -420,14 +408,15 @@ export function OnboardingTracker({
                           );
                         })()}
                       </div>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </CardContent>
-      </Card>
+                    );
+                  }
+                  return null;
+                })()}
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
