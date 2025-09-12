@@ -128,32 +128,10 @@ export function OnboardingTracker({
     return null;
   }
 
-  // Show sync progress if currently syncing Schwab data
-  if (isSyncing) {
-    return (
-      <div className="mb-8">
-        <div className="mb-6">
-          <div className="flex items-center gap-2 mb-2">
-            <Link className="h-5 w-5" />
-            <div className="text-xl font-semibold text-gray-900">Setting up Your Schwab Data</div>
-          </div>
-          <p className="text-sm text-gray-600">
-            We're importing your accounts, holdings, and price data from Schwab
-          </p>
-        </div>
-        <div className="flex flex-col items-center gap-4">
-          <div className="flex items-center gap-3 p-4 bg-blue-50 rounded-lg border border-blue-200 w-full">
-            <Loader2 className="h-6 w-6 animate-spin text-blue-600 flex-shrink-0" />
-            <div>
-              <h4 className="font-medium text-blue-900 mb-1">Sync in Progress</h4>
-              <p className="text-sm text-blue-700">{syncStep || 'Preparing your data...'}</p>
-              <p className="text-xs text-blue-600 mt-1">This may take a few moments</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  // Note: previously we returned a standalone syncing banner here which
+  // hid the rest of the checklist. To keep UX consistent and always
+  // show all steps, we now render syncing progress inline within the
+  // "Connect to Schwab" step below instead of returning early.
 
   return (
     <div className="mb-8">
@@ -216,6 +194,21 @@ export function OnboardingTracker({
                       </div>
                     );
                   }
+                  // Show inline sync progress even if the Schwab
+                  // connection is technically completed. This keeps the
+                  // checklist visible during data imports and avoids a
+                  // jarring style change.
+                  if (task.id === 'connect-schwab' && isSyncing) {
+                    return (
+                      <div className="mt-3">
+                        <div className="flex items-center gap-2 text-sm text-gray-700">
+                          <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
+                          <span>{syncStep || 'Preparing your data...'}</span>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1">This may take a few moments</p>
+                      </div>
+                    );
+                  }
                   if (!task.completed && task.id === 'securities-import') {
                     return (
                       <div className="mt-3 space-y-3">
@@ -274,88 +267,173 @@ export function OnboardingTracker({
                     );
                   }
                   if (!task.completed && task.id === 'create-model') {
+                    const hasSecurities = reactiveSecuritiesStatus?.hasSecurities || false;
+                    const isDisabled = !hasSecurities;
+
                     return (
                       <div className="mt-3 space-y-3">
+                        {/* Show message if securities not imported */}
+                        {isDisabled && (
+                          <div className="flex items-center gap-2 p-2 bg-amber-50 border border-amber-200 rounded-lg">
+                            <AlertCircle className="h-4 w-4 text-amber-600 flex-shrink-0" />
+                            <p className="text-xs text-amber-800">
+                              You must complete the Securities Import step before creating models.
+                            </p>
+                          </div>
+                        )}
+
                         {/* Model Creation Options */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                           {/* Global Equity Model Option */}
-                          <div className="border-2 border-blue-200 bg-blue-50/50 rounded-lg p-3">
+                          <div
+                            className={`border-2 rounded-lg p-3 ${
+                              isDisabled
+                                ? 'border-gray-200 bg-gray-50/50'
+                                : 'border-blue-200 bg-blue-50/50'
+                            }`}
+                          >
                             <div className="flex items-center gap-2 mb-2">
-                              <TrendingUp className="h-4 w-4 text-blue-600" />
-                              <h5 className="font-medium text-blue-900">Global Equity Model</h5>
+                              <TrendingUp
+                                className={`h-4 w-4 ${isDisabled ? 'text-gray-400' : 'text-blue-600'}`}
+                              />
+                              <h5
+                                className={`font-medium ${isDisabled ? 'text-gray-500' : 'text-blue-900'}`}
+                              >
+                                Global Equity Model
+                              </h5>
                             </div>
-                            <p className="text-xs text-blue-700 mb-3">
+                            <p
+                              className={`text-xs mb-3 ${isDisabled ? 'text-gray-500' : 'text-blue-700'}`}
+                            >
                               Pre-built model with geographic diversification across US,
                               International, and Emerging markets
                             </p>
-                            <ul className="text-xs text-gray-600 space-y-1 mb-3">
+                            <ul
+                              className={`text-xs space-y-1 mb-3 ${isDisabled ? 'text-gray-400' : 'text-gray-600'}`}
+                            >
                               <li>• US Large Cap (40%): VTI</li>
                               <li>• International (20%): VXUS</li>
                               <li>• Emerging Markets (10%): VWO</li>
                               <li>• And more regional ETFs</li>
                             </ul>
-                            <Button
-                              onClick={handleSeedGlobalEquity}
-                              disabled={isCreatingModel}
-                              className="w-full text-xs"
-                              size="sm"
-                            >
-                              {isCreatingModel ? (
-                                <>
-                                  <Loader2 className="mr-1 h-3 w-3 animate-spin" />
-                                  Creating Model...
-                                </>
-                              ) : (
-                                <>
+                            {isDisabled ? (
+                              <SimpleTooltip content="Complete securities import before creating models">
+                                <Button disabled={true} className="w-full text-xs" size="sm">
                                   <TrendingUp className="mr-1 h-3 w-3" />
                                   Use Global Equity Model
-                                </>
-                              )}
-                            </Button>
+                                </Button>
+                              </SimpleTooltip>
+                            ) : (
+                              <Button
+                                onClick={handleSeedGlobalEquity}
+                                disabled={isCreatingModel}
+                                className="w-full text-xs"
+                                size="sm"
+                              >
+                                {isCreatingModel ? (
+                                  <>
+                                    <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                                    Creating Model...
+                                  </>
+                                ) : (
+                                  <>
+                                    <TrendingUp className="mr-1 h-3 w-3" />
+                                    Use Global Equity Model
+                                  </>
+                                )}
+                              </Button>
+                            )}
                           </div>
 
                           {/* Custom Model Option */}
-                          <div className="border-2 border-gray-200 rounded-lg p-3">
+                          <div
+                            className={`border-2 rounded-lg p-3 ${
+                              isDisabled ? 'border-gray-200 bg-gray-50/50' : 'border-gray-200'
+                            }`}
+                          >
                             <div className="flex items-center gap-2 mb-2">
-                              <Plus className="h-4 w-4 text-gray-600" />
-                              <h5 className="font-medium text-gray-900">Custom Model</h5>
+                              <Plus
+                                className={`h-4 w-4 ${isDisabled ? 'text-gray-400' : 'text-gray-600'}`}
+                              />
+                              <h5
+                                className={`font-medium ${isDisabled ? 'text-gray-500' : 'text-gray-900'}`}
+                              >
+                                Custom Model
+                              </h5>
                             </div>
-                            <p className="text-xs text-gray-600 mb-3">
+                            <p
+                              className={`text-xs mb-3 ${isDisabled ? 'text-gray-500' : 'text-gray-600'}`}
+                            >
                               Create your own model with custom sleeves and allocations
                             </p>
                             <div className="space-y-2">
-                              <p className="text-xs font-medium text-gray-700">
+                              <p
+                                className={`text-xs font-medium ${isDisabled ? 'text-gray-500' : 'text-gray-700'}`}
+                              >
                                 How to create a custom model:
                               </p>
-                              <ol className="text-xs text-gray-600 space-y-1 ml-3 list-decimal">
+                              <ol
+                                className={`text-xs space-y-1 ml-3 list-decimal ${isDisabled ? 'text-gray-400' : 'text-gray-600'}`}
+                              >
                                 <li>Go to Sleeves page to create sleeves</li>
                                 <li>Go to Models page to create your model</li>
                                 <li>Add your sleeves with target allocations</li>
                               </ol>
-                              <p className="text-xs text-gray-500 mt-2">
+                              <p
+                                className={`text-xs mt-2 ${isDisabled ? 'text-gray-400' : 'text-gray-500'}`}
+                              >
                                 Sleeves group similar securities by industry, sector, or investment
                                 style
                               </p>
                             </div>
                             <div className="flex gap-1 mt-3">
-                              <Button
-                                onClick={() => window.open('/sleeves', '_blank')}
-                                variant="outline"
-                                className="flex-1 text-xs"
-                                size="sm"
-                              >
-                                <Plus className="mr-1 h-3 w-3" />
-                                Create Sleeves
-                              </Button>
-                              <Button
-                                onClick={() => window.open('/models', '_blank')}
-                                variant="outline"
-                                className="flex-1 text-xs"
-                                size="sm"
-                              >
-                                <Layers className="mr-1 h-3 w-3" />
-                                Create Model
-                              </Button>
+                              {isDisabled ? (
+                                <>
+                                  <SimpleTooltip content="Complete securities import before creating models">
+                                    <Button
+                                      variant="outline"
+                                      disabled={true}
+                                      className="flex-1 text-xs"
+                                      size="sm"
+                                    >
+                                      <Plus className="mr-1 h-3 w-3" />
+                                      Create Sleeves
+                                    </Button>
+                                  </SimpleTooltip>
+                                  <SimpleTooltip content="Complete securities import before creating models">
+                                    <Button
+                                      variant="outline"
+                                      disabled={true}
+                                      className="flex-1 text-xs"
+                                      size="sm"
+                                    >
+                                      <Layers className="mr-1 h-3 w-3" />
+                                      Create Model
+                                    </Button>
+                                  </SimpleTooltip>
+                                </>
+                              ) : (
+                                <>
+                                  <Button
+                                    onClick={() => window.open('/sleeves', '_blank')}
+                                    variant="outline"
+                                    className="flex-1 text-xs"
+                                    size="sm"
+                                  >
+                                    <Plus className="mr-1 h-3 w-3" />
+                                    Create Sleeves
+                                  </Button>
+                                  <Button
+                                    onClick={() => window.open('/models', '_blank')}
+                                    variant="outline"
+                                    className="flex-1 text-xs"
+                                    size="sm"
+                                  >
+                                    <Layers className="mr-1 h-3 w-3" />
+                                    Create Model
+                                  </Button>
+                                </>
+                              )}
                             </div>
                           </div>
                         </div>

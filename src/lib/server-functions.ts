@@ -50,6 +50,25 @@ export const getDashboardDataServerFn = createServerFn({
   return data;
 });
 
+// Lightweight server functions for individual dashboard queries
+export const getPositionsServerFn = createServerFn({ method: 'GET' }).handler(async () => {
+  const { user } = await requireAuth();
+  const { getPositions } = await import('./db-api');
+  return getPositions(user.id);
+});
+
+export const getTransactionsServerFn = createServerFn({ method: 'GET' }).handler(async () => {
+  const { user } = await requireAuth();
+  const { getTransactions } = await import('./db-api');
+  return getTransactions(user.id);
+});
+
+export const getPortfolioMetricsServerFn = createServerFn({ method: 'GET' }).handler(async () => {
+  const { user } = await requireAuth();
+  const { getPortfolioMetrics } = await import('./db-api');
+  return getPortfolioMetrics(user.id);
+});
+
 // Server function to clear cache - runs ONLY on server
 export const clearCacheServerFn = createServerFn({ method: 'POST' }).handler(async () => {
   await requireAdmin();

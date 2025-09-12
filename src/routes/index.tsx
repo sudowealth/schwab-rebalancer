@@ -8,7 +8,12 @@ import { SleeveModal } from '../components/dashboard/sleeve-modal';
 import { TransactionsTable } from '../components/dashboard/transactions-table';
 import { OnboardingTracker } from '../components/OnboardingTracker';
 import { ExportButton } from '../components/ui/export-button';
-import { getPortfolioMetrics, getPositions, getTransactions } from '../lib/api';
+// Use server functions for live data so client refetches return real results
+import {
+  getPortfolioMetricsServerFn,
+  getPositionsServerFn,
+  getTransactionsServerFn,
+} from '../lib/server-functions';
 import { useSession } from '../lib/auth-client';
 import { exportPositionsToExcel, exportTransactionsToExcel } from '../lib/excel-export';
 import { getDashboardDataServerFn, getSleevesServerFn } from '../lib/server-functions';
@@ -55,26 +60,23 @@ function DashboardComponent() {
 
   const { data: positions, isLoading: positionsLoading } = useQuery({
     queryKey: ['positions'],
-    queryFn: getPositions,
+    queryFn: getPositionsServerFn,
     initialData: loaderData.positions,
     staleTime: 1000 * 60 * 5, // 5 minutes
-    enabled: hasAccounts,
   });
 
   const { data: metrics, isLoading: metricsLoading } = useQuery({
     queryKey: ['metrics'],
-    queryFn: getPortfolioMetrics,
+    queryFn: getPortfolioMetricsServerFn,
     initialData: loaderData.metrics,
     staleTime: 1000 * 60 * 5, // 5 minutes
-    enabled: hasAccounts,
   });
 
   const { data: transactions, isLoading: transactionsLoading } = useQuery({
     queryKey: ['transactions'],
-    queryFn: getTransactions,
+    queryFn: getTransactionsServerFn,
     initialData: loaderData.transactions,
     staleTime: 1000 * 60 * 5, // 5 minutes
-    enabled: hasAccounts,
   });
 
   const { data: sleeves, isLoading: sleevesLoading } = useQuery({
