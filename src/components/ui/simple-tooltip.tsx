@@ -4,9 +4,10 @@ import { createPortal } from 'react-dom';
 interface SimpleTooltipProps {
   children: React.ReactNode;
   content: React.ReactNode;
+  cursor?: string;
 }
 
-export function SimpleTooltip({ children, content }: SimpleTooltipProps) {
+export function SimpleTooltip({ children, content, cursor }: SimpleTooltipProps) {
   const [isVisible, setIsVisible] = React.useState(false);
   // Anchor stores the trigger's centerX, top and bottom for placement calculations
   const [anchor, setAnchor] = React.useState({ centerX: 0, top: 0, bottom: 0 });
@@ -91,6 +92,7 @@ export function SimpleTooltip({ children, content }: SimpleTooltipProps) {
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
         className="inline-block bg-transparent p-0 m-0 border-0"
+        style={cursor ? { cursor } : undefined}
         onFocus={handleMouseEnter}
         onBlur={handleMouseLeave}
       >

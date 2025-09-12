@@ -17,6 +17,7 @@ import { useSecuritiesSeeding } from '../hooks/useSecuritiesSeeding';
 import { checkSecuritiesExistServerFn } from '../lib/server-functions';
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
+import { SimpleTooltip } from './ui/simple-tooltip';
 
 interface OnboardingTask {
   id: string;
@@ -81,21 +82,21 @@ export function OnboardingTracker({
     },
     {
       id: 'create-model',
-      title: 'Create Investment Model',
+      title: 'Create an Investment Model',
       description: 'Build or use a pre-built investment model for your portfolio',
       completed: modelsStatus?.hasModels || false,
       icon: Layers,
     },
     {
       id: 'create-rebalancing-group',
-      title: 'Create Rebalancing Group',
+      title: 'Create a Rebalancing Group',
       description: 'Group your accounts together for portfolio rebalancing',
       completed: rebalancingGroupsStatus?.hasGroups || false,
       icon: Users,
     },
     {
       id: 'run-first-rebalance',
-      title: 'Run your first Rebalance',
+      title: 'Rebalance your Portfolio',
       description: 'Execute your first portfolio rebalancing operation',
       completed: rebalancingRunsStatus?.hasRuns || false,
       icon: RotateCcw,
@@ -279,18 +280,48 @@ export function OnboardingTracker({
                     )}
                     {!task.completed && task.id === 'create-rebalancing-group' && (
                       <div className="mt-3">
-                        <Button
-                          size="sm"
-                          onClick={() => {
-                            navigate({
-                              to: '/rebalancing-groups',
-                              search: { createGroup: 'true' },
-                            });
-                          }}
-                          className="text-xs"
-                        >
-                          Create Rebalancing Group
-                        </Button>
+                        {(() => {
+                          const hasSchwabConnection = isConnected;
+                          const hasModels = modelsStatus?.hasModels || false;
+                          const isDisabled = !hasSchwabConnection || !hasModels;
+
+                          let tooltipMessage = '';
+                          if (!hasSchwabConnection && !hasModels) {
+                            tooltipMessage =
+                              'In order to create a rebalancing group, you must first connect to Schwab and create a model';
+                          } else if (!hasSchwabConnection) {
+                            tooltipMessage =
+                              'In order to create a rebalancing group, you must first connect to Schwab';
+                          } else if (!hasModels) {
+                            tooltipMessage =
+                              'In order to create a rebalancing group, you must first create a model';
+                          }
+
+                          if (isDisabled) {
+                            return (
+                              <SimpleTooltip content={tooltipMessage} cursor="not-allowed">
+                                <Button size="sm" disabled={true} className="text-xs">
+                                  Create Rebalancing Group
+                                </Button>
+                              </SimpleTooltip>
+                            );
+                          }
+
+                          return (
+                            <Button
+                              size="sm"
+                              onClick={() => {
+                                navigate({
+                                  to: '/rebalancing-groups',
+                                  search: { createGroup: 'true' },
+                                });
+                              }}
+                              className="text-xs"
+                            >
+                              Create Rebalancing Group
+                            </Button>
+                          );
+                        })()}
                       </div>
                     )}
                   </div>
