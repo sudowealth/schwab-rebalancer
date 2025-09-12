@@ -35,6 +35,9 @@ export async function loadDashboardData(
       indexMembers: [],
       user: null,
       schwabCredentialsStatus: { hasCredentials: false },
+      accountsCount: 0,
+      securitiesStatus: { hasSecurities: false, securitiesCount: 0 },
+      modelsStatus: { hasModels: false, modelsCount: 0 },
     };
   }
 
@@ -87,6 +90,69 @@ export async function loadDashboardData(
       }
     }
 
+    // Count user accounts to control zero-state rendering on dashboard
+    let accountsCount = 0;
+    try {
+      if (userId) {
+        const { getDatabase } = await import('./db-config');
+        const db = getDatabase();
+        const schema = await import('../db/schema');
+        const { eq, sql } = await import('drizzle-orm');
+        const result = await db
+          .select({ count: sql<number>`count(*)` })
+          .from(schema.account)
+          .where(eq(schema.account.userId, userId));
+        accountsCount = result[0]?.count || 0;
+      }
+    } catch (error) {
+      console.warn('⚠️ Failed to count accounts for dashboard:', error);
+      accountsCount = 0;
+    }
+
+    // Check if securities exist (excluding cash)
+    let securitiesStatus = { hasSecurities: false, securitiesCount: 0 };
+    try {
+      if (userId) {
+        const { getDatabase } = await import('./db-config');
+        const db = getDatabase();
+        const schema = await import('../db/schema');
+        const { ne, sql } = await import('drizzle-orm');
+        const result = await db
+          .select({ count: sql<number>`count(*)` })
+          .from(schema.security)
+          .where(ne(schema.security.ticker, '$$$'));
+        securitiesStatus = {
+          hasSecurities: (result[0]?.count || 0) > 0,
+          securitiesCount: result[0]?.count || 0,
+        };
+      }
+    } catch (error) {
+      console.warn('⚠️ Failed to check securities status:', error);
+      securitiesStatus = { hasSecurities: false, securitiesCount: 0 };
+    }
+
+    // Check if models exist for the user
+    let modelsStatus = { hasModels: false, modelsCount: 0 };
+    try {
+      if (userId) {
+        const { getDatabase } = await import('./db-config');
+        const db = getDatabase();
+        const schema = await import('../db/schema');
+        const { eq, sql } = await import('drizzle-orm');
+        const result = await db
+          .select({ count: sql<number>`count(*)` })
+          .from(schema.model)
+          .where(eq(schema.model.userId, userId));
+        modelsStatus = {
+          hasModels: (result[0]?.count || 0) > 0,
+          modelsCount: result[0]?.count || 0,
+        };
+      }
+    } catch (error) {
+      console.warn('⚠️ Failed to check models status:', error);
+      modelsStatus = { hasModels: false, modelsCount: 0 };
+    }
+
     return {
       positions,
       metrics,
@@ -98,6 +164,9 @@ export async function loadDashboardData(
       indexMembers,
       user,
       schwabCredentialsStatus,
+      accountsCount,
+      securitiesStatus,
+      modelsStatus,
     };
   } catch (error) {
     console.error('❌ Error loading dashboard data:', error);
@@ -129,6 +198,9 @@ export async function loadDashboardData(
       indexMembers: [],
       user: null,
       schwabCredentialsStatus: { hasCredentials: false },
+      accountsCount: 0,
+      securitiesStatus: { hasSecurities: false, securitiesCount: 0 },
+      modelsStatus: { hasModels: false, modelsCount: 0 },
     };
   }
 }

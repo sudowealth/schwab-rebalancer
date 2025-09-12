@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ExternalLink, Loader2 } from 'lucide-react';
+import { Link, Loader2 } from 'lucide-react';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   getHeldPositionTickersServerFn,
@@ -11,7 +11,7 @@ import {
   syncYahooFundamentalsServerFn,
 } from '../../lib/server-functions';
 import { Button } from '../ui/button';
-import { Card, CardContent } from '../ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 
 interface SchwabConnectionSectionProps {
   initialCredentialsStatus?: { hasCredentials: boolean };
@@ -200,48 +200,79 @@ export function SchwabConnectionSection({
   // Show sync progress if syncing
   if (isSyncing) {
     return (
-      <Card className="border-dashed">
-        <CardContent className="pt-6">
-          <div className="text-center space-y-2">
-            <Loader2 className="h-8 w-8 mx-auto animate-spin text-blue-600" />
-            <h3 className="font-medium">Setting up your Schwab data</h3>
-            <p className="text-sm text-muted-foreground max-w-md mx-auto">
-              {syncStep || 'Preparing your data...'}
-            </p>
-            <p className="text-xs text-muted-foreground">This may take a few moments</p>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="mb-8">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Link className="h-5 w-5" />
+              Setting up Your Schwab Data
+            </CardTitle>
+            <CardDescription>
+              We're importing your accounts, holdings, and price data from Schwab
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-col items-center gap-4">
+              <div className="flex items-center gap-3 p-4 bg-blue-50 rounded-lg border border-blue-200 w-full">
+                <Loader2 className="h-6 w-6 animate-spin text-blue-600 flex-shrink-0" />
+                <div>
+                  <h4 className="font-medium text-blue-900 mb-1">Sync in Progress</h4>
+                  <p className="text-sm text-blue-700">{syncStep || 'Preparing your data...'}</p>
+                  <p className="text-xs text-blue-600 mt-1">This may take a few moments</p>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     );
   }
 
   return (
-    <Card className="border-dashed">
-      <CardContent className="pt-6">
-        <div className="text-center space-y-2">
-          <ExternalLink className="h-8 w-8 mx-auto text-muted-foreground" />
-          <h3 className="font-medium">Connect Your Schwab Account</h3>
-          <p className="text-sm text-muted-foreground max-w-md mx-auto">
-            Link your Charles Schwab account to automatically import your accounts and holdings.
-            Your credentials are encrypted and stored securely.
-          </p>
-          <div className="pt-2">
+    <div className="mb-8">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Link className="h-5 w-5" />
+            Schwab Setup
+          </CardTitle>
+          <CardDescription>
+            Link your Charles Schwab account to automatically import your accounts, holdings, and
+            transaction data
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col gap-4">
             <Button
               onClick={handleConnect}
               disabled={isConnecting || oauthMutation.isPending || statusLoading}
+              variant="default"
+              size="lg"
+              className="w-full"
             >
               {isConnecting || oauthMutation.isPending ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  Connecting...
+                  Connecting to Schwab...
                 </>
               ) : (
-                'Get Started'
+                <>
+                  <Link className="h-4 w-4 mr-2" />
+                  Connect to Schwab
+                </>
               )}
             </Button>
+
+            {/* Loading State */}
+            {(isConnecting || oauthMutation.isPending || statusLoading) && (
+              <div className="flex items-center gap-2 text-sm text-gray-600 justify-center">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span>Redirecting to Schwab for secure authentication...</span>
+              </div>
+            )}
           </div>
-        </div>
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+    </div>
   );
 }

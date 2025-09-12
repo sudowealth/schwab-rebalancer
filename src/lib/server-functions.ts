@@ -3612,3 +3612,43 @@ export const getYahooSyncCountsServerFn = createServerFn({ method: 'GET' }).hand
     'missing-fundamentals-sleeves': Number(sleeveMissingFundamentals[0]?.count ?? 0),
   };
 });
+
+// Check if securities exist in the database
+export const checkSecuritiesExistServerFn = createServerFn({ method: 'GET' }).handler(async () => {
+  const { user } = await requireAuth();
+  const { getDatabase } = await import('./db-config');
+  const { count, ne } = await import('drizzle-orm');
+  const db = getDatabase();
+  const schema = await import('../db/schema');
+
+  // Get count of securities (excluding cash)
+  const securitiesCount = await db
+    .select({ count: count() })
+    .from(schema.security)
+    .where(ne(schema.security.ticker, CASH_TICKER));
+
+  return {
+    hasSecurities: Number(securitiesCount[0]?.count ?? 0) > 0,
+    securitiesCount: Number(securitiesCount[0]?.count ?? 0),
+  };
+});
+
+// Check if models exist for the user
+export const checkModelsExistServerFn = createServerFn({ method: 'GET' }).handler(async () => {
+  const { user } = await requireAuth();
+  const { getDatabase } = await import('./db-config');
+  const { count, eq } = await import('drizzle-orm');
+  const db = getDatabase();
+  const schema = await import('../db/schema');
+
+  // Get count of models for this user
+  const modelsCount = await db
+    .select({ count: count() })
+    .from(schema.model)
+    .where(eq(schema.model.userId, user.id));
+
+  return {
+    hasModels: Number(modelsCount[0]?.count ?? 0) > 0,
+    modelsCount: Number(modelsCount[0]?.count ?? 0),
+  };
+});

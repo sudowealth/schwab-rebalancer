@@ -178,7 +178,7 @@ export function SeedDataSection() {
           <SimpleTooltip
             content="Seeds all tables in order:
 • Cash instruments + S&P 500 securities
-• All ETFs and stocks via NASDAQ feeds (~13,000 securities)
+• All ETFs and stocks via NASDAQ feeds (~11,000 securities)
 • Market indices
 • Accounts & holdings
 • Transactions
@@ -200,7 +200,7 @@ export function SeedDataSection() {
           <SimpleTooltip
             content="Seeds securities data:
 • Cash instruments ($$$, MCASH)
-• All ETFs and stocks via NASDAQ feeds (~13,000 securities)
+• All ETFs and stocks via NASDAQ feeds (~11,000 securities)
 • S&P 500 index and securities seeding
 • Schwab price sync for held/index/sleeve securities (if connected)
 • Yahoo sync for held/sleeve securities missing data"
@@ -483,7 +483,7 @@ export function SeedDataSection() {
             {isSchwabSyncing
               ? 'Updating prices for newly imported securities via Schwab...'
               : seedSecuritiesMutation.isPending
-                ? 'Importing all securities from NASDAQ feeds (~13,000). This may take a few minutes.'
+                ? 'Importing ETFs and stocks from NASDAQ feeds (~11,000)'
                 : seedModelsMutation.isPending
                   ? 'Seeding S&P 500 Model ecosystem. This may take a moment...'
                   : 'Seeding Global Equity Model ecosystem. This may take a moment...'}
