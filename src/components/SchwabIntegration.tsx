@@ -141,8 +141,19 @@ export function SchwabIntegration() {
     },
     onSuccess: (data) => {
       console.log('✅ [UI] Prices sync completed successfully:', data);
+      // Invalidate all dashboard queries to refresh price data
       queryClient.invalidateQueries({
         queryKey: ['schwab-credentials-status'],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ['positions'],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ['metrics'],
+      });
+      // Force refetch of positions since staleTime might prevent immediate refresh
+      queryClient.refetchQueries({
+        queryKey: ['positions'],
       });
     },
     onError: (error) => {
@@ -170,28 +181,51 @@ export function SchwabIntegration() {
   // Mutation to run full Schwab sync sequentially: accounts -> holdings -> prices for held securities
   const syncAllMutation = useMutation({
     mutationFn: async () => {
-      console.log(
-        '🔄 [UI] Starting full Schwab sync: accounts → holdings → held securities prices',
-      );
+      console.log('🔄 [UI] ===== MANUAL FULL SCHWAB SYNC START =====');
+      console.log('🔄 [UI] Timestamp:', new Date().toISOString());
+      console.log('🔄 [UI] Sequence: accounts → holdings → held securities prices');
 
       // 1) Accounts
+      console.log('🏦 [UI] Step 1: Starting accounts sync...');
       const accountsResult = await syncAccountsMutation.mutateAsync();
+      console.log('🏦 [UI] Accounts sync result:', {
+        success: accountsResult?.success,
+        recordsProcessed: accountsResult?.recordsProcessed,
+        errorMessage: accountsResult?.errorMessage,
+        timestamp: new Date().toISOString(),
+      });
+
       if (!accountsResult?.success) {
+        console.error('❌ [UI] Accounts sync failed:', accountsResult?.errorMessage);
         throw new Error(accountsResult?.errorMessage || 'Accounts sync failed');
       }
+      console.log('✅ [UI] Accounts sync completed successfully');
 
       // 2) Holdings
+      console.log('📊 [UI] Step 2: Starting holdings sync...');
       const holdingsResult = await syncHoldingsMutation.mutateAsync(undefined);
+      console.log('📊 [UI] Holdings sync result:', {
+        success: holdingsResult?.success,
+        recordsProcessed: holdingsResult?.recordsProcessed,
+        errorMessage: holdingsResult?.errorMessage,
+        timestamp: new Date().toISOString(),
+      });
+
       if (!holdingsResult?.success) {
+        console.error('❌ [UI] Holdings sync failed:', holdingsResult?.errorMessage);
         throw new Error(holdingsResult?.errorMessage || 'Holdings sync failed');
       }
+      console.log('✅ [UI] Holdings sync completed successfully');
 
       // 3) Prices for held tickers
+      console.log('💰 [UI] Step 3: Getting held position tickers for price sync...');
       const heldTickers = await getHeldPositionTickersServerFn();
-      console.log(
-        `📊 [UI] Found ${heldTickers.length} held position tickers for price sync during All`,
-        heldTickers,
-      );
+      console.log('💰 [UI] Manual full sync - held position tickers result:', {
+        count: heldTickers.length,
+        tickers: heldTickers,
+        timestamp: new Date().toISOString(),
+      });
+
       if (heldTickers.length === 0) {
         console.warn('⚠️ [UI] No held positions found after holdings sync; skipping price sync');
         return { success: true, recordsProcessed: 0 } as {
@@ -200,13 +234,39 @@ export function SchwabIntegration() {
         };
       }
 
+      console.log('💰 [UI] Starting price sync for held securities...');
       const pricesResult = await syncPricesMutation.mutateAsync(heldTickers);
+      console.log('💰 [UI] Price sync result:', {
+        success: pricesResult?.success,
+        recordsProcessed: pricesResult?.recordsProcessed,
+        errorMessage: pricesResult?.errorMessage,
+        timestamp: new Date().toISOString(),
+      });
+
+      console.log('✅ [UI] ===== MANUAL FULL SCHWAB SYNC COMPLETE =====');
       return pricesResult;
     },
     onSuccess: (data) => {
       console.log('✅ [UI] Full Schwab sync completed successfully:', data);
+      // Invalidate all dashboard queries to refresh data after full sync
       queryClient.invalidateQueries({
         queryKey: ['schwab-credentials-status'],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ['positions'],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ['metrics'],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ['transactions'],
+      });
+      // Force refetch of positions since staleTime might prevent immediate refresh
+      queryClient.refetchQueries({
+        queryKey: ['positions'],
+      });
+      queryClient.refetchQueries({
+        queryKey: ['metrics'],
       });
     },
     onError: (error) => {
@@ -399,20 +459,37 @@ export function SchwabIntegration() {
   };
 
   const handlePricesSyncHeld = async () => {
+    console.log('🔄 [UI] ===== MANUAL HELD SECURITIES PRICE SYNC START =====');
+    console.log('🔄 [UI] Timestamp:', new Date().toISOString());
+
     try {
-      console.log('🔍 [UI] Fetching held position tickers');
+      console.log('🔍 [UI] Fetching held position tickers for manual sync...');
       const heldTickers = await getHeldPositionTickersServerFn();
-      console.log(`📊 [UI] Found ${heldTickers.length} held position tickers:`, heldTickers);
+      console.log('🔍 [UI] Manual sync - held position tickers result:', {
+        count: heldTickers.length,
+        tickers: heldTickers,
+        timestamp: new Date().toISOString(),
+      });
 
       if (heldTickers.length === 0) {
         console.warn('⚠️ [UI] No held positions found, skipping price sync');
         return;
       }
 
-      console.log('💰 [UI] Starting price sync for held positions');
-      syncPricesMutation.mutate(heldTickers);
+      console.log('💰 [UI] Starting manual price sync for held positions:', heldTickers);
+      const mutationResult = syncPricesMutation.mutate(heldTickers);
+      console.log('💰 [UI] Manual price sync mutation initiated');
+
+      console.log('✅ [UI] ===== MANUAL HELD SECURITIES PRICE SYNC COMPLETE =====');
+      return mutationResult;
     } catch (error) {
-      console.error('❌ [UI] Failed to fetch held position tickers:', error);
+      console.error('❌ [UI] ===== MANUAL HELD SECURITIES PRICE SYNC FAILED =====');
+      console.error('❌ [UI] Error details:', {
+        error: error,
+        message: error instanceof Error ? error.message : 'Unknown error',
+        timestamp: new Date().toISOString(),
+      });
+      throw error;
     }
   };
 

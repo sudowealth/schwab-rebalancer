@@ -1504,19 +1504,49 @@ export const syncSchwabTransactionsServerFn = createServerFn({ method: 'POST' })
 export const getHeldPositionTickersServerFn = createServerFn({
   method: 'GET',
 }).handler(async (): Promise<string[]> => {
-  const { user } = await requireAuth();
+  console.log('🔍 [ServerFn] ===== GET HELD POSITION TICKERS START =====');
+  console.log('🔍 [ServerFn] Timestamp:', new Date().toISOString());
 
-  const { getPositions } = await import('./db-api');
-  const positions = await getPositions(user.id);
+  try {
+    const { user } = await requireAuth();
+    console.log('🔍 [ServerFn] Authenticated user:', user.id);
 
-  // Get unique tickers from positions
-  const uniqueTickers = [...new Set(positions.map((position) => position.ticker))];
-  console.log(
-    `📊 [ServerFn] Found ${uniqueTickers.length} unique tickers in held positions:`,
-    uniqueTickers,
-  );
+    console.log('🔍 [ServerFn] Importing db-api to get positions...');
+    const { getPositions } = await import('./db-api');
 
-  return uniqueTickers;
+    console.log('🔍 [ServerFn] Calling getPositions for user:', user.id);
+    const positions = await getPositions(user.id);
+    console.log('🔍 [ServerFn] getPositions result:', {
+      totalPositions: positions.length,
+      positions: positions.map(p => ({ ticker: p.ticker, qty: p.qty })),
+      timestamp: new Date().toISOString()
+    });
+
+    // Get unique tickers from positions
+    const allTickers = positions.map((position) => position.ticker);
+    console.log('🔍 [ServerFn] All tickers from positions:', allTickers);
+
+    const uniqueTickers = [...new Set(allTickers)];
+    console.log('🔍 [ServerFn] Unique tickers after deduplication:', uniqueTickers);
+
+    console.log('🔍 [ServerFn] ===== GET HELD POSITION TICKERS SUCCESS =====');
+    console.log('🔍 [ServerFn] Returning tickers:', {
+      count: uniqueTickers.length,
+      tickers: uniqueTickers,
+      timestamp: new Date().toISOString()
+    });
+
+    return uniqueTickers;
+  } catch (error) {
+    console.error('❌ [ServerFn] ===== GET HELD POSITION TICKERS FAILED =====');
+    console.error('❌ [ServerFn] Error details:', {
+      error: error,
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
+      timestamp: new Date().toISOString()
+    });
+    throw error;
+  }
 });
 
 // Server function to sync prices from Schwab
@@ -1540,12 +1570,16 @@ export const syncSchwabPricesServerFn = createServerFn({ method: 'POST' })
         logId?: string;
       }
     > => {
-      console.log('💰 [ServerFn] Starting Schwab prices sync');
-      console.log('📋 [ServerFn] Request data:', data);
+      console.log('💰 [ServerFn] ===== STARTING SCHWAB PRICES SYNC =====');
+      console.log('💰 [ServerFn] Timestamp:', new Date().toISOString());
+      console.log('💰 [ServerFn] Request data:', {
+        symbols: data.symbols,
+        symbolsCount: data.symbols?.length || 'all',
+        timestamp: new Date().toISOString()
+      });
 
       const { user } = await requireAuth();
-
-      console.log('👤 [ServerFn] Using user ID:', user.id);
+      console.log('👤 [ServerFn] Authenticated user:', user.id);
 
       try {
         const { getDatabase } = await import('./db-config');
@@ -1571,12 +1605,34 @@ export const syncSchwabPricesServerFn = createServerFn({ method: 'POST' })
         await db.insert(schema.syncLog).values(startLog);
         console.log('📝 [ServerFn] Created sync log for prices:', logId);
 
+        console.log('💰 [ServerFn] Calling priceSyncService.syncPrices with params:', {
+          userId: user.id,
+          symbols: data.symbols,
+          symbolsCount: data.symbols?.length || 'all',
+          forceRefresh: true,
+          timestamp: new Date().toISOString()
+        });
+
         const results = await priceSyncService.syncPrices({
           userId: user.id,
           symbols: data.symbols,
           forceRefresh: true,
         });
-        console.log('📊 [ServerFn] Price sync results received:', results);
+
+        console.log('📊 [ServerFn] Price sync results received:', {
+          totalResults: results.length,
+          successful: results.filter(r => r.success).length,
+          failed: results.filter(r => !r.success).length,
+          sampleResults: results.slice(0, 3).map(r => ({
+            ticker: r.ticker,
+            success: r.success,
+            oldPrice: r.oldPrice,
+            newPrice: r.newPrice,
+            source: r.source,
+            error: r.error
+          })),
+          timestamp: new Date().toISOString()
+        });
 
         // Persist per-ticker as generic change entries
         try {

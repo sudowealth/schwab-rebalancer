@@ -1,6 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Link, Loader2 } from 'lucide-react';
-import React, { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   getHeldPositionTickersServerFn,
   getSchwabCredentialsStatusServerFn,
@@ -9,17 +8,9 @@ import {
   syncSchwabHoldingsServerFn,
   syncSchwabPricesServerFn,
   syncYahooFundamentalsServerFn,
-} from '../../lib/server-functions';
-import { Button } from '../ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
+} from '../lib/server-functions';
 
-interface SchwabConnectionSectionProps {
-  initialCredentialsStatus?: { hasCredentials: boolean };
-}
-
-export function SchwabConnectionSection({
-  initialCredentialsStatus,
-}: SchwabConnectionSectionProps) {
+export function useSchwabConnection(initialCredentialsStatus?: { hasCredentials: boolean }) {
   const [isConnecting, setIsConnecting] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncStep, setSyncStep] = useState<string>('');
@@ -81,63 +72,119 @@ export function SchwabConnectionSection({
 
   // Function to run full Schwab sync sequentially
   const runFullSync = useCallback(async () => {
-    console.log('🔄 [UI] Starting full Schwab sync after connection');
+    console.log('🔄 [UI] ===== STARTING FULL SCHWAB SYNC AFTER CONNECTION =====');
+    console.log('🔄 [UI] Timestamp:', new Date().toISOString());
     setIsSyncing(true);
 
     try {
       // 1) Sync accounts
       setSyncStep('Syncing accounts...');
-      console.log('🏦 [UI] Syncing accounts');
+      console.log('🏦 [UI] Step 1: Starting accounts sync...');
+      console.log('🏦 [UI] Current time:', new Date().toISOString());
       const accountsResult = await syncAccountsMutation.mutateAsync();
+      console.log('🏦 [UI] Accounts sync result:', {
+        success: accountsResult?.success,
+        recordsProcessed: accountsResult?.recordsProcessed,
+        errorMessage: accountsResult?.errorMessage,
+        timestamp: new Date().toISOString(),
+      });
+
       if (!accountsResult?.success) {
+        console.error('❌ [UI] Accounts sync failed with error:', accountsResult?.errorMessage);
         throw new Error(accountsResult?.errorMessage || 'Accounts sync failed');
       }
+      console.log('✅ [UI] Accounts sync completed successfully');
 
       // 2) Sync holdings
       setSyncStep('Syncing holdings...');
-      console.log('📊 [UI] Syncing holdings');
+      console.log('📊 [UI] Step 2: Starting holdings sync...');
+      console.log('📊 [UI] Current time:', new Date().toISOString());
       const holdingsResult = await syncHoldingsMutation.mutateAsync(undefined);
+      console.log('📊 [UI] Holdings sync result:', {
+        success: holdingsResult?.success,
+        recordsProcessed: holdingsResult?.recordsProcessed,
+        errorMessage: holdingsResult?.errorMessage,
+        timestamp: new Date().toISOString(),
+      });
+
       if (!holdingsResult?.success) {
+        console.error('❌ [UI] Holdings sync failed with error:', holdingsResult?.errorMessage);
         throw new Error(holdingsResult?.errorMessage || 'Holdings sync failed');
       }
+      console.log('✅ [UI] Holdings sync completed successfully');
 
       // 3) Get held tickers and sync prices
       setSyncStep('Syncing prices...');
-      console.log('💰 [UI] Getting held position tickers');
+      console.log('💰 [UI] Step 3: Getting held position tickers...');
+      console.log('💰 [UI] Current time:', new Date().toISOString());
       const heldTickers = await getHeldPositionTickersServerFn();
-      console.log(`📊 [UI] Found ${heldTickers.length} held position tickers`, heldTickers);
+      console.log('💰 [UI] Held position tickers result:', {
+        count: heldTickers.length,
+        tickers: heldTickers,
+        timestamp: new Date().toISOString(),
+      });
 
       if (heldTickers.length > 0) {
+        console.log('💰 [UI] Starting price sync for held securities...');
         const pricesResult = await syncPricesMutation.mutateAsync(heldTickers);
-        console.log('✅ [UI] Prices sync completed:', pricesResult);
+        console.log('💰 [UI] Prices sync result:', {
+          success: pricesResult?.success,
+          recordsProcessed: pricesResult?.recordsProcessed,
+          errorMessage: pricesResult?.errorMessage,
+          details: pricesResult?.details?.slice(0, 5), // First 5 results
+          timestamp: new Date().toISOString(),
+        });
+        console.log('✅ [UI] Prices sync completed');
+      } else {
+        console.warn('⚠️ [UI] No held securities found - skipping price sync');
       }
 
       // 4) Optional: Sync Yahoo fundamentals
       try {
-        console.log('🟡 [UI] Syncing Yahoo fundamentals');
-        await syncYahooFundamentalsServerFn({
+        console.log('🟡 [UI] Step 4: Starting Yahoo fundamentals sync...');
+        console.log('🟡 [UI] Current time:', new Date().toISOString());
+        const yahooResult = await syncYahooFundamentalsServerFn({
           data: { scope: 'missing-fundamentals-holdings' },
         });
+        console.log('🟡 [UI] Yahoo fundamentals sync result:', {
+          success: yahooResult?.success,
+          recordsProcessed: yahooResult?.recordsProcessed,
+          errorMessage: 'errorMessage' in yahooResult ? yahooResult.errorMessage : undefined,
+          timestamp: new Date().toISOString(),
+        });
       } catch (yErr) {
-        console.warn('⚠️ [UI] Yahoo fundamentals sync had an issue:', yErr);
+        console.warn('⚠️ [UI] Yahoo fundamentals sync had an issue:', {
+          error: yErr,
+          timestamp: new Date().toISOString(),
+        });
       }
 
       // Success - refresh all data
-      console.log('✅ [UI] Full Schwab sync completed successfully');
+      console.log('✅ [UI] ===== FULL SCHWAB SYNC COMPLETED SUCCESSFULLY =====');
+      console.log('✅ [UI] Final timestamp:', new Date().toISOString());
       setSyncStep('Sync complete!');
 
       // Refresh all dashboard data
+      console.log('🔄 [UI] Invalidating queries to refresh data...');
       queryClient.invalidateQueries();
 
       // Clear sync state after a brief delay to show success
       setTimeout(() => {
+        console.log('🧹 [UI] Clearing sync state');
         setIsSyncing(false);
         setSyncStep('');
       }, 2000);
     } catch (error) {
-      console.error('❌ [UI] Full Schwab sync failed:', error);
+      console.error('❌ [UI] ===== FULL SCHWAB SYNC FAILED =====');
+      console.error('❌ [UI] Error details:', {
+        error: error,
+        message: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined,
+        timestamp: new Date().toISOString(),
+      });
       setSyncStep('Sync failed. Please try again from Data Feeds.');
       setTimeout(() => {
+        console.log('🧹 [UI] Clearing sync state after error');
         setIsSyncing(false);
         setSyncStep('');
       }, 3000);
@@ -176,7 +223,7 @@ export function SchwabConnectionSection({
   }, []);
 
   // Trigger sync after successful OAuth connection
-  React.useEffect(() => {
+  useEffect(() => {
     if (isConnected && hasOAuthCallback && !hasRunInitialSync && !isSyncing) {
       console.log('🔄 [UI] Detected successful OAuth return, starting initial sync');
       setHasRunInitialSync(true);
@@ -192,87 +239,16 @@ export function SchwabConnectionSection({
     }
   }, [isConnected, hasOAuthCallback, hasRunInitialSync, isSyncing, runFullSync]);
 
-  // Don't render anything if connected and not syncing
-  if (isConnected && !isSyncing) {
-    return null;
-  }
-
-  // Show sync progress if syncing
-  if (isSyncing) {
-    return (
-      <div className="mb-8">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Link className="h-5 w-5" />
-              Setting up Your Schwab Data
-            </CardTitle>
-            <CardDescription>
-              We're importing your accounts, holdings, and price data from Schwab
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-col items-center gap-4">
-              <div className="flex items-center gap-3 p-4 bg-blue-50 rounded-lg border border-blue-200 w-full">
-                <Loader2 className="h-6 w-6 animate-spin text-blue-600 flex-shrink-0" />
-                <div>
-                  <h4 className="font-medium text-blue-900 mb-1">Sync in Progress</h4>
-                  <p className="text-sm text-blue-700">{syncStep || 'Preparing your data...'}</p>
-                  <p className="text-xs text-blue-600 mt-1">This may take a few moments</p>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  return (
-    <div className="mb-8">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Link className="h-5 w-5" />
-            Schwab Setup
-          </CardTitle>
-          <CardDescription>
-            Link your Charles Schwab account to automatically import your accounts, holdings, and
-            transaction data
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col gap-4">
-            <Button
-              onClick={handleConnect}
-              disabled={isConnecting || oauthMutation.isPending || statusLoading}
-              variant="default"
-              size="lg"
-              className="w-full"
-            >
-              {isConnecting || oauthMutation.isPending ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  Connecting to Schwab...
-                </>
-              ) : (
-                <>
-                  <Link className="h-4 w-4 mr-2" />
-                  Connect to Schwab
-                </>
-              )}
-            </Button>
-
-            {/* Loading State */}
-            {(isConnecting || oauthMutation.isPending || statusLoading) && (
-              <div className="flex items-center gap-2 text-sm text-gray-600 justify-center">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                <span>Redirecting to Schwab for secure authentication...</span>
-              </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  );
+  return {
+    credentialsStatus,
+    isConnecting,
+    isSyncing,
+    syncStep,
+    statusLoading,
+    oauthMutation,
+    isConnected,
+    hasOAuthCallback,
+    handleConnect,
+    runFullSync,
+  };
 }

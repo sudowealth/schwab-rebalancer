@@ -3,13 +3,11 @@ import { createFileRoute, redirect } from '@tanstack/react-router';
 import { useState } from 'react';
 import { DashboardMetrics } from '../components/dashboard/dashboard-metrics';
 import { PositionsTable } from '../components/dashboard/positions-table';
-import { SchwabConnectionSection } from '../components/dashboard/schwab-connection-section';
 import { SecurityModal } from '../components/dashboard/security-modal';
 import { SleeveModal } from '../components/dashboard/sleeve-modal';
 import { TransactionsTable } from '../components/dashboard/transactions-table';
 import { ModelCreationPrompt } from '../components/ModelCreationPrompt';
 import { OnboardingTracker } from '../components/OnboardingTracker';
-import { SecuritySeedPrompt } from '../components/SecuritySeedPrompt';
 import { ExportButton } from '../components/ui/export-button';
 import { getPortfolioMetrics, getPositions, getTransactions } from '../lib/api';
 import { useSession } from '../lib/auth-client';
@@ -143,19 +141,12 @@ function DashboardComponent() {
 
       {/* Onboarding Tracker - shows progress through setup steps */}
       <OnboardingTracker
-        securitiesStatus={loaderData.securitiesStatus}
         schwabCredentialsStatus={loaderData.schwabCredentialsStatus}
         modelsStatus={loaderData.modelsStatus}
         rebalancingGroupsStatus={loaderData.rebalancingGroupsStatus}
         rebalancingRunsStatus={loaderData.rebalancingRunsStatus}
         proposedTradesStatus={loaderData.proposedTradesStatus}
       />
-
-      {/* Security Seed Prompt - only shows when no securities exist */}
-      <SecuritySeedPrompt securitiesStatus={loaderData.securitiesStatus} />
-
-      {/* Schwab Connection Section - only shows when not connected */}
-      <SchwabConnectionSection initialCredentialsStatus={loaderData.schwabCredentialsStatus} />
 
       {/* Model Creation Prompt - only shows when securities exist but no models */}
       <ModelCreationPrompt modelsStatus={loaderData.modelsStatus} />
