@@ -132,40 +132,94 @@ export async function seedSP500Securities(db: ReturnType<typeof drizzle>) {
   const SP500_SECURITIES_DATA = await generateSP500SecuritiesData();
 
   // Insert S&P 500 securities
+  let insertedCount = 0;
+  let skippedCount = 0;
   for (const security of SP500_SECURITIES_DATA) {
-    await db.insert(schema.security).values({
-      ticker: security.ticker,
-      name: security.name,
-      price: security.price,
-      industry: security.industry,
-      sector: security.sector,
-      createdAt: now,
-      updatedAt: now,
-    });
+    try {
+      await db.insert(schema.security).values({
+        ticker: security.ticker,
+        name: security.name,
+        price: security.price,
+        industry: security.industry,
+        sector: security.sector,
+        createdAt: now,
+        updatedAt: now,
+      });
+      insertedCount++;
+    } catch (insertError: unknown) {
+      // Handle UNIQUE constraint violations gracefully
+      const error = insertError as { code?: string; message?: string };
+      if (
+        error?.code === 'SQLITE_CONSTRAINT_PRIMARYKEY' ||
+        error?.code === 'SQLITE_CONSTRAINT_UNIQUE' ||
+        error?.message?.includes('UNIQUE constraint failed')
+      ) {
+        // Security already exists, count it as skipped
+        skippedCount++;
+        console.log(`⚠️  S&P 500 security ${security.ticker} already exists, skipping`);
+      } else {
+        // Re-throw other errors
+        throw insertError;
+      }
+    }
   }
 
-  console.log(`✅ Seeded ${SP500_SECURITIES_DATA.length} S&P 500 securities`);
+  console.log(`✅ Seeded ${insertedCount} S&P 500 securities (${skippedCount} already existed)`);
 
   // Seed S&P 500 index and members
-  await db.insert(schema.index).values({
-    id: 'sp500',
-    name: 'S&P 500',
-    createdAt: now,
-    updatedAt: now,
-  });
-
-  // Insert all S&P 500 companies as index members
-  for (const security of SP500_SECURITIES_DATA) {
-    await db.insert(schema.indexMember).values({
-      id: `sp500-${security.ticker}`,
-      indexId: 'sp500',
-      securityId: security.ticker,
+  try {
+    await db.insert(schema.index).values({
+      id: 'sp500',
+      name: 'S&P 500',
       createdAt: now,
       updatedAt: now,
     });
+    console.log('✅ Created S&P 500 index');
+  } catch (indexError: unknown) {
+    // Handle UNIQUE constraint violations gracefully
+    const error = indexError as { code?: string; message?: string };
+    if (
+      error?.code === 'SQLITE_CONSTRAINT_PRIMARYKEY' ||
+      error?.code === 'SQLITE_CONSTRAINT_UNIQUE' ||
+      error?.message?.includes('UNIQUE constraint failed')
+    ) {
+      console.log('⚠️  S&P 500 index already exists, skipping creation');
+    } else {
+      throw indexError;
+    }
   }
 
-  console.log(`✅ Seeded SP500 index with ${SP500_SECURITIES_DATA.length} members`);
+  // Insert all S&P 500 companies as index members
+  let membersInsertedCount = 0;
+  let membersSkippedCount = 0;
+  for (const security of SP500_SECURITIES_DATA) {
+    try {
+      await db.insert(schema.indexMember).values({
+        id: `sp500-${security.ticker}`,
+        indexId: 'sp500',
+        securityId: security.ticker,
+        createdAt: now,
+        updatedAt: now,
+      });
+      membersInsertedCount++;
+    } catch (memberError: unknown) {
+      // Handle UNIQUE constraint violations gracefully
+      const error = memberError as { code?: string; message?: string };
+      if (
+        error?.code === 'SQLITE_CONSTRAINT_PRIMARYKEY' ||
+        error?.code === 'SQLITE_CONSTRAINT_UNIQUE' ||
+        error?.message?.includes('UNIQUE constraint failed')
+      ) {
+        membersSkippedCount++;
+      } else {
+        throw memberError;
+      }
+    }
+  }
+
+  console.log(
+    `✅ Seeded SP500 index with ${membersInsertedCount} members (${membersSkippedCount} already existed)`,
+  );
 }
 
 const createdAt = Date.now();

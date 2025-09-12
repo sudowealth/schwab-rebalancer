@@ -1,3 +1,4 @@
+import { useQueryClient } from '@tanstack/react-query';
 import { createFileRoute, redirect } from '@tanstack/react-router';
 import { AlertTriangle, Database, Trash2 } from 'lucide-react';
 import { useId, useState } from 'react';
@@ -31,6 +32,7 @@ export const Route = createFileRoute('/admin/')({
 
 function AdminDashboardIndex() {
   // Route is already protected by server-side loader
+  const queryClient = useQueryClient();
   const confirmTextId = useId();
   const [showTruncateModal, setShowTruncateModal] = useState(false);
   const [confirmText, setConfirmText] = useState('');
@@ -39,6 +41,7 @@ function AdminDashboardIndex() {
     success: boolean;
     message: string;
     truncatedTables?: number;
+    invalidateAllCaches?: boolean;
   } | null>(null);
 
   const handleTruncateData = async () => {
@@ -50,6 +53,13 @@ function AdminDashboardIndex() {
     try {
       const result = await truncateDataServerFn({ data: { confirmText } });
       setTruncateResult(result);
+
+      // Invalidate all React Query caches if requested by server
+      if (result.invalidateAllCaches) {
+        console.log('🔄 Invalidating all React Query caches after data truncation');
+        queryClient.invalidateQueries();
+      }
+
       setShowTruncateModal(false);
       setConfirmText('');
     } catch (error) {

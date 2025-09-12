@@ -124,7 +124,7 @@ export function SecuritySeedPrompt({ securitiesStatus }: SecuritySeedPromptProps
                 <CheckCircle className="h-5 w-5 text-green-600 mt-0.5 flex-shrink-0" />
                 <div className="flex-1">
                   <h4 className="font-medium text-green-900 mb-2">
-                    Securities seeded successfully!
+                    Securities imported successfully!
                   </h4>
                   <div className="space-y-1 text-sm">
                     <div>

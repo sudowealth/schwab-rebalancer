@@ -3350,7 +3350,8 @@ export const importNasdaqSecuritiesServerFn = createServerFn({
             continue;
           }
 
-          // Check if security already exists
+          // Check if security already exists (only if skipExisting is true)
+          let shouldSkip = false;
           if (skipExisting) {
             const existing = await db
               .select()
@@ -3360,40 +3361,56 @@ export const importNasdaqSecuritiesServerFn = createServerFn({
 
             if (existing.length > 0) {
               skippedCount++;
-              continue;
+              shouldSkip = true;
             }
           }
 
-          // Determine asset type
-          let assetType = 'EQUITY';
-          let assetTypeSub = null;
+          if (!shouldSkip) {
+            // Determine asset type
+            let assetType = 'EQUITY';
+            let assetTypeSub = null;
 
-          if (security.etf === 'Y') {
-            assetType = 'EQUITY';
-            assetTypeSub = 'ETF';
+            if (security.etf === 'Y') {
+              assetType = 'EQUITY';
+              assetTypeSub = 'ETF';
+            }
+
+            // Create a descriptive name
+            const exchangeInfo = security.exchange || security.marketCategory || 'NASDAQ';
+            const name = security.securityName || `${ticker} - ${exchangeInfo}`;
+
+            try {
+              // Insert security (will be ignored if it already exists due to UNIQUE constraint)
+              await db.insert(schema.security).values({
+                ticker: ticker,
+                name: name,
+                price: 1, // Will be updated by price sync
+                marketCap: null,
+                peRatio: null,
+                industry: null,
+                sector: null,
+                assetType: assetType,
+                assetTypeSub: assetTypeSub,
+                createdAt: Date.now(),
+                updatedAt: Date.now(),
+              });
+
+              importedCount++;
+              importedTickers.push(ticker);
+            } catch (insertError: any) {
+              // Handle UNIQUE constraint violations gracefully
+              if (insertError?.code === 'SQLITE_CONSTRAINT_PRIMARYKEY' ||
+                  insertError?.code === 'SQLITE_CONSTRAINT_UNIQUE' ||
+                  insertError?.message?.includes('UNIQUE constraint failed')) {
+                // Security already exists, count it as skipped
+                skippedCount++;
+                console.log(`⚠️  Security ${ticker} already exists, skipping`);
+              } else {
+                // Re-throw other errors
+                throw insertError;
+              }
+            }
           }
-
-          // Create a descriptive name
-          const exchangeInfo = security.exchange || security.marketCategory || 'NASDAQ';
-          const name = security.securityName || `${ticker} - ${exchangeInfo}`;
-
-          // Insert security
-          await db.insert(schema.security).values({
-            ticker: ticker,
-            name: name,
-            price: 1, // Will be updated by price sync
-            marketCap: null,
-            peRatio: null,
-            industry: null,
-            sector: null,
-            assetType: assetType,
-            assetTypeSub: assetTypeSub,
-            createdAt: Date.now(),
-            updatedAt: Date.now(),
-          });
-
-          importedCount++;
-          importedTickers.push(ticker);
         } catch (error) {
           const errorMsg = `Failed to import ${security.ticker}: ${getErrorMessage(error)}`;
           errors.push(errorMsg);
@@ -3498,11 +3515,16 @@ export const truncateDataServerFn = createServerFn({ method: 'POST' })
         });
       });
 
+      // Clear all caches to ensure UI reflects truncated data
+      const { clearCache } = await import('./db-api');
+      clearCache();
+
       return {
         success: true,
         message:
           'All financial data has been truncated successfully. User accounts and authentication data preserved.',
         truncatedTables: 29,
+        invalidateAllCaches: true, // Flag to tell client to invalidate all React Query caches
       };
     } catch (error) {
       logError(error, 'Failed to truncate data');
