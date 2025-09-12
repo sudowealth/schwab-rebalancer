@@ -6,6 +6,7 @@ import {
   Circle,
   Database,
   Eye,
+  Key,
   Layers,
   Link,
   Loader2,
@@ -17,7 +18,11 @@ import {
 import { useModelCreation } from '../hooks/useModelCreation';
 import { useSchwabConnection } from '../hooks/useSchwabConnection';
 import { useSecuritiesSeeding } from '../hooks/useSecuritiesSeeding';
-import { checkModelsExistServerFn, checkSecuritiesExistServerFn } from '../lib/server-functions';
+import {
+  checkModelsExistServerFn,
+  checkSchwabCredentialsServerFn,
+  checkSecuritiesExistServerFn,
+} from '../lib/server-functions';
 import { Button } from './ui/button';
 import { SimpleTooltip } from './ui/simple-tooltip';
 
@@ -30,14 +35,14 @@ interface OnboardingTask {
 }
 
 interface OnboardingTrackerProps {
-  schwabCredentialsStatus?: { hasCredentials: boolean };
+  schwabCredentialsStatusProp?: { hasCredentials: boolean };
   rebalancingGroupsStatus?: { hasGroups: boolean; groupsCount: number };
   rebalancingRunsStatus?: { hasRuns: boolean; runsCount: number };
   proposedTradesStatus?: { hasTrades: boolean; tradesCount: number };
 }
 
 export function OnboardingTracker({
-  schwabCredentialsStatus,
+  schwabCredentialsStatusProp,
   rebalancingGroupsStatus,
   rebalancingRunsStatus,
   proposedTradesStatus,
@@ -53,7 +58,7 @@ export function OnboardingTracker({
     oauthMutation,
     isConnected,
     handleConnect,
-  } = useSchwabConnection(schwabCredentialsStatus);
+  } = useSchwabConnection(schwabCredentialsStatusProp);
 
   // Query for reactive securities status
   const { data: reactiveSecuritiesStatus } = useQuery({
@@ -65,6 +70,16 @@ export function OnboardingTracker({
   const { data: reactiveModelsStatus } = useQuery({
     queryKey: ['models-status'],
     queryFn: () => checkModelsExistServerFn(),
+  });
+
+  // Query for reactive Schwab credentials status
+  const { data: schwabCredentialsStatus } = useQuery({
+    queryKey: ['schwab-credentials-status'],
+    queryFn: () => checkSchwabCredentialsServerFn(),
+    staleTime: 0, // Always refetch
+    gcTime: 0, // Don't cache
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
   });
 
   // Use the securities seeding hook for managing securities import state
@@ -81,6 +96,13 @@ export function OnboardingTracker({
       description: 'Add ~11,000 stocks and ETFs from NASDAQ feeds to your database',
       completed: reactiveSecuritiesStatus?.hasSecurities || false,
       icon: Database,
+    },
+    {
+      id: 'configure-schwab-credentials',
+      title: 'Configure Schwab API Credentials',
+      description: 'Set up your Schwab developer account and API credentials',
+      completed: schwabCredentialsStatus?.hasCredentials || false,
+      icon: Key,
     },
     {
       id: 'connect-schwab',
@@ -165,27 +187,248 @@ export function OnboardingTracker({
                   {task.description}
                 </p>
                 {(() => {
+                  if (
+                    !task.completed &&
+                    task.id === 'configure-schwab-credentials' &&
+                    !schwabCredentialsStatus?.hasCredentials
+                  ) {
+                    return (
+                      <div className="mt-3 space-y-3">
+                        <div className="flex items-start gap-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                          <Key className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                          <div className="flex-1">
+                            <h5 className="font-medium text-blue-900 mb-2 text-sm">
+                              How to get your Schwab API credentials:
+                            </h5>
+                            <div className="space-y-2 text-xs text-blue-800">
+                              <div>
+                                <p className="font-medium mb-1">1. Prerequisites</p>
+                                <p>
+                                  You must have an active Schwab account. To open an account,{' '}
+                                  <a
+                                    href="https://www.schwab.com/open-an-account"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-blue-600 underline hover:text-blue-700 font-medium"
+                                  >
+                                    click here
+                                  </a>
+                                  .
+                                </p>
+                              </div>
+                              <div>
+                                <p className="font-medium mb-1">2. Register as Developer</p>
+                                <p>
+                                  Visit{' '}
+                                  <a
+                                    href="https://developer.schwab.com/register"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-blue-600 underline hover:text-blue-700"
+                                  >
+                                    Schwab Developer Portal
+                                  </a>{' '}
+                                  and register using your Schwab login credentials.
+                                </p>
+                              </div>
+                              <div>
+                                <p className="font-medium mb-1">3. Create Application</p>
+                                <p>
+                                  Go to{' '}
+                                  <a
+                                    href="https://developer.schwab.com/dashboard/apps/apps/add"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-blue-600 underline hover:text-blue-700 font-medium"
+                                  >
+                                    Apps dashboard and create a new personal use application
+                                  </a>
+                                  . Fill in the following details:
+                                </p>
+                                <ul className="text-xs space-y-1 ml-3 mt-2 list-disc text-blue-700">
+                                  <li>
+                                    <strong>API Products:</strong>
+                                    <ul className="ml-4 mt-1 space-y-1">
+                                      <li>- Accounts and Trading API</li>
+                                      <li>- Market Data Production</li>
+                                    </ul>
+                                  </li>
+                                  <li>
+                                    <strong>Order Limit</strong>: Set to{' '}
+                                    <code className="bg-blue-100 px-1 rounded">120</code>
+                                  </li>
+                                  <li>
+                                    <strong>App Name</strong>: Choose any name you prefer
+                                  </li>
+
+                                  <li>
+                                    <strong>Callback URL</strong>:
+                                    <ul className="ml-4 mt-1 space-y-1">
+                                      <li>
+                                        - For local testing:{' '}
+                                        <code className="bg-blue-100 px-1 rounded">
+                                          https://127.0.0.1/schwab/callback
+                                        </code>
+                                      </li>
+                                      <li>
+                                        - For production (if you have a domain):{' '}
+                                        <code className="bg-blue-100 px-1 rounded">
+                                          https://yourdomain.com/schwab/callback
+                                        </code>
+                                      </li>
+                                    </ul>
+                                  </li>
+                                </ul>
+                              </div>
+                              <div>
+                                <p className="font-medium mb-1">4. Get Credentials</p>
+                                <p>
+                                  Copy your App Key (Client ID) and Secret from the application
+                                  page.
+                                </p>
+                              </div>
+                              <div>
+                                <p className="font-medium mb-1">
+                                  5. Configure Environment Variables
+                                </p>
+                                <div className="space-y-4">
+                                  <div>
+                                    <p className="font-medium text-xs text-blue-800 mb-2">
+                                      For Local Development (.env.local):
+                                    </p>
+                                    <p className="text-xs mb-2">
+                                      Add to your{' '}
+                                      <code className="bg-blue-100 px-1 rounded">.env.local</code>{' '}
+                                      file:
+                                    </p>
+                                    <pre className="bg-blue-100 p-2 rounded text-xs">
+                                      {`SCHWAB_CLIENT_ID=your_app_key_here
+SCHWAB_CLIENT_SECRET=your_secret_here`}
+                                    </pre>
+                                  </div>
+                                  <div>
+                                    <p className="font-medium text-xs text-blue-800 mb-2">
+                                      For Cloudflare Deployment (Production):
+                                    </p>
+                                    <p className="text-xs mb-2">Set secrets using Wrangler CLI:</p>
+                                    <pre className="bg-blue-100 p-2 rounded text-xs">
+                                      {`wrangler secret put SCHWAB_CLIENT_ID
+wrangler secret put SCHWAB_CLIENT_SECRET`}
+                                    </pre>
+                                    <p className="text-xs text-blue-700 mt-1">
+                                      When prompted, paste your App Key and Secret respectively.
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+                              <div>
+                                <p className="font-medium mb-1">6. Apply Configuration Changes</p>
+                                <div className="space-y-4">
+                                  <div>
+                                    <p className="font-medium text-xs text-blue-800 mb-2">
+                                      For Local Development:
+                                    </p>
+                                    <p className="text-xs mb-2">
+                                      Restart your development server for the changes to take
+                                      effect:
+                                    </p>
+                                    <pre className="bg-blue-100 p-2 rounded text-xs">
+                                      {`# Stop the current server (Ctrl+C)
+# Then restart it
+npm run dev`}
+                                    </pre>
+                                  </div>
+                                  <div>
+                                    <p className="font-medium text-xs text-blue-800 mb-2">
+                                      For Cloudflare Deployment:
+                                    </p>
+                                    <p className="text-xs mb-2">
+                                      Redeploy your application to apply the new secrets:
+                                    </p>
+                                    <pre className="bg-blue-100 p-2 rounded text-xs">
+                                      {`npm run deploy`}
+                                    </pre>
+                                    <p className="text-xs text-blue-700 mt-1">
+                                      This will build and deploy your application with the new
+                                      environment variables.
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                            <div className="mt-3 flex gap-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() =>
+                                  window.open('https://developer.schwab.com/register', '_blank')
+                                }
+                                className="text-xs"
+                              >
+                                <Key className="h-3 w-3 mr-1" />
+                                Register as Developer
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() =>
+                                  window.open(
+                                    'https://developer.schwab.com/dashboard/apps',
+                                    '_blank',
+                                  )
+                                }
+                                className="text-xs"
+                              >
+                                <Link className="h-3 w-3 mr-1" />
+                                Apps Dashboard
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  }
                   if (!task.completed && task.id === 'connect-schwab') {
+                    const hasCredentials = schwabCredentialsStatus?.hasCredentials || false;
+                    const isDisabled =
+                      !hasCredentials || isConnecting || oauthMutation.isPending || statusLoading;
+
                     return (
                       <div className="mt-3">
-                        <Button
-                          size="sm"
-                          onClick={handleConnect}
-                          disabled={isConnecting || oauthMutation.isPending || statusLoading}
-                          className="text-xs"
+                        {!hasCredentials && (
+                          <div className="flex items-center gap-2 p-2 bg-amber-50 border border-amber-200 rounded-lg mb-3">
+                            <AlertCircle className="h-4 w-4 text-amber-600 flex-shrink-0" />
+                            <p className="text-xs text-amber-800">
+                              You must configure your Schwab API credentials before connecting.
+                            </p>
+                          </div>
+                        )}
+                        <SimpleTooltip
+                          content={
+                            !hasCredentials
+                              ? 'Complete Schwab credentials configuration first'
+                              : undefined
+                          }
                         >
-                          {isConnecting || oauthMutation.isPending ? (
-                            <>
-                              <Loader2 className="h-3 w-3 animate-spin mr-1" />
-                              Connecting...
-                            </>
-                          ) : (
-                            <>
-                              <Link className="h-3 w-3 mr-1" />
-                              Connect to Schwab
-                            </>
-                          )}
-                        </Button>
+                          <Button
+                            size="sm"
+                            onClick={handleConnect}
+                            disabled={isDisabled}
+                            className="text-xs"
+                          >
+                            {isConnecting || oauthMutation.isPending ? (
+                              <>
+                                <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                                Connecting...
+                              </>
+                            ) : (
+                              <>
+                                <Link className="h-3 w-3 mr-1" />
+                                Connect to Schwab
+                              </>
+                            )}
+                          </Button>
+                        </SimpleTooltip>
                         {(isConnecting || oauthMutation.isPending || statusLoading) && (
                           <p className="text-xs text-gray-500 mt-1">
                             Redirecting to Schwab for secure authentication...

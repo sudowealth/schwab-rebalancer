@@ -208,7 +208,23 @@ export function useSchwabConnection(initialCredentialsStatus?: { hasCredentials:
     oauthMutation.mutate(redirectUri);
   };
 
-  const isConnected = credentialsStatus?.hasCredentials || false;
+  // Query to check if user has active Schwab credentials (actual OAuth connection)
+  const { data: activeCredentialsStatus } = useQuery({
+    queryKey: ['schwab-active-credentials'],
+    queryFn: async () => {
+      try {
+        const result = await getSchwabCredentialsStatusServerFn();
+        console.log('🔍 Schwab active credentials check:', result);
+        return result;
+      } catch (error) {
+        console.log('🔍 Schwab active credentials check failed:', error);
+        return { hasCredentials: false };
+      }
+    },
+    enabled: !!credentialsStatus?.hasCredentials, // Only run if env vars are set
+  });
+
+  const isConnected = activeCredentialsStatus?.hasCredentials || false;
 
   // State for OAuth callback detection
   const [hasOAuthCallback, setHasOAuthCallback] = useState(false);
@@ -241,6 +257,7 @@ export function useSchwabConnection(initialCredentialsStatus?: { hasCredentials:
 
   return {
     credentialsStatus,
+    activeCredentialsStatus,
     isConnecting,
     isSyncing,
     syncStep,

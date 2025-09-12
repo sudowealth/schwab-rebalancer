@@ -1523,7 +1523,6 @@ export const syncSchwabTransactionsServerFn = createServerFn({ method: 'POST' })
 export const getHeldPositionTickersServerFn = createServerFn({
   method: 'GET',
 }).handler(async (): Promise<string[]> => {
-  console.log('🔍 [ServerFn] ===== GET HELD POSITION TICKERS START =====');
   console.log('🔍 [ServerFn] Timestamp:', new Date().toISOString());
 
   try {
@@ -1548,7 +1547,6 @@ export const getHeldPositionTickersServerFn = createServerFn({
     const uniqueTickers = [...new Set(allTickers)];
     console.log('🔍 [ServerFn] Unique tickers after deduplication:', uniqueTickers);
 
-    console.log('🔍 [ServerFn] ===== GET HELD POSITION TICKERS SUCCESS =====');
     console.log('🔍 [ServerFn] Returning tickers:', {
       count: uniqueTickers.length,
       tickers: uniqueTickers,
@@ -1557,7 +1555,6 @@ export const getHeldPositionTickersServerFn = createServerFn({
 
     return uniqueTickers;
   } catch (error) {
-    console.error('❌ [ServerFn] ===== GET HELD POSITION TICKERS FAILED =====');
     console.error('❌ [ServerFn] Error details:', {
       error: error,
       message: error instanceof Error ? error.message : 'Unknown error',
@@ -3747,5 +3744,20 @@ export const checkModelsExistServerFn = createServerFn({ method: 'GET' }).handle
   return {
     hasModels: Number(modelsCount[0]?.count ?? 0) > 0,
     modelsCount: Number(modelsCount[0]?.count ?? 0),
+  };
+});
+
+// Check if Schwab API credentials are configured
+export const checkSchwabCredentialsServerFn = createServerFn({ method: 'GET' }).handler(async () => {
+  const { getEnv } = await import('./env');
+
+  const env = getEnv();
+  const hasClientId = Boolean(env.SCHWAB_CLIENT_ID?.trim());
+  const hasClientSecret = Boolean(env.SCHWAB_CLIENT_SECRET?.trim());
+
+  return {
+    hasCredentials: hasClientId && hasClientSecret,
+    hasClientId,
+    hasClientSecret,
   };
 });

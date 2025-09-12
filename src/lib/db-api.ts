@@ -247,27 +247,15 @@ export const getSecuritiesByIndex = async (indexId?: string): Promise<SP500Stock
 };
 
 export const getPositions = async (userId?: string) => {
-  console.log('📊 [DB-API] ===== GET POSITIONS START =====');
-  console.log('📊 [DB-API] Timestamp:', new Date().toISOString());
-  console.log('📊 [DB-API] User ID:', userId);
-
   if (!userId?.trim()) {
-    console.error('❌ [DB-API] User ID validation failed - empty or missing');
     throw new ValidationError('User ID is required', 'userId');
   }
 
   const cacheKey = `positions-${userId}`;
-  console.log('📊 [DB-API] Checking cache with key:', cacheKey);
   const cached = getCached<Position[]>(cacheKey);
   if (cached) {
-    console.log('✅ [DB-API] Cache hit - returning cached positions:', {
-      count: cached.length,
-      samplePositions: cached.slice(0, 3).map((p) => ({ ticker: p.ticker, qty: p.qty })),
-      timestamp: new Date().toISOString(),
-    });
     return cached;
   }
-  console.log('📊 [DB-API] Cache miss - proceeding with database query');
 
   try {
     return await withRetry(
@@ -294,10 +282,8 @@ export const getPositions = async (userId?: string) => {
           accountNumber?: string | null;
         }
 
-        console.log('📊 [DB-API] Executing holdings database query...');
         let holdings: HoldingWithAccount[];
         try {
-          console.log('📊 [DB-API] Attempting query with accountNumber column');
           holdings = await db
             .select({
               id: schema.holding.id,
@@ -313,17 +299,7 @@ export const getPositions = async (userId?: string) => {
             .from(schema.holding)
             .innerJoin(schema.account, eq(schema.holding.accountId, schema.account.id))
             .where(eq(schema.account.userId, userId));
-
-          console.log('📊 [DB-API] Query with accountNumber succeeded:', {
-            holdingsCount: holdings.length,
-            sampleHoldings: holdings.slice(0, 3).map((h) => ({
-              ticker: h.ticker,
-              qty: h.qty,
-              accountName: h.accountName,
-            })),
-          });
         } catch (error) {
-          console.warn('📊 [DB-API] Query with accountNumber failed, trying fallback:', error);
           // If accountNumber column doesn't exist, query without it
           holdings = await db
             .select({
@@ -339,15 +315,6 @@ export const getPositions = async (userId?: string) => {
             .from(schema.holding)
             .innerJoin(schema.account, eq(schema.holding.accountId, schema.account.id))
             .where(eq(schema.account.userId, userId));
-
-          console.log('📊 [DB-API] Fallback query succeeded:', {
-            holdingsCount: holdings.length,
-            sampleHoldings: holdings.slice(0, 3).map((h) => ({
-              ticker: h.ticker,
-              qty: h.qty,
-              accountName: h.accountName,
-            })),
-          });
         }
 
         // Get sleeve information for each ticker
@@ -373,28 +340,12 @@ export const getPositions = async (userId?: string) => {
           });
         }
 
-        console.log('📊 [DB-API] Processing holdings into positions...');
         const positions: Position[] = holdings
           .map((holding) => {
             const currentPrice = priceMap.get(holding.ticker);
-            console.log('📊 [DB-API] Processing holding:', {
-              ticker: holding.ticker,
-              qty: holding.qty,
-              currentPrice: currentPrice,
-              accountName: holding.accountName,
-            });
 
             // Skip holdings where we can't find price or quantity is not positive
             if (!currentPrice || holding.qty <= 0) {
-              console.warn(
-                '📊 [DB-API] Skipping holding due to missing price or invalid quantity:',
-                {
-                  ticker: holding.ticker,
-                  qty: holding.qty,
-                  currentPrice: currentPrice,
-                  reason: !currentPrice ? 'no price found' : 'quantity <= 0',
-                },
-              );
               return null;
             }
 
@@ -435,30 +386,13 @@ export const getPositions = async (userId?: string) => {
           })
           .filter((position): position is NonNullable<typeof position> => position !== null);
 
-        console.log('📊 [DB-API] Final positions after filtering:', {
-          totalPositions: positions.length,
-          samplePositions: positions.slice(0, 3).map((p) => ({
-            ticker: p.ticker,
-            qty: p.qty,
-            currentPrice: p.currentPrice,
-            accountName: p.accountName,
-          })),
-          tickers: positions.map((p) => p.ticker),
-          timestamp: new Date().toISOString(),
-        });
-
-        console.log('📊 [DB-API] ===== GET POSITIONS SUCCESS =====');
-        console.log('📊 [DB-API] Caching positions for user:', userId);
         setCache(cacheKey, positions);
 
         // Validate data
-        console.log('📊 [DB-API] Validating positions data...');
         const validatedData = validateData(PositionsSchema, positions, 'positions');
-        console.log('📊 [DB-API] Validation successful, returning validated data');
 
         setCache(cacheKey, validatedData);
 
-        console.log('📊 [DB-API] ===== GET POSITIONS COMPLETE =====');
         return validatedData;
       },
       3,
@@ -466,14 +400,6 @@ export const getPositions = async (userId?: string) => {
       'getPositions',
     );
   } catch (error) {
-    console.error('❌ [DB-API] ===== GET POSITIONS FAILED =====');
-    console.error('❌ [DB-API] Error details:', {
-      error: error,
-      message: error instanceof Error ? error.message : 'Unknown error',
-      stack: error instanceof Error ? error.stack : undefined,
-      userId: userId,
-      timestamp: new Date().toISOString(),
-    });
     logError(error, 'Failed to get positions', { userId: 'redacted' });
     if (error instanceof ValidationError) throw error;
     throw new DatabaseError('Failed to retrieve positions', error);

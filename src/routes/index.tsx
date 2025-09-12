@@ -8,15 +8,16 @@ import { SleeveModal } from '../components/dashboard/sleeve-modal';
 import { TransactionsTable } from '../components/dashboard/transactions-table';
 import { OnboardingTracker } from '../components/OnboardingTracker';
 import { ExportButton } from '../components/ui/export-button';
-// Use server functions for live data so client refetches return real results
-import {
-  getPortfolioMetricsServerFn,
-  getPositionsServerFn,
-  getTransactionsServerFn,
-} from '../lib/server-functions';
 import { useSession } from '../lib/auth-client';
 import { exportPositionsToExcel, exportTransactionsToExcel } from '../lib/excel-export';
-import { getDashboardDataServerFn, getSleevesServerFn } from '../lib/server-functions';
+// Use server functions for live data so client refetches return real results
+import {
+  getDashboardDataServerFn,
+  getPortfolioMetricsServerFn,
+  getPositionsServerFn,
+  getSleevesServerFn,
+  getTransactionsServerFn,
+} from '../lib/server-functions';
 
 export const Route = createFileRoute('/')({
   component: DashboardComponent,
@@ -143,7 +144,7 @@ function DashboardComponent() {
 
       {/* Onboarding Tracker - shows progress through setup steps */}
       <OnboardingTracker
-        schwabCredentialsStatus={loaderData.schwabCredentialsStatus}
+        schwabCredentialsStatusProp={loaderData.schwabCredentialsStatus}
         rebalancingGroupsStatus={loaderData.rebalancingGroupsStatus}
         rebalancingRunsStatus={loaderData.rebalancingRunsStatus}
         proposedTradesStatus={loaderData.proposedTradesStatus}

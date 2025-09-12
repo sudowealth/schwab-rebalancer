@@ -9,6 +9,7 @@ import {
   X,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { useRouter } from '@tanstack/react-router';
 import {
   getHeldPositionTickersServerFn,
   getSchwabCredentialsStatusServerFn,
@@ -57,6 +58,7 @@ export function SchwabIntegration() {
   const [isSyncingYahoo, setIsSyncingYahoo] = useState(false);
   const [hasTriggeredAutoImport, setHasTriggeredAutoImport] = useState(false);
   const queryClient = useQueryClient();
+  const router = useRouter();
 
   // Query to check credentials status
   const { data: credentialsStatus, isLoading: statusLoading } = useQuery({
@@ -103,6 +105,8 @@ export function SchwabIntegration() {
       queryClient.invalidateQueries({
         queryKey: ['schwab-credentials-status'],
       });
+      // Re-run route loaders so dashboard status updates without manual refresh
+      router.invalidate();
     },
     onError: (error) => {
       console.error('❌ [UI] Accounts sync failed:', error);
@@ -125,6 +129,7 @@ export function SchwabIntegration() {
       queryClient.invalidateQueries({
         queryKey: ['schwab-credentials-status'],
       });
+      router.invalidate();
     },
     onError: (error) => {
       console.error('❌ [UI] Holdings sync failed:', error);
@@ -155,6 +160,7 @@ export function SchwabIntegration() {
       queryClient.refetchQueries({
         queryKey: ['positions'],
       });
+      router.invalidate();
     },
     onError: (error) => {
       console.error('❌ [UI] Prices sync failed:', error);
@@ -172,6 +178,10 @@ export function SchwabIntegration() {
       queryClient.invalidateQueries({
         queryKey: ['schwab-credentials-status'],
       });
+      queryClient.invalidateQueries({
+        queryKey: ['transactions'],
+      });
+      router.invalidate();
     },
     onError: (error) => {
       console.error('❌ [UI] Transactions sync failed:', error);
@@ -268,6 +278,7 @@ export function SchwabIntegration() {
       queryClient.refetchQueries({
         queryKey: ['metrics'],
       });
+      router.invalidate();
     },
     onError: (error) => {
       console.error('❌ [UI] Full Schwab sync failed:', error);
@@ -285,6 +296,7 @@ export function SchwabIntegration() {
       queryClient.invalidateQueries({
         queryKey: ['schwab-credentials-status'],
       });
+      router.invalidate();
     },
     onError: (error) => {
       console.error('❌ [UI] Failed to revoke credentials:', error);
