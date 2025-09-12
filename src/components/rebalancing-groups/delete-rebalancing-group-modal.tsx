@@ -68,8 +68,8 @@ export function DeleteRebalancingGroupModal({
             <DialogTitle>Delete Rebalancing Group</DialogTitle>
           </div>
           <DialogDescription>
-            This action cannot be undone. This will permanently delete the rebalancing group and
-            unassign any models from it.
+            This action cannot be undone. This will permanently delete the rebalancing group, remove
+            all account memberships, and unassign any models from it.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
@@ -90,9 +90,10 @@ export function DeleteRebalancingGroupModal({
               <strong>Warning:</strong> Deleting this group will:
             </div>
             <ul className="text-sm text-red-700 mt-1 list-disc list-inside">
+              <li>Permanently delete the group "{group.name}"</li>
               <li>Remove all account memberships</li>
               {group.assignedModel && <li>Unassign the model "{group.assignedModel.name}"</li>}
-              <li>Cannot be undone</li>
+              <li>All data will be permanently lost</li>
             </ul>
           </div>
 

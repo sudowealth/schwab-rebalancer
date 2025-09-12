@@ -30,3 +30,23 @@ export function formatQuantity(qty: number): string {
     maximumFractionDigits: hasFraction ? 3 : 0,
   }).format(qty);
 }
+
+/**
+ * Generate a clean, unique ID using UUID v4
+ * Format: "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx"
+ */
+export function generateId(): string {
+  // Use crypto.randomUUID() for truly unique, collision-resistant IDs
+  // Available in Node.js 14.17.0+ and modern browsers
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+
+  // Fallback for environments without crypto.randomUUID
+  // This is a simplified UUID v4 implementation
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === 'x' ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+}

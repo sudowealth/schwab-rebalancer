@@ -44,9 +44,27 @@ interface GroupMember {
   accountId: string;
 }
 
-export function AddRebalancingGroupModal() {
+interface AddRebalancingGroupModalProps {
+  triggerButton?: React.ReactNode;
+  autoSelectSingleOptions?: boolean;
+  isOpen?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  onGroupCreated?: () => void;
+}
+
+export function AddRebalancingGroupModal({
+  triggerButton,
+  autoSelectSingleOptions = false,
+  isOpen: externalIsOpen,
+  onOpenChange: externalOnOpenChange,
+  onGroupCreated,
+}: AddRebalancingGroupModalProps = {}) {
   const groupNameInputId = useId();
-  const [isOpen, setIsOpen] = useState(false);
+  const [internalIsOpen, setInternalIsOpen] = useState(false);
+
+  // Use external control if provided, otherwise use internal state
+  const isOpen = externalIsOpen !== undefined ? externalIsOpen : internalIsOpen;
+  const setIsOpen = externalOnOpenChange || setInternalIsOpen;
   const [groupName, setGroupName] = useState('');
   const [selectedAccounts, setSelectedAccounts] = useState<Set<string>>(new Set());
   const [selectedModelId, setSelectedModelId] = useState<string>('');
@@ -91,6 +109,22 @@ export function AddRebalancingGroupModal() {
       loadData();
     }
   }, [isOpen, loadData]);
+
+  // Auto-select single options when data is loaded and autoSelectSingleOptions is enabled
+  useEffect(() => {
+    if (autoSelectSingleOptions && accounts.length > 0 && models.length > 0) {
+      // Auto-select the only account if there's only one available
+      const availableAccounts = accounts.filter((account) => !account.isAssigned);
+      if (availableAccounts.length === 1) {
+        setSelectedAccounts(new Set([availableAccounts[0].id]));
+      }
+
+      // Auto-select the only model if there's only one available
+      if (models.length === 1) {
+        setSelectedModelId(models[0].id);
+      }
+    }
+  }, [accounts, models, autoSelectSingleOptions]);
 
   // Refresh models when they might have been updated
   useEffect(() => {
@@ -156,8 +190,15 @@ export function AddRebalancingGroupModal() {
       setSelectedModelId('');
       setIsOpen(false);
 
-      // Refresh the page
-      router.invalidate();
+      // Call the callback if provided
+      if (onGroupCreated) {
+        onGroupCreated();
+      }
+
+      // Navigate to the new group's page
+      if (result.groupId) {
+        router.navigate({ to: `/rebalancing-groups/${result.groupId}` });
+      }
     } catch (err: unknown) {
       console.error('Failed to create rebalancing group:', err);
       setError(err instanceof Error ? err.message : 'Failed to create rebalancing group');
@@ -192,10 +233,12 @@ export function AddRebalancingGroupModal() {
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
-        <Button>
-          <Plus className="mr-2 h-4 w-4" />
-          Add Group
-        </Button>
+        {triggerButton || (
+          <Button>
+            <Plus className="mr-2 h-4 w-4" />
+            Add Group
+          </Button>
+        )}
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
@@ -291,12 +334,7 @@ export function AddRebalancingGroupModal() {
                 </SelectItem>
                 {models.map((model) => (
                   <SelectItem key={model.id} value={model.id}>
-                    <div className="flex flex-col items-start">
-                      <span className="font-medium">{model.name}</span>
-                      {model.description && (
-                        <span className="text-xs text-gray-500">{model.description}</span>
-                      )}
-                    </div>
+                    <span className="font-medium">{model.name}</span>
                   </SelectItem>
                 ))}
               </SelectContent>

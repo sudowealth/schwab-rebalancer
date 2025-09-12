@@ -38,6 +38,9 @@ export async function loadDashboardData(
       accountsCount: 0,
       securitiesStatus: { hasSecurities: false, securitiesCount: 0 },
       modelsStatus: { hasModels: false, modelsCount: 0 },
+      rebalancingGroupsStatus: { hasGroups: false, groupsCount: 0 },
+      rebalancingRunsStatus: { hasRuns: false, runsCount: 0 },
+      proposedTradesStatus: { hasTrades: false, tradesCount: 0 },
     };
   }
 
@@ -153,6 +156,57 @@ export async function loadDashboardData(
       modelsStatus = { hasModels: false, modelsCount: 0 };
     }
 
+    // Check if rebalancing groups exist for the user
+    let rebalancingGroupsStatus = { hasGroups: false, groupsCount: 0 };
+    try {
+      if (userId) {
+        const { getDatabase } = await import('./db-config');
+        const db = getDatabase();
+        const schema = await import('../db/schema');
+        const { eq, sql } = await import('drizzle-orm');
+        const result = await db
+          .select({ count: sql<number>`count(*)` })
+          .from(schema.rebalancingGroup)
+          .where(eq(schema.rebalancingGroup.userId, userId));
+        rebalancingGroupsStatus = {
+          hasGroups: (result[0]?.count || 0) > 0,
+          groupsCount: result[0]?.count || 0,
+        };
+      }
+    } catch (error) {
+      console.warn('⚠️ Failed to check rebalancing groups status:', error);
+      rebalancingGroupsStatus = { hasGroups: false, groupsCount: 0 };
+    }
+
+    // Check if rebalancing runs exist (trade orders that are not DRAFT status)
+    let rebalancingRunsStatus = { hasRuns: false, runsCount: 0 };
+    try {
+      if (userId) {
+        const { getDatabase } = await import('./db-config');
+        const db = getDatabase();
+        const schema = await import('../db/schema');
+        const { eq, ne, sql, and } = await import('drizzle-orm');
+        const result = await db
+          .select({ count: sql<number>`count(*)` })
+          .from(schema.tradeOrder)
+          .where(and(eq(schema.tradeOrder.userId, userId), ne(schema.tradeOrder.status, 'DRAFT')));
+        rebalancingRunsStatus = {
+          hasRuns: (result[0]?.count || 0) > 0,
+          runsCount: result[0]?.count || 0,
+        };
+      }
+    } catch (error) {
+      console.warn('⚠️ Failed to check rebalancing runs status:', error);
+      rebalancingRunsStatus = { hasRuns: false, runsCount: 0 };
+    }
+
+    // Check if proposed trades exist
+    let proposedTradesStatus = { hasTrades: false, tradesCount: 0 };
+    proposedTradesStatus = {
+      hasTrades: proposedTrades.length > 0,
+      tradesCount: proposedTrades.length,
+    };
+
     return {
       positions,
       metrics,
@@ -167,6 +221,9 @@ export async function loadDashboardData(
       accountsCount,
       securitiesStatus,
       modelsStatus,
+      rebalancingGroupsStatus,
+      rebalancingRunsStatus,
+      proposedTradesStatus,
     };
   } catch (error) {
     console.error('❌ Error loading dashboard data:', error);
@@ -201,6 +258,9 @@ export async function loadDashboardData(
       accountsCount: 0,
       securitiesStatus: { hasSecurities: false, securitiesCount: 0 },
       modelsStatus: { hasModels: false, modelsCount: 0 },
+      rebalancingGroupsStatus: { hasGroups: false, groupsCount: 0 },
+      rebalancingRunsStatus: { hasRuns: false, runsCount: 0 },
+      proposedTradesStatus: { hasTrades: false, tradesCount: 0 },
     };
   }
 }

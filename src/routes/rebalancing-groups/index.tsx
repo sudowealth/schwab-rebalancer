@@ -1,5 +1,6 @@
 import { createFileRoute, Link, redirect } from '@tanstack/react-router';
 import { FileText } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { AddRebalancingGroupModal } from '../../components/rebalancing-groups/add-rebalancing-group-modal';
 import { Badge } from '../../components/ui/badge';
 import type { RebalancingGroup } from '../../lib/schemas';
@@ -10,6 +11,13 @@ import {
 
 export const Route = createFileRoute('/rebalancing-groups/')({
   component: RebalancingGroupsComponent,
+  validateSearch: (search: Record<string, unknown>) => {
+    const result: { createGroup?: string } = {};
+    if (typeof search.createGroup === 'string') {
+      result.createGroup = search.createGroup;
+    }
+    return result;
+  },
   loader: async () => {
     try {
       // Server function handles authentication
@@ -57,8 +65,19 @@ export const Route = createFileRoute('/rebalancing-groups/')({
 function RebalancingGroupsComponent() {
   const loaderData = Route.useLoaderData();
   const groups = loaderData.groups;
+  const searchParams = Route.useSearch();
+  const [showCreateModal, setShowCreateModal] = useState(false);
 
   // Server-side auth check in loader handles authentication
+
+  // Handle URL parameter to open create modal
+  useEffect(() => {
+    if (searchParams.createGroup === 'true') {
+      setShowCreateModal(true);
+      // Clean up URL parameter
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, [searchParams.createGroup]);
 
   // Helper to format account balance
   const formatBalance = (balance: number): string => {
@@ -82,10 +101,14 @@ function RebalancingGroupsComponent() {
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Rebalancing Groups</h1>
             <p className="mt-2 text-sm text-gray-600">
-              Manage account groups for portfolio rebalancing
+              Groups of accounts for portfolio rebalancing
             </p>
           </div>
-          <AddRebalancingGroupModal />
+          <AddRebalancingGroupModal
+            isOpen={showCreateModal}
+            onOpenChange={setShowCreateModal}
+            autoSelectSingleOptions={true}
+          />
         </div>
       </div>
 

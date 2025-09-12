@@ -8,6 +8,7 @@ import { SecurityModal } from '../components/dashboard/security-modal';
 import { SleeveModal } from '../components/dashboard/sleeve-modal';
 import { TransactionsTable } from '../components/dashboard/transactions-table';
 import { ModelCreationPrompt } from '../components/ModelCreationPrompt';
+import { OnboardingTracker } from '../components/OnboardingTracker';
 import { SecuritySeedPrompt } from '../components/SecuritySeedPrompt';
 import { ExportButton } from '../components/ui/export-button';
 import { getPortfolioMetrics, getPositions, getTransactions } from '../lib/api';
@@ -48,7 +49,12 @@ function DashboardComponent() {
   const [selectedTicker, setSelectedTicker] = useState<string | null>(null);
   const [showSecurityModal, setShowSecurityModal] = useState(false);
 
-  const hasAccounts = (loaderData as any)?.accountsCount > 0;
+  const hasAccounts =
+    loaderData && 'accountsCount' in loaderData ? loaderData.accountsCount > 0 : false;
+  const hasRebalancingGroups =
+    loaderData && 'rebalancingGroupsStatus' in loaderData
+      ? loaderData.rebalancingGroupsStatus.hasGroups
+      : false;
 
   const { data: positions, isLoading: positionsLoading } = useQuery({
     queryKey: ['positions'],
@@ -135,6 +141,16 @@ function DashboardComponent() {
         </div>
       </div>
 
+      {/* Onboarding Tracker - shows progress through setup steps */}
+      <OnboardingTracker
+        securitiesStatus={loaderData.securitiesStatus}
+        schwabCredentialsStatus={loaderData.schwabCredentialsStatus}
+        modelsStatus={loaderData.modelsStatus}
+        rebalancingGroupsStatus={loaderData.rebalancingGroupsStatus}
+        rebalancingRunsStatus={loaderData.rebalancingRunsStatus}
+        proposedTradesStatus={loaderData.proposedTradesStatus}
+      />
+
       {/* Security Seed Prompt - only shows when no securities exist */}
       <SecuritySeedPrompt securitiesStatus={loaderData.securitiesStatus} />
 
@@ -144,10 +160,10 @@ function DashboardComponent() {
       {/* Model Creation Prompt - only shows when securities exist but no models */}
       <ModelCreationPrompt modelsStatus={loaderData.modelsStatus} />
 
-      {hasAccounts && <DashboardMetrics metrics={metrics} />}
+      {hasAccounts && hasRebalancingGroups && <DashboardMetrics metrics={metrics} />}
 
       {/* Positions and Transactions */}
-      {hasAccounts && (
+      {hasAccounts && hasRebalancingGroups && (
         <div className="bg-white shadow rounded-lg">
           <div className="px-4 py-5 sm:p-6">
             <div className="mb-4">

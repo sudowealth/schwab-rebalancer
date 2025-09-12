@@ -27,6 +27,7 @@ import {
   TransactionsSchema,
   validateData,
 } from './schemas';
+import { generateId } from './utils';
 
 // Financial Planning Types
 export interface FinancialPlanInput {
@@ -1033,7 +1034,7 @@ export const createSleeve = async (
   members: Array<{ ticker: string; rank: number; isLegacy?: boolean }>,
   userId: string,
 ): Promise<string> => {
-  const sleeveId = `sleeve_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
+  const sleeveId = generateId();
 
   // Check if sleeve name already exists
   const existingSleeves = await db
@@ -1085,7 +1086,7 @@ export const createSleeve = async (
 
     // Create sleeve members
     const memberRecords = members.map((member) => ({
-      id: `member_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
+      id: generateId(),
       sleeveId: sleeveId,
       ticker: member.ticker,
       rank: member.rank,
@@ -1200,7 +1201,7 @@ export const updateSleeve = async (
 
     // Create new sleeve members
     const memberRecords = members.map((member) => ({
-      id: `member_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
+      id: generateId(),
       sleeveId: sleeveId,
       ticker: member.ticker,
       rank: member.rank,
@@ -1466,7 +1467,7 @@ export const createModel = async (data: CreateModel, userId: string): Promise<st
     }
   }
 
-  const modelId = `model_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
+  const modelId = generateId();
 
   // Validate that sleeve IDs exist
   const memberSleeveIds = data.members.map((m) => m.sleeveId);
@@ -1511,7 +1512,7 @@ export const createModel = async (data: CreateModel, userId: string): Promise<st
     // Create model members
     if (data.members.length > 0) {
       const memberRecords = data.members.map((member) => ({
-        id: `model_member_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
+        id: generateId(),
         modelId: modelId,
         sleeveId: member.sleeveId,
         targetWeight: member.targetWeight,
@@ -1603,7 +1604,7 @@ export const updateModel = async (modelId: string, data: CreateModel): Promise<v
     // Create new model members
     if (data.members.length > 0) {
       const memberRecords = data.members.map((member) => ({
-        id: `model_member_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
+        id: generateId(),
         modelId: modelId,
         sleeveId: member.sleeveId,
         targetWeight: member.targetWeight,
@@ -2377,7 +2378,7 @@ export const createRebalancingGroup = async (
     }
   }
 
-  const groupId = `rebalancing_group_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
+  const groupId = generateId();
 
   // Validate that account IDs exist and belong to the user
   const memberAccountIds = data.members.map((m) => m.accountId);
@@ -2415,7 +2416,7 @@ export const createRebalancingGroup = async (
     // Create group members
     if (data.members.length > 0) {
       const memberRecords = data.members.map((member) => ({
-        id: `rebalancing_group_member_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
+        id: generateId(),
         groupId: groupId,
         accountId: member.accountId,
         isActive: true,
@@ -2510,7 +2511,7 @@ export const updateRebalancingGroup = async (
     // Create new members
     if (data.members.length > 0) {
       const memberRecords = data.members.map((member) => ({
-        id: `rebalancing_group_member_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
+        id: generateId(),
         groupId: groupId,
         accountId: member.accountId,
         isActive: true,
@@ -2548,28 +2549,18 @@ export const deleteRebalancingGroup = async (groupId: string, userId: string): P
   }
 
   try {
-    // Soft delete the group
+    // Delete group members first (due to foreign key constraint)
     await db
-      .update(schema.rebalancingGroup)
-      .set({
-        isActive: false,
-        updatedAt: Date.now(),
-      })
-      .where(eq(schema.rebalancingGroup.id, groupId));
-
-    // Soft delete group members
-    await db
-      .update(schema.rebalancingGroupMember)
-      .set({
-        isActive: false,
-        updatedAt: Date.now(),
-      })
+      .delete(schema.rebalancingGroupMember)
       .where(eq(schema.rebalancingGroupMember.groupId, groupId));
 
     // Remove any model assignments for this group
     await db
       .delete(schema.modelGroupAssignment)
       .where(eq(schema.modelGroupAssignment.rebalancingGroupId, groupId));
+
+    // Delete the group itself
+    await db.delete(schema.rebalancingGroup).where(eq(schema.rebalancingGroup.id, groupId));
 
     // Clear cache so that deleted group disappears
     clearCache(`rebalancing-groups-${userId}`);
@@ -2779,7 +2770,7 @@ export const assignModelToGroup = async (
 
     if (existingAssignment.length === 0) {
       // Create new assignment in junction table
-      const assignmentId = `assignment_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
+      const assignmentId = generateId();
       await db.insert(schema.modelGroupAssignment).values({
         id: assignmentId,
         modelId: modelId,
@@ -2876,7 +2867,7 @@ export const createFinancialPlan = async (
   goals: FinancialPlanGoal[] = [],
 ): Promise<string> => {
   try {
-    const planId = `plan-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
+    const planId = generateId();
     const now = Date.now();
 
     // Create the plan
@@ -2889,7 +2880,7 @@ export const createFinancialPlan = async (
     });
 
     // Insert plan inputs
-    const inputId = `input-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
+    const inputId = generateId();
     await db.insert(schema.financialPlanInput).values({
       id: inputId,
       planId,
