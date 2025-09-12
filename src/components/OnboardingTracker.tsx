@@ -9,12 +9,15 @@ import {
   Layers,
   Link,
   Loader2,
+  Plus,
   RotateCcw,
+  TrendingUp,
   Users,
 } from 'lucide-react';
+import { useModelCreation } from '../hooks/useModelCreation';
 import { useSchwabConnection } from '../hooks/useSchwabConnection';
 import { useSecuritiesSeeding } from '../hooks/useSecuritiesSeeding';
-import { checkSecuritiesExistServerFn } from '../lib/server-functions';
+import { checkModelsExistServerFn, checkSecuritiesExistServerFn } from '../lib/server-functions';
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { SimpleTooltip } from './ui/simple-tooltip';
@@ -29,7 +32,6 @@ interface OnboardingTask {
 
 interface OnboardingTrackerProps {
   schwabCredentialsStatus?: { hasCredentials: boolean };
-  modelsStatus?: { hasModels: boolean; modelsCount: number };
   rebalancingGroupsStatus?: { hasGroups: boolean; groupsCount: number };
   rebalancingRunsStatus?: { hasRuns: boolean; runsCount: number };
   proposedTradesStatus?: { hasTrades: boolean; tradesCount: number };
@@ -37,7 +39,6 @@ interface OnboardingTrackerProps {
 
 export function OnboardingTracker({
   schwabCredentialsStatus,
-  modelsStatus,
   rebalancingGroupsStatus,
   rebalancingRunsStatus,
   proposedTradesStatus,
@@ -61,9 +62,18 @@ export function OnboardingTracker({
     queryFn: () => checkSecuritiesExistServerFn(),
   });
 
+  // Query for reactive models status
+  const { data: reactiveModelsStatus } = useQuery({
+    queryKey: ['models-status'],
+    queryFn: () => checkModelsExistServerFn(),
+  });
+
   // Use the securities seeding hook for managing securities import state
   const { isSeeding, hasError, seedResult, showSuccessMessage } =
     useSecuritiesSeeding(reactiveSecuritiesStatus);
+
+  // Use the model creation hook for managing model creation state
+  const { handleSeedGlobalEquity, isSeeding: isCreatingModel } = useModelCreation();
 
   const tasks: OnboardingTask[] = [
     {
@@ -84,7 +94,7 @@ export function OnboardingTracker({
       id: 'create-model',
       title: 'Create an Investment Model',
       description: 'Build or use a pre-built investment model for your portfolio',
-      completed: modelsStatus?.hasModels || false,
+      completed: reactiveModelsStatus?.hasModels || false,
       icon: Layers,
     },
     {
@@ -278,11 +288,98 @@ export function OnboardingTracker({
                         )}
                       </div>
                     )}
+                    {!task.completed && task.id === 'create-model' && (
+                      <div className="mt-3 space-y-3">
+                        {/* Model Creation Options */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          {/* Global Equity Model Option */}
+                          <div className="border-2 border-blue-200 bg-blue-50/50 rounded-lg p-3">
+                            <div className="flex items-center gap-2 mb-2">
+                              <TrendingUp className="h-4 w-4 text-blue-600" />
+                              <h5 className="font-medium text-blue-900">Global Equity Model</h5>
+                            </div>
+                            <p className="text-xs text-blue-700 mb-3">
+                              Pre-built model with geographic diversification across US,
+                              International, and Emerging markets
+                            </p>
+                            <ul className="text-xs text-gray-600 space-y-1 mb-3">
+                              <li>• US Large Cap (40%): VTI</li>
+                              <li>• International (20%): VXUS</li>
+                              <li>• Emerging Markets (10%): VWO</li>
+                              <li>• And more regional ETFs</li>
+                            </ul>
+                            <Button
+                              onClick={handleSeedGlobalEquity}
+                              disabled={isCreatingModel}
+                              className="w-full text-xs"
+                              size="sm"
+                            >
+                              {isCreatingModel ? (
+                                <>
+                                  <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                                  Creating Model...
+                                </>
+                              ) : (
+                                <>
+                                  <TrendingUp className="mr-1 h-3 w-3" />
+                                  Use Global Equity Model
+                                </>
+                              )}
+                            </Button>
+                          </div>
+
+                          {/* Custom Model Option */}
+                          <div className="border-2 border-gray-200 rounded-lg p-3">
+                            <div className="flex items-center gap-2 mb-2">
+                              <Plus className="h-4 w-4 text-gray-600" />
+                              <h5 className="font-medium text-gray-900">Custom Model</h5>
+                            </div>
+                            <p className="text-xs text-gray-600 mb-3">
+                              Create your own model with custom sleeves and allocations
+                            </p>
+                            <div className="space-y-2">
+                              <p className="text-xs font-medium text-gray-700">
+                                How to create a custom model:
+                              </p>
+                              <ol className="text-xs text-gray-600 space-y-1 ml-3 list-decimal">
+                                <li>Go to Sleeves page to create sleeves</li>
+                                <li>Go to Models page to create your model</li>
+                                <li>Add your sleeves with target allocations</li>
+                              </ol>
+                              <p className="text-xs text-gray-500 mt-2">
+                                Sleeves group similar securities by industry, sector, or investment
+                                style
+                              </p>
+                            </div>
+                            <div className="flex gap-1 mt-3">
+                              <Button
+                                onClick={() => window.open('/sleeves', '_blank')}
+                                variant="outline"
+                                className="flex-1 text-xs"
+                                size="sm"
+                              >
+                                <Plus className="mr-1 h-3 w-3" />
+                                Create Sleeves
+                              </Button>
+                              <Button
+                                onClick={() => window.open('/models', '_blank')}
+                                variant="outline"
+                                className="flex-1 text-xs"
+                                size="sm"
+                              >
+                                <Layers className="mr-1 h-3 w-3" />
+                                Create Model
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                     {!task.completed && task.id === 'create-rebalancing-group' && (
                       <div className="mt-3">
                         {(() => {
                           const hasSchwabConnection = isConnected;
-                          const hasModels = modelsStatus?.hasModels || false;
+                          const hasModels = reactiveModelsStatus?.hasModels || false;
                           const isDisabled = !hasSchwabConnection || !hasModels;
 
                           let tooltipMessage = '';

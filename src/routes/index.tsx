@@ -6,7 +6,6 @@ import { PositionsTable } from '../components/dashboard/positions-table';
 import { SecurityModal } from '../components/dashboard/security-modal';
 import { SleeveModal } from '../components/dashboard/sleeve-modal';
 import { TransactionsTable } from '../components/dashboard/transactions-table';
-import { ModelCreationPrompt } from '../components/ModelCreationPrompt';
 import { OnboardingTracker } from '../components/OnboardingTracker';
 import { ExportButton } from '../components/ui/export-button';
 import { getPortfolioMetrics, getPositions, getTransactions } from '../lib/api';
@@ -142,14 +141,10 @@ function DashboardComponent() {
       {/* Onboarding Tracker - shows progress through setup steps */}
       <OnboardingTracker
         schwabCredentialsStatus={loaderData.schwabCredentialsStatus}
-        modelsStatus={loaderData.modelsStatus}
         rebalancingGroupsStatus={loaderData.rebalancingGroupsStatus}
         rebalancingRunsStatus={loaderData.rebalancingRunsStatus}
         proposedTradesStatus={loaderData.proposedTradesStatus}
       />
-
-      {/* Model Creation Prompt - only shows when securities exist but no models */}
-      <ModelCreationPrompt modelsStatus={loaderData.modelsStatus} />
 
       {hasAccounts && hasRebalancingGroups && <DashboardMetrics metrics={metrics} />}
 
