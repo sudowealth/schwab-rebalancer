@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useRouter } from '@tanstack/react-router';
 import {
   AlertCircle,
   CheckCircle,
@@ -9,7 +10,6 @@ import {
   X,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { useRouter } from '@tanstack/react-router';
 import {
   getHeldPositionTickersServerFn,
   getSchwabCredentialsStatusServerFn,
@@ -124,8 +124,28 @@ export function SchwabIntegration() {
         data: { accountId },
       });
     },
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       console.log('✅ [UI] Holdings sync completed successfully:', data);
+
+      // After holdings sync, automatically sync prices for held securities
+      try {
+        console.log(
+          '💰 [UI] Holdings sync completed, automatically syncing prices for held securities...',
+        );
+        const heldTickers = await getHeldPositionTickersServerFn();
+        console.log('💰 [UI] Found', heldTickers.length, 'held securities to sync prices for');
+
+        if (heldTickers.length > 0) {
+          const priceSyncResult = await syncPricesMutation.mutateAsync(heldTickers);
+          console.log('✅ [UI] Automatic price sync completed:', priceSyncResult);
+        } else {
+          console.log('⚠️ [UI] No held securities found, skipping automatic price sync');
+        }
+      } catch (priceError) {
+        console.error('❌ [UI] Automatic price sync failed after holdings sync:', priceError);
+        // Don't fail the holdings sync if price sync fails
+      }
+
       queryClient.invalidateQueries({
         queryKey: ['schwab-credentials-status'],
       });
@@ -227,34 +247,9 @@ export function SchwabIntegration() {
       }
       console.log('✅ [UI] Holdings sync completed successfully');
 
-      // 3) Prices for held tickers
-      console.log('💰 [UI] Step 3: Getting held position tickers for price sync...');
-      const heldTickers = await getHeldPositionTickersServerFn();
-      console.log('💰 [UI] Manual full sync - held position tickers result:', {
-        count: heldTickers.length,
-        tickers: heldTickers,
-        timestamp: new Date().toISOString(),
-      });
-
-      if (heldTickers.length === 0) {
-        console.warn('⚠️ [UI] No held positions found after holdings sync; skipping price sync');
-        return { success: true, recordsProcessed: 0 } as {
-          success: boolean;
-          recordsProcessed: number;
-        };
-      }
-
-      console.log('💰 [UI] Starting price sync for held securities...');
-      const pricesResult = await syncPricesMutation.mutateAsync(heldTickers);
-      console.log('💰 [UI] Price sync result:', {
-        success: pricesResult?.success,
-        recordsProcessed: pricesResult?.recordsProcessed,
-        errorMessage: pricesResult?.errorMessage,
-        timestamp: new Date().toISOString(),
-      });
-
+      // Price sync is handled automatically by the holdings sync mutation
       console.log('✅ [UI] ===== MANUAL FULL SCHWAB SYNC COMPLETE =====');
-      return pricesResult;
+      return holdingsResult;
     },
     onSuccess: (data) => {
       console.log('✅ [UI] Full Schwab sync completed successfully:', data);

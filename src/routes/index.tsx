@@ -1,6 +1,6 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute, redirect } from '@tanstack/react-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { DashboardMetrics } from '../components/dashboard/dashboard-metrics';
 import { PositionsTable } from '../components/dashboard/positions-table';
 import { SecurityModal } from '../components/dashboard/security-modal';
@@ -39,6 +39,7 @@ export const Route = createFileRoute('/')({
 function DashboardComponent() {
   const { data: session } = useSession();
   const loaderData = Route.useLoaderData();
+  const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<'positions' | 'transactions'>('positions');
 
   // Use server-loaded user data as fallback/initial data
@@ -53,6 +54,48 @@ function DashboardComponent() {
   const [selectedTicker, setSelectedTicker] = useState<string | null>(null);
   const [showSecurityModal, setShowSecurityModal] = useState(false);
 
+  // Detect Schwab OAuth callback and refresh data
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const hasOAuthCallback = urlParams.has('code') && urlParams.has('state');
+
+    if (hasOAuthCallback) {
+      console.log('🔄 [Dashboard] Detected Schwab OAuth callback, refreshing dashboard data...');
+
+      // Clean up URL parameters
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, document.title, newUrl);
+
+      // Invalidate all dashboard queries to ensure fresh data after Schwab connection
+      queryClient.invalidateQueries({
+        queryKey: ['positions'],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ['metrics'],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ['transactions'],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ['sleeves'],
+      });
+
+      // Force refetch to bypass staleTime
+      queryClient.refetchQueries({
+        queryKey: ['positions'],
+      });
+      queryClient.refetchQueries({
+        queryKey: ['metrics'],
+      });
+      queryClient.refetchQueries({
+        queryKey: ['transactions'],
+      });
+      queryClient.refetchQueries({
+        queryKey: ['sleeves'],
+      });
+    }
+  }, [queryClient]);
+
   const hasAccounts =
     loaderData && 'accountsCount' in loaderData ? loaderData.accountsCount > 0 : false;
   const hasRebalancingGroups =
@@ -64,28 +107,28 @@ function DashboardComponent() {
     queryKey: ['positions'],
     queryFn: getPositionsServerFn,
     initialData: loaderData.positions,
-    staleTime: 1000 * 60 * 5, // 5 minutes
+    staleTime: 1000 * 60 * 2, // 2 minutes (reduced for faster refresh after Schwab sync)
   });
 
   const { data: metrics, isLoading: metricsLoading } = useQuery({
     queryKey: ['metrics'],
     queryFn: getPortfolioMetricsServerFn,
     initialData: loaderData.metrics,
-    staleTime: 1000 * 60 * 5, // 5 minutes
+    staleTime: 1000 * 60 * 2, // 2 minutes (reduced for faster refresh after Schwab sync)
   });
 
   const { data: transactions, isLoading: transactionsLoading } = useQuery({
     queryKey: ['transactions'],
     queryFn: getTransactionsServerFn,
     initialData: loaderData.transactions,
-    staleTime: 1000 * 60 * 5, // 5 minutes
+    staleTime: 1000 * 60 * 2, // 2 minutes (reduced for faster refresh after Schwab sync)
   });
 
   const { data: sleeves, isLoading: sleevesLoading } = useQuery({
     queryKey: ['sleeves'],
     queryFn: getSleevesServerFn,
     initialData: loaderData.sleeves,
-    staleTime: 1000 * 60 * 5, // 5 minutes
+    staleTime: 1000 * 60 * 2, // 2 minutes (reduced for faster refresh after Schwab sync)
   });
 
   const isLoading = positionsLoading || metricsLoading || transactionsLoading || sleevesLoading;
