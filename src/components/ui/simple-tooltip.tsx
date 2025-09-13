@@ -3,7 +3,8 @@ import { createPortal } from 'react-dom';
 
 interface SimpleTooltipProps {
   children: React.ReactNode;
-  content: React.ReactNode;
+  // Tooltip content. If empty/whitespace/undefined, tooltip will not render.
+  content?: React.ReactNode;
   cursor?: string;
 }
 
@@ -83,6 +84,19 @@ export function SimpleTooltip({ children, content, cursor }: SimpleTooltipProps)
     margin + width / 2,
     Math.min(anchor.centerX, vw - margin - width / 2),
   );
+
+  // Determine if there is meaningful content to show. Strings must be non-empty
+  // when trimmed; null/undefined/false are treated as empty.
+  const hasContent = React.useMemo(() => {
+    if (content === null || content === undefined || content === false) return false;
+    if (typeof content === 'string') return content.trim().length > 0;
+    return true; // Elements, numbers, etc.
+  }, [content]);
+
+  // If there's nothing to show, avoid rendering the interactive wrapper entirely.
+  if (!hasContent) {
+    return <>{children}</>;
+  }
 
   return (
     <>

@@ -1319,6 +1319,24 @@ export class SchwabApiService {
 // Singleton instance
 let schwabApiService: SchwabApiService | null = null;
 
+/**
+ * Check if Schwab API credentials are configured in environment variables
+ * This checks for SCHWAB_CLIENT_ID and SCHWAB_CLIENT_SECRET only
+ */
+export function hasSchwabCredentialsConfigured(): boolean {
+  const clientId = process.env.SCHWAB_CLIENT_ID;
+  const clientSecret = process.env.SCHWAB_CLIENT_SECRET;
+
+  const hasCredentials = !!(clientId && clientSecret);
+  console.log('🔧 [SchwabApi] Environment credentials check:', {
+    hasClientId: !!clientId,
+    hasClientSecret: !!clientSecret,
+    configured: hasCredentials,
+  });
+
+  return hasCredentials;
+}
+
 export function getSchwabApiService(): SchwabApiService {
   if (!schwabApiService) {
     const clientId = process.env.SCHWAB_CLIENT_ID;

@@ -42,7 +42,8 @@ function DashboardComponent() {
   const [activeTab, setActiveTab] = useState<'positions' | 'transactions'>('positions');
 
   // Use server-loaded user data as fallback/initial data
-  const userData = loaderData.user || session?.user;
+  const _userData = loaderData.user || session?.user;
+  // Note: _userData is available for future use if needed
 
   // Note: Server-side auth check in loader ensures user is authenticated
   // No client-side redirect needed
@@ -145,9 +146,12 @@ function DashboardComponent() {
       {/* Onboarding Tracker - shows progress through setup steps */}
       <OnboardingTracker
         schwabCredentialsStatusProp={loaderData.schwabCredentialsStatus}
+        schwabOAuthStatusProp={loaderData.schwabOAuthStatus}
         rebalancingGroupsStatus={loaderData.rebalancingGroupsStatus}
         rebalancingRunsStatus={loaderData.rebalancingRunsStatus}
         proposedTradesStatus={loaderData.proposedTradesStatus}
+        securitiesStatusProp={loaderData.securitiesStatus}
+        modelsStatusProp={loaderData.modelsStatus}
       />
 
       {hasAccounts && hasRebalancingGroups && <DashboardMetrics metrics={metrics} />}

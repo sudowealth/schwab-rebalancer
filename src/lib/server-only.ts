@@ -79,17 +79,29 @@ export async function loadDashboardData(
       console.warn('⚠️ SP500 data is empty in server-only loader!');
     }
 
-    // Load Schwab credentials status
+    // Load Schwab environment variables status (for "Configure" step)
     let schwabCredentialsStatus = { hasCredentials: false };
+    try {
+      const { hasSchwabCredentialsConfigured } = await import('./schwab-api');
+      const hasCredentials = hasSchwabCredentialsConfigured();
+      schwabCredentialsStatus = { hasCredentials };
+      console.log('📊 Schwab environment credentials status loaded:', hasCredentials);
+    } catch (error) {
+      console.warn('⚠️ Failed to load Schwab environment credentials status:', error);
+    }
+
+    // Load Schwab OAuth status (for "Connect" step)
+    let schwabOAuthStatus = { hasCredentials: false };
     if (userId) {
       try {
         const { getSchwabApiService } = await import('./schwab-api');
         const schwabApi = getSchwabApiService();
-        const hasCredentials = await schwabApi.hasValidCredentials(userId);
-        schwabCredentialsStatus = { hasCredentials };
-        console.log('📊 Schwab credentials status loaded:', hasCredentials);
+        const hasOAuthCredentials = await schwabApi.hasValidCredentials(userId);
+        schwabOAuthStatus = { hasCredentials: hasOAuthCredentials };
+        console.log('📊 Schwab OAuth credentials status loaded:', hasOAuthCredentials);
       } catch (error) {
-        console.warn('⚠️ Failed to load Schwab credentials status:', error);
+        console.warn('⚠️ Failed to load Schwab OAuth credentials status:', error);
+        schwabOAuthStatus = { hasCredentials: false };
       }
     }
 
@@ -218,6 +230,7 @@ export async function loadDashboardData(
       indexMembers,
       user,
       schwabCredentialsStatus,
+      schwabOAuthStatus,
       accountsCount,
       securitiesStatus,
       modelsStatus,
@@ -255,6 +268,7 @@ export async function loadDashboardData(
       indexMembers: [],
       user: null,
       schwabCredentialsStatus: { hasCredentials: false },
+      schwabOAuthStatus: { hasCredentials: false },
       accountsCount: 0,
       securitiesStatus: { hasSecurities: false, securitiesCount: 0 },
       modelsStatus: { hasModels: false, modelsCount: 0 },

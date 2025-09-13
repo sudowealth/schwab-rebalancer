@@ -36,16 +36,22 @@ interface OnboardingTask {
 
 interface OnboardingTrackerProps {
   schwabCredentialsStatusProp?: { hasCredentials: boolean };
+  schwabOAuthStatusProp?: { hasCredentials: boolean };
   rebalancingGroupsStatus?: { hasGroups: boolean; groupsCount: number };
   rebalancingRunsStatus?: { hasRuns: boolean; runsCount: number };
   proposedTradesStatus?: { hasTrades: boolean; tradesCount: number };
+  securitiesStatusProp?: { hasSecurities: boolean; securitiesCount: number };
+  modelsStatusProp?: { hasModels: boolean; modelsCount: number };
 }
 
 export function OnboardingTracker({
   schwabCredentialsStatusProp,
+  schwabOAuthStatusProp,
   rebalancingGroupsStatus,
   rebalancingRunsStatus,
   proposedTradesStatus,
+  securitiesStatusProp,
+  modelsStatusProp,
 }: OnboardingTrackerProps) {
   const navigate = useNavigate();
 
@@ -58,27 +64,32 @@ export function OnboardingTracker({
     oauthMutation,
     isConnected,
     handleConnect,
-  } = useSchwabConnection(schwabCredentialsStatusProp);
+  } = useSchwabConnection(schwabCredentialsStatusProp, schwabOAuthStatusProp);
 
   // Query for reactive securities status
   const { data: reactiveSecuritiesStatus } = useQuery({
     queryKey: ['securities-status'],
     queryFn: () => checkSecuritiesExistServerFn(),
+    initialData: securitiesStatusProp,
+    staleTime: 1000 * 60 * 5, // 5 minutes
   });
 
   // Query for reactive models status
   const { data: reactiveModelsStatus } = useQuery({
     queryKey: ['models-status'],
     queryFn: () => checkModelsExistServerFn(),
+    initialData: modelsStatusProp,
+    staleTime: 1000 * 60 * 5, // 5 minutes
   });
 
   // Query for reactive Schwab credentials status
   const { data: schwabCredentialsStatus } = useQuery({
     queryKey: ['schwab-credentials-status'],
     queryFn: () => checkSchwabCredentialsServerFn(),
-    staleTime: 0, // Always refetch
-    gcTime: 0, // Don't cache
-    refetchOnMount: true,
+    initialData: schwabCredentialsStatusProp,
+    staleTime: 1000 * 60 * 2, // 2 minutes - still reactive but prevents immediate refetch
+    gcTime: 1000 * 60 * 10, // 10 minutes cache
+    refetchOnMount: false, // Don't refetch immediately on mount if we have initialData
     refetchOnWindowFocus: true,
   });
 
@@ -395,14 +406,6 @@ npm run dev`}
 
                     return (
                       <div className="mt-3">
-                        {!hasCredentials && (
-                          <div className="flex items-center gap-2 p-2 bg-amber-50 border border-amber-200 rounded-lg mb-3">
-                            <AlertCircle className="h-4 w-4 text-amber-600 flex-shrink-0" />
-                            <p className="text-xs text-amber-800">
-                              You must configure your Schwab API credentials before connecting.
-                            </p>
-                          </div>
-                        )}
                         <SimpleTooltip
                           content={
                             !hasCredentials

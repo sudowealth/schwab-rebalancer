@@ -10,17 +10,22 @@ import {
   syncYahooFundamentalsServerFn,
 } from '../lib/server-functions';
 
-export function useSchwabConnection(initialCredentialsStatus?: { hasCredentials: boolean }) {
+export function useSchwabConnection(
+  initialCredentialsStatus?: { hasCredentials: boolean },
+  initialActiveCredentialsStatus?: { hasCredentials: boolean },
+) {
   const [isConnecting, setIsConnecting] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncStep, setSyncStep] = useState<string>('');
   const queryClient = useQueryClient();
 
-  // Query to check credentials status
+  // Query to check credentials status (environment variables)
   const { data: credentialsStatus, isLoading: statusLoading } = useQuery({
     queryKey: ['schwab-credentials-status'],
     queryFn: () => getSchwabCredentialsStatusServerFn(),
     initialData: initialCredentialsStatus,
+    staleTime: 1000 * 60 * 5, // 5 minutes - environment vars don't change often
+    refetchOnMount: false, // Don't refetch immediately if we have initial data
   });
 
   // Mutation to start OAuth flow
@@ -221,7 +226,9 @@ export function useSchwabConnection(initialCredentialsStatus?: { hasCredentials:
         return { hasCredentials: false };
       }
     },
+    initialData: initialActiveCredentialsStatus,
     enabled: !!credentialsStatus?.hasCredentials, // Only run if env vars are set
+    staleTime: 1000 * 60 * 2, // 2 minutes
   });
 
   const isConnected = activeCredentialsStatus?.hasCredentials || false;
