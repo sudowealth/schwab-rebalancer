@@ -1448,6 +1448,17 @@ export const syncSchwabAccountsServerFn = createServerFn({
 
     const result = await syncService.syncAccounts(user.id);
     console.log('✅ [ServerFn] Accounts sync completed:', result);
+
+    // Clear relevant caches after successful sync
+    if (result.success && result.recordsProcessed > 0) {
+      console.log('🧹 [ServerFn] Clearing caches after successful accounts sync');
+      const { clearCache } = await import('./db-api');
+      // Clear user-specific caches that might be affected
+      clearCache(`positions-${user.id}`);
+      clearCache(`transactions-${user.id}`);
+      clearCache(`metrics-${user.id}`);
+    }
+
     return result;
   } catch (error) {
     console.error('❌ [ServerFn] Error syncing Schwab accounts:', error);
@@ -1479,6 +1490,18 @@ export const syncSchwabHoldingsServerFn = createServerFn({ method: 'POST' })
 
       const result = await syncService.syncHoldings(user.id, data.accountId);
       console.log('✅ [ServerFn] Holdings sync completed:', result);
+
+      // Clear relevant caches after successful sync
+      if (result.success && result.recordsProcessed > 0) {
+        console.log('🧹 [ServerFn] Clearing caches after successful holdings sync');
+        const { clearCache } = await import('./db-api');
+        // Clear caches that depend on holdings data
+        clearCache(`positions-${user.id}`);
+        clearCache(`transactions-${user.id}`);
+        clearCache(`metrics-${user.id}`);
+        clearCache('sp500-data'); // Clear S&P 500 data cache since holdings may have new securities
+      }
+
       return result;
     } catch (error) {
       console.error('❌ [ServerFn] Error syncing Schwab holdings:', error);
@@ -1509,6 +1532,16 @@ export const syncSchwabTransactionsServerFn = createServerFn({ method: 'POST' })
         startDate,
         endDate,
       });
+
+      // Clear relevant caches after successful sync
+      if (result.success && result.recordsProcessed > 0) {
+        console.log('🧹 [ServerFn] Clearing caches after successful transactions sync');
+        const { clearCache } = await import('./db-api');
+        // Clear caches that depend on transaction data
+        clearCache(`transactions-${user.id}`);
+        clearCache(`metrics-${user.id}`); // Transactions can affect metrics
+      }
+
       return result;
     } catch (error) {
       return {
@@ -1649,6 +1682,17 @@ export const syncSchwabPricesServerFn = createServerFn({ method: 'POST' })
           })),
           timestamp: new Date().toISOString()
         });
+
+        // Clear caches that depend on security prices
+        const successfulUpdates = results.filter(r => r.success).length;
+        if (successfulUpdates > 0) {
+          console.log('🧹 [ServerFn] Clearing caches after successful price updates');
+          const { clearCache } = await import('./db-api');
+          // Clear caches that depend on price data
+          clearCache('sp500-data'); // Clear S&P 500 data since prices have been updated
+          clearCache(`positions-${user.id}`); // Clear positions cache since prices affect position values
+          clearCache(`metrics-${user.id}`); // Clear metrics cache since prices affect portfolio metrics
+        }
 
         // Persist per-ticker as generic change entries
         try {
@@ -2255,6 +2299,16 @@ export const syncYahooFundamentalsServerFn = createServerFn({ method: 'POST' })
           .where(eq(schema.syncLog.id, logId));
       } catch {
         // Ignore completion logging failure
+      }
+
+      // Clear caches that depend on security data
+      if (successCount > 0) {
+        console.log('🧹 [ServerFn] Clearing caches after successful Yahoo fundamentals sync');
+        const { clearCache } = await import('./db-api');
+        // Clear caches that depend on security data
+        clearCache('sp500-data'); // Clear S&P 500 data since fundamentals have been updated
+        clearCache(`positions-${user.id}`); // Clear positions cache since fundamentals affect position values
+        clearCache(`metrics-${user.id}`); // Clear metrics cache since fundamentals affect portfolio metrics
       }
 
       return {

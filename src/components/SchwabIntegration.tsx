@@ -134,10 +134,20 @@ export function SchwabIntegration() {
         );
         const heldTickers = await getHeldPositionTickersServerFn();
         console.log('💰 [UI] Found', heldTickers.length, 'held securities to sync prices for');
+        console.log(
+          '💰 [UI] Held tickers:',
+          heldTickers.slice(0, 5),
+          heldTickers.length > 5 ? `...and ${heldTickers.length - 5} more` : '',
+        );
 
         if (heldTickers.length > 0) {
+          console.log('💰 [UI] Starting automatic price sync for held securities...');
           const priceSyncResult = await syncPricesMutation.mutateAsync(heldTickers);
-          console.log('✅ [UI] Automatic price sync completed:', priceSyncResult);
+          console.log('✅ [UI] Automatic price sync completed:', {
+            success: priceSyncResult.success,
+            recordsProcessed: priceSyncResult.recordsProcessed,
+            errorMessage: priceSyncResult.errorMessage,
+          });
         } else {
           console.log('⚠️ [UI] No held securities found, skipping automatic price sync');
         }

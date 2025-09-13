@@ -61,12 +61,17 @@ function DashboardComponent() {
 
     if (hasOAuthCallback) {
       console.log('🔄 [Dashboard] Detected Schwab OAuth callback, refreshing dashboard data...');
+      console.log('🔄 [Dashboard] URL params:', {
+        code: urlParams.get('code')?.substring(0, 10) + '...',
+        state: urlParams.get('state'),
+      });
 
       // Clean up URL parameters
       const newUrl = window.location.pathname;
       window.history.replaceState({}, document.title, newUrl);
 
       // Invalidate all dashboard queries to ensure fresh data after Schwab connection
+      console.log('🔄 [Dashboard] Invalidating all dashboard queries...');
       queryClient.invalidateQueries({
         queryKey: ['positions'],
       });
@@ -81,6 +86,7 @@ function DashboardComponent() {
       });
 
       // Force refetch to bypass staleTime
+      console.log('🔄 [Dashboard] Forcing refetch of all dashboard queries...');
       queryClient.refetchQueries({
         queryKey: ['positions'],
       });
@@ -93,6 +99,8 @@ function DashboardComponent() {
       queryClient.refetchQueries({
         queryKey: ['sleeves'],
       });
+
+      console.log('✅ [Dashboard] Dashboard data refresh initiated after Schwab OAuth callback');
     }
   }, [queryClient]);
 
