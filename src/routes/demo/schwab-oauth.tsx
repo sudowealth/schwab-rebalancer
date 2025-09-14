@@ -19,12 +19,7 @@ function DemoSchwabOAuth() {
   const [isAuthorizing, setIsAuthorizing] = useState(false);
 
   console.log('🎭 [DemoOAuth] Demo Schwab OAuth page loaded');
-  console.log('📋 [DemoOAuth] OAuth parameters:', {
-    client_id,
-    redirect_uri,
-    response_type,
-    scope,
-  });
+  console.log('📋 [DemoOAuth] OAuth parameters received');
 
   const handleAuthorize = () => {
     console.log('✅ [DemoOAuth] User authorized demo OAuth');
@@ -32,13 +27,13 @@ function DemoSchwabOAuth() {
 
     // Generate a demo authorization code
     const demoCode = `demo_auth_code_${Date.now()}`;
-    console.log('🎫 [DemoOAuth] Generated demo authorization code:', demoCode);
+    console.log('🎫 [DemoOAuth] Demo authorization code generated');
 
     // Redirect back to the callback URL with the demo code
     const separator = redirect_uri.includes('?') ? '&' : '?';
     const callbackUrl = `${redirect_uri}${separator}code=${demoCode}&state=demo_state`;
 
-    console.log('🔄 [DemoOAuth] Redirecting to callback:', callbackUrl);
+    console.log('🔄 [DemoOAuth] Redirecting to callback');
 
     setTimeout(() => {
       window.location.href = callbackUrl;
@@ -52,7 +47,7 @@ function DemoSchwabOAuth() {
     const separator = redirect_uri.includes('?') ? '&' : '?';
     const callbackUrl = `${redirect_uri}${separator}error=access_denied&error_description=User+denied+authorization`;
 
-    console.log('🔄 [DemoOAuth] Redirecting to callback with error:', callbackUrl);
+    console.log('🔄 [DemoOAuth] Redirecting to callback with error');
     window.location.href = callbackUrl;
   };
 

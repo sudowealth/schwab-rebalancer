@@ -21,9 +21,15 @@ export function ExportButton({
       aria-label={label}
       title={label}
       variant="outline"
-      size="icon"
+      size="sm"
+      className="h-8 px-2 text-xs"
     >
-      {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+      {isLoading ? (
+        <Loader2 className="h-3 w-3 animate-spin mr-1" />
+      ) : (
+        <Download className="h-3 w-3 mr-1" />
+      )}
+      <span className="hidden sm:inline">{label}</span>
     </Button>
   );
 }

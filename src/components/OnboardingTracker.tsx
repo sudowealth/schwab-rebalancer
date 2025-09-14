@@ -5,13 +5,11 @@ import {
   CheckCircle,
   Circle,
   Database,
-  Eye,
   Key,
   Layers,
   Link,
   Loader2,
   Plus,
-  RotateCcw,
   TrendingUp,
   Users,
 } from 'lucide-react';
@@ -39,8 +37,6 @@ interface OnboardingTrackerProps {
   schwabCredentialsStatusProp?: { hasCredentials: boolean };
   schwabOAuthStatusProp?: { hasCredentials: boolean };
   rebalancingGroupsStatus?: { hasGroups: boolean; groupsCount: number };
-  rebalancingRunsStatus?: { hasRuns: boolean; runsCount: number };
-  proposedTradesStatus?: { hasTrades: boolean; tradesCount: number };
   securitiesStatusProp?: { hasSecurities: boolean; securitiesCount: number };
   modelsStatusProp?: { hasModels: boolean; modelsCount: number };
 }
@@ -49,8 +45,6 @@ export function OnboardingTracker({
   schwabCredentialsStatusProp,
   schwabOAuthStatusProp,
   rebalancingGroupsStatus,
-  rebalancingRunsStatus,
-  proposedTradesStatus,
   securitiesStatusProp,
   modelsStatusProp,
 }: OnboardingTrackerProps) {
@@ -136,20 +130,6 @@ export function OnboardingTracker({
       description: 'Group your accounts together for portfolio rebalancing',
       completed: rebalancingGroupsStatus?.hasGroups || false,
       icon: Users,
-    },
-    {
-      id: 'run-first-rebalance',
-      title: 'Rebalance your Portfolio',
-      description: 'Execute your first portfolio rebalancing operation',
-      completed: rebalancingRunsStatus?.hasRuns || false,
-      icon: RotateCcw,
-    },
-    {
-      id: 'preview-first-trade',
-      title: 'Preview your first Trade',
-      description: 'Generate and preview your first set of trading recommendations',
-      completed: proposedTradesStatus?.hasTrades || false,
-      icon: Eye,
     },
   ];
 

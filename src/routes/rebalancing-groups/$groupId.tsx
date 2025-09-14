@@ -34,6 +34,13 @@ import {
 import type { RebalanceMethod } from '../../types/rebalance';
 
 export const Route = createFileRoute('/rebalancing-groups/$groupId')({
+  validateSearch: (search: Record<string, unknown>) => {
+    const result: { rebalance?: string } = {};
+    if (typeof search.rebalance === 'string') {
+      result.rebalance = search.rebalance;
+    }
+    return result;
+  },
   loader: async ({
     params,
   }): Promise<{
@@ -133,6 +140,7 @@ function RebalancingGroupDetail() {
     proposedTrades,
   } = Route.useLoaderData();
   const router = useRouter();
+  const searchParams = Route.useSearch();
 
   // Server-side auth check in loader handles authentication
   const [selectedAccount, setSelectedAccount] = useState<string | null>(null);
@@ -534,6 +542,15 @@ function RebalancingGroupDetail() {
       })();
     }
   }, [syncingPrices, waitingForSync, pendingMethod, pendingCashAmount, handleGenerateTrades]);
+
+  // Handle URL parameter to open rebalance modal
+  useEffect(() => {
+    if (searchParams.rebalance === 'true') {
+      setRebalanceModalOpen(true);
+      // Clean up URL parameter
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, [searchParams.rebalance]);
 
   // Convert sleeve members data to format expected by SleeveModal
   const getSleeveForModal = (sleeveId: string) => {

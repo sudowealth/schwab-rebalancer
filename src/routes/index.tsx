@@ -3,6 +3,7 @@ import { createFileRoute, redirect } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
 import { DashboardMetrics } from '../components/dashboard/dashboard-metrics';
 import { PositionsTable } from '../components/dashboard/positions-table';
+import { RebalancingGroupsTab } from '../components/dashboard/rebalancing-groups-tab';
 import { SecurityModal } from '../components/dashboard/security-modal';
 import { SleeveModal } from '../components/dashboard/sleeve-modal';
 import { TransactionsTable } from '../components/dashboard/transactions-table';
@@ -10,14 +11,51 @@ import { OnboardingTracker } from '../components/OnboardingTracker';
 import { ExportButton } from '../components/ui/export-button';
 import { useSession } from '../lib/auth-client';
 import { exportPositionsToExcel, exportTransactionsToExcel } from '../lib/excel-export';
+import type { RebalancingGroup, Sleeve } from '../lib/schemas';
 // Use server functions for live data so client refetches return real results
 import {
   getDashboardDataServerFn,
+  getGroupAccountHoldingsServerFn,
   getPortfolioMetricsServerFn,
   getPositionsServerFn,
+  getRebalancingGroupsServerFn,
   getSleevesServerFn,
   getTransactionsServerFn,
 } from '../lib/server-functions';
+
+// Utility function that replicates the exact loader logic from /rebalancing-groups route
+async function loadRebalancingGroupsData() {
+  const groups = await getRebalancingGroupsServerFn();
+
+  // Get account holdings for all groups to calculate proper balances
+  const updatedGroups = await Promise.all(
+    groups.map(async (group) => {
+      const accountIds = group.members.map((member) => member.accountId);
+      const accountHoldings =
+        accountIds.length > 0
+          ? await getGroupAccountHoldingsServerFn({
+              data: { accountIds },
+            })
+          : [];
+
+      // Update group members with calculated balances from holdings
+      const updatedMembers = group.members.map((member) => {
+        const accountData = accountHoldings.find((ah) => ah.accountId === member.accountId);
+        return {
+          ...member,
+          balance: accountData ? accountData.accountBalance : member.balance,
+        };
+      });
+
+      return {
+        ...group,
+        members: updatedMembers,
+      };
+    }),
+  );
+
+  return updatedGroups;
+}
 
 export const Route = createFileRoute('/')({
   component: DashboardComponent,
@@ -37,10 +75,24 @@ export const Route = createFileRoute('/')({
 });
 
 function DashboardComponent() {
+  console.log('🏠 [Dashboard] DashboardComponent rendered');
+
   const { data: session } = useSession();
   const loaderData = Route.useLoaderData();
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState<'positions' | 'transactions'>('positions');
+  const [activeTab, setActiveTab] = useState<'positions' | 'transactions' | 'rebalancing-groups'>(
+    'rebalancing-groups',
+  );
+
+  console.log('🏠 [Dashboard] Initial state - activeTab:', activeTab);
+
+  // Manually trigger the query on mount
+  useEffect(() => {
+    console.log('🔄 [Dashboard] Manually triggering rebalancing groups query...');
+    setTimeout(() => {
+      queryClient.invalidateQueries({ queryKey: ['rebalancing-groups'] });
+    }, 100);
+  }, [queryClient]);
 
   // Use server-loaded user data as fallback/initial data
   const _userData = loaderData.user || session?.user;
@@ -111,6 +163,11 @@ function DashboardComponent() {
       ? loaderData.rebalancingGroupsStatus.hasGroups
       : false;
 
+  // For the dashboard, we also want to show rebalancing groups if we have accounts
+  // and the user has completed onboarding (has models, etc.)
+  // We'll use a simple approach: show if we have accounts and either have groups or are still loading
+  const shouldShowRebalancingSection = hasAccounts;
+
   const { data: positions, isLoading: positionsLoading } = useQuery({
     queryKey: ['positions'],
     queryFn: getPositionsServerFn,
@@ -139,7 +196,31 @@ function DashboardComponent() {
     staleTime: 1000 * 60 * 2, // 2 minutes (reduced for faster refresh after Schwab sync)
   });
 
-  const isLoading = positionsLoading || metricsLoading || transactionsLoading || sleevesLoading;
+  console.log('🔄 [Dashboard] Setting up rebalancing groups query...');
+
+  // Use the exact same data loading logic as /rebalancing-groups route
+  const { data: rebalancingGroups, isLoading: rebalancingGroupsLoading } = useQuery({
+    queryKey: ['rebalancing-groups-dashboard'],
+    queryFn: loadRebalancingGroupsData,
+    staleTime: 1000 * 60 * 2,
+  });
+
+  const isLoading =
+    positionsLoading ||
+    metricsLoading ||
+    transactionsLoading ||
+    sleevesLoading ||
+    rebalancingGroupsLoading;
+
+  console.log('🔍 [Dashboard] Debug conditions:', {
+    hasAccounts,
+    hasRebalancingGroups,
+    shouldShowRebalancingSection,
+    isLoading,
+    activeTab,
+    rebalancingGroupsCount: rebalancingGroups?.length || 0,
+    rebalancingGroupsLoading,
+  });
 
   const handleTickerClick = (ticker: string) => {
     setSelectedTicker(ticker);
@@ -186,10 +267,36 @@ function DashboardComponent() {
       <div className="mb-8">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Getting Started</h1>
-            <p className="text-sm text-gray-600">
-              Complete these steps to start rebalancing your portfolio at Schwab
-            </p>
+            {(() => {
+              // Calculate if onboarding is complete (same logic as OnboardingTracker)
+              const securitiesComplete = loaderData.securitiesStatus?.hasSecurities || false;
+              const schwabCredentialsComplete =
+                loaderData.schwabCredentialsStatus?.hasCredentials || false;
+              const schwabOAuthComplete = loaderData.schwabOAuthStatus?.hasCredentials || false;
+              const modelsComplete = loaderData.modelsStatus?.hasModels || false;
+              const rebalancingGroupsComplete =
+                loaderData.rebalancingGroupsStatus?.hasGroups || false;
+
+              const isFullyOnboarded =
+                securitiesComplete &&
+                schwabCredentialsComplete &&
+                schwabOAuthComplete &&
+                modelsComplete &&
+                rebalancingGroupsComplete;
+
+              return isFullyOnboarded ? (
+                <>
+                  <h1 className="text-2xl font-bold text-gray-900">Portfolio Dashboard</h1>
+                </>
+              ) : (
+                <>
+                  <h1 className="text-2xl font-bold text-gray-900">Getting Started</h1>
+                  <p className="text-sm text-gray-600">
+                    Complete these steps to start rebalancing your portfolio at Schwab
+                  </p>
+                </>
+              );
+            })()}
           </div>
         </div>
       </div>
@@ -199,93 +306,131 @@ function DashboardComponent() {
         schwabCredentialsStatusProp={loaderData.schwabCredentialsStatus}
         schwabOAuthStatusProp={loaderData.schwabOAuthStatus}
         rebalancingGroupsStatus={loaderData.rebalancingGroupsStatus}
-        rebalancingRunsStatus={loaderData.rebalancingRunsStatus}
-        proposedTradesStatus={loaderData.proposedTradesStatus}
         securitiesStatusProp={loaderData.securitiesStatus}
         modelsStatusProp={loaderData.modelsStatus}
       />
 
-      {hasAccounts && hasRebalancingGroups && <DashboardMetrics metrics={metrics} />}
+      {shouldShowRebalancingSection && <DashboardMetrics metrics={metrics} />}
 
       {/* Positions and Transactions */}
-      {hasAccounts && hasRebalancingGroups && (
-        <div className="bg-white shadow rounded-lg">
-          <div className="px-4 py-5 sm:p-6">
-            <div className="mb-4">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg leading-6 font-medium text-gray-900">
-                  Positions & Transactions
-                </h3>
-                <div className="flex space-x-2">
-                  {activeTab === 'positions' && positions && positions.length > 0 && (
-                    <ExportButton
-                      onExport={() => exportPositionsToExcel(positions)}
-                      label="Export Positions"
-                    />
-                  )}
-                  {activeTab === 'transactions' && transactions && transactions.length > 0 && (
-                    <ExportButton
-                      onExport={() => exportTransactionsToExcel(transactions)}
-                      label="Export Transactions"
-                    />
-                  )}
+      {(() => {
+        console.log(
+          '🔍 [Dashboard] Checking shouldShowRebalancingSection:',
+          shouldShowRebalancingSection,
+        );
+        return null;
+      })()}
+      {shouldShowRebalancingSection && (
+        <>
+          {(() => {
+            console.log('🔍 [Dashboard] Rendering Positions & Transactions section');
+            return null;
+          })()}
+          <div className="bg-white shadow rounded-lg">
+            <div className="px-4 py-5 sm:p-6">
+              <div className="mb-4">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-lg leading-6 font-medium text-gray-900">
+                    Positions & Transactions
+                  </h3>
+                  <div className="flex space-x-2">
+                    {activeTab === 'positions' && positions && positions.length > 0 && (
+                      <ExportButton
+                        onExport={() => exportPositionsToExcel(positions)}
+                        label="Export Positions"
+                      />
+                    )}
+                    {activeTab === 'transactions' && transactions && transactions.length > 0 && (
+                      <ExportButton
+                        onExport={() => exportTransactionsToExcel(transactions)}
+                        label="Export Transactions"
+                      />
+                    )}
+                  </div>
+                </div>
+                <div className="border-b border-gray-200">
+                  <nav className="-mb-px flex space-x-2 sm:space-x-8 overflow-x-auto">
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('rebalancing-groups')}
+                      className={`shrink-0 py-2 px-2 sm:px-1 border-b-2 font-medium text-xs sm:text-sm ${
+                        activeTab === 'rebalancing-groups'
+                          ? 'border-blue-500 text-blue-600'
+                          : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                      }`}
+                    >
+                      <span className="hidden sm:inline">Rebalancing Groups</span>
+                      <span className="sm:hidden">Groups</span>
+                      <span className="ml-1">({rebalancingGroups?.length || 0})</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('positions')}
+                      className={`shrink-0 py-2 px-2 sm:px-1 border-b-2 font-medium text-xs sm:text-sm ${
+                        activeTab === 'positions'
+                          ? 'border-blue-500 text-blue-600'
+                          : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                      }`}
+                    >
+                      <span className="hidden sm:inline">Positions</span>
+                      <span className="sm:hidden">Positions</span>
+                      <span className="ml-1">({positions?.length || 0})</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('transactions')}
+                      className={`shrink-0 py-2 px-2 sm:px-1 border-b-2 font-medium text-xs sm:text-sm ${
+                        activeTab === 'transactions'
+                          ? 'border-blue-500 text-blue-600'
+                          : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                      }`}
+                    >
+                      <span className="hidden sm:inline">Transactions</span>
+                      <span className="sm:hidden">Txns</span>
+                      <span className="ml-1">({transactions?.length || 0})</span>
+                    </button>
+                  </nav>
                 </div>
               </div>
-              <div className="border-b border-gray-200">
-                <nav className="-mb-px flex space-x-2 sm:space-x-8 overflow-x-auto">
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab('positions')}
-                    className={`shrink-0 py-2 px-2 sm:px-1 border-b-2 font-medium text-xs sm:text-sm ${
-                      activeTab === 'positions'
-                        ? 'border-blue-500 text-blue-600'
-                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                    }`}
-                  >
-                    <span className="hidden sm:inline">Positions</span>
-                    <span className="sm:hidden">Positions</span>
-                    <span className="ml-1">({positions?.length || 0})</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab('transactions')}
-                    className={`shrink-0 py-2 px-2 sm:px-1 border-b-2 font-medium text-xs sm:text-sm ${
-                      activeTab === 'transactions'
-                        ? 'border-blue-500 text-blue-600'
-                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                    }`}
-                  >
-                    <span className="hidden sm:inline">Transactions</span>
-                    <span className="sm:hidden">Txns</span>
-                    <span className="ml-1">({transactions?.length || 0})</span>
-                  </button>
-                </nav>
-              </div>
+
+              {activeTab === 'rebalancing-groups' && (
+                <>
+                  {(() => {
+                    console.log('🎯 [Dashboard] About to render RebalancingGroupsTab');
+                    console.log('🎯 [Dashboard] Active tab:', activeTab);
+                    console.log('🎯 [Dashboard] Groups to pass:', rebalancingGroups);
+                    return null;
+                  })()}
+                  <RebalancingGroupsTab groups={rebalancingGroups || []} />
+                </>
+              )}
+
+              {activeTab === 'positions' && (
+                <PositionsTable
+                  positions={positions || []}
+                  onTickerClick={handleTickerClick}
+                  onSleeveClick={handleSleeveClick}
+                />
+              )}
+
+              {activeTab === 'transactions' && (
+                <TransactionsTable
+                  transactions={transactions || []}
+                  onTickerClick={handleTickerClick}
+                  onSleeveClick={handleSleeveClick}
+                />
+              )}
             </div>
-
-            {activeTab === 'positions' && (
-              <PositionsTable
-                positions={positions || []}
-                onTickerClick={handleTickerClick}
-                onSleeveClick={handleSleeveClick}
-              />
-            )}
-
-            {activeTab === 'transactions' && (
-              <TransactionsTable
-                transactions={transactions || []}
-                onTickerClick={handleTickerClick}
-                onSleeveClick={handleSleeveClick}
-              />
-            )}
           </div>
-        </div>
+        </>
       )}
 
       <SleeveModal
         isOpen={showSleeveModal}
         onClose={() => setShowSleeveModal(false)}
-        sleeve={selectedSleeve ? sleeves?.find((s) => s.id === selectedSleeve) || null : null}
+        sleeve={
+          selectedSleeve ? sleeves?.find((s: Sleeve) => s.id === selectedSleeve) || null : null
+        }
       />
 
       <SecurityModal

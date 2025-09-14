@@ -1820,13 +1820,18 @@ export const getIndexMembers = async (): Promise<
 
 // Get all rebalancing groups with their members and assigned models
 export const getRebalancingGroups = async (userId: string): Promise<RebalancingGroup[]> => {
+  console.log('🔍 [DB-API] getRebalancingGroups called with userId:', userId);
+
   const cacheKey = `rebalancing-groups-${userId}`;
   const cached = getCached<RebalancingGroup[]>(cacheKey);
   if (cached) {
-    return cached;
+    console.log('🔍 [DB-API] Returning cached groups:', cached.length);
+    // Temporarily disable cache to debug
+    // return cached;
   }
 
   // Get all rebalancing groups for the user
+  console.log('🔍 [DB-API] Executing database query...');
   const groups = await db
     .select({
       id: schema.rebalancingGroup.id,
@@ -1840,6 +1845,24 @@ export const getRebalancingGroups = async (userId: string): Promise<RebalancingG
       sql`${schema.rebalancingGroup.userId} = ${userId} AND ${schema.rebalancingGroup.isActive} = 1`,
     )
     .orderBy(schema.rebalancingGroup.name);
+
+  console.log('🔍 [DB-API] Database query returned:', groups.length, 'groups');
+  console.log('🔍 [DB-API] Groups data:', groups);
+
+  // Debug: Check if there are any groups in the database at all
+  if (groups.length === 0) {
+    const allGroups = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(schema.rebalancingGroup);
+    console.log('🔍 [DB-API] Total groups in database:', allGroups[0]?.count || 0);
+
+    // Also check groups for this user (including inactive ones)
+    const userGroups = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(schema.rebalancingGroup)
+      .where(sql`${schema.rebalancingGroup.userId} = ${userId}`);
+    console.log('🔍 [DB-API] Total groups for this user:', userGroups[0]?.count || 0);
+  }
 
   // Get all group members for active groups
   const groupIds = groups.map((g) => g.id);

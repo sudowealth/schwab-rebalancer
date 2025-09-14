@@ -355,27 +355,19 @@ export class SchwabApiService {
 
   async getOAuthUrl(redirectUri: string): Promise<string> {
     console.log('🔐 [SchwabApi] Starting OAuth URL generation');
-    console.log(
-      '📋 [SchwabApi] Client ID:',
-      this.clientId ? `${this.clientId.substring(0, 8)}...` : 'NOT SET',
-    );
-    console.log('🔗 [SchwabApi] Redirect URI:', redirectUri);
+    console.log('🔗 [SchwabApi] Redirect URI configured');
 
     // Use sudowealth library for OAuth URL generation
     const auth = await this.initializeAuth(redirectUri);
     const { authUrl } = await auth.getAuthorizationUrl();
-    console.log('✅ [SchwabApi] Generated OAuth URL using sudowealth:', authUrl);
+    console.log('✅ [SchwabApi] OAuth URL generated successfully');
 
     return authUrl;
   }
 
   async handleOAuthCallback(code: string, redirectUri: string, userId: string): Promise<void> {
     console.log('🔄 [SchwabApi] Starting OAuth callback handling');
-    console.log(
-      '📨 [SchwabApi] Authorization code:',
-      code ? `${code.substring(0, 10)}...` : 'NOT PROVIDED',
-    );
-    console.log('👤 [SchwabApi] User ID:', userId);
+    console.log('📨 [SchwabApi] Authorization code received');
 
     try {
       // Use our auth client for token exchange (following sudowealth patterns)
@@ -428,11 +420,7 @@ export class SchwabApiService {
 
   private async storeCredentials(userId: string, credentials: SchwabCredentials): Promise<void> {
     console.log('💾 [SchwabApi] Starting credential storage process');
-    console.log('👤 [SchwabApi] User ID:', userId);
-    console.log('🔑 [SchwabApi] Access token length:', credentials.accessToken.length);
-    console.log('🔄 [SchwabApi] Refresh token length:', credentials.refreshToken.length);
-    console.log('⏰ [SchwabApi] Token expires at:', credentials.tokenExpiresAt);
-    console.log('⏰ [SchwabApi] Refresh token expires at:', credentials.refreshTokenExpiresAt);
+    console.log('⏰ [SchwabApi] Token expiry configured');
 
     try {
       console.log('🔐 [SchwabApi] Encrypting tokens...');
@@ -479,7 +467,7 @@ export class SchwabApiService {
   }
 
   private async getCredentials(userId: string): Promise<SchwabCredentials | null> {
-    console.log('🔍 [SchwabApi] Retrieving credentials for user:', userId);
+    console.log('🔍 [SchwabApi] Retrieving stored credentials');
 
     try {
       const result = await this.db
@@ -509,8 +497,6 @@ export class SchwabApiService {
       const refreshToken = await decrypt(creds.encryptedRefreshToken);
 
       console.log('✅ [SchwabApi] Successfully decrypted credentials');
-      console.log('🔑 [SchwabApi] Access token length:', accessToken.length);
-      console.log('🔄 [SchwabApi] Refresh token length:', refreshToken.length);
 
       return {
         accessToken,
@@ -595,10 +581,7 @@ export class SchwabApiService {
       const accounts: SchwabAccount[] = [];
 
       for (const accountInfo of accountNumbers) {
-        console.log(
-          '📡 [SchwabApi] Fetching account details for:',
-          `${accountInfo.accountNumber.substring(0, 4)}...`,
-        );
+        console.log('📡 [SchwabApi] Fetching account details');
 
         try {
           const accountDetail = await schwabClient.trader.accounts.getAccountByNumber({
@@ -628,17 +611,11 @@ export class SchwabApiService {
           });
 
           console.log(
-            '✅ [SchwabApi] Successfully fetched account:',
-            `${accountInfo.accountNumber.substring(0, 4)}...`,
-            'value:',
+            '✅ [SchwabApi] Successfully fetched account value:',
             securitiesAccount.initialBalances?.accountValue || 0,
           );
         } catch (accountError) {
-          console.warn(
-            '⚠️ [SchwabApi] Failed to fetch details for account:',
-            `${accountInfo.accountNumber.substring(0, 4)}...`,
-            accountError,
-          );
+          console.warn('⚠️ [SchwabApi] Failed to fetch account details:', accountError);
         }
       }
 
@@ -1017,7 +994,7 @@ export class SchwabApiService {
       autoPositionEffect?: boolean;
     }>;
   }> {
-    console.log('🏷️ [SchwabApi] Fetching user preferences for user:', userId);
+    console.log('🏷️ [SchwabApi] Fetching user preferences');
 
     try {
       await this.refreshTokenIfNeeded(userId);
@@ -1093,11 +1070,8 @@ export class SchwabApiService {
           candidate,
         )}/previewOrder`;
         if (SCHWAB_DEBUG) {
-          console.log(
-            '📦 [SchwabApi] Previewing order',
-            JSON.stringify({ accountIdentifier, tryWith: candidate, url }, null, 2),
-          );
-          console.log('📝 [SchwabApi] Preview payload:', JSON.stringify(payload));
+          console.log('📦 [SchwabApi] Previewing order with candidate account');
+          console.log('📝 [SchwabApi] Order payload contains sensitive trading data - redacted');
         }
         const res = await fetch(url, {
           method: 'POST',
@@ -1182,11 +1156,8 @@ export class SchwabApiService {
       let lastError: unknown = null;
       for (const candidate of candidates) {
         const url = `https://api.schwabapi.com/trader/v1/accounts/${encodeURIComponent(candidate)}/orders`;
-        console.log(
-          '📦 [SchwabApi] Placing order',
-          JSON.stringify({ accountIdentifier, tryWith: candidate, url }, null, 2),
-        );
-        console.log('📝 [SchwabApi] Place payload:', JSON.stringify(payload));
+        console.log('📦 [SchwabApi] Placing order with candidate account');
+        console.log('📝 [SchwabApi] Order payload contains sensitive trading data - redacted');
         const res = await fetch(url, {
           method: 'POST',
           headers: {
@@ -1278,7 +1249,7 @@ export class SchwabApiService {
   }
 
   async hasValidCredentials(userId: string): Promise<boolean> {
-    console.log('✅ [SchwabApi] Checking credential validity for user:', userId);
+    console.log('✅ [SchwabApi] Checking credential validity');
 
     try {
       const credentials = await this.getCredentials(userId);
