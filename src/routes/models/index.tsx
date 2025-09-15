@@ -1,12 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
-import { createFileRoute, redirect } from '@tanstack/react-router';
-import { FileText, Trash2 } from 'lucide-react';
-import { useState } from 'react';
+import { createFileRoute, Link, redirect } from '@tanstack/react-router';
+import { FileText } from 'lucide-react';
 import { AddModelModal } from '../../components/models/add-model-modal';
-import { DeleteModelModal } from '../../components/models/delete-model-modal';
-import { EditModelModal } from '../../components/models/edit-model-modal';
-import { Button } from '../../components/ui/button';
-import type { Model } from '../../lib/schemas';
 import { getModelsServerFn } from '../../lib/server-functions';
 
 export const Route = createFileRoute('/models/')({
@@ -36,26 +31,6 @@ function ModelsComponent() {
     queryKey: ['models'],
     queryFn: () => getModelsServerFn(),
   });
-
-  const [editModalOpen, setEditModalOpen] = useState(false);
-  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
-  const [selectedModel, setSelectedModel] = useState<Model | null>(null);
-
-  const handleEditModel = (model: Model) => {
-    setSelectedModel(model);
-    setEditModalOpen(true);
-  };
-
-  const handleDeleteModel = (model: Model) => {
-    setSelectedModel(model);
-    setDeleteModalOpen(true);
-  };
-
-  const closeModals = () => {
-    setEditModalOpen(false);
-    setDeleteModalOpen(false);
-    setSelectedModel(null);
-  };
 
   return (
     <div className="px-4 py-8">
@@ -91,19 +66,14 @@ function ModelsComponent() {
               className="bg-white shadow rounded-lg hover:shadow-md transition-shadow relative"
             >
               <div className="p-5">
-                <div className="flex items-center justify-between mb-4">
-                  <button
-                    type="button"
+                <div className="mb-4">
+                  <Link
+                    to="/models/$modelId"
+                    params={{ modelId: model.id }}
                     className="text-lg font-medium text-gray-900 cursor-pointer hover:text-blue-600 transition-colors text-left"
-                    onClick={() => handleEditModel(model)}
                   >
                     {model.name}
-                  </button>
-                  <div className="flex items-center space-x-2">
-                    <Button size="sm" variant="ghost" onClick={() => handleDeleteModel(model)}>
-                      <Trash2 className="h-3 w-3" />
-                    </Button>
-                  </div>
+                  </Link>
                 </div>
 
                 {model.description && (
@@ -126,13 +96,7 @@ function ModelsComponent() {
                     </div>
                   ))}
                   {model.members.length > 3 && (
-                    <button
-                      type="button"
-                      className="text-xs text-gray-400 cursor-pointer hover:text-blue-600 transition-colors"
-                      onClick={() => handleEditModel(model)}
-                    >
-                      +{model.members.length - 3} more...
-                    </button>
+                    <p className="text-xs text-gray-400">+{model.members.length - 3} more...</p>
                   )}
                 </div>
               </div>
@@ -147,26 +111,6 @@ function ModelsComponent() {
           <h3 className="mt-2 text-sm font-medium text-gray-900">No models found</h3>
           <p className="mt-1 text-sm text-gray-500">Get started by creating a new model.</p>
         </div>
-      )}
-
-      {/* Edit Modal */}
-      {selectedModel && (
-        <EditModelModal
-          model={selectedModel}
-          open={editModalOpen}
-          onOpenChange={setEditModalOpen}
-          onClose={closeModals}
-        />
-      )}
-
-      {/* Delete Modal */}
-      {selectedModel && (
-        <DeleteModelModal
-          model={selectedModel}
-          open={deleteModalOpen}
-          onOpenChange={setDeleteModalOpen}
-          onClose={closeModals}
-        />
       )}
     </div>
   );

@@ -1569,8 +1569,8 @@ export const getHeldPositionTickersServerFn = createServerFn({
     const positions = await getPositions(user.id);
     console.log('🔍 [ServerFn] getPositions result:', {
       totalPositions: positions.length,
-      positions: positions.map(p => ({ ticker: p.ticker, qty: p.qty })),
-      timestamp: new Date().toISOString()
+      positions: positions.map((p) => ({ ticker: p.ticker, qty: p.qty })),
+      timestamp: new Date().toISOString(),
     });
 
     // Get unique tickers from positions
@@ -1583,7 +1583,7 @@ export const getHeldPositionTickersServerFn = createServerFn({
     console.log('🔍 [ServerFn] Returning tickers:', {
       count: uniqueTickers.length,
       tickers: uniqueTickers,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
 
     return uniqueTickers;
@@ -1592,7 +1592,7 @@ export const getHeldPositionTickersServerFn = createServerFn({
       error: error,
       message: error instanceof Error ? error.message : 'Unknown error',
       stack: error instanceof Error ? error.stack : undefined,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
     throw error;
   }
@@ -1624,7 +1624,7 @@ export const syncSchwabPricesServerFn = createServerFn({ method: 'POST' })
       console.log('💰 [ServerFn] Request data:', {
         symbols: data.symbols,
         symbolsCount: data.symbols?.length || 'all',
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
 
       const { user } = await requireAuth();
@@ -1659,7 +1659,7 @@ export const syncSchwabPricesServerFn = createServerFn({ method: 'POST' })
           symbols: data.symbols,
           symbolsCount: data.symbols?.length || 'all',
           forceRefresh: true,
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
         });
 
         const results = await priceSyncService.syncPrices({
@@ -1670,21 +1670,21 @@ export const syncSchwabPricesServerFn = createServerFn({ method: 'POST' })
 
         console.log('📊 [ServerFn] Price sync results received:', {
           totalResults: results.length,
-          successful: results.filter(r => r.success).length,
-          failed: results.filter(r => !r.success).length,
-          sampleResults: results.slice(0, 3).map(r => ({
+          successful: results.filter((r) => r.success).length,
+          failed: results.filter((r) => !r.success).length,
+          sampleResults: results.slice(0, 3).map((r) => ({
             ticker: r.ticker,
             success: r.success,
             oldPrice: r.oldPrice,
             newPrice: r.newPrice,
             source: r.source,
-            error: r.error
+            error: r.error,
           })),
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
         });
 
         // Clear caches that depend on security prices
-        const successfulUpdates = results.filter(r => r.success).length;
+        const successfulUpdates = results.filter((r) => r.success).length;
         if (successfulUpdates > 0) {
           console.log('🧹 [ServerFn] Clearing caches after successful price updates');
           const { clearCache } = await import('./db-api');
@@ -3525,9 +3525,11 @@ export const importNasdaqSecuritiesServerFn = createServerFn({
               importedTickers.push(ticker);
             } catch (insertError: any) {
               // Handle UNIQUE constraint violations gracefully
-              if (insertError?.code === 'SQLITE_CONSTRAINT_PRIMARYKEY' ||
-                  insertError?.code === 'SQLITE_CONSTRAINT_UNIQUE' ||
-                  insertError?.message?.includes('UNIQUE constraint failed')) {
+              if (
+                insertError?.code === 'SQLITE_CONSTRAINT_PRIMARYKEY' ||
+                insertError?.code === 'SQLITE_CONSTRAINT_UNIQUE' ||
+                insertError?.message?.includes('UNIQUE constraint failed')
+              ) {
                 // Security already exists, count it as skipped
                 skippedCount++;
                 console.log(`⚠️  Security ${ticker} already exists, skipping`);
@@ -3802,16 +3804,18 @@ export const checkModelsExistServerFn = createServerFn({ method: 'GET' }).handle
 });
 
 // Check if Schwab API credentials are configured
-export const checkSchwabCredentialsServerFn = createServerFn({ method: 'GET' }).handler(async () => {
-  const { getEnv } = await import('./env');
+export const checkSchwabCredentialsServerFn = createServerFn({ method: 'GET' }).handler(
+  async () => {
+    const { getEnv } = await import('./env');
 
-  const env = getEnv();
-  const hasClientId = Boolean(env.SCHWAB_CLIENT_ID?.trim());
-  const hasClientSecret = Boolean(env.SCHWAB_CLIENT_SECRET?.trim());
+    const env = getEnv();
+    const hasClientId = Boolean(env.SCHWAB_CLIENT_ID?.trim());
+    const hasClientSecret = Boolean(env.SCHWAB_CLIENT_SECRET?.trim());
 
-  return {
-    hasCredentials: hasClientId && hasClientSecret,
-    hasClientId,
-    hasClientSecret,
-  };
-});
+    return {
+      hasCredentials: hasClientId && hasClientSecret,
+      hasClientId,
+      hasClientSecret,
+    };
+  },
+);

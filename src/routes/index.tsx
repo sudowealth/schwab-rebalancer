@@ -268,9 +268,7 @@ function DashboardComponent() {
                 rebalancingGroupsComplete;
 
               return isFullyOnboarded ? (
-                <>
-                  <h1 className="text-2xl font-bold text-gray-900">Portfolio Dashboard</h1>
-                </>
+                <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
               ) : (
                 <>
                   <h1 className="text-2xl font-bold text-gray-900">Getting Started</h1>
@@ -297,98 +295,96 @@ function DashboardComponent() {
 
       {/* Positions and Transactions */}
       {shouldShowRebalancingSection && (
-        <>
-          <div className="bg-white shadow rounded-lg">
-            <div className="px-4 py-5 sm:p-6">
-              <div className="mb-4">
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-lg leading-6 font-medium text-gray-900">
-                    Positions & Transactions
-                  </h3>
-                  <div className="flex space-x-2">
-                    {activeTab === 'positions' && positions && positions.length > 0 && (
-                      <ExportButton
-                        onExport={() => exportPositionsToExcel(positions)}
-                        label="Export Positions"
-                      />
-                    )}
-                    {activeTab === 'transactions' && transactions && transactions.length > 0 && (
-                      <ExportButton
-                        onExport={() => exportTransactionsToExcel(transactions)}
-                        label="Export Transactions"
-                      />
-                    )}
-                  </div>
-                </div>
-                <div className="border-b border-gray-200">
-                  <nav className="-mb-px flex space-x-2 sm:space-x-8 overflow-x-auto">
-                    <button
-                      type="button"
-                      onClick={() => setActiveTab('rebalancing-groups')}
-                      className={`shrink-0 py-2 px-2 sm:px-1 border-b-2 font-medium text-xs sm:text-sm ${
-                        activeTab === 'rebalancing-groups'
-                          ? 'border-blue-500 text-blue-600'
-                          : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                      }`}
-                    >
-                      <span className="hidden sm:inline">Rebalancing Groups</span>
-                      <span className="sm:hidden">Groups</span>
-                      <span className="ml-1">({rebalancingGroups?.length || 0})</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setActiveTab('positions')}
-                      className={`shrink-0 py-2 px-2 sm:px-1 border-b-2 font-medium text-xs sm:text-sm ${
-                        activeTab === 'positions'
-                          ? 'border-blue-500 text-blue-600'
-                          : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                      }`}
-                    >
-                      <span className="hidden sm:inline">Positions</span>
-                      <span className="sm:hidden">Positions</span>
-                      <span className="ml-1">({positions?.length || 0})</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setActiveTab('transactions')}
-                      className={`shrink-0 py-2 px-2 sm:px-1 border-b-2 font-medium text-xs sm:text-sm ${
-                        activeTab === 'transactions'
-                          ? 'border-blue-500 text-blue-600'
-                          : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                      }`}
-                    >
-                      <span className="hidden sm:inline">Transactions</span>
-                      <span className="sm:hidden">Txns</span>
-                      <span className="ml-1">({transactions?.length || 0})</span>
-                    </button>
-                  </nav>
+        <div className="bg-white shadow rounded-lg">
+          <div className="px-4 py-5 sm:p-6">
+            <div className="mb-4">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg leading-6 font-medium text-gray-900">
+                  Portfolio Information
+                </h3>
+                <div className="flex space-x-2">
+                  {activeTab === 'positions' && positions && positions.length > 0 && (
+                    <ExportButton
+                      onExport={() => exportPositionsToExcel(positions)}
+                      label="Export Positions"
+                    />
+                  )}
+                  {activeTab === 'transactions' && transactions && transactions.length > 0 && (
+                    <ExportButton
+                      onExport={() => exportTransactionsToExcel(transactions)}
+                      label="Export Transactions"
+                    />
+                  )}
                 </div>
               </div>
-
-              {activeTab === 'rebalancing-groups' && (
-                <>
-                  <RebalancingGroupsTab groups={rebalancingGroups || []} />
-                </>
-              )}
-
-              {activeTab === 'positions' && (
-                <PositionsTable
-                  positions={positions || []}
-                  onTickerClick={handleTickerClick}
-                  onSleeveClick={handleSleeveClick}
-                />
-              )}
-
-              {activeTab === 'transactions' && (
-                <TransactionsTable
-                  transactions={transactions || []}
-                  onTickerClick={handleTickerClick}
-                  onSleeveClick={handleSleeveClick}
-                />
-              )}
+              <div className="border-b border-gray-200">
+                <nav className="-mb-px flex space-x-2 sm:space-x-8 overflow-x-auto">
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('rebalancing-groups')}
+                    className={`shrink-0 py-2 px-2 sm:px-1 border-b-2 font-medium text-xs sm:text-sm ${
+                      activeTab === 'rebalancing-groups'
+                        ? 'border-blue-500 text-blue-600'
+                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    }`}
+                  >
+                    <span className="hidden sm:inline">Rebalancing Groups</span>
+                    <span className="sm:hidden">Groups</span>
+                    <span className="ml-1">({rebalancingGroups?.length || 0})</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('positions')}
+                    className={`shrink-0 py-2 px-2 sm:px-1 border-b-2 font-medium text-xs sm:text-sm ${
+                      activeTab === 'positions'
+                        ? 'border-blue-500 text-blue-600'
+                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    }`}
+                  >
+                    <span className="hidden sm:inline">Positions</span>
+                    <span className="sm:hidden">Positions</span>
+                    <span className="ml-1">({positions?.length || 0})</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('transactions')}
+                    className={`shrink-0 py-2 px-2 sm:px-1 border-b-2 font-medium text-xs sm:text-sm ${
+                      activeTab === 'transactions'
+                        ? 'border-blue-500 text-blue-600'
+                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    }`}
+                  >
+                    <span className="hidden sm:inline">Transactions</span>
+                    <span className="sm:hidden">Txns</span>
+                    <span className="ml-1">({transactions?.length || 0})</span>
+                  </button>
+                </nav>
+              </div>
             </div>
+
+            {activeTab === 'rebalancing-groups' && (
+              <>
+                <RebalancingGroupsTab groups={rebalancingGroups || []} />
+              </>
+            )}
+
+            {activeTab === 'positions' && (
+              <PositionsTable
+                positions={positions || []}
+                onTickerClick={handleTickerClick}
+                onSleeveClick={handleSleeveClick}
+              />
+            )}
+
+            {activeTab === 'transactions' && (
+              <TransactionsTable
+                transactions={transactions || []}
+                onTickerClick={handleTickerClick}
+                onSleeveClick={handleSleeveClick}
+              />
+            )}
           </div>
-        </>
+        </div>
       )}
 
       <SleeveModal

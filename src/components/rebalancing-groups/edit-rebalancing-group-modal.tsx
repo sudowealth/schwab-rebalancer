@@ -1,5 +1,4 @@
 import { useRouter } from '@tanstack/react-router';
-import { X } from 'lucide-react';
 import { useEffect, useId, useState } from 'react';
 import type { RebalancingGroup } from '../../lib/schemas';
 import {
@@ -9,13 +8,13 @@ import {
   unassignModelFromGroupServerFn,
   updateRebalancingGroupServerFn,
 } from '../../lib/server-functions';
-import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '../ui/dialog';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { VirtualizedSelect } from '../ui/virtualized-select-fixed';
+import { SelectedAccountsDisplay } from './selected-accounts-display';
 
 interface Account {
   id: string;
@@ -204,38 +203,12 @@ export function EditRebalancingGroupModal({
             <Label>Accounts</Label>
 
             {/* Selected Accounts Display */}
-            {selectedAccounts.size > 0 && (
-              <div className="flex flex-wrap gap-2 p-3 bg-gray-50 rounded-md mb-2">
-                {Array.from(selectedAccounts).map((accountId) => {
-                  const account = accounts.find((a) => a.id === accountId);
-                  if (!account) return null;
-                  return (
-                    <Badge key={accountId} variant="secondary" className="flex items-center gap-2">
-                      <div className="flex items-center gap-2">
-                        <span>{account.name}</span>
-                        {account.accountNumber && (
-                          <span className="text-xs text-gray-500">({account.accountNumber})</span>
-                        )}
-                        <Badge
-                          variant={account.dataSource === 'SCHWAB' ? 'default' : 'outline'}
-                          className="text-xs px-1 py-0"
-                        >
-                          {account.dataSource === 'SCHWAB' ? 'Schwab' : 'Manual'}
-                        </Badge>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => handleAccountToggle(accountId)}
-                        className="ml-1 hover:bg-gray-300 rounded-full p-0.5"
-                        disabled={isLoading}
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
-                    </Badge>
-                  );
-                })}
-              </div>
-            )}
+            <SelectedAccountsDisplay
+              selectedAccounts={selectedAccounts}
+              accounts={accounts}
+              onRemoveAccount={handleAccountToggle}
+              isLoading={isLoading}
+            />
 
             {/* Account Selection Dropdown */}
             <VirtualizedSelect

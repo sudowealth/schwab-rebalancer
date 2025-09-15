@@ -1,5 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { AlertTriangle } from 'lucide-react';
+import { useNavigate } from '@tanstack/react-router';
+import { AlertTriangle, Users } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '../../components/ui/button';
 import {
@@ -15,15 +16,23 @@ import { deleteModelServerFn } from '../../lib/server-functions';
 
 interface DeleteModelModalProps {
   model: Model | null;
+  rebalancingGroups?: Array<{ id: string; name: string }>;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onClose: () => void;
 }
 
-export function DeleteModelModal({ model, open, onOpenChange, onClose }: DeleteModelModalProps) {
+export function DeleteModelModal({
+  model,
+  rebalancingGroups: propRebalancingGroups = [],
+  open,
+  onOpenChange,
+  onClose,
+}: DeleteModelModalProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   const handleDelete = async () => {
     if (!model) {
@@ -44,7 +53,8 @@ export function DeleteModelModal({ model, open, onOpenChange, onClose }: DeleteM
       // Invalidate models query to refresh the UI immediately
       queryClient.invalidateQueries({ queryKey: ['models'] });
 
-      onClose();
+      // Navigate to models list page
+      navigate({ to: '/models' });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete model');
     } finally {
@@ -75,29 +85,33 @@ export function DeleteModelModal({ model, open, onOpenChange, onClose }: DeleteM
         </DialogHeader>
 
         <div className="space-y-4">
-          <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3">
-            <p className="text-sm text-yellow-800">
-              <strong>Warning:</strong> This action cannot be undone. The model and all its member
-              allocations will be permanently deleted.
-            </p>
-          </div>
-
-          {model.members.length > 0 && (
-            <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
-              <p className="text-sm text-blue-800 mb-2">
-                <strong>This model contains {model.members.length} members:</strong>
-              </p>
-              <ul className="text-xs text-blue-700 space-y-1">
-                {model.members.slice(0, 5).map((member) => (
-                  <li key={member.id} className="flex justify-between">
-                    <span>{member.sleeveName || member.sleeveId}</span>
-                    <span>{(member.targetWeight / 100).toFixed(1)}%</span>
-                  </li>
-                ))}
-                {model.members.length > 5 && (
-                  <li className="text-blue-600">... and {model.members.length - 5} more</li>
-                )}
-              </ul>
+          {propRebalancingGroups.length > 0 && (
+            <div className="bg-red-50 border border-red-200 rounded-md p-3">
+              <div className="flex items-start">
+                <Users className="h-4 w-4 text-red-500 mr-2 mt-0.5 flex-shrink-0" />
+                <div className="flex-1">
+                  <p className="text-sm text-red-800 mb-2">
+                    Deleting this model will leave the following rebalancing groups without a model
+                    assigned:
+                  </p>
+                  <ul className="text-xs text-red-700 space-y-1 mb-2 list-disc list-inside">
+                    {propRebalancingGroups.slice(0, 5).map((group) => (
+                      <li key={group.id} className="font-medium">
+                        {group.name}
+                      </li>
+                    ))}
+                    {propRebalancingGroups.length > 5 && (
+                      <li className="text-red-600">
+                        ... and {propRebalancingGroups.length - 5} more
+                      </li>
+                    )}
+                  </ul>
+                  <p className="text-xs text-red-700">
+                    <strong>Recommendation:</strong> Change the model assignment for these groups
+                    before deleting this model, or reassign them to a different model afterward.
+                  </p>
+                </div>
+              </div>
             </div>
           )}
 

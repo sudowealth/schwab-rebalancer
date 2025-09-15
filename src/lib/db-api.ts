@@ -6,6 +6,7 @@ import {
   type CreateModel,
   type CreateRebalancingGroup,
   type Model,
+  type ModelMember,
   ModelsSchema,
   type Order,
   OrdersSchema,

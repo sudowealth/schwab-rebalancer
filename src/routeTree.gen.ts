@@ -26,6 +26,7 @@ import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as SettingsSecuritiesRouteImport } from './routes/settings/securities'
 import { Route as SchwabCallbackRouteImport } from './routes/schwab/callback'
 import { Route as RebalancingGroupsGroupIdRouteImport } from './routes/rebalancing-groups/$groupId'
+import { Route as ModelsModelIdRouteImport } from './routes/models/$modelId'
 import { Route as DemoSchwabOauthRouteImport } from './routes/demo/schwab-oauth'
 import { Route as AdminUsersRouteImport } from './routes/admin/users'
 import { Route as AdminStatsRouteImport } from './routes/admin/stats'
@@ -117,6 +118,11 @@ const RebalancingGroupsGroupIdRoute =
     path: '/rebalancing-groups/$groupId',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ModelsModelIdRoute = ModelsModelIdRouteImport.update({
+  id: '/models/$modelId',
+  path: '/models/$modelId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DemoSchwabOauthRoute = DemoSchwabOauthRouteImport.update({
   id: '/demo/schwab-oauth',
   path: '/demo/schwab-oauth',
@@ -151,6 +157,7 @@ export interface FileRoutesByFullPath {
   '/admin/stats': typeof AdminStatsRoute
   '/admin/users': typeof AdminUsersRoute
   '/demo/schwab-oauth': typeof DemoSchwabOauthRoute
+  '/models/$modelId': typeof ModelsModelIdRoute
   '/rebalancing-groups/$groupId': typeof RebalancingGroupsGroupIdRoute
   '/schwab/callback': typeof SchwabCallbackRoute
   '/settings/securities': typeof SettingsSecuritiesRoute
@@ -172,6 +179,7 @@ export interface FileRoutesByTo {
   '/admin/stats': typeof AdminStatsRoute
   '/admin/users': typeof AdminUsersRoute
   '/demo/schwab-oauth': typeof DemoSchwabOauthRoute
+  '/models/$modelId': typeof ModelsModelIdRoute
   '/rebalancing-groups/$groupId': typeof RebalancingGroupsGroupIdRoute
   '/schwab/callback': typeof SchwabCallbackRoute
   '/settings/securities': typeof SettingsSecuritiesRoute
@@ -196,6 +204,7 @@ export interface FileRoutesById {
   '/admin/stats': typeof AdminStatsRoute
   '/admin/users': typeof AdminUsersRoute
   '/demo/schwab-oauth': typeof DemoSchwabOauthRoute
+  '/models/$modelId': typeof ModelsModelIdRoute
   '/rebalancing-groups/$groupId': typeof RebalancingGroupsGroupIdRoute
   '/schwab/callback': typeof SchwabCallbackRoute
   '/settings/securities': typeof SettingsSecuritiesRoute
@@ -221,6 +230,7 @@ export interface FileRouteTypes {
     | '/admin/stats'
     | '/admin/users'
     | '/demo/schwab-oauth'
+    | '/models/$modelId'
     | '/rebalancing-groups/$groupId'
     | '/schwab/callback'
     | '/settings/securities'
@@ -242,6 +252,7 @@ export interface FileRouteTypes {
     | '/admin/stats'
     | '/admin/users'
     | '/demo/schwab-oauth'
+    | '/models/$modelId'
     | '/rebalancing-groups/$groupId'
     | '/schwab/callback'
     | '/settings/securities'
@@ -265,6 +276,7 @@ export interface FileRouteTypes {
     | '/admin/stats'
     | '/admin/users'
     | '/demo/schwab-oauth'
+    | '/models/$modelId'
     | '/rebalancing-groups/$groupId'
     | '/schwab/callback'
     | '/settings/securities'
@@ -287,6 +299,7 @@ export interface RootRouteChildren {
   ResetPasswordRoute: typeof ResetPasswordRoute
   SchwabRoute: typeof SchwabRouteWithChildren
   DemoSchwabOauthRoute: typeof DemoSchwabOauthRoute
+  ModelsModelIdRoute: typeof ModelsModelIdRoute
   RebalancingGroupsGroupIdRoute: typeof RebalancingGroupsGroupIdRoute
   SettingsSecuritiesRoute: typeof SettingsSecuritiesRoute
   ModelsIndexRoute: typeof ModelsIndexRoute
@@ -416,6 +429,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RebalancingGroupsGroupIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/models/$modelId': {
+      id: '/models/$modelId'
+      path: '/models/$modelId'
+      fullPath: '/models/$modelId'
+      preLoaderRoute: typeof ModelsModelIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/demo/schwab-oauth': {
       id: '/demo/schwab-oauth'
       path: '/demo/schwab-oauth'
@@ -495,6 +515,7 @@ const rootRouteChildren: RootRouteChildren = {
   ResetPasswordRoute: ResetPasswordRoute,
   SchwabRoute: SchwabRouteWithChildren,
   DemoSchwabOauthRoute: DemoSchwabOauthRoute,
+  ModelsModelIdRoute: ModelsModelIdRoute,
   RebalancingGroupsGroupIdRoute: RebalancingGroupsGroupIdRoute,
   SettingsSecuritiesRoute: SettingsSecuritiesRoute,
   ModelsIndexRoute: ModelsIndexRoute,

@@ -577,13 +577,6 @@ function RebalancingGroupDetail() {
       {/* Breadcrumb and Navigation */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Link to="/rebalancing-groups">
-            <Button variant="ghost" size="sm">
-              <ChevronLeft className="mr-1 h-4 w-4" />
-              Back to Groups
-            </Button>
-          </Link>
-          <span className="text-muted-foreground">/</span>
           <span className="font-semibold">{group.name}</span>
         </div>
         <div className="flex gap-2">

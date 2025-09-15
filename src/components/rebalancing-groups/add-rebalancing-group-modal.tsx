@@ -1,5 +1,5 @@
 import { useRouter } from '@tanstack/react-router';
-import { Plus, X } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { useCallback, useEffect, useId, useState } from 'react';
 import {
   assignModelToGroupServerFn,
@@ -8,7 +8,6 @@ import {
   getModelsServerFn,
 } from '../../lib/server-functions';
 import { AddModelModal } from '../models/add-model-modal';
-import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import {
   Dialog,
@@ -22,6 +21,7 @@ import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { VirtualizedSelect } from '../ui/virtualized-select-fixed';
+import { SelectedAccountsDisplay } from './selected-accounts-display';
 
 interface Account {
   id: string;
@@ -259,32 +259,12 @@ export function AddRebalancingGroupModal({
             <Label>Accounts</Label>
 
             {/* Selected Accounts Display */}
-            {selectedAccounts.size > 0 && (
-              <div className="flex flex-wrap gap-2 py-3 rounded-md mb-2">
-                {Array.from(selectedAccounts).map((accountId) => {
-                  const account = accounts.find((a) => a.id === accountId);
-                  if (!account) return null;
-                  return (
-                    <Badge key={accountId} variant="secondary" className="flex items-center gap-2">
-                      <div className="flex items-center gap-2">
-                        <span>{account.name}</span>
-                        {account.accountNumber && (
-                          <span className="text-xs text-gray-500">({account.accountNumber})</span>
-                        )}
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => handleAccountToggle(accountId)}
-                        className="ml-1 hover:bg-gray-300 rounded-full p-0.5"
-                        disabled={isLoading}
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
-                    </Badge>
-                  );
-                })}
-              </div>
-            )}
+            <SelectedAccountsDisplay
+              selectedAccounts={selectedAccounts}
+              accounts={accounts}
+              onRemoveAccount={handleAccountToggle}
+              isLoading={isLoading}
+            />
 
             {/* Account Selection Dropdown */}
             <VirtualizedSelect
