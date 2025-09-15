@@ -150,7 +150,7 @@ function RebalancingGroupDetail() {
   const [isAllExpanded, setIsAllExpanded] = useState(false);
   const [allocationView, setAllocationView] = useState<
     'account' | 'sector' | 'industry' | 'sleeve'
-  >('sector');
+  >('sleeve');
   const [selectedTicker, setSelectedTicker] = useState<string | null>(null);
   const [showSecurityModal, setShowSecurityModal] = useState(false);
   const [selectedSleeve, setSelectedSleeve] = useState<string | null>(null);
