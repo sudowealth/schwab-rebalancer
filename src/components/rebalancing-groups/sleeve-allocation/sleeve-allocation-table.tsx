@@ -8,9 +8,11 @@ import {
 } from '../../../lib/excel-export';
 import { addGroupTradesToBlotterServerFn } from '../../../lib/server-functions';
 import { formatCurrency, formatPercent } from '../../../lib/utils';
+import { Button } from '../../ui/button';
 import { Card, CardContent } from '../../ui/card';
+import { ExportButton } from '../../ui/export-button';
 import { type UIWashSaleInfo, WashSaleTooltip } from '../../ui/wash-sale-tooltip';
-import type { ColumnConfig } from './column-management-modal';
+import { type ColumnConfig, ColumnManagementModal } from './column-management-modal';
 import {
   ActionCell,
   CostBasisCell,
@@ -137,6 +139,7 @@ export function SleeveAllocationTable({
   onSort,
   onTradeQtyChange,
   accountHoldings = [],
+  renderSummaryCards,
 }: SleeveAllocationTableProps) {
   // Column management state
   const [columns, setColumns] = useState<ColumnConfig[]>(() =>
@@ -166,6 +169,7 @@ export function SleeveAllocationTable({
   const columnOrder = useMemo(() => columns.map((col) => col.id), [columns]);
 
   const [addingToBlotter, setAddingToBlotter] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const handleAddToBlotter = async () => {
     try {
       setAddingToBlotter(true);
@@ -857,7 +861,7 @@ export function SleeveAllocationTable({
     });
   };
 
-  const handleExportToExcel = () => {
+  const handleExportToExcel = async () => {
     exportSleeveAllocationToExcel(
       sleeveTableData as ExportSleeveAllocationToExcelSleeveTableData,
       sleeveAllocationData as ExportSleeveAllocationToExcelSleeveAllocationData,
@@ -867,19 +871,59 @@ export function SleeveAllocationTable({
     );
   };
 
+  const handleExportClick = async () => {
+    if (isExporting) return;
+    setIsExporting(true);
+    try {
+      await handleExportToExcel();
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const summaryContent = typeof renderSummaryCards === 'function' ? renderSummaryCards() : null;
+  const summarySection = <div className="px-6 py-4">{summaryContent}</div>;
+  const controlsSection = (
+    <div className="flex items-center justify-between">
+      {groupMembers.length > 1 ? (
+        <div className="flex items-center gap-2">
+          <div className="flex items-center">
+            <Button
+              variant={groupingMode === 'sleeve' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => onGroupingModeChange('sleeve')}
+              className="rounded-r-none"
+            >
+              By Sleeve
+            </Button>
+            <Button
+              variant={groupingMode === 'account' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => onGroupingModeChange('account')}
+              className="rounded-l-none border-l-0"
+            >
+              By Account
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <div />
+      )}
+
+      <div className="flex items-center gap-2">
+        <ColumnManagementModal columns={columns} onColumnsChange={setColumns} />
+        <ExportButton onExport={handleExportClick} isLoading={isExporting} />
+      </div>
+    </div>
+  );
+
   if (sleeveTableData.length === 0) {
     return (
       <Card>
-        <SleeveAllocationHeader
-          groupingMode={groupingMode}
-          groupMembers={groupMembers}
-          onGroupingModeChange={onGroupingModeChange}
-          onRebalance={onRebalance}
-          onExportToExcel={handleExportToExcel}
-          columns={columns}
-          onColumnsChange={setColumns}
-        />
-        <CardContent>
+        <SleeveAllocationHeader onRebalance={onRebalance} />
+        {summarySection}
+        <CardContent className="pt-0 px-6">
+          {controlsSection}
           <div className="text-center py-8">
             <p className="text-gray-500">No sleeve data available</p>
           </div>
@@ -1337,13 +1381,7 @@ export function SleeveAllocationTable({
   return (
     <Card>
       <SleeveAllocationHeader
-        groupingMode={groupingMode}
-        groupMembers={groupMembers}
-        onGroupingModeChange={onGroupingModeChange}
         onRebalance={onRebalance}
-        onExportToExcel={handleExportToExcel}
-        columns={columns}
-        onColumnsChange={setColumns}
         addToBlotter={{
           onClick: handleAddToBlotter,
           disabled: addingToBlotter,
@@ -1351,8 +1389,10 @@ export function SleeveAllocationTable({
           count: trades.length,
         }}
       />
+      {summarySection}
 
-      <CardContent>
+      <CardContent className="pt-0">
+        {controlsSection}
         <div className="w-full overflow-x-auto max-h-96 overflow-y-auto">
           <table className="w-full text-sm" style={{ minWidth: '1200px' }}>
             <TableHeaders

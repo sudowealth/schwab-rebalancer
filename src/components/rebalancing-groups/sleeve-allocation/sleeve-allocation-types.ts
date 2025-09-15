@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import type { SortDirection, SortField } from './sleeve-allocation-table-headers';
 
 // UI-specific types that extend base types with additional properties
@@ -101,6 +102,7 @@ export interface SleeveAllocationTableProps {
   onSort?: (field: SortField) => void;
   onTradeQtyChange?: (ticker: string, newQty: number, isPreview?: boolean) => void;
   accountHoldings?: AccountHolding[];
+  renderSummaryCards?: () => ReactNode;
 }
 
 export interface TradeCalculationResult {

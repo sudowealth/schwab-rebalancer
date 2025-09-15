@@ -1,7 +1,7 @@
 import { DollarSign, Target, TrendingDown, TrendingUp } from 'lucide-react';
 import { CASH_TICKER } from '../../lib/constants';
 import type { GenerateSleeveTableDataResult } from '../../lib/rebalancing-utils';
-import { formatCurrency, formatPercent } from '../../lib/utils';
+import { cn, formatCurrency, formatPercent } from '../../lib/utils';
 import type { Trade } from '../../types/rebalance';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import type { Security } from './sleeve-allocation/sleeve-allocation-types';
@@ -43,6 +43,7 @@ interface RebalanceSummaryCardsProps {
   sleeveTableData: SleeveTableData[];
   group?: Group;
   accountHoldings?: AccountHolding[];
+  className?: string;
 }
 
 export function RebalanceSummaryCards({
@@ -50,11 +51,8 @@ export function RebalanceSummaryCards({
   sleeveTableData = [],
   group,
   accountHoldings = [],
+  className,
 }: RebalanceSummaryCardsProps) {
-  if (trades.length === 0) {
-    return null;
-  }
-
   // Calculate buy amounts (excluding cash)
   const buyTrades = trades.filter((trade) => {
     const id = trade.securityId || trade.ticker;
@@ -213,7 +211,7 @@ export function RebalanceSummaryCards({
   const { totalGains, longTermGains, shortTermGains, hasTaxableAccounts } = calculateCapitalGains();
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
+    <div className={cn('grid grid-cols-1 gap-4 md:grid-cols-5', className)}>
       {/* Buys Card */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -290,7 +288,7 @@ export function RebalanceSummaryCards({
       {/* Deviation Card */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Post-Trade Deviation</CardTitle>
+          <CardTitle className="text-sm font-medium">Drift</CardTitle>
           <Target className="h-4 w-4 text-blue-600" />
         </CardHeader>
         <CardContent>
@@ -298,7 +296,7 @@ export function RebalanceSummaryCards({
             {formatCurrency(totalAbsoluteDeviation)}
           </div>
           <p className="text-xs text-muted-foreground">
-            {formatPercent(avgDeviationPercent / 100)} avg deviation
+            {formatPercent(avgDeviationPercent / 100)} avg drift
           </p>
         </CardContent>
       </Card>

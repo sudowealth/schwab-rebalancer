@@ -607,101 +607,99 @@ function RebalancingGroupDetail() {
 
       {/* Current vs Target Allocation Table */}
       {group.assignedModel && (
-        <>
-          {/* Summary Cards - only show when there are trades */}
-          <RebalanceSummaryCards
-            trades={rebalanceTrades
-              .filter((trade) => trade.securityId || trade.ticker)
-              .map((trade) => ({
-                ...trade,
-                securityId: trade.securityId || trade.ticker || '',
-              }))}
-            sleeveTableData={sleeveTableData}
-            group={group}
-            accountHoldings={
-              Array.isArray(accountHoldings)
-                ? accountHoldings.flatMap((account) =>
-                    Array.isArray(account.holdings)
-                      ? account.holdings.map((holding) => ({
-                          accountId: account.accountId,
-                          ticker: holding.ticker,
-                          qty: holding.qty || 0,
-                          costBasis: holding.costBasisPerShare || 0,
-                          marketValue: holding.marketValue || 0,
-                          unrealizedGain: holding.unrealizedGain || 0,
-                          isTaxable: account.accountType === 'taxable',
-                          purchaseDate: holding.openedAt || new Date(),
-                        }))
-                      : [],
-                  )
-                : []
-            }
-          />
-
-          <SleeveAllocationTable
-            sleeveTableData={sleeveTableData.map((sleeve) => ({
+        <SleeveAllocationTable
+          sleeveTableData={sleeveTableData.map((sleeve) => ({
+            ...sleeve,
+            targetPercent:
+              'targetPercent' in sleeve && typeof sleeve.targetPercent === 'number'
+                ? sleeve.targetPercent
+                : 0,
+          }))}
+          expandedSleeves={expandedSleeves}
+          expandedAccounts={expandedAccounts}
+          groupMembers={group.members.map((member) => ({
+            ...member,
+            accountName: member.accountName || '',
+            accountType: member.accountType || '',
+          }))}
+          sleeveAllocationData={sleeveAllocationData.map((account) => ({
+            ...account,
+            sleeves: account.sleeves.map((sleeve) => ({
               ...sleeve,
               targetPercent:
                 'targetPercent' in sleeve && typeof sleeve.targetPercent === 'number'
                   ? sleeve.targetPercent
                   : 0,
-            }))}
-            expandedSleeves={expandedSleeves}
-            expandedAccounts={expandedAccounts}
-            groupMembers={group.members.map((member) => ({
-              ...member,
-              accountName: member.accountName || '',
-              accountType: member.accountType || '',
-            }))}
-            sleeveAllocationData={sleeveAllocationData.map((account) => ({
-              ...account,
-              sleeves: account.sleeves.map((sleeve) => ({
-                ...sleeve,
-                targetPercent:
-                  'targetPercent' in sleeve && typeof sleeve.targetPercent === 'number'
-                    ? sleeve.targetPercent
-                    : 0,
-                securities: (sleeve.securities || []).map((security) => ({
-                  ...security,
-                  targetPercent: security.targetPercent || 0,
-                  accountNames: Array.from(security.accountNames || []),
-                })),
+              securities: (sleeve.securities || []).map((security) => ({
+                ...security,
+                targetPercent: security.targetPercent || 0,
+                accountNames: Array.from(security.accountNames || []),
               })),
-            }))}
-            groupingMode={groupingMode}
-            onGroupingModeChange={setGroupingMode}
-            onSleeveExpansionToggle={toggleSleeveExpansion}
-            onAccountExpansionToggle={toggleAccountExpansion}
-            onTickerClick={handleTickerClick}
-            onSleeveClick={handleSleeveClick}
-            onRebalance={handleRebalance}
-            onToggleExpandAll={handleToggleExpandAll}
-            isAllExpanded={isAllExpanded}
-            trades={rebalanceTrades}
-            sortField={sortField}
-            sortDirection={sortDirection}
-            onSort={handleSort}
-            onTradeQtyChange={handleTradeQtyChange}
-            accountHoldings={
-              Array.isArray(accountHoldings)
-                ? accountHoldings.flatMap((account) =>
-                    Array.isArray(account.holdings)
-                      ? account.holdings.map((holding) => ({
-                          accountId: account.accountId,
-                          ticker: holding.ticker,
-                          qty: holding.qty || 0,
-                          costBasis: holding.costBasisPerShare || 0,
-                          marketValue: holding.marketValue || 0,
-                          unrealizedGain: holding.unrealizedGain || 0,
-                          isTaxable: account.accountType === 'taxable',
-                          purchaseDate: holding.openedAt || new Date(),
-                        }))
-                      : [],
-                  )
-                : []
-            }
-          />
-        </>
+            })),
+          }))}
+          groupingMode={groupingMode}
+          onGroupingModeChange={setGroupingMode}
+          onSleeveExpansionToggle={toggleSleeveExpansion}
+          onAccountExpansionToggle={toggleAccountExpansion}
+          onTickerClick={handleTickerClick}
+          onSleeveClick={handleSleeveClick}
+          onRebalance={handleRebalance}
+          onToggleExpandAll={handleToggleExpandAll}
+          isAllExpanded={isAllExpanded}
+          trades={rebalanceTrades}
+          sortField={sortField}
+          sortDirection={sortDirection}
+          onSort={handleSort}
+          onTradeQtyChange={handleTradeQtyChange}
+          accountHoldings={
+            Array.isArray(accountHoldings)
+              ? accountHoldings.flatMap((account) =>
+                  Array.isArray(account.holdings)
+                    ? account.holdings.map((holding) => ({
+                        accountId: account.accountId,
+                        ticker: holding.ticker,
+                        qty: holding.qty || 0,
+                        costBasis: holding.costBasisPerShare || 0,
+                        marketValue: holding.marketValue || 0,
+                        unrealizedGain: holding.unrealizedGain || 0,
+                        isTaxable: account.accountType === 'taxable',
+                        purchaseDate: holding.openedAt || new Date(),
+                      }))
+                    : [],
+                )
+              : []
+          }
+          renderSummaryCards={() => (
+            <RebalanceSummaryCards
+              trades={rebalanceTrades
+                .filter((trade) => trade.securityId || trade.ticker)
+                .map((trade) => ({
+                  ...trade,
+                  securityId: trade.securityId || trade.ticker || '',
+                }))}
+              sleeveTableData={sleeveTableData}
+              group={group}
+              accountHoldings={
+                Array.isArray(accountHoldings)
+                  ? accountHoldings.flatMap((account) =>
+                      Array.isArray(account.holdings)
+                        ? account.holdings.map((holding) => ({
+                            accountId: account.accountId,
+                            ticker: holding.ticker,
+                            qty: holding.qty || 0,
+                            costBasis: holding.costBasisPerShare || 0,
+                            marketValue: holding.marketValue || 0,
+                            unrealizedGain: holding.unrealizedGain || 0,
+                            isTaxable: account.accountType === 'taxable',
+                            purchaseDate: holding.openedAt || new Date(),
+                          }))
+                        : [],
+                    )
+                  : []
+              }
+            />
+          )}
+        />
       )}
 
       {/* Trade Blotter */}
