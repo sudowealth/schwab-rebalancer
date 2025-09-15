@@ -11,9 +11,11 @@ import {
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import {
+  getHeldAndSleeveTickersServerFn,
   getHeldPositionTickersServerFn,
   getSchwabCredentialsStatusServerFn,
   getSchwabOAuthUrlServerFn,
+  getSleeveTargetTickersServerFn,
   importNasdaqSecuritiesServerFn,
   revokeSchwabCredentialsServerFn,
   syncSchwabAccountsServerFn,
@@ -520,6 +522,54 @@ export function SchwabIntegration() {
     }
   };
 
+  const handlePricesSyncSleeveTargets = async () => {
+    console.log('🎯 [UI] ===== MANUAL SLEEVE TARGET PRICE SYNC START =====');
+    console.log('🎯 [UI] Timestamp:', new Date().toISOString());
+
+    try {
+      const sleeveTickers = await getSleeveTargetTickersServerFn();
+      console.log('🎯 [UI] Sleeve target tickers:', {
+        count: sleeveTickers.length,
+        tickers: sleeveTickers,
+      });
+
+      if (sleeveTickers.length === 0) {
+        console.warn('⚠️ [UI] No sleeve target securities found, skipping price sync');
+        return;
+      }
+
+      syncPricesMutation.mutate(sleeveTickers);
+      console.log('🎯 [UI] Manual sleeve target price sync mutation initiated');
+    } catch (error) {
+      console.error('❌ [UI] Manual sleeve target price sync failed:', error);
+      throw error;
+    }
+  };
+
+  const handlePricesSyncHeldAndSleeves = async () => {
+    console.log('🤝 [UI] ===== MANUAL HELD & SLEEVE PRICE SYNC START =====');
+    console.log('🤝 [UI] Timestamp:', new Date().toISOString());
+
+    try {
+      const combinedTickers = await getHeldAndSleeveTickersServerFn();
+      console.log('🤝 [UI] Combined held & sleeve tickers:', {
+        count: combinedTickers.length,
+        tickers: combinedTickers,
+      });
+
+      if (combinedTickers.length === 0) {
+        console.warn('⚠️ [UI] No held or sleeve securities found, skipping price sync');
+        return;
+      }
+
+      syncPricesMutation.mutate(combinedTickers);
+      console.log('🤝 [UI] Manual held & sleeve price sync mutation initiated');
+    } catch (error) {
+      console.error('❌ [UI] Manual held & sleeve price sync failed:', error);
+      throw error;
+    }
+  };
+
   const handleSync = (type: string) => {
     console.log('🔄 [UI] User requested sync for type:', type);
     switch (type) {
@@ -690,7 +740,7 @@ export function SchwabIntegration() {
                     <ChevronDown className="h-4 w-4 ml-2 opacity-70" />
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-72 p-2">
+                <PopoverContent align="start" className="w-56 p-2">
                   <div className="flex flex-col gap-1">
                     <Button
                       variant="ghost"
@@ -701,7 +751,7 @@ export function SchwabIntegration() {
                         handlePricesSyncAll();
                       }}
                     >
-                      All Securities
+                      All
                     </Button>
                     <Button
                       variant="ghost"
@@ -712,7 +762,29 @@ export function SchwabIntegration() {
                         handlePricesSyncHeld();
                       }}
                     >
-                      Held Securities
+                      Held
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      className="justify-start"
+                      disabled={isSyncing}
+                      onClick={() => {
+                        setPricesMenuOpen(false);
+                        handlePricesSyncHeldAndSleeves();
+                      }}
+                    >
+                      Held & Target
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      className="justify-start"
+                      disabled={isSyncing}
+                      onClick={() => {
+                        setPricesMenuOpen(false);
+                        handlePricesSyncSleeveTargets();
+                      }}
+                    >
+                      Target
                     </Button>
                   </div>
                 </PopoverContent>

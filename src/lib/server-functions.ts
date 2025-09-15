@@ -856,11 +856,7 @@ export const rebalancePortfolioServerFn = createServerFn({ method: 'POST' })
     } = data;
 
     const cashLogValue =
-      typeof cashAmount === 'number'
-        ? cashAmount
-        : method === 'investCash'
-        ? 0
-        : 'n/a';
+      typeof cashAmount === 'number' ? cashAmount : method === 'investCash' ? 0 : 'n/a';
 
     console.log(`🎯 SERVER DEBUG: Received method: ${method}, cashAmount: ${cashLogValue}`);
 
@@ -1581,7 +1577,9 @@ export const getHeldPositionTickersServerFn = createServerFn({
     });
 
     // Get unique tickers from positions
-    const allTickers = positions.map((position) => position.ticker);
+    const allTickers = positions
+      .map((position) => position.ticker?.trim())
+      .filter((ticker): ticker is string => Boolean(ticker) && !isAnyCashTicker(ticker));
     console.log('🔍 [ServerFn] All tickers from positions:', allTickers);
 
     const uniqueTickers = [...new Set(allTickers)];
@@ -1601,6 +1599,83 @@ export const getHeldPositionTickersServerFn = createServerFn({
       stack: error instanceof Error ? error.stack : undefined,
       timestamp: new Date().toISOString(),
     });
+    throw error;
+  }
+});
+
+// Server function to get target securities (sleeve members) tickers
+export const getSleeveTargetTickersServerFn = createServerFn({
+  method: 'GET',
+}).handler(async (): Promise<string[]> => {
+  console.log('🎯 [ServerFn] Fetching sleeve target tickers');
+
+  try {
+    const { user } = await requireAuth();
+
+    const { getDatabase } = await import('./db-config');
+    const db = getDatabase();
+
+    const sleeveRows = await db
+      .select({ ticker: schema.sleeveMember.ticker })
+      .from(schema.sleeveMember)
+      .innerJoin(schema.sleeve, eq(schema.sleeveMember.sleeveId, schema.sleeve.id))
+      .where(eq(schema.sleeve.userId, user.id));
+
+    const tickers = sleeveRows
+      .map((row) => row.ticker?.trim())
+      .filter((ticker): ticker is string => Boolean(ticker) && !isAnyCashTicker(ticker));
+
+    const uniqueTickers = [...new Set(tickers)];
+    console.log('🎯 [ServerFn] Returning sleeve tickers:', {
+      count: uniqueTickers.length,
+      sample: uniqueTickers.slice(0, 10),
+    });
+
+    return uniqueTickers;
+  } catch (error) {
+    console.error('❌ [ServerFn] Failed to fetch sleeve target tickers:', error);
+    throw error;
+  }
+});
+
+// Server function to get combined held + sleeve security tickers
+export const getHeldAndSleeveTickersServerFn = createServerFn({
+  method: 'GET',
+}).handler(async (): Promise<string[]> => {
+  console.log('🤝 [ServerFn] Fetching held and sleeve tickers');
+
+  try {
+    const { user } = await requireAuth();
+
+    const { getPositions } = await import('./db-api');
+    const heldPositions = await getPositions(user.id);
+    const heldTickers = heldPositions
+      .map((position) => position.ticker?.trim())
+      .filter((ticker): ticker is string => Boolean(ticker) && !isAnyCashTicker(ticker));
+
+    const { getDatabase } = await import('./db-config');
+    const db = getDatabase();
+    const sleeveRows = await db
+      .select({ ticker: schema.sleeveMember.ticker })
+      .from(schema.sleeveMember)
+      .innerJoin(schema.sleeve, eq(schema.sleeveMember.sleeveId, schema.sleeve.id))
+      .where(eq(schema.sleeve.userId, user.id));
+
+    const sleeveTickers = sleeveRows
+      .map((row) => row.ticker?.trim())
+      .filter((ticker): ticker is string => Boolean(ticker) && !isAnyCashTicker(ticker));
+
+    const combined = new Set<string>([...heldTickers, ...sleeveTickers]);
+    const combinedTickers = Array.from(combined);
+
+    console.log('🤝 [ServerFn] Returning combined tickers:', {
+      count: combinedTickers.length,
+      sample: combinedTickers.slice(0, 10),
+    });
+
+    return combinedTickers;
+  } catch (error) {
+    console.error('❌ [ServerFn] Failed to fetch held and sleeve tickers:', error);
     throw error;
   }
 });
