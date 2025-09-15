@@ -12,6 +12,9 @@
     "type": "git",
     "url": "https://github.com/sudowealth/schwab-rebalancer.git"
   },
+  "engines": {
+    "node": ">=22"
+  },
   "keywords": [
     "portfolio",
     "rebalancing",
