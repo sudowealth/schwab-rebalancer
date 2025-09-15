@@ -12,13 +12,14 @@ export default defineConfig({
   },
   ssr: {
     external: ['better-sqlite3'],
+    noExternal: ['better-auth'],
   },
   optimizeDeps: {
     exclude: ['better-sqlite3'],
   },
   build: {
     rollupOptions: {
-      external: ['better-sqlite3'],
+      external: ['better-sqlite3', 'better-auth'],
     },
   },
   plugins: [
@@ -27,7 +28,7 @@ export default defineConfig({
       projects: ['./tsconfig.json'],
     }),
     tanstackStart({
-      target: 'cloudflare-module',
+      target: 'netlify',
       customViteReactPlugin: true,
     }),
     viteReact(),
@@ -89,7 +90,7 @@ export default defineConfig({
             res.statusCode = response.status;
 
             // Set response headers
-            response.headers.forEach((value, key) => {
+            response.headers.forEach((value: string, key: string) => {
               res.setHeader(key, value);
             });
 

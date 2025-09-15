@@ -1,71 +1,53 @@
-import fs from 'node:fs';
-import path from 'node:path';
-import Database from 'better-sqlite3';
-import { drizzle } from 'drizzle-orm/better-sqlite3';
+import { createClient } from '@libsql/client';
+import { config } from 'dotenv';
+import { drizzle } from 'drizzle-orm/libsql';
 import * as schema from '../db/schema';
 
-// Get the D1 local database path from Wrangler
-export function getD1LocalPath(): string {
-  // Try to find the actual database file in the .wrangler directory
-  const wranglerDir = './.wrangler/state/v3/d1/miniflare-D1DatabaseObject';
-  if (fs.existsSync(wranglerDir)) {
-    const files = fs.readdirSync(wranglerDir);
-    const sqliteFile = files.find((file) => file.endsWith('.sqlite'));
-    if (sqliteFile) {
-      return path.join(wranglerDir, sqliteFile);
-    }
-  }
-  throw new Error('Failed to find D1 local database path');
-}
+// Load environment variables
+config({ path: '.env.local' });
 
-// Database connection pool
+// Database connection pool for Turso
 interface DatabasePool {
   db: ReturnType<typeof drizzle>;
-  sqlite: Database.Database;
+  client: ReturnType<typeof createClient>;
   lastUsed: number;
   connections: number;
 }
 
 let dbPool: DatabasePool | null = null;
 const MAX_IDLE_TIME = 30000; // 30 seconds
-const CONNECTION_TIMEOUT = 10000; // 10 seconds
 
 // Create a database connection with retry logic
 export function createDatabase(): ReturnType<typeof drizzle> {
-  const dbPath = getD1LocalPath();
+  const url = process.env.TURSO_CONNECTION_URL;
+  const authToken = process.env.TURSO_AUTH_TOKEN;
+
+  if (!url || !authToken) {
+    throw new Error('TURSO_CONNECTION_URL and TURSO_AUTH_TOKEN environment variables are required');
+  }
 
   let attempts = 0;
   const maxAttempts = 3;
 
   while (attempts < maxAttempts) {
     try {
-      // Ensure directory exists
-      const dbDir = path.dirname(dbPath);
-      if (!fs.existsSync(dbDir)) {
-        fs.mkdirSync(dbDir, { recursive: true });
-      }
-
-      const sqlite = new Database(dbPath, {
-        timeout: CONNECTION_TIMEOUT,
-        // Remove verbose logging to prevent SQL queries in logs
+      const client = createClient({
+        url,
+        authToken,
       });
 
-      // Configure SQLite for better performance
-      sqlite.pragma('journal_mode = WAL');
-      sqlite.pragma('synchronous = NORMAL');
-      sqlite.pragma('cache_size = 1000');
-      sqlite.pragma('temp_store = memory');
-
-      return drizzle(sqlite, { schema });
+      return drizzle(client, { schema });
     } catch (error) {
       attempts++;
       console.warn(`Database connection attempt ${attempts} failed:`, error);
 
       if (attempts >= maxAttempts) {
-        throw new Error(`Failed to connect to database after ${maxAttempts} attempts: ${error}`);
+        throw new Error(
+          `Failed to connect to Turso database after ${maxAttempts} attempts: ${error}`,
+        );
       }
 
-      // Wait before retrying (sync version for simplicity)
+      // Wait before retrying
       const delay = 2 ** attempts * 100; // Exponential backoff in ms
       const start = Date.now();
       while (Date.now() - start < delay) {
@@ -94,12 +76,23 @@ export function getDatabase(): ReturnType<typeof drizzle> {
 
     // Create new connection
     const db = createDatabase();
-    const dbPath = getD1LocalPath();
-    const sqlite = new Database(dbPath);
+    const url = process.env.TURSO_CONNECTION_URL;
+    const authToken = process.env.TURSO_AUTH_TOKEN;
+
+    if (!url || !authToken) {
+      throw new Error(
+        'TURSO_CONNECTION_URL and TURSO_AUTH_TOKEN environment variables are required',
+      );
+    }
+
+    const client = createClient({
+      url,
+      authToken,
+    });
 
     dbPool = {
       db,
-      sqlite,
+      client,
       lastUsed: Date.now(),
       connections: 1,
     };
@@ -115,10 +108,10 @@ export function getDatabase(): ReturnType<typeof drizzle> {
 export function cleanupDatabase(): void {
   if (dbPool) {
     try {
-      dbPool.sqlite.close();
-      console.log('Database connection closed');
+      // Turso client doesn't need explicit closing
+      console.log('Database connection cleaned up');
     } catch (error) {
-      console.warn('Error closing database connection:', error);
+      console.warn('Error cleaning up database connection:', error);
     } finally {
       dbPool = null;
     }

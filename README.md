@@ -2,6 +2,22 @@
 
 A portfolio management platform built for rebalancing and tax-loss harvesting with Charles Schwab. The system manages equity portfolios through rebalancing groups and "sleeves" - groups of similar securities that can substitute for each other during rebalancing while maintaining wash-sale compliance and optimal tax efficiency.
 
+## 🚀 One-Click FREE Deployment
+
+Get your own instance running in minutes:
+
+[![Deploy to Netlify](https://www.netlify.com/img/deploy/button.svg)](https://app.netlify.com/start/deploy?repository=YOUR_REPO_URL)
+
+**Why Netlify + Turso?**
+- ✅ **100% FREE** (Netlify's free tier + Turso's free database)
+- ✅ One-click deploy for both app AND database
+- ✅ Global CDN for fast worldwide performance
+- ✅ No credit card required to start
+- ✅ Distributed SQLite (Turso) - works perfectly with serverless
+- ✅ Perfect for low-usage personal apps
+
+[📖 Full Deployment Guide](./DEPLOYMENT.md) | [🎯 Quick Setup](./DEPLOYMENT.md#automated-setup-super-easy)
+
 ## Disclaimer
 
 This is an unofficial, community-developed portfolio management platform for interacting with Charles Schwab APIs. It has not been approved, endorsed, or certified by Charles Schwab. It is provided as-is, and its functionality may be incomplete or unstable. Use at your own risk, especially when dealing with financial data or transactions.
@@ -9,13 +25,12 @@ This is an unofficial, community-developed portfolio management platform for int
 ## Architecture
 
 - **Frontend**: TanStack Start (React-based SPA) with TailwindCSS and shadcn/ui
-- **Backend**: TypeScript/Node.js on Cloudflare Workers
-- **Database**: Cloudflare D1 (SQLite) with Drizzle ORM
-- **Storage**: Cloudflare KV (caching/config) + R2 (exports)
+- **Backend**: TypeScript/Node.js with server-side rendering
+- **Database**: Turso (distributed SQLite) with Drizzle ORM
 - **Authentication**: Better Auth with email/password
-- **Market Data**: Yahoo Finance API with 60-second caching
+- **Market Data**: Yahoo Finance API with intelligent caching
 - **Trading**: Charles Schwab API integration
-- **Deployment**: Cloudflare Workers with scheduled cron jobs
+- **Deployment**: Netlify/Vercel + Turso (100% free, one-click setup)
 
 ## Key Features
 
@@ -70,8 +85,10 @@ npm install
 # or
 pnpm install
 
-# Initialize local database (creates SQLite DB in .wrangler/state/v3/d1/)
-npm run db:migrate
+# Set up Turso database (see docs/TURSO_SETUP.md for detailed instructions)
+# After setting up your Turso database and .env.local file:
+npm run test-db
+npm run db:push
 
 # Seed database with initial data (S&P 500 securities, etc.)
 npm run seed
@@ -165,83 +182,74 @@ npm run lint
 
 ### Prerequisites
 
-- Cloudflare account with:
-  - Workers (for backend hosting)
-  - D1 Database (for data storage)
-  - KV Storage (for caching and configuration)
-  - R2 Storage (for file exports)
+- **Turso account** (database already created: `schwab-rebalancer-db`)
+- **Netlify or Vercel account** for hosting
+- Environment variables configured (see below)
 
-### 1. Create Cloudflare Resources
+### 1. Environment Setup
 
-```bash
-# Create D1 database
-wrangler d1 create tax-loss-harvesting
+Set up your production environment variables in your deployment platform:
 
-# Create KV namespaces
-wrangler kv:namespace create "CACHE"
-wrangler kv:namespace create "CONFIG"
+```env
+# Turso Database (already configured)
+TURSO_CONNECTION_URL=libsql://schwab-rebalancer-db-dyeoman2.aws-us-west-2.turso.io
+TURSO_AUTH_TOKEN=your_auth_token_here
 
-# Create R2 bucket
-wrangler r2 bucket create tax-loss-exports
+# Other required environment variables
+# (see .env.example for complete list)
 ```
 
-### 2. Configure wrangler.jsonc
+### 2. Deploy to Netlify/Vercel
 
-This repo ships with placeholder IDs in `wrangler.jsonc`. Replace these with your real Cloudflare resource IDs from step 1:
+#### Option A: Netlify (Recommended)
+[![Deploy to Netlify](https://www.netlify.com/img/deploy/button.svg)](https://app.netlify.com/start/deploy?repository=YOUR_REPO_URL)
 
-- `CACHE_KV_ID_PLACEHOLDER`
-- `CONFIG_KV_ID_PLACEHOLDER`
-- `DB_ID_PLACEHOLDER`
+1. Connect your GitHub repository
+2. Set build command: `npm run build`
+3. Set publish directory: `.output/public`
+4. Configure environment variables in Netlify dashboard
 
-```jsonc
-{
-  "name": "schwab-rebalancer",
-  "kv_namespaces": [
-    { "binding": "CACHE", "id": "CACHE_KV_ID_PLACEHOLDER" },
-    { "binding": "CONFIG", "id": "CONFIG_KV_ID_PLACEHOLDER" },
-  ],
-  "d1_databases": [
-    {
-      "binding": "DB",
-      "database_name": "tax-loss-harvesting",
-      "database_id": "DB_ID_PLACEHOLDER",
-    },
-  ],
-  "r2_buckets": [
-    {
-      "binding": "EXPORTS",
-      "bucket_name": "tax-loss-exports",
-    },
-  ],
-  "vars": {
-    "INDIVIDUAL_USE": "true",
-  },
-}
+#### Option B: Vercel
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository=YOUR_REPO_URL)
+
+1. Import your project
+2. Vercel will auto-detect TanStack Start
+3. Configure environment variables in Vercel dashboard
+
+### 3. Required Environment Variables
+
+Add these to your Netlify/Vercel environment variables:
+
+```env
+# Database (already configured)
+TURSO_CONNECTION_URL=libsql://schwab-rebalancer-db-dyeoman2.aws-us-west-2.turso.io
+TURSO_AUTH_TOKEN=your_auth_token_here
+
+# Authentication
+AUTH_BASE_URL=https://your-domain.com
+AUTH_SECRET=your_auth_secret_here
+
+# Schwab API
+SCHWAB_CLIENT_ID=your_schwab_client_id
+SCHWAB_CLIENT_SECRET=your_schwab_client_secret
+
+# Encryption (generate new key for production)
+ENCRYPTION_KEY=your_generated_encryption_key
 ```
 
-Tips:
-
-- Find IDs: `wrangler kv namespace list`, `wrangler d1 list`, `wrangler r2 bucket list`
-- You can keep placeholders committed; just swap them locally before `npm run deploy`, or manage env-specific files in CI.
-
-### 3. Set Production Environment Variables
-
-Configure these secrets in Cloudflare Workers:
+### 4. Generate Production Encryption Key
 
 ```bash
-# Set Schwab API credentials
-wrangler secret put SCHWAB_CLIENT_ID
-wrangler secret put SCHWAB_CLIENT_SECRET
+# Generate a fresh encryption key for production
+npm run generate-key
+```
 
-# Set authentication base URL
-wrangler secret put AUTH_BASE_URL  # Your production URL
+### 5. Optional: Email Configuration
 
-# Set encryption key (REQUIRED - generate a new key for production)
-# Generate with: npm run generate-key
-wrangler secret put ENCRYPTION_KEY
+For email notifications, add to your environment variables:
 
-# Optional: Set Resend API key for email notifications
-wrangler secret put RESEND_API_KEY
+```env
+RESEND_API_KEY=your_resend_api_key
 ```
 
 **⚠️ Security Best Practices**:
@@ -251,24 +259,25 @@ wrangler secret put RESEND_API_KEY
 - Never share keys between environments or commit them to version control
 - If migrating data from development to production, you'll need to decrypt with the old key and re-encrypt with the new key
 
-### 4. Run Production Database Migrations
+### 4. Set up Production Database
 
 ```bash
-# Apply migrations to production D1 database
-npm run db:migrate:prod
+# For Turso, the database schema is pushed directly to your Turso instance
+# Make sure your production environment variables are set correctly
+npm run db:push:prod
 
 # Optionally seed production data (be careful!)
-# npm run seed:prod
+# npm run seed
 ```
 
-### 5. Deploy to Cloudflare Workers
+### 6. Deploy to Netlify/Vercel
 
-```bash
-# Build and deploy to Cloudflare Workers
-npm run deploy
+Your application will automatically deploy when you push to your main branch on GitHub. The deployment URLs will be:
 
-# The application will be available at your-app.your-subdomain.workers.dev
-```
+- **Netlify**: `https://your-app-name.netlify.app`
+- **Vercel**: `https://your-app-name.vercel.app`
+
+Monitor deployment status in your chosen platform's dashboard.
 
 ## Usage
 
@@ -314,7 +323,7 @@ Pre-defined allocation templates that can be applied to rebalancing groups:
 - `npm run dev` - Start development server on port 3000
 - `npm run build` - Build for production (includes TypeScript check)
 - `npm run start` - Start production server
-- `npm run deploy` - Build and deploy to Cloudflare Workers
+- `npm run deploy` - Build and deploy to Netlify/Vercel (via Git push)
 
 ### Code Quality
 
@@ -327,19 +336,18 @@ Pre-defined allocation templates that can be applied to rebalancing groups:
 ### Database Management
 
 - `npm run db:generate` - Generate Drizzle migrations
-- `npm run db:migrate` - Apply migrations locally
-- `npm run db:migrate:prod` - Apply migrations to production
+- `npm run db:push` - Push schema to local Turso database
+- `npm run db:push:prod` - Push schema to production Turso database
 - `npm run db:studio` - Open Drizzle Studio for database inspection
+- `npm run test-db` - Test Turso database connection
 - `npm run seed` - Seed database with initial data
 
 ### Utilities
-
-- `npm run cf-typegen` - Generate Cloudflare Worker types
 - `npm run generate-key` - Generate secure encryption key for environment
 
 ## Database Schema
 
-Using **Drizzle ORM** with **Cloudflare D1** (distributed SQLite). Key entities:
+Using **Drizzle ORM** with **Turso** (distributed SQLite). Key entities:
 
 **Portfolio Management:**
 
@@ -380,10 +388,10 @@ Using **Drizzle ORM** with **Cloudflare D1** (distributed SQLite). Key entities:
 
 ### Backend Architecture
 
-- **Cloudflare Workers**: Edge computing with global distribution
+- **Netlify/Vercel**: Serverless deployment with global CDN
 - **Server Functions**: Type-safe RPC between client and server
 - **Better Auth**: Secure authentication with session management
-- **Drizzle ORM**: Type-safe database operations
+- **Drizzle ORM**: Type-safe database operations with Turso
 
 ### Security Features
 

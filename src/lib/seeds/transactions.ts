@@ -1,4 +1,4 @@
-import type { drizzle } from 'drizzle-orm/better-sqlite3';
+import type { drizzle } from 'drizzle-orm/libsql';
 import * as schema from '../../db/schema';
 
 const TRANSACTIONS_DATA = [

@@ -158,7 +158,7 @@ export class SessionManager {
         .delete(schema.session)
         .where(lt(schema.session.expiresAt, new Date()));
 
-      const expiredCount = result.changes || 0;
+      const expiredCount = result.rowsAffected || 0;
       console.log(`Cleaned up ${expiredCount} expired sessions`);
       return expiredCount;
     } catch (error) {

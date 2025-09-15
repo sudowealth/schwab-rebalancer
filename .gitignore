@@ -36,3 +36,10 @@ local.db
 # Logs
 *.log
 server.log
+
+# Build outputs
+dist/
+.netlify/
+
+# Additional build artifacts
+.output/

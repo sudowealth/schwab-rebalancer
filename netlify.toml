@@ -1,0 +1,28 @@
+[build]
+  publish = ".output/public"
+  command = "npm run build"
+
+[build.environment]
+  NODE_VERSION = "18"
+
+# Netlify Functions configuration
+[functions]
+  directory = ".output/server"
+
+# Redirect rules for SPA
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/:splat"
+  status = 200
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# Environment variables (set these in Netlify dashboard)
+# DATABASE_URL = "your-turso-database-url"
+# DATABASE_AUTH_TOKEN = "your-turso-auth-token" (optional for local replicas)
+# AUTH_BASE_URL = "https://your-netlify-site.netlify.app"
+# AUTH_SECRET = "your-auth-secret"
+# ENCRYPTION_KEY = "your-32-char-encryption-key"

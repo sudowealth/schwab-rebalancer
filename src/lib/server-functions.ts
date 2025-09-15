@@ -1,7 +1,7 @@
 import { createServerFn } from '@tanstack/react-start';
 import { getWebRequest } from '@tanstack/react-start/server';
 import { eq, inArray, sql } from 'drizzle-orm';
-import type { drizzle } from 'drizzle-orm/better-sqlite3';
+import type { drizzle } from 'drizzle-orm/libsql';
 import * as schema from '../db/schema';
 import { requireAdmin, requireAuth } from './auth-utils';
 import { CASH_TICKER, isAnyCashTicker, isBaseCashTicker, MANUAL_CASH_TICKER } from './constants';
@@ -3667,7 +3667,7 @@ export const truncateDataServerFn = createServerFn({ method: 'POST' })
       const request = getWebRequest();
 
       // Start a transaction to ensure all operations succeed or fail together
-      db.transaction((tx) => {
+      await db.transaction(async (tx) => {
         // Tables to truncate (all financial data and user-created content)
         // PRESERVE: user, session, auth_account, verification, audit_log (system-level)
 
