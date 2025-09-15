@@ -1,4 +1,4 @@
-import { createFileRoute, redirect, useRouter } from '@tanstack/react-router';
+import { createFileRoute, Link, redirect, useRouter } from '@tanstack/react-router';
 import { Edit, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { SecurityModal } from '../../components/dashboard/security-modal';
@@ -17,6 +17,7 @@ import type {
 } from '../../components/rebalancing-groups/sleeve-allocation/sleeve-allocation-table-headers';
 import type { Trade } from '../../components/rebalancing-groups/sleeve-allocation/sleeve-allocation-types';
 import { TopHoldings } from '../../components/rebalancing-groups/top-holdings';
+import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
 import { useSleeveAllocations } from '../../hooks/use-sleeve-allocations';
 import { generateAllocationData, generateTopHoldingsData } from '../../lib/rebalancing-utils';
@@ -563,8 +564,23 @@ function RebalancingGroupDetail() {
     <div className="container mx-auto p-6 space-y-6">
       {/* Breadcrumb and Navigation */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-col gap-2">
           <h1 className="text-2xl font-bold text-gray-900">{group.name}</h1>
+          <div className="flex flex-col items-start gap-1">
+            {group.assignedModel ? (
+              <Link
+                to="/models/$modelId"
+                params={{ modelId: group.assignedModel.id }}
+                className="inline-flex"
+              >
+                <Badge variant="default" className="cursor-pointer">
+                  {group.assignedModel.name}
+                </Badge>
+              </Link>
+            ) : (
+              <Badge variant="outline">No Model</Badge>
+            )}
+          </div>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={() => setEditModalOpen(true)}>
@@ -595,11 +611,6 @@ function RebalancingGroupDetail() {
         }))}
         selectedAccount={selectedAccount}
         totalValue={totalValue}
-        assignedModel={
-          group.assignedModel
-            ? { id: group.assignedModel.id, name: group.assignedModel.name || '' }
-            : null
-        }
         onAccountSelect={setSelectedAccount}
         onManualCashUpdate={() => router.invalidate()}
         onAccountUpdate={() => router.invalidate()}

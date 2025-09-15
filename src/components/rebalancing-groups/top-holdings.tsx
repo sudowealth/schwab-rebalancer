@@ -16,7 +16,7 @@ export function TopHoldings({ holdingsData, onTickerClick }: TopHoldingsProps) {
     <Card>
       <CardHeader>
         <CardTitle>Holdings</CardTitle>
-        <CardDescription>All positions across accounts</CardDescription>
+        <CardDescription>All holdings across accounts</CardDescription>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
