@@ -75,8 +75,6 @@ export const Route = createFileRoute('/')({
 });
 
 function DashboardComponent() {
-  console.log('🏠 [Dashboard] DashboardComponent rendered');
-
   const { data: session } = useSession();
   const loaderData = Route.useLoaderData();
   const queryClient = useQueryClient();
@@ -84,11 +82,8 @@ function DashboardComponent() {
     'rebalancing-groups',
   );
 
-  console.log('🏠 [Dashboard] Initial state - activeTab:', activeTab);
-
   // Manually trigger the query on mount
   useEffect(() => {
-    console.log('🔄 [Dashboard] Manually triggering rebalancing groups query...');
     setTimeout(() => {
       queryClient.invalidateQueries({ queryKey: ['rebalancing-groups'] });
     }, 100);
@@ -196,8 +191,6 @@ function DashboardComponent() {
     staleTime: 1000 * 60 * 2, // 2 minutes (reduced for faster refresh after Schwab sync)
   });
 
-  console.log('🔄 [Dashboard] Setting up rebalancing groups query...');
-
   // Use the exact same data loading logic as /rebalancing-groups route
   const { data: rebalancingGroups, isLoading: rebalancingGroupsLoading } = useQuery({
     queryKey: ['rebalancing-groups-dashboard'],
@@ -211,16 +204,6 @@ function DashboardComponent() {
     transactionsLoading ||
     sleevesLoading ||
     rebalancingGroupsLoading;
-
-  console.log('🔍 [Dashboard] Debug conditions:', {
-    hasAccounts,
-    hasRebalancingGroups,
-    shouldShowRebalancingSection,
-    isLoading,
-    activeTab,
-    rebalancingGroupsCount: rebalancingGroups?.length || 0,
-    rebalancingGroupsLoading,
-  });
 
   const handleTickerClick = (ticker: string) => {
     setSelectedTicker(ticker);
@@ -313,19 +296,8 @@ function DashboardComponent() {
       {shouldShowRebalancingSection && <DashboardMetrics metrics={metrics} />}
 
       {/* Positions and Transactions */}
-      {(() => {
-        console.log(
-          '🔍 [Dashboard] Checking shouldShowRebalancingSection:',
-          shouldShowRebalancingSection,
-        );
-        return null;
-      })()}
       {shouldShowRebalancingSection && (
         <>
-          {(() => {
-            console.log('🔍 [Dashboard] Rendering Positions & Transactions section');
-            return null;
-          })()}
           <div className="bg-white shadow rounded-lg">
             <div className="px-4 py-5 sm:p-6">
               <div className="mb-4">
@@ -395,12 +367,6 @@ function DashboardComponent() {
 
               {activeTab === 'rebalancing-groups' && (
                 <>
-                  {(() => {
-                    console.log('🎯 [Dashboard] About to render RebalancingGroupsTab');
-                    console.log('🎯 [Dashboard] Active tab:', activeTab);
-                    console.log('🎯 [Dashboard] Groups to pass:', rebalancingGroups);
-                    return null;
-                  })()}
                   <RebalancingGroupsTab groups={rebalancingGroups || []} />
                 </>
               )}

@@ -45,11 +45,7 @@ export function getSecurityConfig(): SecurityConfig {
   const enableStrictCSP = env.ENABLE_STRICT_CSP === 'true' || nodeEnv === 'production';
 
   // Only log in development and keep it minimal
-  if (nodeEnv === 'development') {
-    console.log(
-      `🔒 Security: ${allowedOrigins.length} origins, CSP: ${enableStrictCSP ? 'strict' : 'permissive'}`,
-    );
-  }
+  // Security configuration loaded silently
 
   return {
     allowedOrigins,

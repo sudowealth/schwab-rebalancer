@@ -584,11 +584,9 @@ export const getRebalancingGroupsServerFn = createServerFn({
   method: 'GET',
 }).handler(async () => {
   const { user } = await requireAuth();
-  console.log('🔍 [Server] getRebalancingGroupsServerFn called with userId:', user.id);
 
   const { getRebalancingGroups } = await import('./db-api');
   const groups = await getRebalancingGroups(user.id);
-  console.log('🔍 [Server] getRebalancingGroups returned:', groups.length, 'groups');
   return groups;
 });
 

@@ -467,8 +467,6 @@ export class SchwabApiService {
   }
 
   private async getCredentials(userId: string): Promise<SchwabCredentials | null> {
-    console.log('🔍 [SchwabApi] Retrieving stored credentials');
-
     try {
       const result = await this.db
         .select()
@@ -481,22 +479,14 @@ export class SchwabApiService {
         )
         .limit(1);
 
-      console.log('📊 [SchwabApi] Found', result.length, 'active credential records');
-
       if (result.length === 0) {
-        console.log('❌ [SchwabApi] No active credentials found for user');
         return null;
       }
 
       const creds = result[0];
-      console.log('🔐 [SchwabApi] Decrypting stored credentials...');
-      console.log('⏰ [SchwabApi] Token expires at:', creds.tokenExpiresAt);
-      console.log('⏰ [SchwabApi] Refresh token expires at:', creds.refreshTokenExpiresAt);
 
       const accessToken = await decrypt(creds.encryptedAccessToken);
       const refreshToken = await decrypt(creds.encryptedRefreshToken);
-
-      console.log('✅ [SchwabApi] Successfully decrypted credentials');
 
       return {
         accessToken,
@@ -1249,22 +1239,15 @@ export class SchwabApiService {
   }
 
   async hasValidCredentials(userId: string): Promise<boolean> {
-    console.log('✅ [SchwabApi] Checking credential validity');
-
     try {
       const credentials = await this.getCredentials(userId);
 
       if (!credentials) {
-        console.log('❌ [SchwabApi] No credentials found');
         return false;
       }
 
       const now = new Date();
       const isValid = credentials.refreshTokenExpiresAt > now;
-
-      console.log('⏰ [SchwabApi] Current time:', now);
-      console.log('⏰ [SchwabApi] Refresh token expires:', credentials.refreshTokenExpiresAt);
-      console.log('✅ [SchwabApi] Credentials valid:', isValid);
 
       return isValid;
     } catch (error) {
@@ -1299,12 +1282,6 @@ export function hasSchwabCredentialsConfigured(): boolean {
   const clientSecret = process.env.SCHWAB_CLIENT_SECRET;
 
   const hasCredentials = !!(clientId && clientSecret);
-  console.log('🔧 [SchwabApi] Environment credentials check:', {
-    hasClientId: !!clientId,
-    hasClientSecret: !!clientSecret,
-    configured: hasCredentials,
-  });
-
   return hasCredentials;
 }
 
@@ -1312,11 +1289,6 @@ export function getSchwabApiService(): SchwabApiService {
   if (!schwabApiService) {
     const clientId = process.env.SCHWAB_CLIENT_ID;
     const clientSecret = process.env.SCHWAB_CLIENT_SECRET;
-
-    console.log('🔧 [SchwabApi] Initializing service with environment:', {
-      hasClientId: !!clientId,
-      hasClientSecret: !!clientSecret,
-    });
 
     if (!clientId || !clientSecret) {
       throw new Error(

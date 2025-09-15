@@ -46,8 +46,6 @@ export async function loadDashboardData(
     // Dynamic import to prevent client-side bundling
     const dbApiModule = await import('./db-api');
 
-    console.log('🔄 Loading dashboard data from database...');
-
     const [
       positions,
       metrics,
@@ -68,11 +66,6 @@ export async function loadDashboardData(
       dbApiModule.getIndexMembers(),
     ]);
 
-    console.log('✅ Dashboard data loaded successfully');
-    console.log(
-      `📊 Data counts: positions=${positions.length}, transactions=${transactions.length}, sp500=${sp500Data.length}, sleeves=${sleeves.length}`,
-    );
-
     if (sp500Data.length === 0) {
       console.warn('⚠️ SP500 data is empty in server-only loader!');
     }
@@ -83,7 +76,6 @@ export async function loadDashboardData(
       const { hasSchwabCredentialsConfigured } = await import('./schwab-api');
       const hasCredentials = hasSchwabCredentialsConfigured();
       schwabCredentialsStatus = { hasCredentials };
-      console.log('📊 Schwab environment credentials status loaded:', hasCredentials);
     } catch (error) {
       console.warn('⚠️ Failed to load Schwab environment credentials status:', error);
     }
@@ -96,7 +88,6 @@ export async function loadDashboardData(
         const schwabApi = getSchwabApiService();
         const hasOAuthCredentials = await schwabApi.hasValidCredentials(userId);
         schwabOAuthStatus = { hasCredentials: hasOAuthCredentials };
-        console.log('📊 Schwab OAuth credentials status loaded:', hasOAuthCredentials);
       } catch (error) {
         console.warn('⚠️ Failed to load Schwab OAuth credentials status:', error);
         schwabOAuthStatus = { hasCredentials: false };

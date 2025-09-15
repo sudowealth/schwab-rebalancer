@@ -9,9 +9,6 @@ interface RebalancingGroupsTabProps {
 }
 
 export function RebalancingGroupsTab({ groups }: RebalancingGroupsTabProps) {
-  console.log('🎯 [RebalancingGroupsTab] Component called with groups:', groups?.length || 0);
-  console.log('🎯 [RebalancingGroupsTab] Groups data:', groups);
-
   // Helper to format account balance
   const formatBalance = (balance: number): string => {
     return new Intl.NumberFormat('en-US', {

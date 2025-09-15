@@ -8,9 +8,7 @@ import { getSecurityConfig } from './security-config';
 
 const getAuthDatabase = () => {
   if (typeof process !== 'undefined' && process.env.NODE_ENV === 'development') {
-    console.log('🗄️ Initializing auth database...');
     const db = getDatabase();
-    console.log('✅ Auth database initialized (using migrated D1 database)');
     return db;
   }
 
