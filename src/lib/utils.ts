@@ -38,7 +38,7 @@ export function formatQuantity(qty: number): string {
 export function generateId(): string {
   // Use crypto.randomUUID() for truly unique, collision-resistant IDs
   // Available in Node.js 14.17.0+ and modern browsers
-  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+  if (crypto?.randomUUID) {
     return crypto.randomUUID();
   }
 

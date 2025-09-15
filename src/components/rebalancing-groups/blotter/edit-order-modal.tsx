@@ -136,7 +136,7 @@ export function EditOrderModal({ open, onOpenChange, order, onSaved, prices }: P
                     id={qtyId}
                     type="number"
                     value={Number.isFinite(qty) ? String(qty) : ''}
-                    onChange={(e) => setQty(parseFloat(e.target.value) || 0)}
+                    onChange={(e) => setQty(Number.parseFloat(e.target.value) || 0)}
                   />
                   <button
                     type="button"
@@ -176,7 +176,7 @@ export function EditOrderModal({ open, onOpenChange, order, onSaved, prices }: P
                     type="number"
                     value={typeof limit === 'number' ? String(limit) : ''}
                     onChange={(e) =>
-                      setLimit(e.target.value === '' ? '' : parseFloat(e.target.value))
+                      setLimit(e.target.value === '' ? '' : Number.parseFloat(e.target.value))
                     }
                   />
                 </div>
@@ -191,7 +191,7 @@ export function EditOrderModal({ open, onOpenChange, order, onSaved, prices }: P
                     type="number"
                     value={typeof stop === 'number' ? String(stop) : ''}
                     onChange={(e) =>
-                      setStop(e.target.value === '' ? '' : parseFloat(e.target.value))
+                      setStop(e.target.value === '' ? '' : Number.parseFloat(e.target.value))
                     }
                   />
                 </div>
@@ -207,7 +207,7 @@ export function EditOrderModal({ open, onOpenChange, order, onSaved, prices }: P
                       type="number"
                       value={typeof limit === 'number' ? String(limit) : ''}
                       onChange={(e) =>
-                        setLimit(e.target.value === '' ? '' : parseFloat(e.target.value))
+                        setLimit(e.target.value === '' ? '' : Number.parseFloat(e.target.value))
                       }
                     />
                   </div>
@@ -220,7 +220,7 @@ export function EditOrderModal({ open, onOpenChange, order, onSaved, prices }: P
                       type="number"
                       value={typeof stop === 'number' ? String(stop) : ''}
                       onChange={(e) =>
-                        setStop(e.target.value === '' ? '' : parseFloat(e.target.value))
+                        setStop(e.target.value === '' ? '' : Number.parseFloat(e.target.value))
                       }
                     />
                   </div>

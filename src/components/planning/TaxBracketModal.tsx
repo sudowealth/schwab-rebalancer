@@ -604,7 +604,7 @@ export function TaxBracketModal({ open, onOpenChange, onBracketsChange }: TaxBra
                                 ...prev,
                                 federal: {
                                   ...prev.federal,
-                                  single: parseFloat(e.target.value),
+                                  single: Number.parseFloat(e.target.value),
                                 },
                               }))
                             }
@@ -621,7 +621,7 @@ export function TaxBracketModal({ open, onOpenChange, onBracketsChange }: TaxBra
                                 ...prev,
                                 federal: {
                                   ...prev.federal,
-                                  married_filing_jointly: parseFloat(e.target.value),
+                                  married_filing_jointly: Number.parseFloat(e.target.value),
                                 },
                               }))
                             }
@@ -638,7 +638,7 @@ export function TaxBracketModal({ open, onOpenChange, onBracketsChange }: TaxBra
                                 ...prev,
                                 federal: {
                                   ...prev.federal,
-                                  head_of_household: parseFloat(e.target.value),
+                                  head_of_household: Number.parseFloat(e.target.value),
                                 },
                               }))
                             }
@@ -664,7 +664,7 @@ export function TaxBracketModal({ open, onOpenChange, onBracketsChange }: TaxBra
                                 ...prev,
                                 california: {
                                   ...prev.california,
-                                  single: parseFloat(e.target.value),
+                                  single: Number.parseFloat(e.target.value),
                                 },
                               }))
                             }
@@ -681,7 +681,7 @@ export function TaxBracketModal({ open, onOpenChange, onBracketsChange }: TaxBra
                                 ...prev,
                                 california: {
                                   ...prev.california,
-                                  married_filing_jointly: parseFloat(e.target.value),
+                                  married_filing_jointly: Number.parseFloat(e.target.value),
                                 },
                               }))
                             }
@@ -698,7 +698,7 @@ export function TaxBracketModal({ open, onOpenChange, onBracketsChange }: TaxBra
                                 ...prev,
                                 california: {
                                   ...prev.california,
-                                  head_of_household: parseFloat(e.target.value),
+                                  head_of_household: Number.parseFloat(e.target.value),
                                 },
                               }))
                             }
@@ -737,7 +737,11 @@ export function TaxBracketModal({ open, onOpenChange, onBracketsChange }: TaxBra
                               placeholder="Min Income"
                               value={bracket.minIncome}
                               onChange={(e) =>
-                                updateBracket(bracket.id, 'minIncome', parseFloat(e.target.value))
+                                updateBracket(
+                                  bracket.id,
+                                  'minIncome',
+                                  Number.parseFloat(e.target.value),
+                                )
                               }
                               className="w-32"
                             />
@@ -750,7 +754,7 @@ export function TaxBracketModal({ open, onOpenChange, onBracketsChange }: TaxBra
                                 updateBracket(
                                   bracket.id,
                                   'maxIncome',
-                                  e.target.value ? parseFloat(e.target.value) : null,
+                                  e.target.value ? Number.parseFloat(e.target.value) : null,
                                 )
                               }
                               className="w-40"
@@ -762,7 +766,7 @@ export function TaxBracketModal({ open, onOpenChange, onBracketsChange }: TaxBra
                               placeholder="Rate %"
                               value={bracket.rate}
                               onChange={(e) =>
-                                updateBracket(bracket.id, 'rate', parseFloat(e.target.value))
+                                updateBracket(bracket.id, 'rate', Number.parseFloat(e.target.value))
                               }
                               className="w-20"
                             />
@@ -810,7 +814,11 @@ export function TaxBracketModal({ open, onOpenChange, onBracketsChange }: TaxBra
                                 placeholder="Min Income"
                                 value={bracket.minIncome}
                                 onChange={(e) =>
-                                  updateBracket(bracket.id, 'minIncome', parseFloat(e.target.value))
+                                  updateBracket(
+                                    bracket.id,
+                                    'minIncome',
+                                    Number.parseFloat(e.target.value),
+                                  )
                                 }
                                 className="w-32"
                               />
@@ -823,7 +831,7 @@ export function TaxBracketModal({ open, onOpenChange, onBracketsChange }: TaxBra
                                   updateBracket(
                                     bracket.id,
                                     'maxIncome',
-                                    e.target.value ? parseFloat(e.target.value) : null,
+                                    e.target.value ? Number.parseFloat(e.target.value) : null,
                                   )
                                 }
                                 className="w-40"
@@ -835,7 +843,11 @@ export function TaxBracketModal({ open, onOpenChange, onBracketsChange }: TaxBra
                                 placeholder="Rate %"
                                 value={bracket.rate}
                                 onChange={(e) =>
-                                  updateBracket(bracket.id, 'rate', parseFloat(e.target.value))
+                                  updateBracket(
+                                    bracket.id,
+                                    'rate',
+                                    Number.parseFloat(e.target.value),
+                                  )
                                 }
                                 className="w-20"
                               />
@@ -883,7 +895,11 @@ export function TaxBracketModal({ open, onOpenChange, onBracketsChange }: TaxBra
                               placeholder="Min Income"
                               value={bracket.minIncome}
                               onChange={(e) =>
-                                updateBracket(bracket.id, 'minIncome', parseFloat(e.target.value))
+                                updateBracket(
+                                  bracket.id,
+                                  'minIncome',
+                                  Number.parseFloat(e.target.value),
+                                )
                               }
                               className="w-32"
                             />
@@ -896,7 +912,7 @@ export function TaxBracketModal({ open, onOpenChange, onBracketsChange }: TaxBra
                                 updateBracket(
                                   bracket.id,
                                   'maxIncome',
-                                  e.target.value ? parseFloat(e.target.value) : null,
+                                  e.target.value ? Number.parseFloat(e.target.value) : null,
                                 )
                               }
                               className="w-40"
@@ -908,7 +924,7 @@ export function TaxBracketModal({ open, onOpenChange, onBracketsChange }: TaxBra
                               placeholder="Rate %"
                               value={bracket.rate}
                               onChange={(e) =>
-                                updateBracket(bracket.id, 'rate', parseFloat(e.target.value))
+                                updateBracket(bracket.id, 'rate', Number.parseFloat(e.target.value))
                               }
                               className="w-20"
                             />

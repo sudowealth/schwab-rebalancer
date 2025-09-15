@@ -49,8 +49,8 @@ export function PositionsTable({
         cell: ({ getValue, row }) => {
           const ticker = getValue() as string;
           const position = row.original;
-          const dollarGainLoss = parseFloat(position.dollarGainLoss.replace(/[$,]/g, ''));
-          const percentLoss = parseFloat(position.percentGainLoss.replace(/%/g, ''));
+          const dollarGainLoss = Number.parseFloat(position.dollarGainLoss.replace(/[$,]/g, ''));
+          const percentLoss = Number.parseFloat(position.percentGainLoss.replace(/%/g, ''));
           const isHarvestable =
             dollarGainLoss < 0 && (percentLoss <= -5 || Math.abs(dollarGainLoss) >= 2500);
           const blockedTrade = proposedTrades?.find(
@@ -131,8 +131,8 @@ export function PositionsTable({
         header: 'Market Value',
         cell: ({ getValue }) => getValue() as string,
         sortingFn: (rowA, rowB, columnId) => {
-          const a = parseFloat((rowA.getValue(columnId) as string).replace(/[$,]/g, ''));
-          const b = parseFloat((rowB.getValue(columnId) as string).replace(/[$,]/g, ''));
+          const a = Number.parseFloat((rowA.getValue(columnId) as string).replace(/[$,]/g, ''));
+          const b = Number.parseFloat((rowB.getValue(columnId) as string).replace(/[$,]/g, ''));
           return a - b;
         },
       },
@@ -167,8 +167,8 @@ export function PositionsTable({
           );
         },
         sortingFn: (rowA, rowB, _columnId) => {
-          const a = parseFloat(rowA.original.dollarGainLoss.replace(/[$,]/g, ''));
-          const b = parseFloat(rowB.original.dollarGainLoss.replace(/[$,]/g, ''));
+          const a = Number.parseFloat(rowA.original.dollarGainLoss.replace(/[$,]/g, ''));
+          const b = Number.parseFloat(rowB.original.dollarGainLoss.replace(/[$,]/g, ''));
           return a - b;
         },
       },

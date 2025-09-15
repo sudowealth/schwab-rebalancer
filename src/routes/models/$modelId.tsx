@@ -347,7 +347,7 @@ function ModelDetailComponent() {
                         <div
                           className="bg-blue-600 h-2 rounded-full"
                           style={{ width: `${member.targetWeight / 100}%` }}
-                        ></div>
+                        />
                       </div>
                     </div>
                   </div>

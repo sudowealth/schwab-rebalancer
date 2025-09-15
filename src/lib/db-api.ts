@@ -6,7 +6,6 @@ import {
   type CreateModel,
   type CreateRebalancingGroup,
   type Model,
-  type ModelMember,
   ModelsSchema,
   type Order,
   OrdersSchema,
@@ -113,17 +112,17 @@ const db = getDatabase();
 function formatMarketCap(millions: number): string {
   if (millions >= 1000000) {
     return `${(millions / 1000000).toFixed(1)}T`;
-  } else if (millions >= 1000) {
-    return `${(millions / 1000).toFixed(1)}B`;
-  } else {
-    return `${millions}M`;
   }
+  if (millions >= 1000) {
+    return `${(millions / 1000).toFixed(1)}B`;
+  }
+  return `${millions}M`;
 }
 
 // Cache for frequently accessed data
 const cache = new Map<string, { data: unknown; timestamp: number }>();
 
-function getCached<T>(key: string, maxAge: number = 3600000): T | null {
+function getCached<T>(key: string, maxAge = 3600000): T | null {
   const cached = cache.get(key);
   if (cached && Date.now() - cached.timestamp < maxAge) {
     return cached.data as T;
@@ -300,7 +299,7 @@ export const getPositions = async (userId?: string) => {
             .from(schema.holding)
             .innerJoin(schema.account, eq(schema.holding.accountId, schema.account.id))
             .where(eq(schema.account.userId, userId));
-        } catch (error) {
+        } catch (_error) {
           // If accountNumber column doesn't exist, query without it
           holdings = await db
             .select({
@@ -746,7 +745,7 @@ export const getPortfolioMetrics = async (userId?: string) => {
   let totalCostBasis = 0;
 
   for (const position of positions) {
-    const marketValue = parseFloat(position.marketValue.replace(/[$,]/g, '')) || 0;
+    const marketValue = Number.parseFloat(position.marketValue.replace(/[$,]/g, '')) || 0;
     const costBasis = (position.costBasis || 0) * (position.qty || 0);
 
     totalMarketValue += marketValue;
@@ -772,8 +771,8 @@ export const getPortfolioMetrics = async (userId?: string) => {
     (position) => position.accountType === 'TAXABLE',
   );
   for (const position of taxablePositionsForMetrics) {
-    const dollarGainLoss = parseFloat(position.dollarGainLoss.replace(/[$,]/g, '')) || 0;
-    const percentGainLoss = parseFloat(position.percentGainLoss.replace(/%/g, '')) || 0;
+    const dollarGainLoss = Number.parseFloat(position.dollarGainLoss.replace(/[$,]/g, '')) || 0;
+    const percentGainLoss = Number.parseFloat(position.percentGainLoss.replace(/%/g, '')) || 0;
 
     // Same criteria as in getProposedTrades: -5% OR -$2,500 threshold
     if (
@@ -846,7 +845,7 @@ export const getProposedTrades = async (userId?: string) => {
   for (const position of taxablePositions) {
     // Parse the gain/loss to determine if it's a loss
     const dollarGainLossStr = position.dollarGainLoss.replace(/[$,]/g, '');
-    const dollarGainLoss = parseFloat(dollarGainLossStr);
+    const dollarGainLoss = Number.parseFloat(dollarGainLossStr);
 
     // Only consider positions with losses (negative gain/loss)
     if (dollarGainLoss >= 0) {
@@ -860,7 +859,7 @@ export const getProposedTrades = async (userId?: string) => {
     const lossAmount = Math.abs(dollarGainLoss);
 
     // Calculate percentage loss for threshold check
-    const percentLoss = Math.abs(parseFloat(position.percentGainLoss.replace(/%/g, '')));
+    const percentLoss = Math.abs(Number.parseFloat(position.percentGainLoss.replace(/%/g, '')));
 
     // Only consider losses meeting the -5% OR -$2,500 threshold
     if (!(percentLoss >= 5 || lossAmount >= 2500)) {
@@ -930,13 +929,15 @@ export const getProposedTrades = async (userId?: string) => {
           );
 
           const lossAmount = Math.abs(dollarGainLoss);
-          const percentLoss = Math.abs(parseFloat(position.percentGainLoss.replace(/%/g, '')));
+          const percentLoss = Math.abs(
+            Number.parseFloat(position.percentGainLoss.replace(/%/g, '')),
+          );
 
           blockingReason = `Unable to harvest $${lossAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (${percentLoss.toFixed(2)}%) loss because of potential wash sales with all replacement securities:\n${washSaleDetails.join('\n')}`;
         } else if (inactiveMembers.length > 0 && restrictedMembers.length === 0) {
           blockingReason = `All replacement securities in this sleeve are inactive: ${inactiveMembers.map((m) => m.ticker).join(', ')}`;
         } else if (sleeve.members.length <= 1) {
-          blockingReason = `No replacement securities available in this sleeve`;
+          blockingReason = 'No replacement securities available in this sleeve';
         } else {
           blockingReason = `No available replacement securities: ${restrictedMembers.map((m) => `${m.ticker} (restricted)`).join(', ')}${restrictedMembers.length > 0 && inactiveMembers.length > 0 ? ', ' : ''}${inactiveMembers.map((m) => `${m.ticker} (inactive)`).join(', ')}`;
         }
@@ -956,7 +957,7 @@ export const getProposedTrades = async (userId?: string) => {
       sleeveName: sleeveNameMap.get(position.sleeveId) || position.sleeveName,
       qty: position.qty,
       currentPrice: position.currentPrice,
-      estimatedValue: parseFloat(position.marketValue.replace(/[$,]/g, '')),
+      estimatedValue: Number.parseFloat(position.marketValue.replace(/[$,]/g, '')),
       reason: `Sell ${position.ticker} to harvest $${lossAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${isLongTerm ? 'long-term' : 'short-term'} loss`,
       realizedGainLoss: dollarGainLoss, // This will be negative for losses
       replacementTicker: replacementTicker || undefined,
@@ -984,7 +985,7 @@ export const getProposedTrades = async (userId?: string) => {
             : 0;
 
       // Calculate how many shares we can buy with the proceeds
-      const sellProceeds = parseFloat(position.marketValue.replace(/[$,]/g, ''));
+      const sellProceeds = Number.parseFloat(position.marketValue.replace(/[$,]/g, ''));
       const buyQty = replacementPrice > 0 ? Math.floor(sellProceeds / replacementPrice) : 0;
 
       // Only create a buy trade when we can size at least 1 share and price is valid
@@ -1466,9 +1467,8 @@ export const createModel = async (data: CreateModel, userId: string): Promise<st
       const existingModelId = existingModels[0].id;
       await updateModel(existingModelId, data);
       return existingModelId;
-    } else {
-      throw new Error(`Model name "${data.name}" already exists`);
     }
+    throw new Error(`Model name "${data.name}" already exists`);
   }
 
   const modelId = generateId();
@@ -1683,6 +1683,14 @@ export const clearCache = (key?: string): void => {
     cache.delete(key);
   } else {
     cache.clear();
+  }
+};
+
+export const clearCacheByPattern = (pattern: string): void => {
+  for (const key of cache.keys()) {
+    if (key.startsWith(pattern)) {
+      cache.delete(key);
+    }
   }
 };
 
@@ -2378,9 +2386,8 @@ export const createRebalancingGroup = async (
       const existingGroupId = existingGroups[0].id;
       await updateRebalancingGroup(existingGroupId, data, userId);
       return existingGroupId;
-    } else {
-      throw new Error(`Rebalancing group name "${data.name}" already exists`);
     }
+    throw new Error(`Rebalancing group name "${data.name}" already exists`);
   }
 
   const groupId = generateId();
@@ -2529,6 +2536,8 @@ export const updateRebalancingGroup = async (
 
     // Clear cache so that updated group appears
     clearCache(`rebalancing-groups-${userId}`);
+    // Clear accounts cache so account availability is refreshed
+    clearCacheByPattern(`accounts-for-rebalancing-${userId}`);
   } catch (error) {
     console.error('Error updating rebalancing group:', error);
     throw error;
@@ -2570,6 +2579,8 @@ export const deleteRebalancingGroup = async (groupId: string, userId: string): P
     // Clear cache so that deleted group disappears
     clearCache(`rebalancing-groups-${userId}`);
     clearCache(`models-${userId}`);
+    // Clear accounts cache so account availability is refreshed
+    clearCacheByPattern(`accounts-for-rebalancing-${userId}`);
   } catch (error) {
     console.error('Error deleting rebalancing group:', error);
     throw error;

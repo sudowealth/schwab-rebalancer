@@ -127,7 +127,7 @@ export function EditModelModal({ model, open, onOpenChange, onClose }: EditModel
     const updatedMembers = [...members];
     if (field === 'targetWeight') {
       // Convert percentage to basis points
-      const percentage = parseFloat(value as string);
+      const percentage = Number.parseFloat(value as string);
       updatedMembers[index][field] = Number.isNaN(percentage) ? 0 : Math.round(percentage * 100);
     } else {
       updatedMembers[index][field] = value as string;
@@ -315,7 +315,7 @@ export function EditModelModal({ model, open, onOpenChange, onClose }: EditModel
             </div>
 
             <div className="mt-2 flex items-center space-x-2">
-              <div className="flex-1"></div>
+              <div className="flex-1" />
               <div
                 className={cn(
                   'text-base font-medium w-24',
@@ -324,7 +324,7 @@ export function EditModelModal({ model, open, onOpenChange, onClose }: EditModel
               >
                 {totalPercentage}%
               </div>
-              <div className="w-8"></div>
+              <div className="w-8" />
             </div>
           </div>
         </div>

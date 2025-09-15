@@ -1,5 +1,5 @@
-import { createFileRoute, Link, redirect, useRouter } from '@tanstack/react-router';
-import { ChevronLeft, Edit, Trash2 } from 'lucide-react';
+import { createFileRoute, redirect, useRouter } from '@tanstack/react-router';
+import { Edit, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { SecurityModal } from '../../components/dashboard/security-modal';
 import { SleeveModal } from '../../components/dashboard/sleeve-modal';
@@ -203,14 +203,13 @@ function RebalancingGroupDetail() {
       // Sum cash across all accounts
       const sleeveData = sleeveTableData.find((sleeve) => sleeve.sleeveId === 'cash');
       return sleeveData?.currentValue || 0;
-    } else {
-      // Get cash for specific account
-      const accountData = sleeveAllocationData.find(
-        (account) => account.accountId === selectedAccountFilter,
-      );
-      const cashSleeve = accountData?.sleeves?.find((sleeve) => sleeve.sleeveId === 'cash');
-      return cashSleeve?.currentValue || 0;
     }
+    // Get cash for specific account
+    const accountData = sleeveAllocationData.find(
+      (account) => account.accountId === selectedAccountFilter,
+    );
+    const cashSleeve = accountData?.sleeves?.find((sleeve) => sleeve.sleeveId === 'cash');
+    return cashSleeve?.currentValue || 0;
   }, [sleeveTableData, sleeveAllocationData, selectedAccountFilter]);
 
   // Generate allocation data using utility function
@@ -321,7 +320,7 @@ function RebalancingGroupDetail() {
     }
   };
 
-  const handleTradeQtyChange = (ticker: string, newQty: number, _isPreview: boolean = false) => {
+  const handleTradeQtyChange = (ticker: string, newQty: number, _isPreview = false) => {
     setRebalanceTrades((prevTrades) => {
       // Find existing trade for this ticker
       const existingTradeIndex = prevTrades.findIndex(
@@ -358,7 +357,8 @@ function RebalancingGroupDetail() {
         }
 
         return updatedTrades;
-      } else if (newQty !== 0) {
+      }
+      if (newQty !== 0) {
         // Create new trade if it doesn't exist and quantity is not 0
         let currentPrice = 0;
         let accountId = '';

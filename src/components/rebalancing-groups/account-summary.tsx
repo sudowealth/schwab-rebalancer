@@ -81,7 +81,7 @@ export function AccountSummary({
   const handleSaveManualCash = async (accountId: string) => {
     setIsUpdating(true);
     try {
-      const amount = parseFloat(tempAmount) || 0;
+      const amount = Number.parseFloat(tempAmount) || 0;
       await updateManualCashServerFn({ data: { accountId, amount } });
       setManualCashAmounts((prev) => ({ ...prev, [accountId]: amount }));
       setEditingAccount(null);

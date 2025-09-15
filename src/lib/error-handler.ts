@@ -63,8 +63,8 @@ export function logError(error: unknown, context?: string, metadata?: Record<str
 
 export async function withRetry<T>(
   operation: () => Promise<T>,
-  maxRetries: number = 3,
-  delay: number = 1000,
+  maxRetries = 3,
+  delay = 1000,
   context?: string,
 ): Promise<T> {
   let lastError: unknown;

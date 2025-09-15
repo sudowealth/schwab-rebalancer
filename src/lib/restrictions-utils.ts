@@ -221,7 +221,7 @@ export function findLowestRankedPurchasableSecurity<
 >(
   securities: Array<T>,
   restrictionChecker: RestrictionChecker,
-  requirePositiveTarget: boolean = false,
+  requirePositiveTarget = false,
 ): T | null {
   const sortedSecurities = [...securities].sort((a, b) => {
     const rankA = a.rank || 999;

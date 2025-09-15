@@ -117,14 +117,14 @@ export function SecuritiesTable({
         sortingFn: (rowA, rowB, columnId) => {
           const parseMarketCap = (value: string): number => {
             const numStr = value.replace(/[^\d.TMB]/g, '');
-            const num = parseFloat(numStr.replace(/[TMB]/g, ''));
+            const num = Number.parseFloat(numStr.replace(/[TMB]/g, ''));
             if (value.includes('T')) {
               return num * 1000000; // Convert trillions to millions
-            } else if (value.includes('B')) {
-              return num * 1000; // Convert billions to millions
-            } else {
-              return num; // Already in millions
             }
+            if (value.includes('B')) {
+              return num * 1000; // Convert billions to millions
+            }
+            return num; // Already in millions
           };
           const a = parseMarketCap(rowA.getValue(columnId) as string);
           const b = parseMarketCap(rowB.getValue(columnId) as string);
@@ -271,7 +271,7 @@ export function SecuritiesTable({
             <Select
               value={pageSize.toString()}
               onValueChange={(value) => {
-                const newSize = parseInt(value, 10);
+                const newSize = Number.parseInt(value, 10);
                 navigate?.({
                   search: (prev: SearchParams) => ({
                     ...prev,

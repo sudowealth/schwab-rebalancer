@@ -123,18 +123,19 @@ export const generateAllocationData = (
     }));
     console.log('Account allocation result:', result);
     return result;
-  } else if (allocationView === 'sector') {
+  }
+  if (allocationView === 'sector') {
     const result = generateSectorAllocationData(accountHoldings, sp500Data, totalValue);
     return result;
-  } else if (allocationView === 'sleeve') {
+  }
+  if (allocationView === 'sleeve') {
     const result = generateSleeveAllocationData(accountHoldings, totalValue);
     console.log('Sleeve allocation result:', result);
     return result;
-  } else {
-    const result = generateIndustryAllocationData(accountHoldings, sp500Data, totalValue);
-    console.log('Industry allocation result:', result);
-    return result;
   }
+  const result = generateIndustryAllocationData(accountHoldings, sp500Data, totalValue);
+  console.log('Industry allocation result:', result);
+  return result;
 };
 
 export type GenerateAllocationDataResult = ReturnType<typeof generateAllocationData>;
@@ -989,40 +990,39 @@ export const generateSleeveTableData = (
         accountNames: Array.from(sleeve.accountNames),
       };
     });
-  } else {
-    const selectedAccountData = sleeveAllocationData.find(
-      (account) => account.accountId === selectedAccountFilter,
-    );
-    return selectedAccountData
-      ? selectedAccountData.sleeves.map((sleeve) => {
-          // Calculate aggregated unrealized G/L values for the sleeve
-          let totalGainLoss = 0;
-          let longTermGainLoss = 0;
-          let shortTermGainLoss = 0;
-
-          // Sum up unrealized G/L from all securities in the sleeve
-          // (Realized G/L is calculated on-demand during sorting and rendering)
-          (sleeve.securities || []).forEach((security) => {
-            totalGainLoss += security.totalGainLoss || 0;
-            longTermGainLoss += security.longTermGainLoss || 0;
-            shortTermGainLoss += security.shortTermGainLoss || 0;
-          });
-
-          return {
-            ...sleeve,
-            // Add aggregated unrealized G/L values
-            totalGainLoss,
-            longTermGainLoss,
-            shortTermGainLoss,
-            securities: (sleeve.securities || []).map((sec) => ({
-              ...sec,
-              accountNames: [selectedAccountData.accountName],
-            })),
-            accountNames: [selectedAccountData.accountName],
-          };
-        })
-      : [];
   }
+  const selectedAccountData = sleeveAllocationData.find(
+    (account) => account.accountId === selectedAccountFilter,
+  );
+  return selectedAccountData
+    ? selectedAccountData.sleeves.map((sleeve) => {
+        // Calculate aggregated unrealized G/L values for the sleeve
+        let totalGainLoss = 0;
+        let longTermGainLoss = 0;
+        let shortTermGainLoss = 0;
+
+        // Sum up unrealized G/L from all securities in the sleeve
+        // (Realized G/L is calculated on-demand during sorting and rendering)
+        (sleeve.securities || []).forEach((security) => {
+          totalGainLoss += security.totalGainLoss || 0;
+          longTermGainLoss += security.longTermGainLoss || 0;
+          shortTermGainLoss += security.shortTermGainLoss || 0;
+        });
+
+        return {
+          ...sleeve,
+          // Add aggregated unrealized G/L values
+          totalGainLoss,
+          longTermGainLoss,
+          shortTermGainLoss,
+          securities: (sleeve.securities || []).map((sec) => ({
+            ...sec,
+            accountNames: [selectedAccountData.accountName],
+          })),
+          accountNames: [selectedAccountData.accountName],
+        };
+      })
+    : [];
 };
 
 export type CalculateSleeveAllocationsResult = ReturnType<typeof calculateSleeveAllocations>;

@@ -205,7 +205,7 @@ export function calculateRMDSchedule(
   years: number,
   spouseAge?: number,
   filingStatus: 'single' | 'married_filing_jointly' | 'head_of_household' = 'single',
-  growthRate: number = 0.07, // 7% default growth rate
+  growthRate = 0.07, // 7% default growth rate
 ): Array<{
   year: number;
   age: number;
@@ -253,7 +253,7 @@ export function estimateTotalRMDs(
   endingAge: number,
   spouseAge?: number,
   filingStatus: 'single' | 'married_filing_jointly' | 'head_of_household' = 'single',
-  growthRate: number = 0.07,
+  growthRate = 0.07,
 ): number {
   const years = endingAge - startingAge + 1;
   const schedule = calculateRMDSchedule(

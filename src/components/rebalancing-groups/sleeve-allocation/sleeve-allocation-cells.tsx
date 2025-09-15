@@ -388,7 +388,7 @@ export const TradeQtyCell: React.FC<
       setEditValue(value);
 
       // Show preview in real-time
-      const newQty = parseInt(value, 10) || 0;
+      const newQty = Number.parseInt(value, 10) || 0;
       const finalQty = netQty < 0 ? -newQty : newQty;
       if (onTradeQtyChange && item.ticker) {
         onTradeQtyChange(item.ticker, finalQty, true); // true indicates preview
@@ -396,7 +396,7 @@ export const TradeQtyCell: React.FC<
     };
 
     const handleSave = () => {
-      const newQty = parseInt(editValue, 10) || 0;
+      const newQty = Number.parseInt(editValue, 10) || 0;
       const finalQty = netQty < 0 ? -newQty : newQty;
       if (onTradeQtyChange && item.ticker) {
         onTradeQtyChange(item.ticker, finalQty, false); // false indicates final save

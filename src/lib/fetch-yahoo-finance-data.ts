@@ -162,7 +162,7 @@ async function main() {
       }
     }
 
-    console.log(`\n🎉 All batches completed!`);
+    console.log('\n🎉 All batches completed!');
     console.log(`📊 Total companies updated: ${totalUpdated}/${companiesNeedingData.length}`);
     console.log('✅ Final SP500 data saved to sp500.json');
   } catch (error) {

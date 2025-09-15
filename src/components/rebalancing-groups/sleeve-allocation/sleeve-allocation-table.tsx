@@ -241,7 +241,8 @@ export function SleeveAllocationTable({
               </div>
             </td>
           );
-        } else if (itemType === 'security') {
+        }
+        if (itemType === 'security') {
           return (
             <td
               className={`p-2 sticky left-0 z-25 shadow-[1px_0_0_0_rgba(229,231,235,1),2px_0_4px_-2px_rgba(0,0,0,0.1)] w-64 max-w-64 ${className ? 'bg-gray-50' : 'bg-gray-50'}`}
@@ -261,7 +262,8 @@ export function SleeveAllocationTable({
               </div>
             </td>
           );
-        } else if (itemType === 'account') {
+        }
+        if (itemType === 'account') {
           const accountKey = item.accountId || '';
           const isAccountExpanded = expandedAccounts.has(accountKey);
           return (
@@ -500,7 +502,8 @@ export function SleeveAllocationTable({
                 isCashSleeve={item.sleeveId === 'cash'}
               />
             );
-          } else if (itemType === 'security') {
+          }
+          if (itemType === 'security') {
             return (
               <PostTradePercentCell
                 currentValue={item.currentValue || 0}
@@ -530,7 +533,8 @@ export function SleeveAllocationTable({
                 isCashSleeve={item.sleeveId === 'cash'}
               />
             );
-          } else if (itemType === 'security') {
+          }
+          if (itemType === 'security') {
             return (
               <PostTradeDiffCell
                 currentValue={item.currentValue || 0}
@@ -560,7 +564,8 @@ export function SleeveAllocationTable({
                 isCashSleeve={item.sleeveId === 'cash'}
               />
             );
-          } else if (itemType === 'security') {
+          }
+          if (itemType === 'security') {
             return (
               <PostTradeDiffPercentCell
                 currentValue={item.currentValue || 0}

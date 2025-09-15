@@ -153,8 +153,8 @@ export class SchwabApiService {
           const params = [
             `client_id=${encodeURIComponent(this.clientId)}`,
             `redirect_uri=${encodeURIComponent(redirectUri)}`,
-            `response_type=code`,
-            `scope=AccountAccess+readonly`,
+            'response_type=code',
+            'scope=AccountAccess+readonly',
           ].join('&');
           const authUrl = `https://api.schwabapi.com/v1/oauth/authorize?${params}`;
           return { authUrl };
@@ -301,7 +301,7 @@ export class SchwabApiService {
         },
         userPreference: {
           getUserPreference: async () => {
-            const response = await fetch(`https://api.schwabapi.com/trader/v1/userPreference`, {
+            const response = await fetch('https://api.schwabapi.com/trader/v1/userPreference', {
               headers: {
                 Authorization: `Bearer ${credentials.accessToken}`,
                 Accept: 'application/json',
@@ -675,21 +675,21 @@ export class SchwabApiService {
         if (isAccountNumber) {
           // Match by account number directly
           return secAccount?.accountNumber === accountIdentifier;
-        } else if (isHashValue) {
+        }
+        if (isHashValue) {
           // For hash values, we can only match if the API provides them (which it doesn't seem to)
           // We'll need to get account number mapping from somewhere else
           console.warn(
             '⚠️ [SchwabApi] Cannot match hash values with positions API - need account number',
           );
           return false;
-        } else {
-          // Try all possible matches as fallback
-          return (
-            secAccount?.hashValue === accountIdentifier ||
-            secAccount?.accountId === accountIdentifier ||
-            secAccount?.accountNumber === accountIdentifier
-          );
         }
+        // Try all possible matches as fallback
+        return (
+          secAccount?.hashValue === accountIdentifier ||
+          secAccount?.accountId === accountIdentifier ||
+          secAccount?.accountNumber === accountIdentifier
+        );
       });
       if (!positionsData) {
         console.error('❌ [SchwabApi] Account not found:', accountIdentifier);

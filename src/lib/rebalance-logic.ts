@@ -42,8 +42,8 @@ export function executeRebalance(
   sleeves: RebalanceSleeveDataNew[],
   washSaleRestrictions: WashSaleRestriction[] = [],
   replacementCandidates: SecurityReplacement[] = [],
-  allowOverinvestment: boolean = false,
-  maxOverinvestmentPercent: number = 5.0,
+  allowOverinvestment = false,
+  maxOverinvestmentPercent = 5.0,
   transactions: Transaction[] = [],
   cashAmount?: number,
 ) {
@@ -267,7 +267,7 @@ function deployCashOverinvestment(
   existingTrades: Trade[],
   accountCashMap: Map<string, number>,
   washSaleRestrictions: WashSaleRestriction[] = [],
-  maxOverinvestmentPercent: number = 5.0,
+  maxOverinvestmentPercent = 5.0,
   transactions: Transaction[] = [],
 ): Trade[] {
   const additionalTrades: Trade[] = [];
@@ -448,8 +448,8 @@ function deployCashOverinvestment(
 export function calculateSleeveBasedAllocationRebalance(
   sleeves: RebalanceSleeveDataNew[],
   washSaleRestrictions: WashSaleRestriction[] = [],
-  allowOverinvestment: boolean = false,
-  maxOverinvestmentPercent: number = 5.0,
+  allowOverinvestment = false,
+  maxOverinvestmentPercent = 5.0,
   transactions: Transaction[] = [],
 ): Trade[] {
   const trades: Trade[] = [];
@@ -574,7 +574,7 @@ export function calculateSleeveBasedAllocationRebalance(
   }
 
   // Phase 1: Buy lowest ranked security per sleeve up to target (accounting for wash sale restrictions)
-  console.log(`🔺 Phase 1: Buying lowest ranked securities for each underweight sleeve`);
+  console.log('🔺 Phase 1: Buying lowest ranked securities for each underweight sleeve');
 
   // Track sleeve current values after sells but before buys
   const sleeveCurrentValues = new Map<string, number>();
@@ -704,7 +704,7 @@ export function calculateSleeveBasedAllocationRebalance(
   }
 
   // Phase 2: Apply existing buy logic for least absolute deviation across ALL sleeves
-  console.log(`🔺 Phase 2: Applying optimal buy logic for least absolute deviation`);
+  console.log('🔺 Phase 2: Applying optimal buy logic for least absolute deviation');
 
   // Continue buying while we have cash, optimizing for least absolute deviation
   let totalAvailableCash = 0;
@@ -1227,7 +1227,7 @@ function calculateInvestCash(
     `🚀 INVEST CASH DEBUG: Total deficit: $${totalDeficit.toFixed(2)}, Available cash: $${cashAmount}, Should distribute evenly: ${shouldDistributeEvenly}`,
   );
   console.log(
-    `🚀 INVEST CASH DEBUG: Sleeve deficits:`,
+    '🚀 INVEST CASH DEBUG: Sleeve deficits:',
     sleeveDrifts.map((s) => ({
       sleeveId: s.sleeveId,
       deficit: s.deficit.toFixed(2),
@@ -1344,7 +1344,7 @@ function calculateInvestCash(
     fillRatio: s.fillRatio.toFixed(3),
     currentValue: s.sleeve.currentValue.toFixed(2),
   }));
-  console.log(`🚀 INVEST CASH DEBUG: Final fill ratios (first 10):`, finalRatioSummary);
+  console.log('🚀 INVEST CASH DEBUG: Final fill ratios (first 10):', finalRatioSummary);
 
   return consolidateTrades(trades);
 }

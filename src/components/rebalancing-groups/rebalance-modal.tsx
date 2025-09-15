@@ -53,7 +53,8 @@ export function RebalanceModal({
   }, [method, availableCash]);
 
   const handleGenerateTrades = () => {
-    const parsedCashAmount = method === 'investCash' ? parseFloat(cashAmount) || 0 : undefined;
+    const parsedCashAmount =
+      method === 'investCash' ? Number.parseFloat(cashAmount) || 0 : undefined;
     onGenerateTrades(method, parsedCashAmount, fetchPrices);
     // If user opted to fetch prices and syncing is still in progress, keep modal open to show warning
     if (!(fetchPrices && isSyncing)) {

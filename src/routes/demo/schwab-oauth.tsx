@@ -15,7 +15,12 @@ export const Route = createFileRoute('/demo/schwab-oauth')({
 });
 
 function DemoSchwabOAuth() {
-  const { client_id, redirect_uri, response_type, scope } = Route.useSearch();
+  const {
+    client_id: _client_id,
+    redirect_uri,
+    response_type: _response_type,
+    scope: _scope,
+  } = Route.useSearch();
   const [isAuthorizing, setIsAuthorizing] = useState(false);
 
   console.log('🎭 [DemoOAuth] Demo Schwab OAuth page loaded');

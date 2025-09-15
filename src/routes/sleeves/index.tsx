@@ -260,17 +260,19 @@ function SleevesComponent() {
                           </div>
                           <div className="flex justify-between">
                             <span
-                              className={`${parseFloat(position.dollarGainLoss?.replace(/[$,-]/g, '') || '0') >= 0 ? 'text-green-600' : 'text-red-600'}`}
+                              className={`${Number.parseFloat(position.dollarGainLoss?.replace(/[$,-]/g, '') || '0') >= 0 ? 'text-green-600' : 'text-red-600'}`}
                             >
-                              {parseFloat(position.dollarGainLoss?.replace(/[$,-]/g, '') || '0') >=
-                              0
+                              {Number.parseFloat(
+                                position.dollarGainLoss?.replace(/[$,-]/g, '') || '0',
+                              ) >= 0
                                 ? 'Gain:'
                                 : 'Loss:'}
                             </span>
                             <span
                               className={`font-medium ${
-                                parseFloat(position.dollarGainLoss?.replace(/[$,-]/g, '') || '0') >=
-                                0
+                                Number.parseFloat(
+                                  position.dollarGainLoss?.replace(/[$,-]/g, '') || '0',
+                                ) >= 0
                                   ? 'text-green-700'
                                   : 'text-red-700'
                               }`}

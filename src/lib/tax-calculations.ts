@@ -137,7 +137,7 @@ function calculateQualifiedDividendsAndCapitalGainsTax(
     if (remainingAmount <= 0) break;
 
     const bracketStart = bracket.minIncome;
-    const bracketEnd = bracket.maxIncome ?? Infinity;
+    const bracketEnd = bracket.maxIncome ?? Number.POSITIVE_INFINITY;
 
     // Check if total taxable income reaches this bracket
     if (totalTaxableIncome > bracketStart) {
@@ -193,7 +193,7 @@ function calculateQualifiedDividendsAndCapitalGainsTaxWithDetails(
     if (remainingAmount <= 0) break;
 
     const bracketStart = bracket.minIncome;
-    const bracketEnd = bracket.maxIncome ?? Infinity;
+    const bracketEnd = bracket.maxIncome ?? Number.POSITIVE_INFINITY;
 
     // Check if total taxable income reaches this bracket
     if (totalTaxableIncome > bracketStart) {
@@ -282,7 +282,7 @@ function calculateProgressiveTaxWithDetails(
     dividends: number;
     filingStatus: FilingStatus;
   },
-  standardDeduction: number = 0,
+  standardDeduction = 0,
 ): TaxCalculationDetail {
   // Apply standard deduction
   const taxableIncome = Math.max(0, income - standardDeduction);
@@ -342,8 +342,8 @@ function calculateProgressiveTaxWithDetails(
 
 export function calculateTaxes(
   input: TaxCalculationInput,
-  includeDetails: boolean = false,
-  inflationRate: number = 2.0,
+  includeDetails = false,
+  inflationRate = 2.0,
 ): TaxCalculationResult {
   const { ordinaryIncome, capitalGains, dividends, filingStatus, taxBrackets, year = 2025 } = input;
 
@@ -514,8 +514,8 @@ function calculateInflationAdjustedStandardDeduction(
 function getStandardDeduction(
   filingStatus: FilingStatus,
   standardDeductions: StandardDeductions,
-  year: number = 2025,
-  inflationRate: number = 2.0,
+  year = 2025,
+  inflationRate = 2.0,
   taxType: 'federal' | 'california' = 'federal',
 ): number {
   const baseAmount = standardDeductions[taxType][filingStatus];

@@ -342,7 +342,7 @@ npm run dev`}
                                     Redeploy your application to apply the new secrets:
                                   </p>
                                   <pre className="bg-blue-100 p-2 rounded text-xs">
-                                    {`npm run deploy`}
+                                    {'npm run deploy'}
                                   </pre>
                                   <p className="text-xs text-blue-700 mt-1">
                                     This will build and deploy your application with the new

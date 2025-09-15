@@ -11,7 +11,7 @@ import { OnboardingTracker } from '../components/OnboardingTracker';
 import { ExportButton } from '../components/ui/export-button';
 import { useSession } from '../lib/auth-client';
 import { exportPositionsToExcel, exportTransactionsToExcel } from '../lib/excel-export';
-import type { RebalancingGroup, Sleeve } from '../lib/schemas';
+import type { Sleeve } from '../lib/schemas';
 // Use server functions for live data so client refetches return real results
 import {
   getDashboardDataServerFn,
@@ -109,7 +109,7 @@ function DashboardComponent() {
     if (hasOAuthCallback) {
       console.log('🔄 [Dashboard] Detected Schwab OAuth callback, refreshing dashboard data...');
       console.log('🔄 [Dashboard] URL params:', {
-        code: urlParams.get('code')?.substring(0, 10) + '...',
+        code: `${urlParams.get('code')?.substring(0, 10)}...`,
         state: urlParams.get('state'),
       });
 
@@ -153,7 +153,7 @@ function DashboardComponent() {
 
   const hasAccounts =
     loaderData && 'accountsCount' in loaderData ? loaderData.accountsCount > 0 : false;
-  const hasRebalancingGroups =
+  const _hasRebalancingGroups =
     loaderData && 'rebalancingGroupsStatus' in loaderData
       ? loaderData.rebalancingGroupsStatus.hasGroups
       : false;
@@ -223,20 +223,20 @@ function DashboardComponent() {
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
             <div className="bg-white overflow-hidden shadow rounded-lg">
               <div className="p-5">
-                <div className="h-4 bg-gray-300 rounded mb-2"></div>
-                <div className="h-8 bg-gray-300 rounded"></div>
+                <div className="h-4 bg-gray-300 rounded mb-2" />
+                <div className="h-8 bg-gray-300 rounded" />
               </div>
             </div>
             <div className="bg-white overflow-hidden shadow rounded-lg">
               <div className="p-5">
-                <div className="h-4 bg-gray-300 rounded mb-2"></div>
-                <div className="h-8 bg-gray-300 rounded"></div>
+                <div className="h-4 bg-gray-300 rounded mb-2" />
+                <div className="h-8 bg-gray-300 rounded" />
               </div>
             </div>
             <div className="bg-white overflow-hidden shadow rounded-lg">
               <div className="p-5">
-                <div className="h-4 bg-gray-300 rounded mb-2"></div>
-                <div className="h-8 bg-gray-300 rounded"></div>
+                <div className="h-4 bg-gray-300 rounded mb-2" />
+                <div className="h-8 bg-gray-300 rounded" />
               </div>
             </div>
           </div>
@@ -363,9 +363,7 @@ function DashboardComponent() {
             </div>
 
             {activeTab === 'rebalancing-groups' && (
-              <>
-                <RebalancingGroupsTab groups={rebalancingGroups || []} />
-              </>
+              <RebalancingGroupsTab groups={rebalancingGroups || []} />
             )}
 
             {activeTab === 'positions' && (

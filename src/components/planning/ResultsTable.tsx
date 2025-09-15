@@ -231,8 +231,8 @@ export function ResultsTable({ results }: ResultsTableProps) {
               </th>
             </tr>
             <tr className="bg-gray-50">
-              <th className="border border-gray-300 px-1 py-1 bg-gray-50"></th>
-              <th className="border border-gray-300 px-1 py-1 bg-gray-50"></th>
+              <th className="border border-gray-300 px-1 py-1 bg-gray-50" />
+              <th className="border border-gray-300 px-1 py-1 bg-gray-50" />
 
               {/* Starting Balances Sub-headers */}
               <th className="border border-gray-300 px-2 py-1 text-xs bg-blue-50">Taxable</th>

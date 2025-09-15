@@ -46,7 +46,7 @@ export function QuantityCalculatorModal({
               type="number"
               className="mt-1"
               value={Number.isFinite(dollars) ? String(dollars) : ''}
-              onChange={(e) => setDollars(parseFloat(e.target.value) || 0)}
+              onChange={(e) => setDollars(Number.parseFloat(e.target.value) || 0)}
               min={0}
             />
           </div>

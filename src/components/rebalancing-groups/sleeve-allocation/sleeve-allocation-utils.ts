@@ -108,11 +108,10 @@ export const calculateTradeMetrics = {
 
       // For cash, we show the remaining amount as the "difference" (since target is 0)
       return postTradeValue;
-    } else {
-      const netValue = calculateTradeMetrics.getNetValue(trades, tickers);
-      postTradeValue = currentValue + netValue;
-      return postTradeValue - targetValue;
     }
+    const netValue = calculateTradeMetrics.getNetValue(trades, tickers);
+    postTradeValue = currentValue + netValue;
+    return postTradeValue - targetValue;
   },
 
   // Calculate percentage distance from target

@@ -3523,12 +3523,13 @@ export const importNasdaqSecuritiesServerFn = createServerFn({
 
               importedCount++;
               importedTickers.push(ticker);
-            } catch (insertError: any) {
+            } catch (insertError: unknown) {
               // Handle UNIQUE constraint violations gracefully
+              const error = insertError as { code?: string; message?: string };
               if (
-                insertError?.code === 'SQLITE_CONSTRAINT_PRIMARYKEY' ||
-                insertError?.code === 'SQLITE_CONSTRAINT_UNIQUE' ||
-                insertError?.message?.includes('UNIQUE constraint failed')
+                error?.code === 'SQLITE_CONSTRAINT_PRIMARYKEY' ||
+                error?.code === 'SQLITE_CONSTRAINT_UNIQUE' ||
+                error?.message?.includes('UNIQUE constraint failed')
               ) {
                 // Security already exists, count it as skipped
                 skippedCount++;
@@ -3765,7 +3766,7 @@ export const getYahooSyncCountsServerFn = createServerFn({ method: 'GET' }).hand
 
 // Check if securities exist in the database
 export const checkSecuritiesExistServerFn = createServerFn({ method: 'GET' }).handler(async () => {
-  const { user } = await requireAuth();
+  const { user: _user } = await requireAuth();
   const { getDatabase } = await import('./db-config');
   const { count, ne } = await import('drizzle-orm');
   const db = getDatabase();

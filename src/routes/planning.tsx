@@ -223,7 +223,7 @@ function PlanningPage() {
                       type="number"
                       value={inputs.primaryUserAge}
                       onChange={(e) =>
-                        handleInputChange('primaryUserAge', parseInt(e.target.value, 10))
+                        handleInputChange('primaryUserAge', Number.parseInt(e.target.value, 10))
                       }
                     />
                   </div>
@@ -237,7 +237,7 @@ function PlanningPage() {
                         onChange={(e) => {
                           const value = e.target.value;
                           if (value) {
-                            handleInputChange('spouseAge', parseInt(value, 10));
+                            handleInputChange('spouseAge', Number.parseInt(value, 10));
                           } else {
                             setInputs((prev) => ({ ...prev, spouseAge: undefined }));
                           }
@@ -261,7 +261,7 @@ function PlanningPage() {
                       type="number"
                       value={inputs.taxableBalance}
                       onChange={(e) =>
-                        handleInputChange('taxableBalance', parseFloat(e.target.value))
+                        handleInputChange('taxableBalance', Number.parseFloat(e.target.value))
                       }
                     />
                   </div>
@@ -272,7 +272,7 @@ function PlanningPage() {
                       type="number"
                       value={inputs.taxableCostBasis}
                       onChange={(e) =>
-                        handleInputChange('taxableCostBasis', parseFloat(e.target.value))
+                        handleInputChange('taxableCostBasis', Number.parseFloat(e.target.value))
                       }
                     />
                   </div>
@@ -282,7 +282,9 @@ function PlanningPage() {
                       id={rothBalanceId}
                       type="number"
                       value={inputs.rothBalance}
-                      onChange={(e) => handleInputChange('rothBalance', parseFloat(e.target.value))}
+                      onChange={(e) =>
+                        handleInputChange('rothBalance', Number.parseFloat(e.target.value))
+                      }
                     />
                   </div>
                   <div>
@@ -292,7 +294,7 @@ function PlanningPage() {
                       type="number"
                       value={inputs.deferredBalance}
                       onChange={(e) =>
-                        handleInputChange('deferredBalance', parseFloat(e.target.value))
+                        handleInputChange('deferredBalance', Number.parseFloat(e.target.value))
                       }
                     />
                   </div>
@@ -312,7 +314,7 @@ function PlanningPage() {
                       type="number"
                       value={inputs.simulationPeriod}
                       onChange={(e) =>
-                        handleInputChange('simulationPeriod', parseInt(e.target.value, 10))
+                        handleInputChange('simulationPeriod', Number.parseInt(e.target.value, 10))
                       }
                     />
                   </div>
@@ -323,7 +325,9 @@ function PlanningPage() {
                       type="number"
                       step="0.1"
                       value={inputs.returnRate}
-                      onChange={(e) => handleInputChange('returnRate', parseFloat(e.target.value))}
+                      onChange={(e) =>
+                        handleInputChange('returnRate', Number.parseFloat(e.target.value))
+                      }
                     />
                   </div>
                   <div>
@@ -334,7 +338,7 @@ function PlanningPage() {
                       step="0.1"
                       value={inputs.inflationRate}
                       onChange={(e) =>
-                        handleInputChange('inflationRate', parseFloat(e.target.value))
+                        handleInputChange('inflationRate', Number.parseFloat(e.target.value))
                       }
                     />
                   </div>
@@ -346,7 +350,7 @@ function PlanningPage() {
                       step="0.1"
                       value={inputs.dividendRate}
                       onChange={(e) =>
-                        handleInputChange('dividendRate', parseFloat(e.target.value))
+                        handleInputChange('dividendRate', Number.parseFloat(e.target.value))
                       }
                     />
                   </div>
@@ -428,7 +432,7 @@ function PlanningPage() {
                             type="number"
                             value={goal.amount}
                             onChange={(e) =>
-                              updateGoal(goal.id, 'amount', parseFloat(e.target.value))
+                              updateGoal(goal.id, 'amount', Number.parseFloat(e.target.value))
                             }
                             className="text-sm"
                           />
@@ -454,7 +458,11 @@ function PlanningPage() {
                             type="number"
                             value={goal.durationYears}
                             onChange={(e) =>
-                              updateGoal(goal.id, 'durationYears', parseInt(e.target.value, 10))
+                              updateGoal(
+                                goal.id,
+                                'durationYears',
+                                Number.parseInt(e.target.value, 10),
+                              )
                             }
                             className="text-sm"
                           />
