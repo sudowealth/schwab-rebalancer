@@ -49,6 +49,8 @@ export function getErrorMessage(error: unknown): string {
 }
 
 export function logError(error: unknown, context?: string, metadata?: Record<string, unknown>) {
+  if (error == null) return;
+
   const errorMessage = getErrorMessage(error);
   const logEntry = {
     message: errorMessage,

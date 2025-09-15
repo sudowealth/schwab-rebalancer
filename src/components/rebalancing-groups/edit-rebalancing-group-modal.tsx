@@ -243,9 +243,6 @@ export function EditRebalancingGroupModal({
                   <SelectItem key={model.id} value={model.id}>
                     <div className="flex flex-col items-start">
                       <span className="font-medium">{model.name}</span>
-                      {model.description && (
-                        <span className="text-xs text-gray-500">{model.description}</span>
-                      )}
                     </div>
                   </SelectItem>
                 ))}

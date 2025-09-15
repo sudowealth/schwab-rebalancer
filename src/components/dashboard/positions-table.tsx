@@ -12,7 +12,7 @@ import { AlertTriangle, ChevronDown, ChevronsUpDown, ChevronUp, Flame } from 'lu
 import { useMemo, useState } from 'react';
 import { SimpleTooltip } from '../../components/ui/simple-tooltip';
 import type { Position, Trade } from '../../lib/schemas';
-import { formatQuantity } from '../../lib/utils';
+import { formatCurrency, formatQuantity } from '../../lib/utils';
 
 interface PositionsTableProps {
   positions: Position[];
@@ -118,7 +118,7 @@ export function PositionsTable({
         header: 'Price',
         cell: ({ getValue }) => {
           const value = getValue() as number;
-          return `$${value.toFixed(2)}`;
+          return formatCurrency(value);
         },
         sortingFn: (rowA, rowB, columnId) => {
           const a = rowA.getValue(columnId) as number;
@@ -141,9 +141,7 @@ export function PositionsTable({
         header: 'Cost Basis',
         cell: ({ row }) => {
           const position = row.original;
-          return `$${(position.qty * position.costBasis).toLocaleString('en-US', {
-            minimumFractionDigits: 2,
-          })}`;
+          return formatCurrency(position.qty * position.costBasis);
         },
         sortingFn: (rowA, rowB, _columnId) => {
           const a = rowA.original.qty * rowA.original.costBasis;

@@ -1,9 +1,11 @@
+import { Link } from '@tanstack/react-router';
 import { Check, Edit, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { getManualCashServerFn, updateManualCashServerFn } from '../../lib/server-functions';
 import { formatCurrency } from '../../lib/utils';
+import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Input } from '../ui/input';
 import { EditAccountModal } from './edit-account-modal';
 
@@ -18,6 +20,10 @@ interface AccountSummaryProps {
   }>;
   selectedAccount: string | null;
   totalValue: number;
+  assignedModel: {
+    id: string;
+    name: string;
+  } | null;
   onAccountSelect: (accountId: string) => void;
   onManualCashUpdate?: () => void;
   onAccountUpdate?: () => void;
@@ -37,6 +43,7 @@ export function AccountSummary({
   members,
   selectedAccount,
   totalValue: _totalValue,
+  assignedModel,
   onAccountSelect,
   onManualCashUpdate,
   onAccountUpdate,
@@ -117,10 +124,34 @@ export function AccountSummary({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Account Summary</CardTitle>
-        <CardDescription>Click on an account to see detailed holdings</CardDescription>
+        <CardTitle>Summary</CardTitle>
       </CardHeader>
       <CardContent>
+        {/* Portfolio Stats */}
+        <div className="grid gap-4 md:grid-cols-2 mb-6">
+          <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+            <span className="text-sm font-medium text-gray-700">Total Portfolio Value</span>
+            <span className="text-lg font-bold text-gray-900">{formatCurrency(_totalValue)}</span>
+          </div>
+          <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+            <span className="text-sm font-medium text-gray-700">Assigned Model</span>
+            {assignedModel ? (
+              <Link
+                to="/models/$modelId"
+                params={{ modelId: assignedModel.id }}
+                className="text-blue-600 hover:text-blue-800 hover:underline"
+              >
+                <Badge variant="default" className="cursor-pointer">
+                  {assignedModel.name}
+                </Badge>
+              </Link>
+            ) : (
+              <Badge variant="outline">No Model</Badge>
+            )}
+          </div>
+        </div>
+
+        {/* Account Cards */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {members.map((member) => (
             <Card

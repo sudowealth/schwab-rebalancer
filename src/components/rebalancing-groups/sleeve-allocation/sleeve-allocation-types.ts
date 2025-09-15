@@ -82,13 +82,11 @@ export type AccountHolding = BaseAccountHolding;
 
 export interface SleeveAllocationTableProps {
   sleeveTableData: SleeveTableData[];
-  selectedAccountFilter: string;
   expandedSleeves: Set<string>;
   expandedAccounts: Set<string>;
   groupMembers: GroupMember[];
   sleeveAllocationData: SleeveAllocationData[];
   groupingMode: 'sleeve' | 'account';
-  onAccountFilterChange: (value: string) => void;
   onGroupingModeChange: (mode: 'sleeve' | 'account') => void;
   onSleeveExpansionToggle: (sleeveKey: string) => void;
   onAccountExpansionToggle: (accountKey: string) => void;

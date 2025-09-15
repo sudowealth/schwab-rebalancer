@@ -855,7 +855,14 @@ export const rebalancePortfolioServerFn = createServerFn({ method: 'POST' })
       cashAmount,
     } = data;
 
-    console.log(`🎯 SERVER DEBUG: Received method: ${method}, cashAmount: ${cashAmount}`);
+    const cashLogValue =
+      typeof cashAmount === 'number'
+        ? cashAmount
+        : method === 'investCash'
+        ? 0
+        : 'n/a';
+
+    console.log(`🎯 SERVER DEBUG: Received method: ${method}, cashAmount: ${cashLogValue}`);
 
     if (!portfolioId || !method) {
       throw new Error('Invalid request: portfolioId and method required');
@@ -1072,7 +1079,7 @@ export const rebalancePortfolioServerFn = createServerFn({ method: 'POST' })
           .orderBy(schema.sleeveMember.rank); // Order by rank for processing
 
         const sleeveTargetValue = (totalPortfolioValue * modelSleeve.targetWeight) / 10000;
-        const sleeveTargetPct = modelSleeve.targetWeight / 100; // Convert basis points to percentage
+        const sleeveTargetPct = modelSleeve.targetWeight / 10000; // Convert basis points to percentage
 
         const sleeveSecurities: RebalanceSecurityData[] = [];
         let sleeveCurrentValue = 0;

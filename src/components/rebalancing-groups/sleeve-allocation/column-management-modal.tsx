@@ -91,7 +91,13 @@ export const ColumnManagementModal: React.FC<ColumnManagementModalProps> = ({
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="icon" aria-label="Manage columns" title="Columns">
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-9 w-9 px-0"
+          aria-label="Manage columns"
+          title="Columns"
+        >
           <Settings className="h-4 w-4" />
         </Button>
       </DialogTrigger>

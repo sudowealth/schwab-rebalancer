@@ -16,6 +16,7 @@ import {
   previewOrderServerFn,
   submitOrderServerFn,
 } from '../../../lib/server-functions';
+import { formatCurrency } from '../../../lib/utils';
 import { Badge } from '../../ui/badge';
 import { Button } from '../../ui/button';
 import { Card } from '../../ui/card';
@@ -377,27 +378,19 @@ export function OrdersBlotter({
                 if (o.status === 'DRAFT') {
                   if (o.type === 'MARKET') {
                     const px = mergedPrices?.[o.symbol] ?? 0;
-                    displayPrice = px
-                      ? px.toLocaleString(undefined, {
-                          minimumFractionDigits: 2,
-                          maximumFractionDigits: 4,
-                        })
-                      : '-';
+                    displayPrice = px ? formatCurrency(px) : '-';
                   } else {
                     const px = o.limit ?? o.stop ?? 0;
-                    displayPrice = px.toLocaleString(undefined, {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 4,
-                    });
+                    displayPrice = px ? formatCurrency(px) : '-';
                   }
                 } else {
                   displayPrice =
                     o.type === 'MARKET'
                       ? 'MKT'
-                      : (o.limit ?? o.stop ?? 0).toLocaleString(undefined, {
-                          minimumFractionDigits: 2,
-                          maximumFractionDigits: 4,
-                        });
+                      : (() => {
+                          const px = o.limit ?? o.stop ?? 0;
+                          return px ? formatCurrency(px) : '-';
+                        })();
                 }
                 const acct = accounts?.[o.accountId as string];
                 return (
@@ -439,11 +432,7 @@ export function OrdersBlotter({
                     </td>
                     <td className="p-2">{o.type}</td>
                     <td className="p-2 text-right">{displayPrice}</td>
-                    <td className="p-2 text-right">
-                      {estValue
-                        ? `$${estValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                        : '-'}
-                    </td>
+                    <td className="p-2 text-right">{estValue ? formatCurrency(estValue) : '-'}</td>
                     <td className="p-2">
                       <div className="flex gap-2">
                         {(o.status === 'DRAFT' || o.status.startsWith('PREVIEW_')) && (
@@ -978,11 +967,8 @@ export function OrdersBlotter({
                   <div className="space-y-3">
                     {typeof orderValue === 'number' && (
                       <div>
-                        <span className="font-medium">Estimated Value:</span> $
-                        {orderValue.toLocaleString(undefined, {
-                          minimumFractionDigits: 2,
-                          maximumFractionDigits: 2,
-                        })}
+                        <span className="font-medium">Estimated Value:</span>{' '}
+                        {formatCurrency(orderValue)}
                       </div>
                     )}
 

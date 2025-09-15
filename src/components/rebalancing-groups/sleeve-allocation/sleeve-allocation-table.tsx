@@ -118,13 +118,11 @@ const calculateRealizedGains = (
 
 export function SleeveAllocationTable({
   sleeveTableData,
-  selectedAccountFilter,
   expandedSleeves,
   expandedAccounts,
   groupMembers,
   sleeveAllocationData,
   groupingMode,
-  onAccountFilterChange,
   onGroupingModeChange,
   onSleeveExpansionToggle,
   onAccountExpansionToggle,
@@ -873,10 +871,8 @@ export function SleeveAllocationTable({
     return (
       <Card>
         <SleeveAllocationHeader
-          selectedAccountFilter={selectedAccountFilter}
           groupingMode={groupingMode}
           groupMembers={groupMembers}
-          onAccountFilterChange={onAccountFilterChange}
           onGroupingModeChange={onGroupingModeChange}
           onRebalance={onRebalance}
           onExportToExcel={handleExportToExcel}
@@ -885,11 +881,7 @@ export function SleeveAllocationTable({
         />
         <CardContent>
           <div className="text-center py-8">
-            <p className="text-gray-500">
-              {selectedAccountFilter === 'all'
-                ? 'No sleeve data available'
-                : 'No sleeve data available for selected account'}
-            </p>
+            <p className="text-gray-500">No sleeve data available</p>
           </div>
         </CardContent>
       </Card>
@@ -967,196 +959,174 @@ export function SleeveAllocationTable({
 
           {/* Nested Rows */}
           {isSleeveExpanded &&
-            (selectedAccountFilter === 'all'
-              ? // Sleeve -> Accounts -> Securities (per account)
-                sleeveAllocationData
-                  .filter((account) =>
-                    (account.sleeves || []).some(
-                      (accSleeve: SleeveData) => accSleeve.sleeveId === sleeve.sleeveId,
-                    ),
-                  )
-                  .map((account) => {
-                    const accountKey = account.accountId || '';
-                    const compositeKey = `${sleeveKey}-${accountKey}`;
-                    const isAccountExpanded = expandedAccounts.has(compositeKey);
-                    const accountSleeve = (account.sleeves || []).find(
-                      (accSleeve: SleeveData) => accSleeve.sleeveId === sleeve.sleeveId,
-                    ) as SleeveData | undefined;
-                    if (!accountSleeve) return null;
+            // Sleeve -> Accounts -> Securities (per account)
+            sleeveAllocationData
+              .filter((account) =>
+                (account.sleeves || []).some(
+                  (accSleeve: SleeveData) => accSleeve.sleeveId === sleeve.sleeveId,
+                ),
+              )
+              .map((account) => {
+                const accountKey = account.accountId || '';
+                const compositeKey = `${sleeveKey}-${accountKey}`;
+                const isAccountExpanded = expandedAccounts.has(compositeKey);
+                const accountSleeve = (account.sleeves || []).find(
+                  (accSleeve: SleeveData) => accSleeve.sleeveId === sleeve.sleeveId,
+                ) as SleeveData | undefined;
+                if (!accountSleeve) return null;
 
-                    return (
-                      <Fragment key={compositeKey}>
-                        {/* Account row under sleeve */}
-                        <tr className="bg-blue-50">
+                return (
+                  <Fragment key={compositeKey}>
+                    {/* Account row under sleeve */}
+                    <tr className="bg-blue-50">
+                      {getVisibleColumnIds().map((columnId) => {
+                        if (columnId === 'name') {
+                          return (
+                            <td key={columnId} className="p-2">
+                              <div className="flex items-center gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => onAccountExpansionToggle(compositeKey)}
+                                  className="p-1 hover:bg-gray-200 rounded"
+                                >
+                                  {isAccountExpanded ? (
+                                    <ChevronDown className="h-4 w-4" />
+                                  ) : (
+                                    <ChevronRight className="h-4 w-4" />
+                                  )}
+                                </button>
+                                <span className="font-medium truncate" title={account.accountName}>
+                                  {account.accountName}
+                                </span>
+                              </div>
+                            </td>
+                          );
+                        }
+
+                        // Gain/loss aggregations for the sleeve within this account
+                        if (
+                          [
+                            'totalGainLoss',
+                            'longTermGainLoss',
+                            'shortTermGainLoss',
+                            'realizedGainLoss',
+                            'realizedLongTermGainLoss',
+                            'realizedShortTermGainLoss',
+                          ].includes(columnId)
+                        ) {
+                          let totalGainLoss = 0;
+                          let longTermGainLoss = 0;
+                          let shortTermGainLoss = 0;
+                          let realizedGainLoss = 0;
+                          let realizedLongTermGainLoss = 0;
+                          let realizedShortTermGainLoss = 0;
+
+                          (accountSleeve.securities || []).forEach((security: Security) => {
+                            totalGainLoss += security.totalGainLoss || 0;
+                            longTermGainLoss += security.longTermGainLoss || 0;
+                            shortTermGainLoss += security.shortTermGainLoss || 0;
+                            const realizedGains = calculateRealizedGains(
+                              security,
+                              trades,
+                              accountHoldings,
+                            );
+                            realizedGainLoss += realizedGains.realizedGainLoss;
+                            realizedLongTermGainLoss += realizedGains.realizedLongTermGainLoss;
+                            realizedShortTermGainLoss += realizedGains.realizedShortTermGainLoss;
+                          });
+
+                          const aggregatedData = {
+                            ...accountSleeve,
+                            currentPercent:
+                              ((accountSleeve.currentValue || 0) / (account.totalValue || 1)) * 100,
+                            targetPercent:
+                              ((accountSleeve.targetValue || 0) / (account.totalValue || 1)) * 100,
+                            difference:
+                              (accountSleeve.currentValue || 0) - (accountSleeve.targetValue || 0),
+                            totalGainLoss,
+                            longTermGainLoss,
+                            shortTermGainLoss,
+                            realizedGainLoss,
+                            realizedLongTermGainLoss,
+                            realizedShortTermGainLoss,
+                          } as Record<string, unknown>;
+
+                          return (
+                            <React.Fragment key={columnId}>
+                              {renderCell(columnId, aggregatedData, 'sleeve')}
+                            </React.Fragment>
+                          );
+                        }
+
+                        const sleeveDataForAccount = {
+                          ...accountSleeve,
+                          currentPercent:
+                            ((accountSleeve.currentValue || 0) / (account.totalValue || 1)) * 100,
+                          targetPercent:
+                            ((accountSleeve.targetValue || 0) / (account.totalValue || 1)) * 100,
+                          difference:
+                            (accountSleeve.currentValue || 0) - (accountSleeve.targetValue || 0),
+                        } as Record<string, unknown>;
+
+                        return (
+                          <React.Fragment key={columnId}>
+                            {renderCell(columnId, sleeveDataForAccount, 'sleeve')}
+                          </React.Fragment>
+                        );
+                      })}
+                    </tr>
+
+                    {/* Securities within this account/sleeve */}
+                    {isAccountExpanded &&
+                      (accountSleeve.securities || []).map((security: Security) => (
+                        <tr key={`${compositeKey}-${security.ticker}`} className="bg-gray-50">
                           {getVisibleColumnIds().map((columnId) => {
                             if (columnId === 'name') {
                               return (
-                                <td key={columnId} className="p-2">
-                                  <div className="flex items-center gap-2">
+                                <td key={columnId} className="p-2 pl-12">
+                                  <div className="flex items-center gap-1">
                                     <button
                                       type="button"
-                                      onClick={() => onAccountExpansionToggle(compositeKey)}
-                                      className="p-1 hover:bg-gray-200 rounded"
+                                      onClick={() => onTickerClick(security.ticker)}
+                                      className="text-blue-600 hover:underline"
                                     >
-                                      {isAccountExpanded ? (
-                                        <ChevronDown className="h-4 w-4" />
-                                      ) : (
-                                        <ChevronRight className="h-4 w-4" />
-                                      )}
+                                      {security.ticker === 'MCASH'
+                                        ? 'Manual Cash'
+                                        : security.ticker}
                                     </button>
-                                    <span
-                                      className="font-medium truncate"
-                                      title={account.accountName}
-                                    >
-                                      {account.accountName}
-                                    </span>
+                                    {security.hasWashSaleRisk && (
+                                      <WashSaleTooltip
+                                        washSaleInfo={
+                                          security.washSaleInfo as UIWashSaleInfo | null
+                                        }
+                                      />
+                                    )}
                                   </div>
                                 </td>
                               );
                             }
 
-                            // Gain/loss aggregations for the sleeve within this account
-                            if (
-                              [
-                                'totalGainLoss',
-                                'longTermGainLoss',
-                                'shortTermGainLoss',
-                                'realizedGainLoss',
-                                'realizedLongTermGainLoss',
-                                'realizedShortTermGainLoss',
-                              ].includes(columnId)
-                            ) {
-                              let totalGainLoss = 0;
-                              let longTermGainLoss = 0;
-                              let shortTermGainLoss = 0;
-                              let realizedGainLoss = 0;
-                              let realizedLongTermGainLoss = 0;
-                              let realizedShortTermGainLoss = 0;
-
-                              (accountSleeve.securities || []).forEach((security: Security) => {
-                                totalGainLoss += security.totalGainLoss || 0;
-                                longTermGainLoss += security.longTermGainLoss || 0;
-                                shortTermGainLoss += security.shortTermGainLoss || 0;
-                                const realizedGains = calculateRealizedGains(
-                                  security,
-                                  trades,
-                                  accountHoldings,
-                                );
-                                realizedGainLoss += realizedGains.realizedGainLoss;
-                                realizedLongTermGainLoss += realizedGains.realizedLongTermGainLoss;
-                                realizedShortTermGainLoss +=
-                                  realizedGains.realizedShortTermGainLoss;
-                              });
-
-                              const aggregatedData = {
-                                ...accountSleeve,
-                                currentPercent:
-                                  ((accountSleeve.currentValue || 0) / (account.totalValue || 1)) *
-                                  100,
-                                targetPercent:
-                                  ((accountSleeve.targetValue || 0) / (account.totalValue || 1)) *
-                                  100,
-                                difference:
-                                  (accountSleeve.currentValue || 0) -
-                                  (accountSleeve.targetValue || 0),
-                                totalGainLoss,
-                                longTermGainLoss,
-                                shortTermGainLoss,
-                                realizedGainLoss,
-                                realizedLongTermGainLoss,
-                                realizedShortTermGainLoss,
-                              } as Record<string, unknown>;
-
-                              return (
-                                <React.Fragment key={columnId}>
-                                  {renderCell(columnId, aggregatedData, 'sleeve')}
-                                </React.Fragment>
-                              );
-                            }
-
-                            const sleeveDataForAccount = {
-                              ...accountSleeve,
+                            const securityData = {
+                              ...security,
                               currentPercent:
-                                ((accountSleeve.currentValue || 0) / (account.totalValue || 1)) *
-                                100,
+                                ((security.currentValue || 0) / (account.totalValue || 1)) * 100,
                               targetPercent:
-                                ((accountSleeve.targetValue || 0) / (account.totalValue || 1)) *
-                                100,
+                                ((security.targetValue || 0) / (account.totalValue || 1)) * 100,
                               difference:
-                                (accountSleeve.currentValue || 0) -
-                                (accountSleeve.targetValue || 0),
+                                (security.currentValue || 0) - (security.targetValue || 0),
                             } as Record<string, unknown>;
 
                             return (
                               <React.Fragment key={columnId}>
-                                {renderCell(columnId, sleeveDataForAccount, 'sleeve')}
+                                {renderCell(columnId, securityData, 'security', 'text-sm')}
                               </React.Fragment>
                             );
                           })}
                         </tr>
-
-                        {/* Securities within this account/sleeve */}
-                        {isAccountExpanded &&
-                          (accountSleeve.securities || []).map((security: Security) => (
-                            <tr key={`${compositeKey}-${security.ticker}`} className="bg-gray-50">
-                              {getVisibleColumnIds().map((columnId) => {
-                                if (columnId === 'name') {
-                                  return (
-                                    <td key={columnId} className="p-2 pl-12">
-                                      <div className="flex items-center gap-1">
-                                        <button
-                                          type="button"
-                                          onClick={() => onTickerClick(security.ticker)}
-                                          className="text-blue-600 hover:underline"
-                                        >
-                                          {security.ticker === 'MCASH'
-                                            ? 'Manual Cash'
-                                            : security.ticker}
-                                        </button>
-                                        {security.hasWashSaleRisk && (
-                                          <WashSaleTooltip
-                                            washSaleInfo={
-                                              security.washSaleInfo as UIWashSaleInfo | null
-                                            }
-                                          />
-                                        )}
-                                      </div>
-                                    </td>
-                                  );
-                                }
-
-                                const securityData = {
-                                  ...security,
-                                  currentPercent:
-                                    ((security.currentValue || 0) / (account.totalValue || 1)) *
-                                    100,
-                                  targetPercent:
-                                    ((security.targetValue || 0) / (account.totalValue || 1)) * 100,
-                                  difference:
-                                    (security.currentValue || 0) - (security.targetValue || 0),
-                                } as Record<string, unknown>;
-
-                                return (
-                                  <React.Fragment key={columnId}>
-                                    {renderCell(columnId, securityData, 'security', 'text-sm')}
-                                  </React.Fragment>
-                                );
-                              })}
-                            </tr>
-                          ))}
-                      </Fragment>
-                    );
-                  })
-              : // Single-account filter: keep showing securities directly
-                (sleeve.securities || []).map((security: Security) => (
-                  <tr key={security.ticker} className="bg-gray-50">
-                    {getVisibleColumnIds().map((columnId) => (
-                      <React.Fragment key={columnId}>
-                        {renderCell(columnId, security, 'security', 'text-sm')}
-                      </React.Fragment>
-                    ))}
-                  </tr>
-                )))}
+                      ))}
+                  </Fragment>
+                );
+              })}
         </Fragment>
       );
     });
@@ -1367,10 +1337,8 @@ export function SleeveAllocationTable({
   return (
     <Card>
       <SleeveAllocationHeader
-        selectedAccountFilter={selectedAccountFilter}
         groupingMode={groupingMode}
         groupMembers={groupMembers}
-        onAccountFilterChange={onAccountFilterChange}
         onGroupingModeChange={onGroupingModeChange}
         onRebalance={onRebalance}
         onExportToExcel={handleExportToExcel}

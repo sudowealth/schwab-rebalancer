@@ -1,6 +1,6 @@
 import { BarChart3 } from 'lucide-react';
 import type { Position, SP500Stock, Trade, Transaction } from '../../lib/schemas';
-import { formatQuantity } from '../../lib/utils';
+import { formatCurrency, formatQuantity } from '../../lib/utils';
 
 interface SecurityModalProps {
   isOpen: boolean;
@@ -81,7 +81,7 @@ export function SecurityModal({
                   </div>
                   <div className="flex justify-between">
                     <span className="text-blue-600">Price:</span>
-                    <span className="text-blue-900">${sp500Stock.price.toFixed(2)}</span>
+                    <span className="text-blue-900">{formatCurrency(sp500Stock.price)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-blue-600">Market Cap:</span>
@@ -124,11 +124,11 @@ export function SecurityModal({
                   </div>
                   <div className="flex justify-between">
                     <span className="text-green-600">Current Price:</span>
-                    <span className="text-green-900">${position.currentPrice.toFixed(2)}</span>
+                    <span className="text-green-900">{formatCurrency(position.currentPrice)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-green-600">Cost Basis:</span>
-                    <span className="text-green-900">${position.costBasis.toFixed(2)}</span>
+                    <span className="text-green-900">{formatCurrency(position.costBasis)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-green-600">Market Value:</span>
@@ -192,10 +192,7 @@ export function SecurityModal({
                       Est. Value:
                     </span>
                     <span className={proposedTrade.canExecute ? 'text-yellow-900' : 'text-red-900'}>
-                      $
-                      {proposedTrade.estimatedValue.toLocaleString('en-US', {
-                        minimumFractionDigits: 2,
-                      })}
+                      {formatCurrency(proposedTrade.estimatedValue)}
                     </span>
                   </div>
                   <div className="flex justify-between">
@@ -258,14 +255,11 @@ export function SecurityModal({
                       </div>
                       <div className="text-right">
                         <div className="font-medium">
-                          {formatQuantity(transaction.qty)} @ ${transaction.price.toFixed(2)}
+                          {formatQuantity(transaction.qty)} @ {formatCurrency(transaction.price)}
                         </div>
                         <div className="text-xs">
                           <span className="text-gray-900">
-                            $
-                            {(transaction.qty * transaction.price).toLocaleString('en-US', {
-                              minimumFractionDigits: 2,
-                            })}
+                            {formatCurrency(transaction.qty * transaction.price)}
                           </span>
                           {transaction.type === 'SELL' &&
                             transaction.realizedGainLoss !== undefined &&
@@ -277,10 +271,8 @@ export function SecurityModal({
                                     : 'text-red-600'
                                 }`}
                               >
-                                ({transaction.realizedGainLoss >= 0 ? '' : '-'}$
-                                {Math.abs(transaction.realizedGainLoss).toLocaleString('en-US', {
-                                  minimumFractionDigits: 2,
-                                })}{' '}
+                                ({transaction.realizedGainLoss >= 0 ? '' : '-'}
+                                {formatCurrency(Math.abs(transaction.realizedGainLoss))}{' '}
                                 {transaction.isLongTerm === true ? 'LT' : 'ST'})
                               </span>
                             )}

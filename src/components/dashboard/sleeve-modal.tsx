@@ -1,4 +1,5 @@
 import { BarChart3 } from 'lucide-react';
+import { formatCurrency } from '../../lib/utils';
 
 interface SleeveMember {
   id: string;
@@ -85,20 +86,19 @@ export function SleeveModal({ isOpen, onClose, sleeve }: SleeveModalProps) {
                   <div className="flex justify-between">
                     <span className="text-blue-600">Price:</span>
                     <span className="text-blue-900">
-                      ${sleeve.position.currentPrice.toFixed(2)}
+                      {formatCurrency(sleeve.position.currentPrice)}
                     </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-blue-600">Cost Basis:</span>
-                    <span className="text-blue-900">${sleeve.position.costBasis.toFixed(2)}</span>
+                    <span className="text-blue-900">
+                      {formatCurrency(sleeve.position.costBasis)}
+                    </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-blue-600">Market Value:</span>
                     <span className="text-blue-900 font-medium">
-                      $
-                      {sleeve.position.marketValue.toLocaleString('en-US', {
-                        minimumFractionDigits: 2,
-                      })}
+                      {formatCurrency(sleeve.position.marketValue)}
                     </span>
                   </div>
                   <div className="flex justify-between">
@@ -112,7 +112,7 @@ export function SleeveModal({ isOpen, onClose, sleeve }: SleeveModalProps) {
                         sleeve.position.dollarGainLoss >= 0 ? 'text-green-700' : 'text-red-700'
                       }`}
                     >
-                      ${Math.abs(sleeve.position.dollarGainLoss).toLocaleString()} (
+                      {formatCurrency(Math.abs(sleeve.position.dollarGainLoss))} (
                       {Math.abs(sleeve.position.percentGainLoss).toFixed(2)}%)
                     </span>
                   </div>

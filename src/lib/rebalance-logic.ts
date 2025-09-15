@@ -456,6 +456,18 @@ export function calculateSleeveBasedAllocationRebalance(
   const restrictionChecker = createRestrictionChecker(washSaleRestrictions, transactions);
 
   console.log('🎯 Sleeve-Based Allocation Rebalance Debug:');
+  console.log('📊 Total sleeves:', sleeves.length);
+  console.log(
+    '📊 Sleeve details:',
+    sleeves.map((s) => ({
+      id: s.sleeveId,
+      targetPct: s.targetPct,
+      targetValue: s.targetValue.toFixed(2),
+      currentValue: s.currentValue.toFixed(2),
+      securitiesCount: s.securities.length,
+    })),
+  );
+
   const restrictedTickers = restrictionChecker.getRestrictedTickers();
   if (restrictedTickers.size > 0) {
     console.log('🚫 Wash sale restricted tickers:', Array.from(restrictedTickers));
@@ -703,6 +715,25 @@ export function calculateSleeveBasedAllocationRebalance(
     }
   }
 
+  // Check if any sleeves were processed in Phase 1
+  const processedSleeves = sleeves.filter((s) => s.sleeveId !== 'cash' && s.targetPct > 0);
+  console.log('🔍 Phase 1 completion - processed sleeves:', processedSleeves.length);
+  console.log(
+    '🔍 All non-cash sleeves:',
+    sleeves.filter((s) => s.sleeveId !== 'cash').map((s) => `${s.sleeveId}: ${s.targetPct}%`),
+  );
+
+  if (processedSleeves.length === 0) {
+    const allSleeveTargets = sleeves
+      .filter((s) => s.sleeveId !== 'cash')
+      .map((s) => `${s.sleeveId}: ${(s.targetPct * 100).toFixed(2)}%`) // Show as percentage
+      .join(', ');
+    throw new ValidationError(
+      `No sleeves can be processed for rebalancing. All sleeves have zero or negative target percentages. Sleeve targets: ${allSleeveTargets}`,
+      'sleeves',
+    );
+  }
+
   // Phase 2: Apply existing buy logic for least absolute deviation across ALL sleeves
   console.log('🔺 Phase 2: Applying optimal buy logic for least absolute deviation');
 
@@ -823,14 +854,19 @@ export function calculateSleeveBasedAllocationRebalance(
       estValue: bestPurchase.price,
     });
 
-    // Update tracking
-    totalAvailableCash -= bestPurchase.price;
-    const currentSleeveValue = sleeveCurrentValues.get(bestPurchase.sleeveId) || 0;
-    sleeveCurrentValues.set(bestPurchase.sleeveId, currentSleeveValue + bestPurchase.price);
-
     // Update account cash tracking
     const accountCash = accountCashMap.get(bestPurchase.accountId) || 0;
     accountCashMap.set(bestPurchase.accountId, accountCash - bestPurchase.price);
+
+    // Update tracking
+    const currentSleeveValue = sleeveCurrentValues.get(bestPurchase.sleeveId) || 0;
+    sleeveCurrentValues.set(bestPurchase.sleeveId, currentSleeveValue + bestPurchase.price);
+
+    // Recalculate total available cash after this purchase
+    totalAvailableCash = 0;
+    for (const [, cashAmount] of accountCashMap) {
+      totalAvailableCash += Math.max(0, cashAmount);
+    }
   }
 
   console.log(`🔺 [PHASE 2] Complete. Remaining cash: $${totalAvailableCash.toFixed(2)}`);

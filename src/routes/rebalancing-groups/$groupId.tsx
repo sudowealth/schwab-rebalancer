@@ -8,7 +8,6 @@ import { AllocationChart } from '../../components/rebalancing-groups/allocation-
 import { OrdersBlotter } from '../../components/rebalancing-groups/blotter/orders-blotter';
 import { DeleteRebalancingGroupModal } from '../../components/rebalancing-groups/delete-rebalancing-group-modal';
 import { EditRebalancingGroupModal } from '../../components/rebalancing-groups/edit-rebalancing-group-modal';
-import { GroupHeaderStats } from '../../components/rebalancing-groups/group-header-stats';
 import { RebalanceModal } from '../../components/rebalancing-groups/rebalance-modal';
 import { RebalanceSummaryCards } from '../../components/rebalancing-groups/rebalance-summary-cards';
 import { SleeveAllocationTable } from '../../components/rebalancing-groups/sleeve-allocation/sleeve-allocation-table';
@@ -156,9 +155,6 @@ function RebalancingGroupDetail() {
   const [showSecurityModal, setShowSecurityModal] = useState(false);
   const [selectedSleeve, setSelectedSleeve] = useState<string | null>(null);
   const [showSleeveModal, setShowSleeveModal] = useState(false);
-  const [selectedAccountFilter, setSelectedAccountFilter] = useState<string>(
-    group.members.length === 1 ? group.members[0].accountId : 'all',
-  );
   const [groupingMode, setGroupingMode] = useState<'sleeve' | 'account'>('sleeve');
   const [rebalanceModalOpen, setRebalanceModalOpen] = useState(false);
   const [rebalanceLoading, setRebalanceLoading] = useState(false);
@@ -193,24 +189,16 @@ function RebalancingGroupDetail() {
     accountHoldings,
     sleeveMembers,
     transactions,
-    selectedAccountFilter,
+    'all',
     totalValue,
   );
 
   // Calculate available cash from sleeve allocation data
   const availableCash = useMemo(() => {
-    if (selectedAccountFilter === 'all') {
-      // Sum cash across all accounts
-      const sleeveData = sleeveTableData.find((sleeve) => sleeve.sleeveId === 'cash');
-      return sleeveData?.currentValue || 0;
-    }
-    // Get cash for specific account
-    const accountData = sleeveAllocationData.find(
-      (account) => account.accountId === selectedAccountFilter,
-    );
-    const cashSleeve = accountData?.sleeves?.find((sleeve) => sleeve.sleeveId === 'cash');
-    return cashSleeve?.currentValue || 0;
-  }, [sleeveTableData, sleeveAllocationData, selectedAccountFilter]);
+    // Sum cash across all accounts
+    const sleeveData = sleeveTableData.find((sleeve) => sleeve.sleeveId === 'cash');
+    return sleeveData?.currentValue || 0;
+  }, [sleeveTableData]);
 
   // Generate allocation data using utility function
   const allocationData = useMemo(() => {
@@ -370,9 +358,8 @@ function RebalancingGroupDetail() {
           );
           if (security) {
             currentPrice = security.currentPrice || 0;
-            // Use the first account if multiple accounts selected
-            accountId =
-              selectedAccountFilter === 'all' ? group.members[0].accountId : selectedAccountFilter;
+            // Use the first account
+            accountId = group.members[0].accountId;
             break;
           }
         }
@@ -577,7 +564,7 @@ function RebalancingGroupDetail() {
       {/* Breadcrumb and Navigation */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <span className="font-semibold">{group.name}</span>
+          <h1 className="text-2xl font-bold text-gray-900">{group.name}</h1>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={() => setEditModalOpen(true)}>
@@ -596,18 +583,6 @@ function RebalancingGroupDetail() {
         </div>
       </div>
 
-      {/* Header Section */}
-      <GroupHeaderStats
-        totalValue={totalValue}
-        membersCount={group.members.length}
-        assignedModel={group.assignedModel ? { name: group.assignedModel.name || '' } : null}
-        updatedAt={
-          typeof group.updatedAt === 'string'
-            ? group.updatedAt
-            : group.updatedAt?.toISOString() || null
-        }
-      />
-
       {/* Account Summary Section */}
       <AccountSummary
         members={group.members.map((member) => ({
@@ -620,6 +595,11 @@ function RebalancingGroupDetail() {
         }))}
         selectedAccount={selectedAccount}
         totalValue={totalValue}
+        assignedModel={
+          group.assignedModel
+            ? { id: group.assignedModel.id, name: group.assignedModel.name || '' }
+            : null
+        }
         onAccountSelect={setSelectedAccount}
         onManualCashUpdate={() => router.invalidate()}
         onAccountUpdate={() => router.invalidate()}
@@ -666,7 +646,6 @@ function RebalancingGroupDetail() {
                   ? sleeve.targetPercent
                   : 0,
             }))}
-            selectedAccountFilter={selectedAccountFilter}
             expandedSleeves={expandedSleeves}
             expandedAccounts={expandedAccounts}
             groupMembers={group.members.map((member) => ({
@@ -690,7 +669,6 @@ function RebalancingGroupDetail() {
               })),
             }))}
             groupingMode={groupingMode}
-            onAccountFilterChange={setSelectedAccountFilter}
             onGroupingModeChange={setGroupingMode}
             onSleeveExpansionToggle={toggleSleeveExpansion}
             onAccountExpansionToggle={toggleAccountExpansion}
