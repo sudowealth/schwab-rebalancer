@@ -1,3 +1,4 @@
+<!-- markdownlint-disable MD029 -->
 # Local HTTPS and Stable Callback (Schwab OAuth)
 
 This project uses a single, local HTTPS origin for OAuth during development: `https://127.0.0.1` (no port shown). This avoids rotating tunnels and satisfies providers that disallow explicit ports in redirect URIs.
@@ -16,18 +17,14 @@ Schwab accepts `https://127.0.0.1/...` without an explicit port. We terminate TL
 brew install mkcert caddy
 ```
 
-1. Generate and trust a local cert (in the project root)
+2. Generate and trust a local cert (in the project root)
 
 ```bash
 mkcert -install
 mkcert 127.0.0.1    # creates 127.0.0.1.pem and 127.0.0.1-key.pem in the repo
 ```
 
-1. Set HTTPS base URL in environment
-
-Set `AUTH_BASE_URL=https://127.0.0.1` in your `.env.local` file.
-
-1. Start Caddy (pick one)
+3. Start Caddy (pick one)
 
 - Recommended: run in background (simplest)
 
@@ -52,7 +49,7 @@ Set `AUTH_BASE_URL=https://127.0.0.1` in your `.env.local` file.
   # manage: sudo brew services restart|stop caddy
   ```
 
-1. Configure Schwab Developer Portal
+4. Configure Schwab Developer Portal
 
 - Callback URL: `https://127.0.0.1/schwab/callback`
 
@@ -67,27 +64,27 @@ If you moved the repo or cert files and Caddy errors on restart, re-run the thre
 
 Optional: if Caddy isn’t running, start the service again with `sudo brew services start caddy`.
 
-Troubleshooting
+### Troubleshooting
 
-- Browser trust: `mkcert -install` should import a local CA and remove warnings.
-- Cookies/session: confirm `.env.local` has `AUTH_BASE_URL=https://127.0.0.1`.
-- Always browse the same origin you used for the callback (`https://127.0.0.1`).
+- **Browser trust**: `mkcert -install` should import a local CA and remove warnings.
+- **Cookies/session**: the app automatically detects the correct base URL. No manual configuration needed.
+- **Always browse the same origin** you used for the callback (`https://127.0.0.1`).
 
-Quick verification
+### Quick verification
 
-- Check that something is listening on 443:
+- **Check that something is listening on 443:**
 
   ```bash
   sudo lsof -nP -iTCP:443 -sTCP:LISTEN
   ```
 
-- Probe the proxy/cert quickly:
+- **Probe the proxy/cert quickly:**
 
   ```bash
   curl -vkI https://127.0.0.1
   ```
 
-- If Caddy fails to start or proxy:
+- **If Caddy fails to start or proxy:**
   - When started with the background one‑liner, check `/tmp/caddy.log`.
   - When using Homebrew service: `brew services log caddy`.
 

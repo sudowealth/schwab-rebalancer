@@ -18,8 +18,8 @@
 ### Tech Stack
 
 - **Frontend**: TanStack Start (React) + TailwindCSS + shadcn/ui
-- **Backend**: TypeScript on Cloudflare Workers
-- **Database**: Cloudflare D1 (SQLite) with Drizzle ORM
+- **Backend**: TypeScript on Node.js
+- **Database**: SQLite with Drizzle ORM
 - **Auth**: Better Auth with email/password
 
 ### Core Concepts

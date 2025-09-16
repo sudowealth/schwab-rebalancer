@@ -1,4 +1,4 @@
-import { Link } from '@tanstack/react-router';
+import { Link, useNavigate } from '@tanstack/react-router';
 import { ChevronRight, Menu, Shield } from 'lucide-react';
 import { useState } from 'react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '~/components/ui/sheet';
@@ -11,6 +11,7 @@ export function MobileNavigation() {
   const { isAdmin } = useAuth();
   const [open, setOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const navigate = useNavigate();
 
   const navItems = [
     { to: '/', label: 'Dashboard', exact: true },
@@ -21,6 +22,20 @@ export function MobileNavigation() {
 
   const handleLinkClick = () => {
     setOpen(false);
+  };
+
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      handleLinkClick(); // Close the mobile menu
+      // Navigate to login page after successful sign out
+      navigate({ to: '/login', search: { reset: '' } });
+    } catch (error) {
+      console.error('Error signing out:', error);
+      handleLinkClick(); // Close the mobile menu
+      // Still navigate to login even if there's an error
+      navigate({ to: '/login', search: { reset: '' } });
+    }
   };
 
   return (
@@ -113,10 +128,7 @@ export function MobileNavigation() {
                 </div>
                 <button
                   type="button"
-                  onClick={() => {
-                    signOut();
-                    handleLinkClick();
-                  }}
+                  onClick={handleSignOut}
                   className="w-full text-left px-3 py-2 text-sm text-red-600 hover:text-red-700 hover:bg-red-50 rounded-md transition-colors"
                 >
                   Sign out

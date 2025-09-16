@@ -11,19 +11,10 @@ export default defineConfig({
     allowedHosts: ['localhost', '127.0.0.1'],
   },
   ssr: {
-    external: ['better-sqlite3'],
     noExternal: ['better-auth'],
   },
-  optimizeDeps: {
-    exclude: [
-      'better-sqlite3',
-    ],
-  },
-  build: {
-    rollupOptions: {
-      external: ['better-sqlite3'],
-    },
-  },
+  optimizeDeps: {},
+  build: {},
   plugins: [
     tailwindcss(),
     tsConfigPaths({

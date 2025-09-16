@@ -1,7 +1,6 @@
-import { useQuery } from '@tanstack/react-query';
 import { createFileRoute } from '@tanstack/react-router';
 import { ArrowRight, Ban, Crown, ShieldCheck } from 'lucide-react';
-import { useEffect, useId, useState } from 'react';
+import { useId, useState } from 'react';
 import { useSession } from '../lib/auth-client';
 import {
   checkIsFirstUserServerFn,
@@ -10,6 +9,17 @@ import {
 } from '../lib/server-functions';
 
 export const Route = createFileRoute('/register')({
+  loader: async () => {
+    const [firstUserCheck, userCreationCheck] = await Promise.all([
+      checkIsFirstUserServerFn(),
+      checkUserCreationAllowedServerFn(),
+    ]);
+
+    return {
+      firstUserCheck,
+      userCreationCheck,
+    };
+  },
   component: RegisterPage,
 });
 
@@ -19,6 +29,10 @@ function RegisterPage() {
   const emailId = `${uid}-email`;
   const passwordId = `${uid}-password`;
   const { data: session } = useSession();
+
+  // Get data from server loader
+  const { firstUserCheck, userCreationCheck } = Route.useLoaderData();
+
   const [email, setEmail] = useState(() => (import.meta.env.DEV ? 'd@d.com' : ''));
   const [password, setPassword] = useState(() => (import.meta.env.DEV ? 'Test1234' : ''));
   const [name, setName] = useState(() => (import.meta.env.DEV ? 'Dan' : ''));
@@ -30,28 +44,9 @@ function RegisterPage() {
     password: '',
     name: '',
   });
-  const [isClient, setIsClient] = useState(false);
-
-  // Check if this would be the first user
-  const { data: firstUserCheck } = useQuery({
-    queryKey: ['isFirstUser'],
-    queryFn: () => checkIsFirstUserServerFn(),
-    enabled: isClient,
-  });
-
-  // Check if user creation is allowed
-  const { data: userCreationCheck } = useQuery({
-    queryKey: ['userCreationAllowed'],
-    queryFn: () => checkUserCreationAllowedServerFn(),
-    enabled: isClient,
-  });
-
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
 
   // Redirect if already logged in
-  if (session?.user && !isClient) {
+  if (session?.user) {
     window.location.href = '/';
     return null;
   }
@@ -216,7 +211,7 @@ function RegisterPage() {
             </div>
           )}
         </div>
-        {isClient && userCreationCheck?.allowed ? (
+        {userCreationCheck?.allowed ? (
           <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
             {error && (
               <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
@@ -243,7 +238,7 @@ function RegisterPage() {
                 name="name"
                 type="text"
                 required
-                className={`relative block w-full px-3 py-2 border placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:z-10 sm:text-sm ${
+                className={`relative block w-full px-3 py-2 bg-white border placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:z-10 sm:text-sm ${
                   validationErrors.name
                     ? 'border-red-300 focus:ring-red-500 focus:border-red-500'
                     : 'border-gray-300 focus:ring-indigo-500 focus:border-indigo-500'
@@ -266,7 +261,7 @@ function RegisterPage() {
                 type="email"
                 required
                 autoComplete="email"
-                className={`relative block w-full px-3 py-2 border placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:z-10 sm:text-sm ${
+                className={`relative block w-full px-3 py-2 bg-white border placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:z-10 sm:text-sm ${
                   validationErrors.email
                     ? 'border-red-300 focus:ring-red-500 focus:border-red-500'
                     : 'border-gray-300 focus:ring-indigo-500 focus:border-indigo-500'
@@ -289,7 +284,7 @@ function RegisterPage() {
                 type="password"
                 required
                 autoComplete="new-password"
-                className={`relative block w-full px-3 py-2 border placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:z-10 sm:text-sm ${
+                className={`relative block w-full px-3 py-2 bg-white border placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:z-10 sm:text-sm ${
                   validationErrors.password
                     ? 'border-red-300 focus:ring-red-500 focus:border-red-500'
                     : 'border-gray-300 focus:ring-indigo-500 focus:border-indigo-500'
@@ -331,13 +326,9 @@ function RegisterPage() {
               </a>
             </div>
           </form>
-        ) : isClient && !userCreationCheck?.allowed ? (
+        ) : (
           <div className="mt-8 text-center">
             <p className="text-gray-600">Registration is not available at this time.</p>
-          </div>
-        ) : (
-          <div className="mt-8 flex justify-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900" />
           </div>
         )}
       </div>

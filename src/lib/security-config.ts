@@ -36,7 +36,6 @@ export function getSecurityConfig(): SecurityConfig {
       'http://localhost:3001',
       'http://127.0.0.1:3000',
       'https://127.0.0.1', // Local HTTPS via Caddy
-      env.AUTH_BASE_URL, // Include auth base URL if set
     ].filter(Boolean) as string[];
   };
 

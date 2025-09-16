@@ -2,9 +2,9 @@
 
 ## Database
 
-- **D1** (Cloudflare SQLite) with local better-sqlite3 driver
+- **Turso** (distributed SQLite) with libsql driver
 - **Drizzle ORM** with type-safe operations
-- **Connection pooling** and performance optimizations
+- **Serverless-compatible** with connection pooling and performance optimizations
 
 ## Schema
 
@@ -22,7 +22,7 @@ Core tables: `user`, `session`, `auth_account`, `verification` with standard Bet
 
 ### Flow
 
-1. **Login/Register** → Better Auth API → D1 database → Session cookie
+1. **Login/Register** → Better Auth API → Turso database → Session cookie
 2. **Route Protection** → `requireAuth()` in server functions
 3. **Client State** → `useSession()` hook for UI updates
 
@@ -32,8 +32,8 @@ Core tables: `user`, `session`, `auth_account`, `verification` with standard Bet
 - Email verification in production, role-based access
 - Input sanitization, prepared statements
 
-## Production (Cloudflare)
+## Production
 
-- **Pages**: SSR at edge locations, automatic scaling
-- **D1**: Global SQLite replicas, eventual consistency
-- **Workers**: Serverless API routes with sub-100ms latency
+- **Hosting**: Netlify with server-side rendering and global CDN
+- **Database**: Turso (distributed SQLite) with edge replication
+- **API**: Serverless functions with automatic scaling

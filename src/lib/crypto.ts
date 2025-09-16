@@ -9,11 +9,11 @@ const scryptAsync = promisify(scrypt);
  * Returns a base64 string containing: salt(16) + iv(16) + authTag(16) + encrypted
  */
 export async function encrypt(plaintext: string): Promise<string> {
-  const password = process.env.ENCRYPTION_KEY;
+  const password = process.env.DB_ENCRYPTION_KEY;
 
   // Fallback to base64 for development if no key is set
   if (!password) {
-    console.warn('⚠️ ENCRYPTION_KEY not set - using weak encoding for development only');
+    console.warn('⚠️ DB_ENCRYPTION_KEY not set - using weak encoding for development only');
     return Buffer.from(plaintext, 'utf-8').toString('base64');
   }
 
@@ -45,11 +45,11 @@ export async function encrypt(plaintext: string): Promise<string> {
  * Expects a base64 string containing: salt(16) + iv(16) + authTag(16) + encrypted
  */
 export async function decrypt(encryptedData: string): Promise<string> {
-  const password = process.env.ENCRYPTION_KEY;
+  const password = process.env.DB_ENCRYPTION_KEY;
 
   // Fallback to base64 for development if no key is set
   if (!password) {
-    console.warn('⚠️ ENCRYPTION_KEY not set - using weak decoding for development only');
+    console.warn('⚠️ DB_ENCRYPTION_KEY not set - using weak decoding for development only');
     return Buffer.from(encryptedData, 'base64').toString('utf-8');
   }
 
@@ -102,21 +102,19 @@ export async function decrypt(encryptedData: string): Promise<string> {
 }
 
 /**
- * Generate a cryptographically secure encryption key
- * Run this once to generate a key for your environment
+ * Generate a cryptographically secure secret of specified byte length
+ * Returns base64url-encoded string suitable for environment variables
  */
-export async function generateEncryptionKey(): Promise<string> {
-  // Generate 32 random bytes (256 bits) for AES-256
-  const key = randomBytes(32);
-  // Return as base64 for easy storage in environment variables
-  return key.toString('base64');
+export async function generateSecret(bytes: number = 32): Promise<string> {
+  const key = randomBytes(bytes);
+  return key.toString('base64url');
 }
 
 /**
  * Utility function to check if encryption is properly configured
  */
 export function isEncryptionConfigured(): boolean {
-  return !!process.env.ENCRYPTION_KEY;
+  return !!process.env.DB_ENCRYPTION_KEY;
 }
 
 /**
@@ -124,7 +122,7 @@ export function isEncryptionConfigured(): boolean {
  * Call this when upgrading existing data
  */
 export async function migrateToEncryption(base64Data: string): Promise<string> {
-  if (!process.env.ENCRYPTION_KEY) {
+  if (!process.env.DB_ENCRYPTION_KEY) {
     // Can't migrate without encryption key
     return base64Data;
   }

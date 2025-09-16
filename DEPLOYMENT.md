@@ -66,10 +66,10 @@ cp .env.example .env.local
 # Edit .env.local with your values
 ```
 
-### Step 4: Database Setup
+### Step 4: Secrets & Database Setup
 ```bash
-# Generate encryption key
-npm run generate-key
+# Generate CRON_KEY, DB_ENCRYPTION_KEY, BETTER_AUTH_SECRET
+npm run generate-secrets
 
 # Push database schema
 npm run db:generate
@@ -90,10 +90,12 @@ Choose your platform:
 
 | Variable | Description | Required |
 |----------|-------------|----------|
-| `AUTH_BASE_URL` | Your app's URL | Yes |
-| `AUTH_SECRET` | Random secret key | Yes |
+| `BETTER_AUTH_SECRET` | Session signing secret (Better Auth) | Yes |
+
+**Note:** Base URL is auto-detected at runtime.
 | `DATABASE_URL` | Database connection | Yes |
-| `ENCRYPTION_KEY` | 32-char encryption key | Yes |
+| `CRON_KEY` | Protects scheduled worker endpoints | Yes |
+| `DB_ENCRYPTION_KEY` | Encrypts sensitive API credentials before database storage | Yes |
 
 ## 🎯 Automated Setup (Super Easy!)
 
@@ -150,9 +152,9 @@ In your Netlify dashboard, add these variables:
 |----------|--------|-------------|
 | `DATABASE_URL` | `libsql://schwab-rebalancer-[username].turso.io` | From `turso db show` |
 | `DATABASE_AUTH_TOKEN` | `eyJhbGc...` | From `turso db tokens create` |
-| `AUTH_BASE_URL` | `https://your-site.netlify.app` | Your Netlify site URL |
-| `AUTH_SECRET` | `your-random-secret` | Generate: `openssl rand -hex 32` |
-| `ENCRYPTION_KEY` | `32-char-key` | Generate: `openssl rand -hex 16` |
+| `BETTER_AUTH_SECRET` | `base64url-secret` | `npm run generate-secrets` |
+| `CRON_KEY` | `base64url-secret` | `npm run generate-secrets` |
+| `DB_ENCRYPTION_KEY` | `base64-secret` | `npm run generate-secrets` |
 
 ### Database Migration
 
@@ -198,7 +200,7 @@ npm run setup-app
 
 This script will:
 - ✅ Validate your environment variables
-- ✅ Generate encryption keys automatically
+- ✅ Generate secrets automatically
 - ✅ Set up your database schema
 - ✅ Seed initial data
 - ✅ Configure authentication

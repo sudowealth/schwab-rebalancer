@@ -85,6 +85,12 @@ npm install
 # or
 pnpm install
 
+# 🚨 FIRST STEP: Generate required application secrets
+npm run generate-secrets
+
+# Copy .env.example to .env.local and fill in the generated secrets
+cp .env.example .env.local
+
 # Set up Turso database (see docs/TURSO_SETUP.md for detailed instructions)
 # After setting up your Turso database and .env.local file:
 npm run test-db
@@ -120,7 +126,6 @@ Follow the instructions in [SCHWAB_SETUP.md](./SCHWAB_SETUP.md) to:
 Create a `.env.local` file (the app uses a local SQLite database automatically):
 
 ```env
-AUTH_BASE_URL=https://127.0.0.1
 INDIVIDUAL_USE=true
 NODE_ENV=development
 RESEND_API_KEY=your-resend-api-key # optional
@@ -129,23 +134,44 @@ RESEND_API_KEY=your-resend-api-key # optional
 SCHWAB_CLIENT_ID=your-schwab-client-id
 SCHWAB_CLIENT_SECRET=your-schwab-client-secret
 
-# Encryption Key for sensitive data (REQUIRED)
-# Generate with: npm run generate-key
-ENCRYPTION_KEY=your-generated-encryption-key
+# Application secrets (REQUIRED)
+# Generate placeholders with: npm run generate-secrets
+CRON_KEY=your-cron-key
+DB_ENCRYPTION_KEY=your-generated-encryption-key
+BETTER_AUTH_SECRET=your-better-auth-secret
 ```
 
-#### Encryption Setup
+#### Secrets Setup
 
-The application uses AES-256-GCM encryption to protect sensitive data like API tokens. Generate an encryption key:
+**Required before starting the application.** The app uses cryptographically secure secrets for:
 
-```bash
-# Generate a secure encryption key
-npm run generate-key
+- **CRON_KEY**: Protects scheduled worker API endpoints
+- **DB_ENCRYPTION_KEY**: Encrypts Schwab API credentials before database storage
+- **BETTER_AUTH_SECRET**: Signs user sessions for authentication
 
-# Copy the generated key to your .env.local file
-```
+**Step-by-step instructions:**
 
-**⚠️ Important**: Back up your encryption key securely. Losing it means losing access to encrypted data in your database.
+1. **Generate the secrets:**
+   ```bash
+   npm run generate-secrets
+   ```
+
+2. **Copy the output into your `.env.local` file:**
+   - The command will display three secret values
+   - Copy `.env.example` to `.env.local` and fill in the generated values
+   - Copy each secret exactly as shown (including the `KEY_NAME=value` format)
+
+3. **Example `.env.local` file:**
+   ```bash
+   # Copy from .env.example and fill in these values:
+   CRON_KEY=abc123...xyz789
+   DB_ENCRYPTION_KEY=def456...uvw012
+   BETTER_AUTH_SECRET=ghi789...rst345
+
+   # Plus other required variables (database, etc.)
+   ```
+
+**⚠️ Important**: The `DB_ENCRYPTION_KEY` encrypts sensitive Schwab API credentials (access tokens and refresh tokens) before storing them in the database. Back up this key securely - losing it means losing access to encrypted API credentials in your database. Use the same encryption key across environments that need to read the same encrypted records.
 
 #### Individual Use Mode
 
@@ -226,22 +252,24 @@ TURSO_CONNECTION_URL=libsql://schwab-rebalancer-db-dyeoman2.aws-us-west-2.turso.
 TURSO_AUTH_TOKEN=your_auth_token_here
 
 # Authentication
-AUTH_BASE_URL=https://your-domain.com
-AUTH_SECRET=your_auth_secret_here
+# Base URL is auto-detected at runtime from request context
+# Falls back to deployment platform detection (Netlify, Vercel, Railway, Heroku, etc.)
+BETTER_AUTH_SECRET=your_auth_secret_here
 
 # Schwab API
 SCHWAB_CLIENT_ID=your_schwab_client_id
 SCHWAB_CLIENT_SECRET=your_schwab_client_secret
 
-# Encryption (generate new key for production)
-ENCRYPTION_KEY=your_generated_encryption_key
+# Worker protection / encryption (generate fresh values for production)
+CRON_KEY=your_cron_key
+DB_ENCRYPTION_KEY=your_generated_encryption_key
 ```
 
 ### 4. Generate Production Encryption Key
 
 ```bash
-# Generate a fresh encryption key for production
-npm run generate-key
+# Generate fresh secrets for production
+npm run generate-secrets
 ```
 
 ### 5. Optional: Email Configuration
@@ -255,7 +283,7 @@ RESEND_API_KEY=your_resend_api_key
 **⚠️ Security Best Practices**:
 
 - **Always use different encryption keys** for development and production environments
-- Generate a fresh key for production: `npm run generate-key`
+- Generate fresh secrets for production: `npm run generate-secrets`
 - Never share keys between environments or commit them to version control
 - If migrating data from development to production, you'll need to decrypt with the old key and re-encrypt with the new key
 
@@ -343,7 +371,8 @@ Pre-defined allocation templates that can be applied to rebalancing groups:
 - `npm run seed` - Seed database with initial data
 
 ### Utilities
-- `npm run generate-key` - Generate secure encryption key for environment
+- `npm run generate-secrets` - Generate CRON_KEY, DB_ENCRYPTION_KEY, BETTER_AUTH_SECRET
+- `npm run generate-key` - Generate only the encryption key (legacy helper)
 
 ## Database Schema
 
@@ -433,7 +462,7 @@ When schema changes are introduced (e.g., adding `user.role` or `audit_log`), ap
 npm run db:migrate
 ```
 
-If you are running through Caddy/HTTPS and get auth/session issues, ensure you log in on the same origin and that `AUTH_BASE_URL` matches the origin you are using.
+If you are running through Caddy/HTTPS and get auth/session issues, ensure you log in on the same origin. The app automatically detects the correct base URL for your setup.
 
 ## License
 

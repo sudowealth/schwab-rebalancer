@@ -22,12 +22,10 @@ function ResetPasswordPage() {
     password: '',
     confirmPassword: '',
   });
-  const [isClient, setIsClient] = useState(false);
   const newPasswordId = useId();
   const confirmPasswordId = useId();
 
   useEffect(() => {
-    setIsClient(true);
     if (!token) {
       setError('Invalid or missing reset token. Please request a new password reset.');
     }
@@ -188,98 +186,92 @@ function ResetPasswordPage() {
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600">Enter your new password below</p>
         </div>
-        {isClient ? (
-          <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-            {error && (
-              <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-                {error}
+        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+          {error && (
+            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+              {error}
+            </div>
+          )}
+
+          {/* Hidden email field - pre-filled but not visible to user */}
+          <input type="hidden" name="email" value={email} />
+
+          <div>
+            <label htmlFor={newPasswordId} className="sr-only">
+              New Password
+            </label>
+            <input
+              id={newPasswordId}
+              name="password"
+              type="password"
+              required
+              autoComplete="new-password"
+              className={`relative block w-full px-3 py-2 bg-white border placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:z-10 sm:text-sm ${
+                validationErrors.password
+                  ? 'border-red-300 focus:ring-red-500 focus:border-red-500'
+                  : 'border-gray-300 focus:ring-indigo-500 focus:border-indigo-500'
+              }`}
+              placeholder="New password"
+              value={password}
+              onChange={(e) => handlePasswordChange(e.target.value)}
+            />
+            {validationErrors.password && (
+              <p className="mt-1 text-sm text-red-600">{validationErrors.password}</p>
+            )}
+            {!validationErrors.password && password && (
+              <div className="mt-1 text-xs text-gray-500">
+                Password must contain: 8+ characters, uppercase, lowercase, and number
               </div>
             )}
-
-            {/* Hidden email field - pre-filled but not visible to user */}
-            <input type="hidden" name="email" value={email} />
-
-            <div>
-              <label htmlFor={newPasswordId} className="sr-only">
-                New Password
-              </label>
-              <input
-                id={newPasswordId}
-                name="password"
-                type="password"
-                required
-                autoComplete="new-password"
-                className={`relative block w-full px-3 py-2 border placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:z-10 sm:text-sm ${
-                  validationErrors.password
-                    ? 'border-red-300 focus:ring-red-500 focus:border-red-500'
-                    : 'border-gray-300 focus:ring-indigo-500 focus:border-indigo-500'
-                }`}
-                placeholder="New password"
-                value={password}
-                onChange={(e) => handlePasswordChange(e.target.value)}
-              />
-              {validationErrors.password && (
-                <p className="mt-1 text-sm text-red-600">{validationErrors.password}</p>
-              )}
-              {!validationErrors.password && password && (
-                <div className="mt-1 text-xs text-gray-500">
-                  Password must contain: 8+ characters, uppercase, lowercase, and number
-                </div>
-              )}
-            </div>
-
-            <div>
-              <label htmlFor={confirmPasswordId} className="sr-only">
-                Confirm New Password
-              </label>
-              <input
-                id={confirmPasswordId}
-                name="confirmPassword"
-                type="password"
-                required
-                autoComplete="new-password"
-                className={`relative block w-full px-3 py-2 border placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:z-10 sm:text-sm ${
-                  validationErrors.confirmPassword
-                    ? 'border-red-300 focus:ring-red-500 focus:border-red-500'
-                    : 'border-gray-300 focus:ring-indigo-500 focus:border-indigo-500'
-                }`}
-                placeholder="Confirm new password"
-                value={confirmPassword}
-                onChange={(e) => handleConfirmPasswordChange(e.target.value)}
-              />
-              {validationErrors.confirmPassword && (
-                <p className="mt-1 text-sm text-red-600">{validationErrors.confirmPassword}</p>
-              )}
-            </div>
-
-            <div>
-              <button
-                type="submit"
-                disabled={
-                  isLoading ||
-                  !password ||
-                  !confirmPassword ||
-                  !!validationErrors.password ||
-                  !!validationErrors.confirmPassword ||
-                  !token
-                }
-                className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isLoading ? 'Resetting password...' : 'Reset password'}
-              </button>
-            </div>
-
-            <div className="text-center">
-              <a href="/login" className="font-medium text-indigo-600 hover:text-indigo-500">
-                Back to sign in
-              </a>
-            </div>
-          </form>
-        ) : (
-          <div className="mt-8 flex justify-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900" />
           </div>
-        )}
+
+          <div>
+            <label htmlFor={confirmPasswordId} className="sr-only">
+              Confirm New Password
+            </label>
+            <input
+              id={confirmPasswordId}
+              name="confirmPassword"
+              type="password"
+              required
+              autoComplete="new-password"
+              className={`relative block w-full px-3 py-2 bg-white border placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:z-10 sm:text-sm ${
+                validationErrors.confirmPassword
+                  ? 'border-red-300 focus:ring-red-500 focus:border-red-500'
+                  : 'border-gray-300 focus:ring-indigo-500 focus:border-indigo-500'
+              }`}
+              placeholder="Confirm new password"
+              value={confirmPassword}
+              onChange={(e) => handleConfirmPasswordChange(e.target.value)}
+            />
+            {validationErrors.confirmPassword && (
+              <p className="mt-1 text-sm text-red-600">{validationErrors.confirmPassword}</p>
+            )}
+          </div>
+
+          <div>
+            <button
+              type="submit"
+              disabled={
+                isLoading ||
+                !password ||
+                !confirmPassword ||
+                !!validationErrors.password ||
+                !!validationErrors.confirmPassword ||
+                !token
+              }
+              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isLoading ? 'Resetting password...' : 'Reset password'}
+            </button>
+          </div>
+
+          <div className="text-center">
+            <a href="/login" className="font-medium text-indigo-600 hover:text-indigo-500">
+              Back to sign in
+            </a>
+          </div>
+        </form>
       </div>
     </div>
   );

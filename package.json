@@ -38,6 +38,7 @@
     "db:studio": "drizzle-kit studio",
     "seed": "tsx src/lib/seeds/main.ts",
     "generate-key": "tsx scripts/generate-encryption-key.ts",
+    "generate-secrets": "tsx scripts/generate-secrets.ts",
     "test-db": "tsx scripts/test-turso-connection.ts",
     "precommit": "biome check --write"
   },

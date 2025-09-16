@@ -224,7 +224,9 @@ export async function validateSessionSecurity(
   request: globalThis.Request,
 ): Promise<boolean> {
   const ip =
-    request.headers.get('cf-connecting-ip') || request.headers.get('x-forwarded-for') || 'unknown';
+    request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+    request.headers.get('x-real-ip') ||
+    'unknown';
   const userAgent = request.headers.get('user-agent') || 'unknown';
 
   const validation = await SessionManager.validateSessionSecurity(sessionId, ip, userAgent);

@@ -1,5 +1,12 @@
 /// <reference types="vite/client" />
-import { createRootRoute, HeadContent, Link, Scripts, useLocation } from '@tanstack/react-router';
+import {
+  createRootRoute,
+  HeadContent,
+  Link,
+  Scripts,
+  useLocation,
+  useNavigate,
+} from '@tanstack/react-router';
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools';
 import type * as React from 'react';
 import { DefaultCatchBoundary } from '~/components/DefaultCatchBoundary';
@@ -210,6 +217,19 @@ function AdminSettingsLink() {
 
 function AuthNav() {
   const { data: session, isPending: isLoading } = useSession();
+  const navigate = useNavigate();
+
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      // Navigate to login page after successful sign out
+      navigate({ to: '/login', search: { reset: '' } });
+    } catch (error) {
+      console.error('Error signing out:', error);
+      // Still navigate to login even if there's an error
+      navigate({ to: '/login', search: { reset: '' } });
+    }
+  };
 
   if (isLoading) {
     return <div>Loading...</div>;
@@ -223,7 +243,7 @@ function AuthNav() {
         </span>
         <button
           type="button"
-          onClick={() => signOut()}
+          onClick={handleSignOut}
           className="text-sm text-gray-500 hover:text-gray-700"
         >
           Sign out

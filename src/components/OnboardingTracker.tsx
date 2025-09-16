@@ -298,14 +298,14 @@ SCHWAB_CLIENT_SECRET=your_secret_here`}
                               <TabsContent value="production" className="space-y-3">
                                 <div>
                                   <p className="text-xs mb-2">
-                                    Set secrets in Cloudflare using Wrangler CLI:
+                                    Set environment variables in your hosting platform:
                                   </p>
                                   <pre className="bg-blue-100 p-2 rounded text-xs">
-                                    {`wrangler secret put SCHWAB_CLIENT_ID
-wrangler secret put SCHWAB_CLIENT_SECRET`}
+                                    {`SCHWAB_CLIENT_ID=your_app_key
+SCHWAB_CLIENT_SECRET=your_app_secret`}
                                   </pre>
                                   <p className="text-xs text-blue-700 mt-1">
-                                    When prompted, paste your App Key and Secret respectively.
+                                    Add these environment variables to your production deployment.
                                   </p>
                                 </div>
                               </TabsContent>

@@ -1,14 +1,7 @@
 /**
- * Security Middleware for Cloudflare Workers
+ * Security Middleware
  * Handles CORS, CSP, and other security headers for the tax-loss harvesting platform
  */
-
-// Cloudflare Workers Web API types
-declare global {
-  interface Request {}
-  interface Response {}
-  interface Headers {}
-}
 
 export interface SecurityConfig {
   allowedOrigins: string[];
@@ -181,7 +174,7 @@ export function createSecurityMiddleware(config: SecurityConfig) {
 
   return {
     /**
-     * Main middleware function for Cloudflare Workers
+     * Main middleware function
      */
     async handle(request: Request, next: () => Promise<Response>): Promise<Response> {
       const origin = request.headers.get('Origin');

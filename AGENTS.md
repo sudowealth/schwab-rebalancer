@@ -4,30 +4,28 @@
 
 - `src/routes/`: File‑based routes (TanStack Router). Example: `src/routes/login.tsx`.
 - `src/components/`, `src/lib/`, `src/utils/`: Reusable UI, domain logic, and helpers.
-- `src/db/` and `drizzle/`: ORM schema and D1 migration files.
+- `src/db/` and `drizzle/`: ORM schema and migration files.
 - `public/`: Static assets served by Vite.
 - `scripts/`: Local utilities and development tools.
-- Cloudflare/Workers: `wrangler.jsonc`, `worker-configuration.d.ts`.
 - Key files: server functions `src/lib/server-functions.ts`, DB schema `src/db/schema.ts`, DB ops `src/lib/db-api.ts`, rebalancing engine `src/lib/rebalance-logic.ts`.
 
 ## Architecture Overview
 
 - Tax‑loss harvesting platform enforcing wash‑sale rules with “sleeves” (interchangeable securities) to maintain exposure.
-- Stack: TanStack Start + React/Tailwind (UI), Cloudflare Workers (API), D1 + Drizzle (DB), KV/R2 (config/exports), Better Auth.
+- Stack: TanStack Start + React/Tailwind (UI), Node.js (API), SQLite + Drizzle (DB), Better Auth.
 
 ## Build, Test, and Development Commands
 
 - `npm run dev`: Start Vite dev server on port 3000.
 - `npm run build`: Production build and TypeScript check.
 - `npm start`: Run built server from `.output/`.
-- `npm run deploy`: Build then deploy via Cloudflare Wrangler.
+- `npm run deploy`: Build then deploy via Netlify CLI.
 - `npm run lint` / `npm run format` / `npm run typecheck`: Lint and format with Biome; type‑check.
 - `npm run db:generate`: Generate Drizzle migrations from schema.
-- `npm run db:migrate`: Apply D1 migrations locally to `tax-loss-harvesting`.
+- `npm run db:migrate`: Apply migrations locally to SQLite database.
 - `npm run db:migrate:prod`: Apply migrations to production.
 - `npm run db:studio`: Open Drizzle Studio.
 - `npm run seed`: Seed local data (see `src/lib/seeds/main.ts`).
-- `npm run cf-typegen`: Regenerate Cloudflare Worker types when bindings change.
 
 ## Coding Style & Naming Conventions
 
@@ -43,7 +41,7 @@
 ## Testing Guidelines
 
 - No test harness is configured yet. If adding tests, use Vitest and colocate as `*.test.ts`/`*.test.tsx` next to source or in `src/__tests__`.
-- Keep tests deterministic; mock network/Workers APIs.
+- Keep tests deterministic; mock network APIs.
 
 ## Commit & Pull Request Guidelines
 
@@ -53,10 +51,9 @@
 ## Security & Configuration Tips
 
 - Copy `.env.example` to `.env.local`; never commit secrets. Required for local auth, email, and integrations.
-- For Cloudflare D1/Workers, install and auth Wrangler; run `npm run cf-typegen` if types change.
-- Local dev uses SQLite file `local.db`; production uses Cloudflare D1 via Wrangler bindings.
+- Local dev uses SQLite file `local.db`; production uses hosted database.
 - For HTTPS testing, use local HTTPS setup (see docs/LOCAL_HTTPS_SETUP.md).
-- Production Workers schedule: Corporate Actions 13:00 UTC, Harvest 16:00 UTC.
+- Production schedules: Corporate Actions 13:00 UTC, Harvest 16:00 UTC.
 
 ## TanStack Start
 

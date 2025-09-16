@@ -1,3 +1,4 @@
+import { getWebRequest } from '@tanstack/react-start/server';
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { reactStartCookies } from 'better-auth/react-start';
@@ -41,18 +42,52 @@ const createSafeAdapter = () => {
   return adapter;
 };
 
-// Dynamic base URL detection for localhost and local HTTPS
+// Dynamic base URL detection that works in all environments
 const getBaseURL = () => {
-  // If explicitly set, use that
-  if (process.env.AUTH_BASE_URL) {
-    return process.env.AUTH_BASE_URL;
+  // In production, use runtime detection first, then fallback to platform detection
+  if (process.env.NODE_ENV === 'production') {
+    // Try runtime detection first - most accurate
+    try {
+      const request = getWebRequest();
+      if (request) {
+        const url = new URL(request.url);
+        const runtimeUrl = `${url.protocol}//${url.host}`;
+        console.log(`🔗 Runtime-detected base URL: ${runtimeUrl}`);
+        return runtimeUrl;
+      }
+    } catch {
+      // Runtime detection not available, continue to platform detection
+      console.log('🔄 Runtime detection not available, trying platform detection...');
+    }
+
+    // Fallback: try platform-specific environment variables
+    const platformUrls = [
+      process.env.URL, // Netlify, Render, Railway
+      process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null, // Vercel
+      process.env.HEROKU_APP_NAME ? `https://${process.env.HEROKU_APP_NAME}.herokuapp.com` : null, // Heroku
+      process.env.SITE_URL, // Generic site URL
+      process.env.PUBLIC_URL, // Create React App / Next.js
+      process.env.BASE_URL, // Generic base URL
+    ];
+
+    const platformUrl = platformUrls.find((url) => url && typeof url === 'string');
+    if (platformUrl) {
+      console.log(`🔗 Platform-detected base URL: ${platformUrl}`);
+      return platformUrl;
+    }
+
+    // No URL detected - production deployments need explicit URL configuration
+    throw new Error(
+      'Production deployment detected but no base URL found. Set URL, VERCEL_URL, SITE_URL, or other platform-specific URL environment variable.',
+    );
   }
 
-  // Default to localhost for server-side
-  return 'http://localhost:3000';
+  // Development: try HTTPS first (for local HTTPS setup), fall back to HTTP
+  return 'https://127.0.0.1';
 };
 
 export const auth = betterAuth({
+  secret: process.env.BETTER_AUTH_SECRET || 'dev-only-secret',
   database: createSafeAdapter(),
   baseURL: getBaseURL(),
   telemetry: {
@@ -65,13 +100,16 @@ export const auth = betterAuth({
       return securityConfig.allowedOrigins;
     } catch {
       console.warn('⚠️ Auth: Using fallback origins due to config error');
-      // Fallback to original hardcoded origins
-      return [
-        'http://localhost:3000',
-        'http://localhost:3001',
-        'https://127.0.0.1',
-        process.env.AUTH_BASE_URL,
-      ].filter(Boolean) as string[];
+      // Fallback to dynamic origins based on environment
+      const origins = ['http://localhost:3000', 'http://localhost:3001', 'https://127.0.0.1'];
+
+      // Add the dynamically detected base URL if it's different
+      const baseURL = getBaseURL();
+      if (baseURL && !origins.includes(baseURL)) {
+        origins.push(baseURL);
+      }
+
+      return origins;
     }
   })(),
   user: {
@@ -127,8 +165,11 @@ export const auth = betterAuth({
     crossSubDomainCookies: {
       enabled: false, // Not needed for local HTTPS setup
     },
-    useSecureCookies:
-      process.env.NODE_ENV === 'production' || !!process.env.AUTH_BASE_URL?.startsWith('https'),
+    useSecureCookies: (() => {
+      // Use secure cookies in production or when base URL is HTTPS
+      const baseURL = getBaseURL();
+      return process.env.NODE_ENV === 'production' || baseURL?.startsWith('https');
+    })(),
     cookiePrefix: 'auth',
     generateId: () => {
       // Use crypto.randomUUID for better entropy
@@ -140,8 +181,10 @@ export const auth = betterAuth({
       name: 'auth.session-token',
       options: {
         httpOnly: true,
-        secure:
-          process.env.NODE_ENV === 'production' || !!process.env.AUTH_BASE_URL?.startsWith('https'),
+        secure: (() => {
+          const baseURL = getBaseURL();
+          return process.env.NODE_ENV === 'production' || baseURL?.startsWith('https');
+        })(),
         sameSite: 'lax' as const,
         path: '/',
         maxAge: 60 * 60 * 2, // 2 hours to match session expiry

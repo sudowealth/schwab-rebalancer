@@ -3731,7 +3731,7 @@ export const truncateDataServerFn = createServerFn({ method: 'POST' })
             tables: tablesToTruncate,
           }),
           createdAt: new Date(),
-          ipAddress: request.headers.get('CF-Connecting-IP') || null,
+          ipAddress: request.headers.get('X-Forwarded-For')?.split(',')[0]?.trim() || null,
           userAgent: request.headers.get('User-Agent') || null,
         });
       });

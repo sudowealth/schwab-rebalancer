@@ -21,6 +21,6 @@
 # Environment variables (set these in Netlify dashboard)
 # DATABASE_URL = "your-turso-database-url"
 # DATABASE_AUTH_TOKEN = "your-turso-auth-token" (optional for local replicas)
-# AUTH_BASE_URL = "https://your-netlify-site.netlify.app"
-# AUTH_SECRET = "your-auth-secret"
-# ENCRYPTION_KEY = "your-32-char-encryption-key"
+# BETTER_AUTH_SECRET = "your-auth-secret"
+# CRON_KEY = "your-cron-key"
+# DB_ENCRYPTION_KEY = "your-32-byte-encryption-key" # Encrypts Schwab API credentials

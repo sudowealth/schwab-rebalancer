@@ -1,7 +1,6 @@
 import { z } from 'zod';
 
 export const EnvSchema = z.object({
-  AUTH_BASE_URL: z.string().url().optional(),
   SCHWAB_CLIENT_ID: z.string().optional(),
   SCHWAB_CLIENT_SECRET: z.string().optional(),
   ALLOWED_ORIGINS: z.string().optional(),
