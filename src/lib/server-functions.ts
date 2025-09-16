@@ -3589,8 +3589,8 @@ export const importNasdaqSecuritiesServerFn = createServerFn({
               // Handle UNIQUE constraint violations gracefully
               const error = insertError as { code?: string; message?: string };
               if (
-                error?.code === 'SQLITE_CONSTRAINT_PRIMARYKEY' ||
-                error?.code === 'SQLITE_CONSTRAINT_UNIQUE' ||
+                error?.code === '23505' ||
+                error?.code === '23505' ||
                 error?.message?.includes('UNIQUE constraint failed')
               ) {
                 // Security already exists, count it as skipped

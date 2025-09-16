@@ -2,7 +2,7 @@
 
 ## Database
 
-- **Turso** (distributed SQLite) with libsql driver
+- **Neon PostgreSQL** (serverless) with HTTP driver
 - **Drizzle ORM** with type-safe operations
 - **Serverless-compatible** with connection pooling and performance optimizations
 
@@ -22,7 +22,7 @@ Core tables: `user`, `session`, `auth_account`, `verification` with standard Bet
 
 ### Flow
 
-1. **Login/Register** → Better Auth API → Turso database → Session cookie
+1. **Login/Register** → Better Auth API → Neon PostgreSQL database → Session cookie
 2. **Route Protection** → `requireAuth()` in server functions
 3. **Client State** → `useSession()` hook for UI updates
 
@@ -35,5 +35,5 @@ Core tables: `user`, `session`, `auth_account`, `verification` with standard Bet
 ## Production
 
 - **Hosting**: Netlify with server-side rendering and global CDN
-- **Database**: Turso (distributed SQLite) with edge replication
+- **Database**: Neon PostgreSQL (serverless) with global edge replication
 - **API**: Serverless functions with automatic scaling

@@ -150,8 +150,8 @@ export async function seedSP500Securities(db: ReturnType<typeof drizzle>) {
       // Handle UNIQUE constraint violations gracefully
       const error = insertError as { code?: string; message?: string };
       if (
-        error?.code === 'SQLITE_CONSTRAINT_PRIMARYKEY' ||
-        error?.code === 'SQLITE_CONSTRAINT_UNIQUE' ||
+        error?.code === '23505' ||
+        error?.code === '23505' ||
         error?.message?.includes('UNIQUE constraint failed')
       ) {
         // Security already exists, count it as skipped
@@ -179,8 +179,8 @@ export async function seedSP500Securities(db: ReturnType<typeof drizzle>) {
     // Handle UNIQUE constraint violations gracefully
     const error = indexError as { code?: string; message?: string };
     if (
-      error?.code === 'SQLITE_CONSTRAINT_PRIMARYKEY' ||
-      error?.code === 'SQLITE_CONSTRAINT_UNIQUE' ||
+      error?.code === '23505' ||
+      error?.code === '23505' ||
       error?.message?.includes('UNIQUE constraint failed')
     ) {
       console.log('⚠️  S&P 500 index already exists, skipping creation');
@@ -206,8 +206,8 @@ export async function seedSP500Securities(db: ReturnType<typeof drizzle>) {
       // Handle UNIQUE constraint violations gracefully
       const error = memberError as { code?: string; message?: string };
       if (
-        error?.code === 'SQLITE_CONSTRAINT_PRIMARYKEY' ||
-        error?.code === 'SQLITE_CONSTRAINT_UNIQUE' ||
+        error?.code === '23505' ||
+        error?.code === '23505' ||
         error?.message?.includes('UNIQUE constraint failed')
       ) {
         membersSkippedCount++;

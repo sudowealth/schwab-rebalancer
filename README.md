@@ -8,12 +8,12 @@ Get your own instance running in minutes:
 
 [![Deploy to Netlify](https://www.netlify.com/img/deploy/button.svg)](https://app.netlify.com/start/deploy?repository=YOUR_REPO_URL)
 
-**Why Netlify + Turso?**
-- ✅ **100% FREE** (Netlify's free tier + Turso's free database)
+**Why Netlify + Neon PostgreSQL?**
+- ✅ **100% FREE** (Netlify's free tier + Neon's free PostgreSQL)
 - ✅ One-click deploy for both app AND database
 - ✅ Global CDN for fast worldwide performance
 - ✅ No credit card required to start
-- ✅ Distributed SQLite (Turso) - works perfectly with serverless
+- ✅ Serverless PostgreSQL (Neon) - works perfectly with serverless
 - ✅ Perfect for low-usage personal apps
 
 [📖 Full Deployment Guide](./DEPLOYMENT.md) | [🎯 Quick Setup](./DEPLOYMENT.md#automated-setup-super-easy)
@@ -26,11 +26,11 @@ This is an unofficial, community-developed portfolio management platform for int
 
 - **Frontend**: TanStack Start (React-based SPA) with TailwindCSS and shadcn/ui
 - **Backend**: TypeScript/Node.js with server-side rendering
-- **Database**: Turso (distributed SQLite) with Drizzle ORM
+- **Database**: Neon PostgreSQL (serverless) with Drizzle ORM
 - **Authentication**: Better Auth with email/password
 - **Market Data**: Yahoo Finance API with intelligent caching
 - **Trading**: Charles Schwab API integration
-- **Deployment**: Netlify/Vercel + Turso (100% free, one-click setup)
+- **Deployment**: Netlify + Neon PostgreSQL (100% free, one-click setup)
 
 ## Key Features
 
@@ -91,8 +91,8 @@ npm run generate-secrets
 # Copy .env.example to .env.local and fill in the generated secrets
 cp .env.example .env.local
 
-# Set up Turso database (see docs/TURSO_SETUP.md for detailed instructions)
-# After setting up your Turso database and .env.local file:
+# Set up Neon PostgreSQL database (automatically configured with Netlify)
+# After connecting to Netlify, the database will be automatically configured:
 npm run db:push
 
 # Seed database with initial data (S&P 500 securities, etc.)
@@ -207,7 +207,7 @@ npm run lint
 
 ### Prerequisites
 
-- **Turso account** (database already created: `schwab-rebalancer-db`)
+- **Neon PostgreSQL** (automatically created with Netlify deployment)
 - **Netlify or Vercel account** for hosting
 - Environment variables configured (see below)
 
@@ -216,9 +216,8 @@ npm run lint
 Set up your production environment variables in your deployment platform:
 
 ```env
-# Turso Database (already configured)
-TURSO_CONNECTION_URL=libsql://schwab-rebalancer-db-dyeoman2.aws-us-west-2.turso.io
-TURSO_AUTH_TOKEN=your_auth_token_here
+# Neon PostgreSQL (automatically configured by Netlify)
+# DATABASE_URL will be automatically set by @netlify/neon extension
 
 # Other required environment variables
 # (see .env.example for complete list)
@@ -247,8 +246,6 @@ Add these to your Netlify/Vercel environment variables:
 
 ```env
 # Database (already configured)
-TURSO_CONNECTION_URL=libsql://schwab-rebalancer-db-dyeoman2.aws-us-west-2.turso.io
-TURSO_AUTH_TOKEN=your_auth_token_here
 
 # Authentication
 # Base URL is auto-detected at runtime from request context
@@ -289,7 +286,7 @@ RESEND_API_KEY=your_resend_api_key
 ### 4. Set up Production Database
 
 ```bash
-# For Turso, the database schema is pushed directly to your Turso instance
+# For Neon PostgreSQL, the database schema is pushed directly to your Neon instance
 # Make sure your production environment variables are set correctly
 npm run db:push:prod
 
@@ -363,8 +360,8 @@ Pre-defined allocation templates that can be applied to rebalancing groups:
 ### Database Management
 
 - `npm run db:generate` - Generate Drizzle migrations
-- `npm run db:push` - Push schema to local Turso database
-- `npm run db:push:prod` - Push schema to production Turso database
+- `npm run db:push` - Push schema to local Neon PostgreSQL database
+- `npm run db:push:prod` - Push schema to production Neon PostgreSQL database
 - `npm run db:studio` - Open Drizzle Studio for database inspection
 - `npm run seed` - Seed database with initial data
 
@@ -373,7 +370,7 @@ Pre-defined allocation templates that can be applied to rebalancing groups:
 
 ## Database Schema
 
-Using **Drizzle ORM** with **Turso** (distributed SQLite). Key entities:
+Using **Drizzle ORM** with **Neon PostgreSQL** (serverless). Key entities:
 
 **Portfolio Management:**
 
@@ -417,7 +414,7 @@ Using **Drizzle ORM** with **Turso** (distributed SQLite). Key entities:
 - **Netlify/Vercel**: Serverless deployment with global CDN
 - **Server Functions**: Type-safe RPC between client and server
 - **Better Auth**: Secure authentication with session management
-- **Drizzle ORM**: Type-safe database operations with Turso
+- **Drizzle ORM**: Type-safe database operations with Neon PostgreSQL
 
 ### Security Features
 

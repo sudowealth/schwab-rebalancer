@@ -42,7 +42,6 @@
     "precommit": "biome check --write"
   },
   "dependencies": {
-    "@libsql/client": "^0.15.15",
     "@neondatabase/serverless": "^1.0.1",
     "@netlify/neon": "^0.1.0",
     "@radix-ui/react-accordion": "^1.2.12",
