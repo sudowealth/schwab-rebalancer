@@ -15,7 +15,7 @@ export default defineConfig({
     noExternal: ['better-auth'],
   },
   optimizeDeps: {
-    exclude: ['better-sqlite3'],
+    exclude: ['better-sqlite3', 'better-auth'],
   },
   build: {
     rollupOptions: {

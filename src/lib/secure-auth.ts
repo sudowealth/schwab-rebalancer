@@ -1,18 +1,7 @@
 import { auth } from './auth';
+import { ForbiddenError, UnauthorizedError } from './errors';
 
-export class UnauthorizedError extends Error {
-  constructor(message = 'Unauthorized') {
-    super(message);
-    this.name = 'UnauthorizedError';
-  }
-}
-
-export class ForbiddenError extends Error {
-  constructor(message = 'Forbidden') {
-    super(message);
-    this.name = 'ForbiddenError';
-  }
-}
+// Error classes are now in errors.ts to avoid importing from this server-only file
 
 export interface AuthContext {
   userId: string;

@@ -1,4 +1,4 @@
-import { ForbiddenError } from './secure-auth';
+import { ForbiddenError } from './errors';
 
 export function generateCsrfToken(): string {
   if (typeof crypto !== 'undefined' && 'getRandomValues' in crypto) {

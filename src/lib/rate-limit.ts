@@ -1,4 +1,4 @@
-import { ForbiddenError } from './secure-auth';
+import { ForbiddenError } from './errors';
 
 type Key = string;
 const buckets = new Map<Key, { tokens: number; updatedAt: number }>();

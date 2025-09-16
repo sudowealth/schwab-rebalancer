@@ -3,7 +3,17 @@ import { getWebRequest } from '@tanstack/react-start/server';
 import { eq, inArray, sql } from 'drizzle-orm';
 import type { drizzle } from 'drizzle-orm/libsql';
 import * as schema from '../db/schema';
-import { requireAdmin, requireAuth } from './auth-utils';
+
+// Defer server-only auth utilities to runtime to avoid bundling them in the client build
+const requireAuth = async () => {
+  const mod = await import('./auth-utils');
+  return mod.requireAuth();
+};
+const requireAdmin = async () => {
+  const mod = await import('./auth-utils');
+  return mod.requireAdmin();
+};
+
 import { CASH_TICKER, isAnyCashTicker, isBaseCashTicker, MANUAL_CASH_TICKER } from './constants';
 import type { AccountHoldingsResult } from './db-api';
 import {

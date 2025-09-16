@@ -1,4 +1,4 @@
-import { ForbiddenError, UnauthorizedError } from './secure-auth';
+import { ForbiddenError, UnauthorizedError } from './errors';
 
 export class ValidationError extends Error {
   constructor(
