@@ -1,6 +1,5 @@
 // Import individual seed functions
 
-import { sql } from 'drizzle-orm';
 import { cleanupDatabase, getDatabase } from '../db-config';
 import { seedAccounts } from './accounts';
 import { seedHoldings } from './holdings';
@@ -18,10 +17,7 @@ export async function seedDatabase(userId?: string) {
   try {
     // Tables will be created by Drizzle migrations
 
-    // Temporarily disable foreign key constraints for seeding
-    await db.run(sql`PRAGMA foreign_keys = OFF`);
-
-    // Seed data in correct order (due to foreign key constraints)
+    // PostgreSQL doesn't need to disable foreign keys - seed data in correct order
     await seedSP500Securities(db); // S&P 500 securities and index first
     await seedSecurities(db); // Then ETFs and cash
     await seedAccounts(db, userId);
@@ -31,12 +27,7 @@ export async function seedDatabase(userId?: string) {
     await seedHoldings(db, userId);
     await seedTransactions(db, userId);
 
-    // Re-enable foreign key constraints
-    await db.run(sql`PRAGMA foreign_keys = ON`);
-
-    // Force WAL checkpoint to ensure all data is written to main database file
-    await db.run(sql`PRAGMA wal_checkpoint(TRUNCATE)`);
-
+    // PostgreSQL handles WAL and checkpoints automatically
     // Clear the connection pool to ensure fresh connections see the new data
     cleanupDatabase();
 

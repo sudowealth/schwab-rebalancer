@@ -1,1 +1,0 @@
-ALTER TABLE `security` ADD `assetType` text DEFAULT 'EQUITY' NOT NULL;

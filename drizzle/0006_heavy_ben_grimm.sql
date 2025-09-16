@@ -1,1 +1,0 @@
-ALTER TABLE `rebalancing_group` DROP COLUMN `description`;

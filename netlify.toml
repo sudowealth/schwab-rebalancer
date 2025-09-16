@@ -7,6 +7,21 @@
 
 # Using TanStack Start + Nitro. Netlify will package functions from .netlify/functions-internal automatically.
 
+# Template configuration for Deploy to Netlify
+[template]
+  # If you want the user to see the full config screen (with env vars, repo details, etc.)
+  full = true
+
+[template.environment]
+  DATABASE_URL = "your-neon-postgres-connection-string" # Automatically set by @netlify/neon
+  BETTER_AUTH_SECRET = "your-auth-secret" # Required for authentication
+  CRON_KEY = "your-cron-key" # Required for scheduled worker endpoints
+  DB_ENCRYPTION_KEY = "your-32-byte-encryption-key" # Encrypts Schwab API credentials
+  INDIVIDUAL_USE=true # Required for single-user mode
+  RESEND_API_KEY="your-resend-api-key" # Required for email notifications
+  SCHWAB_CLIENT_ID="your-schwab-client-id" # Required for Schwab API integration see docs/SCHWAB_SETUP.md
+  SCHWAB_CLIENT_SECRET="your-schwab-client-secret" # Required for Schwab API integration see SCHWAB_SETUP.md
+
 # Redirect rules for SPA
 [[redirects]]
   from = "/api/*"
@@ -19,8 +34,7 @@
   status = 200
 
 # Environment variables (set these in Netlify dashboard)
-# DATABASE_URL = "your-turso-database-url"
-# DATABASE_AUTH_TOKEN = "your-turso-auth-token" (optional for local replicas)
+# DATABASE_URL = "your-neon-postgres-connection-string" # Automatically set by @netlify/neon
 # BETTER_AUTH_SECRET = "your-auth-secret"
 # CRON_KEY = "your-cron-key"
 # DB_ENCRYPTION_KEY = "your-32-byte-encryption-key" # Encrypts Schwab API credentials

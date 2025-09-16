@@ -1,4 +1,4 @@
-import type { drizzle } from 'drizzle-orm/libsql';
+import type { drizzle } from 'drizzle-orm/postgres-js';
 import * as schema from '../../db/schema';
 
 const TRANSACTIONS_DATA = [
@@ -95,7 +95,7 @@ const TRANSACTIONS_DATA = [
 export async function seedTransactions(db: ReturnType<typeof drizzle>, _userId?: string) {
   console.log('🔄 Seeding transactions...');
 
-  const now = Date.now();
+  const now = Math.floor(Date.now() / 1000);
 
   // Clear existing transactions
   await db.delete(schema.transaction);

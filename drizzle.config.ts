@@ -4,19 +4,17 @@ import { defineConfig } from 'drizzle-kit';
 // Load environment variables
 config({ path: '.env.local' });
 
-const url = process.env.TURSO_CONNECTION_URL;
-const authToken = process.env.TURSO_AUTH_TOKEN;
+const connectionString = process.env.DATABASE_URL || process.env.NETLIFY_DATABASE_URL;
 
-if (!url || !authToken) {
-  throw new Error('TURSO_CONNECTION_URL and TURSO_AUTH_TOKEN environment variables are required');
+if (!connectionString) {
+  throw new Error('DATABASE_URL environment variable is required');
 }
 
 export default defineConfig({
   schema: './src/db/schema.ts',
   out: './drizzle',
-  dialect: 'turso',
+  dialect: 'postgresql',
   dbCredentials: {
-    url,
-    authToken,
+    url: connectionString,
   },
 });

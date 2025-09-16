@@ -189,10 +189,10 @@ export const getIndices = async (): Promise<Array<{ id: string; name: string }>>
 
   const indices = await db
     .select({
-      id: schema.index.id,
-      name: schema.index.name,
+      id: schema.indexTable.id,
+      name: schema.indexTable.name,
     })
-    .from(schema.index);
+    .from(schema.indexTable);
 
   setCache(cacheKey, indices);
   return indices;

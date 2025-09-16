@@ -1,5 +1,5 @@
 import { and, eq, inArray } from 'drizzle-orm';
-import type { drizzle } from 'drizzle-orm/libsql';
+import type { drizzle } from 'drizzle-orm/postgres-js';
 import * as schema from '../../db/schema';
 
 // Global Equity Model data structure
@@ -75,7 +75,7 @@ export async function seedGlobalEquityModel(db: ReturnType<typeof drizzle>, user
 export async function seedGlobalEquitySecurities(db: ReturnType<typeof drizzle>) {
   console.log('📊 Seeding Global Equity securities and index...');
 
-  const now = Date.now();
+  const now = Math.floor(Date.now() / 1000);
 
   // Collect all securities (primary and alternatives)
   const allSecurities = new Set<string>();
@@ -124,7 +124,7 @@ export async function seedGlobalEquitySecurities(db: ReturnType<typeof drizzle>)
   console.log(`✅ Seeded ${securities.length} Global Equity securities`);
 
   // Seed Global Equity index and members
-  await db.insert(schema.index).values({
+  await db.insert(schema.indexTable).values({
     id: 'global-equity',
     name: 'Global Equity Model',
     createdAt: now,
@@ -148,7 +148,7 @@ export async function seedGlobalEquitySecurities(db: ReturnType<typeof drizzle>)
 export async function seedGlobalEquitySleeves(db: ReturnType<typeof drizzle>, userId?: string) {
   console.log('📂 Seeding Global Equity sleeves...');
 
-  const now = Date.now();
+  const now = Math.floor(Date.now() / 1000);
   const targetUserId = userId || 'demo-user';
   console.log(`✅ Using user ID for sleeves: ${targetUserId}`);
 
@@ -209,7 +209,7 @@ export async function seedGlobalEquitySleeves(db: ReturnType<typeof drizzle>, us
 
   for (const [sleeveName, sleeveData] of sleeveGroups) {
     // Create sleeve
-    const sleeveId = `sleeve_global_equity_${Date.now()}_${sleeveIndex}`;
+    const sleeveId = `sleeve_global_equity_${Math.floor(Date.now() / 1000)}_${sleeveIndex}`;
     sleeves.push({
       id: sleeveId,
       name: sleeveName,
@@ -217,7 +217,7 @@ export async function seedGlobalEquitySleeves(db: ReturnType<typeof drizzle>, us
 
     // Add primary security with rank 1 (highest priority)
     sleeveMembers.push({
-      id: `member_global_equity_${Date.now()}_${memberIndex}`,
+      id: `member_global_equity_${Math.floor(Date.now() / 1000)}_${memberIndex}`,
       sleeveId,
       ticker: sleeveData.primary,
       rank: 1,
@@ -227,7 +227,7 @@ export async function seedGlobalEquitySleeves(db: ReturnType<typeof drizzle>, us
     // Add alternatives with lower ranks
     for (let i = 0; i < sleeveData.alternatives.length; i++) {
       sleeveMembers.push({
-        id: `member_global_equity_${Date.now()}_${memberIndex}`,
+        id: `member_global_equity_${Math.floor(Date.now() / 1000)}_${memberIndex}`,
         sleeveId,
         ticker: sleeveData.alternatives[i].ticker,
         rank: i + 2, // Rank starts at 2 for alternatives
@@ -300,7 +300,7 @@ export const getGlobalEquityModelData = async (db: ReturnType<typeof drizzle>, u
     }
   }
 
-  const now = Date.now();
+  const now = Math.floor(Date.now() / 1000);
 
   return [
     {
@@ -356,7 +356,7 @@ export async function generateGlobalEquityModelMembers(
     return [];
   }
 
-  const now = Date.now();
+  const now = Math.floor(Date.now() / 1000);
   const modelMembers = [];
 
   // Create model members based on the predefined weights
@@ -369,7 +369,7 @@ export async function generateGlobalEquityModelMembers(
     }
 
     modelMembers.push({
-      id: `model_member_global_equity_${Date.now()}_${modelMembers.length}`,
+      id: `model_member_global_equity_${Math.floor(Date.now() / 1000)}_${modelMembers.length}`,
       modelId,
       sleeveId: sleeve.id,
       targetWeight: item.weight * 100, // Convert percentage to basis points (20% = 2000)

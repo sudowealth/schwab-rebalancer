@@ -1,29 +1,31 @@
 import {
+  boolean,
+  index,
   integer,
+  pgTable,
   real,
-  index as sqliteIndex,
-  sqliteTable,
   text,
+  timestamp,
   unique,
-} from 'drizzle-orm/sqlite-core';
+} from 'drizzle-orm/pg-core';
 
-export const user = sqliteTable('user', {
+export const user = pgTable('user', {
   id: text('id').primaryKey(),
   email: text('email').unique().notNull(),
-  emailVerified: integer('emailVerified', { mode: 'boolean' }),
+  emailVerified: boolean('emailVerified'),
   name: text('name'),
   image: text('image'),
   role: text('role').default('user'),
-  createdAt: integer('createdAt', { mode: 'timestamp' }).notNull(),
-  updatedAt: integer('updatedAt', { mode: 'timestamp' }).notNull(),
+  createdAt: timestamp('createdAt').notNull(),
+  updatedAt: timestamp('updatedAt').notNull(),
 });
 
-export const session = sqliteTable('session', {
+export const session = pgTable('session', {
   id: text('id').primaryKey(),
-  expiresAt: integer('expiresAt', { mode: 'timestamp' }).notNull(),
+  expiresAt: timestamp('expiresAt').notNull(),
   token: text('token').unique().notNull(),
-  createdAt: integer('createdAt', { mode: 'timestamp' }).notNull(),
-  updatedAt: integer('updatedAt', { mode: 'timestamp' }).notNull(),
+  createdAt: timestamp('createdAt').notNull(),
+  updatedAt: timestamp('updatedAt').notNull(),
   ipAddress: text('ipAddress'),
   userAgent: text('userAgent'),
   userId: text('userId')
@@ -31,7 +33,7 @@ export const session = sqliteTable('session', {
     .references(() => user.id, { onDelete: 'cascade' }),
 });
 
-export const authAccount = sqliteTable('auth_account', {
+export const authAccount = pgTable('auth_account', {
   id: text('id').primaryKey(),
   accountId: text('accountId').notNull(),
   providerId: text('providerId').notNull(),
@@ -41,27 +43,25 @@ export const authAccount = sqliteTable('auth_account', {
   accessToken: text('accessToken'),
   refreshToken: text('refreshToken'),
   idToken: text('idToken'),
-  accessTokenExpiresAt: integer('accessTokenExpiresAt', { mode: 'timestamp' }),
-  refreshTokenExpiresAt: integer('refreshTokenExpiresAt', {
-    mode: 'timestamp',
-  }),
+  accessTokenExpiresAt: timestamp('accessTokenExpiresAt'),
+  refreshTokenExpiresAt: timestamp('refreshTokenExpiresAt'),
   scope: text('scope'),
   password: text('password'),
-  createdAt: integer('createdAt', { mode: 'timestamp' }).notNull(),
-  updatedAt: integer('updatedAt', { mode: 'timestamp' }).notNull(),
+  createdAt: timestamp('createdAt').notNull(),
+  updatedAt: timestamp('updatedAt').notNull(),
 });
 
-export const verification = sqliteTable('verification', {
+export const verification = pgTable('verification', {
   id: text('id').primaryKey(),
   identifier: text('identifier').notNull(),
   value: text('value').notNull(),
-  expiresAt: integer('expiresAt', { mode: 'timestamp' }).notNull(),
-  createdAt: integer('createdAt', { mode: 'timestamp' }),
-  updatedAt: integer('updatedAt', { mode: 'timestamp' }),
+  expiresAt: timestamp('expiresAt').notNull(),
+  createdAt: timestamp('createdAt'),
+  updatedAt: timestamp('updatedAt'),
 });
 
 // Financial data tables
-export const security = sqliteTable('security', {
+export const security = pgTable('security', {
   ticker: text('ticker').primaryKey(),
   name: text('name').notNull(),
   price: real('price').notNull(),
@@ -75,7 +75,7 @@ export const security = sqliteTable('security', {
   updatedAt: integer('updatedAt').notNull(),
 });
 
-export const account = sqliteTable(
+export const account = pgTable(
   'account',
   {
     id: text('id').primaryKey(),
@@ -87,7 +87,7 @@ export const account = sqliteTable(
     accountNumber: text('accountNumber'), // Optional for migration
     schwabAccountId: text('schwabAccountId'), // Schwab account identifier
     dataSource: text('dataSource').notNull().default('MANUAL'), // "MANUAL" | "SCHWAB"
-    lastSyncAt: integer('lastSyncAt', { mode: 'timestamp' }), // Last sync with Schwab
+    lastSyncAt: timestamp('lastSyncAt'), // Last sync with Schwab
     createdAt: integer('createdAt').notNull(),
     updatedAt: integer('updatedAt').notNull(),
   },
@@ -97,7 +97,7 @@ export const account = sqliteTable(
   ],
 );
 
-export const sleeve = sqliteTable(
+export const sleeve = pgTable(
   'sleeve',
   {
     id: text('id').primaryKey(),
@@ -105,7 +105,7 @@ export const sleeve = sqliteTable(
       .notNull()
       .references(() => user.id, { onDelete: 'cascade' }),
     name: text('name').notNull(),
-    isActive: integer('isActive', { mode: 'boolean' }).notNull().default(true),
+    isActive: boolean('isActive').notNull().default(true),
     createdAt: integer('createdAt').notNull(),
     updatedAt: integer('updatedAt').notNull(),
   },
@@ -115,7 +115,7 @@ export const sleeve = sqliteTable(
   ],
 );
 
-export const sleeveMember = sqliteTable('sleeve_member', {
+export const sleeveMember = pgTable('sleeve_member', {
   id: text('id').primaryKey(),
   sleeveId: text('sleeveId')
     .notNull()
@@ -124,13 +124,13 @@ export const sleeveMember = sqliteTable('sleeve_member', {
     .notNull()
     .references(() => security.ticker, { onDelete: 'cascade' }),
   rank: integer('rank').notNull(),
-  isActive: integer('isActive', { mode: 'boolean' }).notNull().default(true),
-  isLegacy: integer('isLegacy', { mode: 'boolean' }).notNull().default(false),
+  isActive: boolean('isActive').notNull().default(true),
+  isLegacy: boolean('isLegacy').notNull().default(false),
   createdAt: integer('createdAt').notNull(),
   updatedAt: integer('updatedAt').notNull(),
 });
 
-export const holding = sqliteTable('holding', {
+export const holding = pgTable('holding', {
   id: text('id').primaryKey(),
   accountId: text('accountId')
     .notNull()
@@ -143,12 +143,12 @@ export const holding = sqliteTable('holding', {
   openedAt: integer('openedAt').notNull(),
   schwabPositionId: text('schwabPositionId'), // Schwab position identifier
   dataSource: text('dataSource').notNull().default('MANUAL'), // "MANUAL" | "SCHWAB"
-  lastSyncAt: integer('lastSyncAt', { mode: 'timestamp' }), // Last sync with Schwab
+  lastSyncAt: timestamp('lastSyncAt'), // Last sync with Schwab
   createdAt: integer('createdAt').notNull(),
   updatedAt: integer('updatedAt').notNull(),
 });
 
-export const transaction = sqliteTable('transaction', {
+export const transaction = pgTable('transaction', {
   id: text('id').primaryKey(),
   accountId: text('accountId')
     .notNull()
@@ -168,7 +168,7 @@ export const transaction = sqliteTable('transaction', {
   updatedAt: integer('updatedAt').notNull(),
 });
 
-export const restrictedSecurity = sqliteTable('restricted_security', {
+export const restrictedSecurity = pgTable('restricted_security', {
   id: text('id').primaryKey(),
   ticker: text('ticker')
     .notNull()
@@ -183,18 +183,18 @@ export const restrictedSecurity = sqliteTable('restricted_security', {
   updatedAt: integer('updatedAt').notNull(),
 });
 
-export const index = sqliteTable('index', {
+export const indexTable = pgTable('index', {
   id: text('id').primaryKey(),
   name: text('name').notNull(),
   createdAt: integer('createdAt').notNull(),
   updatedAt: integer('updatedAt').notNull(),
 });
 
-export const indexMember = sqliteTable('index_member', {
+export const indexMember = pgTable('index_member', {
   id: text('id').primaryKey(),
   indexId: text('indexId')
     .notNull()
-    .references(() => index.id, { onDelete: 'cascade' }),
+    .references(() => indexTable.id, { onDelete: 'cascade' }),
   securityId: text('securityId')
     .notNull()
     .references(() => security.ticker, { onDelete: 'cascade' }),
@@ -203,7 +203,7 @@ export const indexMember = sqliteTable('index_member', {
 });
 
 // Central audit log
-export const auditLog = sqliteTable('audit_log', {
+export const auditLog = pgTable('audit_log', {
   id: text('id').primaryKey(),
   userId: text('userId')
     .notNull()
@@ -212,12 +212,12 @@ export const auditLog = sqliteTable('audit_log', {
   entityType: text('entityType').notNull(),
   entityId: text('entityId'),
   metadata: text('metadata'),
-  createdAt: integer('createdAt', { mode: 'timestamp' }).notNull(),
+  createdAt: timestamp('createdAt').notNull(),
   ipAddress: text('ipAddress'),
   userAgent: text('userAgent'),
 });
 
-export const model = sqliteTable(
+export const model = pgTable(
   'model',
   {
     id: text('id').primaryKey(),
@@ -226,7 +226,7 @@ export const model = sqliteTable(
       .references(() => user.id, { onDelete: 'cascade' }),
     name: text('name').notNull(),
     description: text('description'),
-    isActive: integer('isActive', { mode: 'boolean' }).notNull().default(true),
+    isActive: boolean('isActive').notNull().default(true),
     createdAt: integer('createdAt').notNull(),
     updatedAt: integer('updatedAt').notNull(),
   },
@@ -236,7 +236,7 @@ export const model = sqliteTable(
   ],
 );
 
-export const modelGroupAssignment = sqliteTable(
+export const modelGroupAssignment = pgTable(
   'model_group_assignment',
   {
     id: text('id').primaryKey(),
@@ -254,7 +254,7 @@ export const modelGroupAssignment = sqliteTable(
   }),
 );
 
-export const modelMember = sqliteTable('model_member', {
+export const modelMember = pgTable('model_member', {
   id: text('id').primaryKey(),
   modelId: text('modelId')
     .notNull()
@@ -263,23 +263,23 @@ export const modelMember = sqliteTable('model_member', {
     .notNull()
     .references(() => sleeve.id, { onDelete: 'cascade' }),
   targetWeight: integer('targetWeight').notNull(), // Store as basis points (10000 = 100%)
-  isActive: integer('isActive', { mode: 'boolean' }).notNull().default(true),
+  isActive: boolean('isActive').notNull().default(true),
   createdAt: integer('createdAt').notNull(),
   updatedAt: integer('updatedAt').notNull(),
 });
 
-export const rebalancingGroup = sqliteTable('rebalancing_group', {
+export const rebalancingGroup = pgTable('rebalancing_group', {
   id: text('id').primaryKey(),
   userId: text('userId')
     .notNull()
     .references(() => user.id, { onDelete: 'cascade' }),
   name: text('name').notNull(),
-  isActive: integer('isActive', { mode: 'boolean' }).notNull().default(true),
+  isActive: boolean('isActive').notNull().default(true),
   createdAt: integer('createdAt').notNull(),
   updatedAt: integer('updatedAt').notNull(),
 });
 
-export const rebalancingGroupMember = sqliteTable('rebalancing_group_member', {
+export const rebalancingGroupMember = pgTable('rebalancing_group_member', {
   id: text('id').primaryKey(),
   groupId: text('groupId')
     .notNull()
@@ -287,31 +287,29 @@ export const rebalancingGroupMember = sqliteTable('rebalancing_group_member', {
   accountId: text('accountId')
     .notNull()
     .references(() => account.id, { onDelete: 'cascade' }),
-  isActive: integer('isActive', { mode: 'boolean' }).notNull().default(true),
+  isActive: boolean('isActive').notNull().default(true),
   createdAt: integer('createdAt').notNull(),
   updatedAt: integer('updatedAt').notNull(),
 });
 
 // New table for Schwab API credentials
-export const schwabCredentials = sqliteTable('schwab_credentials', {
+export const schwabCredentials = pgTable('schwab_credentials', {
   id: text('id').primaryKey(),
   userId: text('userId')
     .notNull()
     .references(() => user.id, { onDelete: 'cascade' }),
   encryptedAccessToken: text('encryptedAccessToken').notNull(),
   encryptedRefreshToken: text('encryptedRefreshToken').notNull(),
-  tokenExpiresAt: integer('tokenExpiresAt', { mode: 'timestamp' }).notNull(),
-  refreshTokenExpiresAt: integer('refreshTokenExpiresAt', {
-    mode: 'timestamp',
-  }).notNull(),
+  tokenExpiresAt: timestamp('tokenExpiresAt').notNull(),
+  refreshTokenExpiresAt: timestamp('refreshTokenExpiresAt').notNull(),
   schwabClientId: text('schwabClientId').notNull(),
-  isActive: integer('isActive', { mode: 'boolean' }).notNull().default(true),
-  createdAt: integer('createdAt', { mode: 'timestamp' }).notNull(),
-  updatedAt: integer('updatedAt', { mode: 'timestamp' }).notNull(),
+  isActive: boolean('isActive').notNull().default(true),
+  createdAt: timestamp('createdAt').notNull(),
+  updatedAt: timestamp('updatedAt').notNull(),
 });
 
 // New table for sync audit logs
-export const syncLog = sqliteTable('sync_log', {
+export const syncLog = pgTable('sync_log', {
   id: text('id').primaryKey(),
   userId: text('userId')
     .notNull()
@@ -320,13 +318,13 @@ export const syncLog = sqliteTable('sync_log', {
   status: text('status').notNull(), // "SUCCESS" | "ERROR" | "PARTIAL"
   recordsProcessed: integer('recordsProcessed').notNull().default(0),
   errorMessage: text('errorMessage'),
-  startedAt: integer('startedAt', { mode: 'timestamp' }).notNull(),
-  completedAt: integer('completedAt', { mode: 'timestamp' }),
-  createdAt: integer('createdAt', { mode: 'timestamp' }).notNull(),
+  startedAt: timestamp('startedAt').notNull(),
+  completedAt: timestamp('completedAt'),
+  createdAt: timestamp('createdAt').notNull(),
 });
 
 // Details for price sync logs (per-ticker)
-export const syncLogDetail = sqliteTable('sync_log_detail', {
+export const syncLogDetail = pgTable('sync_log_detail', {
   id: text('id').primaryKey(),
   logId: text('logId')
     .notNull()
@@ -337,13 +335,13 @@ export const syncLogDetail = sqliteTable('sync_log_detail', {
   operation: text('operation').notNull(), // CREATE | UPDATE | DELETE | UPSERT | NOOP
   // JSON string of field changes: { field: { old: any, new: any } }
   changes: text('changes'),
-  success: integer('success', { mode: 'boolean' }).notNull().default(true),
+  success: boolean('success').notNull().default(true),
   message: text('message'),
-  createdAt: integer('createdAt', { mode: 'timestamp' }).notNull(),
+  createdAt: timestamp('createdAt').notNull(),
 });
 
 // Raw import table for Schwab positions (truncate-and-load on each import)
-export const schwabHolding = sqliteTable(
+export const schwabHolding = pgTable(
   'schwab_holding',
   {
     id: text('id').primaryKey(),
@@ -369,26 +367,22 @@ export const schwabHolding = sqliteTable(
     previousSessionLongQuantity: real('previousSessionLongQuantity'),
     previousSessionShortQuantity: real('previousSessionShortQuantity'),
     currentDayCost: real('currentDayCost'),
-    importedAt: integer('importedAt', { mode: 'timestamp' }).notNull(),
+    importedAt: timestamp('importedAt').notNull(),
   },
-  (table) => [
-    sqliteIndex('idx_schwab_holding_account_symbol').on(table.accountNumber, table.symbol),
-  ],
+  (table) => [index('idx_schwab_holding_account_symbol').on(table.accountNumber, table.symbol)],
 );
 
 // Raw import table for Schwab accounts (truncate-and-load on each import)
-export const schwabAccount = sqliteTable(
+export const schwabAccount = pgTable(
   'schwab_account',
   {
     id: text('id').primaryKey(),
     type: text('type').notNull(), // CASH | MARGIN
     accountNumber: text('accountNumber').notNull(),
     roundTrips: integer('roundTrips'),
-    isDayTrader: integer('isDayTrader', { mode: 'boolean' }),
-    isClosingOnlyRestricted: integer('isClosingOnlyRestricted', {
-      mode: 'boolean',
-    }),
-    pfcbFlag: integer('pfcbFlag', { mode: 'boolean' }),
+    isDayTrader: boolean('isDayTrader'),
+    isClosingOnlyRestricted: boolean('isClosingOnlyRestricted'),
+    pfcbFlag: boolean('pfcbFlag'),
     cashAvailableForTrading: real('cashAvailableForTrading'),
     cashAvailableForWithdrawal: real('cashAvailableForWithdrawal'),
     cashCall: real('cashCall'),
@@ -396,17 +390,14 @@ export const schwabAccount = sqliteTable(
     totalCash: real('totalCash'),
     cashDebitCallValue: real('cashDebitCallValue'),
     unsettledCash: real('unsettledCash'),
-    importedAt: integer('importedAt', { mode: 'timestamp' }).notNull(),
+    importedAt: timestamp('importedAt').notNull(),
     payload: text('payload'),
   },
-  (table) => [
-    unique().on(table.accountNumber),
-    sqliteIndex('idx_schwab_account_type').on(table.type),
-  ],
+  (table) => [unique().on(table.accountNumber), index('idx_schwab_account_type').on(table.type)],
 );
 
 // Raw import table for Schwab securities/instruments
-export const schwabSecurity = sqliteTable(
+export const schwabSecurity = pgTable(
   'schwab_security',
   {
     id: text('id').primaryKey(),
@@ -418,17 +409,17 @@ export const schwabSecurity = sqliteTable(
     assetSubType: text('assetSubType'),
     exchange: text('exchange'),
     payload: text('payload'),
-    discoveredAt: integer('discoveredAt', { mode: 'timestamp' }).notNull(),
+    discoveredAt: timestamp('discoveredAt').notNull(),
   },
   (table) => [
     unique().on(table.symbol),
-    sqliteIndex('idx_schwab_security_cusip').on(table.cusip),
-    sqliteIndex('idx_schwab_security_discoveredAt').on(table.discoveredAt),
+    index('idx_schwab_security_cusip').on(table.cusip),
+    index('idx_schwab_security_discoveredAt').on(table.discoveredAt),
   ],
 );
 
 // Raw import table for Schwab transactions/activity
-export const schwabTransaction = sqliteTable(
+export const schwabTransaction = pgTable(
   'schwab_transaction',
   {
     id: text('id').primaryKey(),
@@ -445,19 +436,19 @@ export const schwabTransaction = sqliteTable(
     orderId: integer('orderId'),
     netAmount: real('netAmount'),
     activityType: text('activityType'),
-    importedAt: integer('importedAt', { mode: 'timestamp' }).notNull(),
+    importedAt: timestamp('importedAt').notNull(),
     payload: text('payload'),
   },
   (table) => [
     unique().on(table.activityId),
-    sqliteIndex('idx_schwab_transaction_accountNumber').on(table.accountNumber),
-    sqliteIndex('idx_schwab_transaction_time').on(table.time),
-    sqliteIndex('idx_schwab_transaction_type').on(table.type),
+    index('idx_schwab_transaction_accountNumber').on(table.accountNumber),
+    index('idx_schwab_transaction_time').on(table.time),
+    index('idx_schwab_transaction_type').on(table.type),
   ],
 );
 
 // Trading order management
-export const tradeOrder = sqliteTable(
+export const tradeOrder = pgTable(
   'trade_order',
   {
     id: text('id').primaryKey(),
@@ -500,18 +491,18 @@ export const tradeOrder = sqliteTable(
     schwabOrderId: text('schwabOrderId'),
     status: text('status').notNull().default('DRAFT'),
     statusDescription: text('statusDescription'),
-    cancelable: integer('cancelable', { mode: 'boolean' }).notNull().default(false),
-    editable: integer('editable', { mode: 'boolean' }).notNull().default(false),
+    cancelable: boolean('cancelable').notNull().default(false),
+    editable: boolean('editable').notNull().default(false),
     quantity: real('quantity'),
     filledQuantity: real('filledQuantity').notNull().default(0),
     remainingQuantity: real('remainingQuantity').notNull().default(0),
 
     // Times
-    enteredAt: integer('enteredAt', { mode: 'timestamp' }),
-    closeAt: integer('closeAt', { mode: 'timestamp' }),
-    cancelAt: integer('cancelAt', { mode: 'timestamp' }),
-    placedAt: integer('placedAt', { mode: 'timestamp' }),
-    closedAt: integer('closedAt', { mode: 'timestamp' }),
+    enteredAt: timestamp('enteredAt'),
+    closeAt: timestamp('closeAt'),
+    cancelAt: timestamp('cancelAt'),
+    placedAt: timestamp('placedAt'),
+    closedAt: timestamp('closedAt'),
 
     // Instrument refs
     cusip: text('cusip'),
@@ -535,21 +526,17 @@ export const tradeOrder = sqliteTable(
     idempotencyKey: text('idempotencyKey'),
     batchLabel: text('batchLabel'),
 
-    createdAt: integer('createdAt', { mode: 'timestamp' }).notNull(),
-    updatedAt: integer('updatedAt', { mode: 'timestamp' }).notNull(),
+    createdAt: timestamp('createdAt').notNull(),
+    updatedAt: timestamp('updatedAt').notNull(),
   },
   (table) => [
-    sqliteIndex('idx_trade_order_user_account_status').on(
-      table.userId,
-      table.accountId,
-      table.status,
-    ),
-    sqliteIndex('idx_trade_order_account_schwab').on(table.accountId, table.schwabOrderId),
+    index('idx_trade_order_user_account_status').on(table.userId, table.accountId, table.status),
+    index('idx_trade_order_account_schwab').on(table.accountId, table.schwabOrderId),
     unique().on(table.accountId, table.idempotencyKey),
   ],
 );
 
-export const orderExecution = sqliteTable(
+export const orderExecution = pgTable(
   'order_execution',
   {
     id: text('id').primaryKey(),
@@ -557,30 +544,30 @@ export const orderExecution = sqliteTable(
       .notNull()
       .references(() => tradeOrder.id, { onDelete: 'cascade' }),
     legId: integer('legId'),
-    time: integer('time', { mode: 'timestamp' }).notNull(),
+    time: timestamp('time').notNull(),
     price: real('price').notNull(),
     qty: real('qty').notNull(),
     instrumentId: text('instrumentId'),
     fee: real('fee'),
     raw: text('raw'), // JSON string
-    settlementDate: integer('settlementDate', { mode: 'timestamp' }),
-    createdAt: integer('createdAt', { mode: 'timestamp' }).notNull(),
+    settlementDate: timestamp('settlementDate'),
+    createdAt: timestamp('createdAt').notNull(),
   },
-  (table) => [sqliteIndex('idx_order_execution_order_time').on(table.orderId, table.time)],
+  (table) => [index('idx_order_execution_order_time').on(table.orderId, table.time)],
 );
 
 // Financial Planning Tables
-export const financialPlan = sqliteTable('financial_plan', {
+export const financialPlan = pgTable('financial_plan', {
   id: text('id').primaryKey(),
   userId: text('userId')
     .notNull()
     .references(() => user.id, { onDelete: 'cascade' }),
   name: text('name').notNull(),
-  createdAt: integer('createdAt', { mode: 'timestamp' }).notNull(),
-  updatedAt: integer('updatedAt', { mode: 'timestamp' }).notNull(),
+  createdAt: timestamp('createdAt').notNull(),
+  updatedAt: timestamp('updatedAt').notNull(),
 });
 
-export const financialPlanInput = sqliteTable('financial_plan_input', {
+export const financialPlanInput = pgTable('financial_plan_input', {
   id: text('id').primaryKey(),
   planId: text('planId')
     .notNull()
@@ -596,10 +583,10 @@ export const financialPlanInput = sqliteTable('financial_plan_input', {
   taxableCostBasis: real('taxableCostBasis').notNull().default(100000),
   rothBalance: real('rothBalance').notNull().default(100000),
   deferredBalance: real('deferredBalance').notNull().default(100000),
-  updatedAt: integer('updatedAt', { mode: 'timestamp' }).notNull(),
+  updatedAt: timestamp('updatedAt').notNull(),
 });
 
-export const financialPlanGoal = sqliteTable('financial_plan_goal', {
+export const financialPlanGoal = pgTable('financial_plan_goal', {
   id: text('id').primaryKey(),
   planId: text('planId')
     .notNull()
@@ -607,16 +594,16 @@ export const financialPlanGoal = sqliteTable('financial_plan_goal', {
   purpose: text('purpose'),
   type: text('type').notNull(), // contribution, fixed_withdrawal
   amount: real('amount').notNull(),
-  inflationAdjusted: integer('inflationAdjusted', { mode: 'boolean' }).notNull().default(true),
+  inflationAdjusted: boolean('inflationAdjusted').notNull().default(true),
   startTiming: text('startTiming').notNull().default('immediately'),
   durationYears: integer('durationYears').notNull(),
   frequency: text('frequency').notNull().default('annually'), // annually, monthly
   repeatPattern: text('repeatPattern').notNull().default('none'),
   occurrences: integer('occurrences').notNull().default(1),
-  createdAt: integer('createdAt', { mode: 'timestamp' }).notNull(),
+  createdAt: timestamp('createdAt').notNull(),
 });
 
-export const taxBracket = sqliteTable('tax_bracket', {
+export const taxBracket = pgTable('tax_bracket', {
   id: text('id').primaryKey(),
   bracketType: text('bracketType').notNull(), // federal_income, federal_capital_gains, california_income
   filingStatus: text('filingStatus').notNull(), // single, married_filing_jointly, head_of_household
@@ -624,10 +611,10 @@ export const taxBracket = sqliteTable('tax_bracket', {
   maxIncome: real('maxIncome'), // null for top bracket
   rate: real('rate').notNull(),
   year: integer('year').notNull().default(2025),
-  createdAt: integer('createdAt', { mode: 'timestamp' }).notNull(),
+  createdAt: timestamp('createdAt').notNull(),
 });
 
-export const financialPlanResult = sqliteTable('financial_plan_result', {
+export const financialPlanResult = pgTable('financial_plan_result', {
   id: text('id').primaryKey(),
   planId: text('planId')
     .notNull()
@@ -657,5 +644,5 @@ export const financialPlanResult = sqliteTable('financial_plan_result', {
   endingDeferred: real('endingDeferred').notNull(),
   totalPortfolioNominal: real('totalPortfolioNominal').notNull(),
   totalPortfolioReal: real('totalPortfolioReal').notNull(),
-  calculatedAt: integer('calculatedAt', { mode: 'timestamp' }).notNull(),
+  calculatedAt: timestamp('calculatedAt').notNull(),
 });

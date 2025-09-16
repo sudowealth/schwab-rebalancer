@@ -1,4 +1,4 @@
-import type { drizzle } from 'drizzle-orm/libsql';
+import type { drizzle } from 'drizzle-orm/postgres-js';
 import * as schema from '../../db/schema';
 
 const HOLDINGS_DATA = [
@@ -159,7 +159,7 @@ const HOLDINGS_DATA = [
 export async function seedHoldings(db: ReturnType<typeof drizzle>, _userId?: string) {
   console.log('💼 Seeding holdings...');
 
-  const now = Date.now();
+  const now = Math.floor(Date.now() / 1000);
 
   // Clear existing holdings
   await db.delete(schema.holding);

@@ -1,5 +1,5 @@
 import { inArray } from 'drizzle-orm';
-import type { drizzle } from 'drizzle-orm/libsql';
+import type { drizzle } from 'drizzle-orm/postgres-js';
 import * as schema from '../../db/schema';
 
 const CASH_DATA = [
@@ -23,7 +23,7 @@ const CASH_DATA = [
 export async function seedSecurities(db: ReturnType<typeof drizzle>) {
   console.log('📊 Seeding cash securities...');
 
-  const now = Date.now();
+  const now = Math.floor(Date.now() / 1000);
 
   // Only seed cash securities, ETFs and stocks will be populated via equity securities sync
   const existingCash = await db

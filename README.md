@@ -93,7 +93,6 @@ cp .env.example .env.local
 
 # Set up Turso database (see docs/TURSO_SETUP.md for detailed instructions)
 # After setting up your Turso database and .env.local file:
-npm run test-db
 npm run db:push
 
 # Seed database with initial data (S&P 500 securities, etc.)
@@ -367,12 +366,10 @@ Pre-defined allocation templates that can be applied to rebalancing groups:
 - `npm run db:push` - Push schema to local Turso database
 - `npm run db:push:prod` - Push schema to production Turso database
 - `npm run db:studio` - Open Drizzle Studio for database inspection
-- `npm run test-db` - Test Turso database connection
 - `npm run seed` - Seed database with initial data
 
 ### Utilities
 - `npm run generate-secrets` - Generate CRON_KEY, DB_ENCRYPTION_KEY, BETTER_AUTH_SECRET
-- `npm run generate-key` - Generate only the encryption key (legacy helper)
 
 ## Database Schema
 

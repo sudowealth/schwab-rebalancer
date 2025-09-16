@@ -1,5 +1,5 @@
 import { and, eq, inArray, like } from 'drizzle-orm';
-import type { drizzle } from 'drizzle-orm/libsql';
+import type { drizzle } from 'drizzle-orm/postgres-js';
 import * as schema from '../../db/schema';
 
 // Combined function to seed S&P 500 securities, sleeves, and models
@@ -126,7 +126,7 @@ async function generateSP500SecuritiesData(): Promise<
 export async function seedSP500Securities(db: ReturnType<typeof drizzle>) {
   console.log('📊 Seeding S&P 500 securities and index...');
 
-  const now = Date.now();
+  const now = Math.floor(Date.now() / 1000);
 
   // Generate S&P 500 securities data from GitHub CSV
   const SP500_SECURITIES_DATA = await generateSP500SecuritiesData();
@@ -168,7 +168,7 @@ export async function seedSP500Securities(db: ReturnType<typeof drizzle>) {
 
   // Seed S&P 500 index and members
   try {
-    await db.insert(schema.index).values({
+    await db.insert(schema.indexTable).values({
       id: 'sp500',
       name: 'S&P 500',
       createdAt: now,
@@ -222,7 +222,7 @@ export async function seedSP500Securities(db: ReturnType<typeof drizzle>) {
   );
 }
 
-const createdAt = Date.now();
+const createdAt = Math.floor(Date.now() / 1000);
 
 // Function to generate sleeves dynamically from S&P 500 data
 export async function generateDynamicSleeves(db: ReturnType<typeof drizzle>) {
@@ -237,8 +237,8 @@ export async function generateDynamicSleeves(db: ReturnType<typeof drizzle>) {
     })
     .from(schema.security)
     .innerJoin(schema.indexMember, eq(schema.security.ticker, schema.indexMember.securityId))
-    .innerJoin(schema.index, eq(schema.indexMember.indexId, schema.index.id))
-    .where(eq(schema.index.name, 'S&P 500'))
+    .innerJoin(schema.indexTable, eq(schema.indexMember.indexId, schema.indexTable.id))
+    .where(eq(schema.indexTable.name, 'S&P 500'))
     .orderBy(schema.security.ticker);
 
   // Filter out securities without industry data (market cap is optional)
@@ -302,7 +302,7 @@ export async function generateDynamicSleeves(db: ReturnType<typeof drizzle>) {
     });
 
     // Create sleeve for this industry
-    const sleeveId = `sleeve_dynamic_${Date.now()}_${sleeveIndex}`;
+    const sleeveId = `sleeve_dynamic_${Math.floor(Date.now() / 1000)}_${sleeveIndex}`;
     const sleeveName = `${industry}`;
 
     sleeves.push({
@@ -313,7 +313,7 @@ export async function generateDynamicSleeves(db: ReturnType<typeof drizzle>) {
     // Add securities to sleeve with ranks (1 = highest priority)
     for (let i = 0; i < securities.length; i++) {
       sleeveMembers.push({
-        id: `member_dynamic_${Date.now()}_${memberIndex}`,
+        id: `member_dynamic_${Math.floor(Date.now() / 1000)}_${memberIndex}`,
         sleeveId,
         ticker: securities[i].ticker,
         rank: i + 1, // Rank starts at 1 (highest priority)
@@ -332,7 +332,7 @@ export async function generateDynamicSleeves(db: ReturnType<typeof drizzle>) {
 export async function seedSleeves(db: ReturnType<typeof drizzle>, userId?: string) {
   console.log('📂 Seeding sleeves...');
 
-  const now = Date.now();
+  const now = Math.floor(Date.now() / 1000);
 
   const targetUserId = userId || 'demo-user';
   console.log(`✅ Using user ID for sleeves: ${targetUserId}`);
@@ -490,7 +490,7 @@ export async function generateDynamicModelMembers(
     const weight = index < remainder ? baseWeight + 1 : baseWeight;
 
     return {
-      id: `model_member_dynamic_${Date.now()}_${index}`,
+      id: `model_member_dynamic_${Math.floor(Date.now() / 1000)}_${index}`,
       modelId,
       sleeveId: sleeve.id,
       targetWeight: weight,

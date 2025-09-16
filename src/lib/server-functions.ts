@@ -1,7 +1,7 @@
 import { createServerFn } from '@tanstack/react-start';
 import { getWebRequest } from '@tanstack/react-start/server';
 import { eq, inArray, sql } from 'drizzle-orm';
-import type { drizzle } from 'drizzle-orm/libsql';
+import type { drizzle } from 'drizzle-orm/postgres-js';
 import * as schema from '../db/schema';
 
 // Defer server-only auth utilities to runtime to avoid bundling them in the client build
@@ -3714,9 +3714,8 @@ export const truncateDataServerFn = createServerFn({ method: 'POST' })
 
         // Truncate each table
         for (const tableName of tablesToTruncate) {
-          tx.run(sql`DELETE FROM ${sql.identifier(tableName)}`);
-          // Reset auto-increment counters for SQLite
-          tx.run(sql`DELETE FROM sqlite_sequence WHERE name = ${tableName}`);
+          await tx.execute(sql`DELETE FROM ${sql.identifier(tableName)}`);
+          // PostgreSQL handles sequence resets automatically
         }
 
         // Log the truncation in audit log

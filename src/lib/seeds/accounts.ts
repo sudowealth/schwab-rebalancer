@@ -1,6 +1,7 @@
-import { eq, sql } from 'drizzle-orm';
-import type { drizzle } from 'drizzle-orm/libsql';
+import { eq } from 'drizzle-orm';
+import type { drizzle } from 'drizzle-orm/postgres-js';
 import * as schema from '../../db/schema';
+import { getSqlClient } from '../db-config';
 
 const ACCOUNTS_DATA = [
   {
@@ -24,15 +25,17 @@ const ACCOUNTS_DATA = [
 ];
 
 // Function to check if accountNumber column exists and add it if needed
-async function migrateAccountTable(db: ReturnType<typeof drizzle>) {
+async function migrateAccountTable(_db: ReturnType<typeof drizzle>) {
   try {
+    const sqlClient = getSqlClient();
     // Try to check if accountNumber column exists by running a simple query
-    await db.run(sql`SELECT accountNumber FROM account LIMIT 1`);
+    await sqlClient`SELECT accountNumber FROM account LIMIT 1`;
     console.log('✅ accountNumber column already exists');
   } catch {
     console.log('📝 Adding accountNumber column to account table...');
     try {
-      await db.run(sql`ALTER TABLE account ADD COLUMN accountNumber TEXT`);
+      const sqlClient = getSqlClient();
+      await sqlClient`ALTER TABLE account ADD COLUMN accountNumber TEXT`;
       console.log('✅ accountNumber column added successfully');
     } catch (alterError) {
       console.warn('⚠️ Could not add accountNumber column:', alterError);
@@ -46,7 +49,7 @@ export async function seedAccounts(db: ReturnType<typeof drizzle>, userId?: stri
   // First, ensure the account table has the accountNumber column
   await migrateAccountTable(db);
 
-  const now = Date.now();
+  const now = Math.floor(Date.now() / 1000);
 
   // Use provided userId or fallback to demo user logic
   const targetUserId = userId;

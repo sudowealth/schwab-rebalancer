@@ -1,4 +1,4 @@
-import { eq, lt } from 'drizzle-orm';
+import { eq, lt, sql } from 'drizzle-orm';
 import * as schema from '../db/schema';
 import { getDatabase } from './db-config';
 
@@ -154,11 +154,17 @@ export class SessionManager {
   static async cleanupExpiredSessions(): Promise<number> {
     try {
       const db = getDatabase();
-      const result = await db
+      const _result = await db
         .delete(schema.session)
         .where(lt(schema.session.expiresAt, new Date()));
 
-      const expiredCount = result.rowsAffected || 0;
+      // PostgreSQL doesn't have rowsAffected, use a separate count query
+      const countResult = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(schema.session)
+        .where(lt(schema.session.expiresAt, new Date()));
+
+      const expiredCount = countResult[0]?.count || 0;
       console.log(`Cleaned up ${expiredCount} expired sessions`);
       return expiredCount;
     } catch (error) {

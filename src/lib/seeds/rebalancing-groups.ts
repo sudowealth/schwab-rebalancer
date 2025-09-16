@@ -1,5 +1,5 @@
 import { eq } from 'drizzle-orm';
-import type { drizzle } from 'drizzle-orm/libsql';
+import type { drizzle } from 'drizzle-orm/postgres-js';
 import * as schema from '../../db/schema';
 
 // Demo rebalancing groups data
@@ -19,7 +19,7 @@ const REBALANCING_GROUPS_DATA = [
 export async function seedRebalancingGroups(db: ReturnType<typeof drizzle>, userId?: string) {
   console.log('👥 Seeding rebalancing groups...');
 
-  const now = Date.now();
+  const now = Math.floor(Date.now() / 1000);
 
   // Use provided userId or get the demo user ID
   let targetUserId = userId;

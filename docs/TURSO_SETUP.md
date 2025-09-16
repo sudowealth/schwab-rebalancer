@@ -62,15 +62,7 @@ npx drizzle-kit push
 
 Test the connection in multiple ways:
 
-### 1. Quick Connection Test
-
-```bash
-pnpm run test-db
-```
-
-This will verify your Turso connection, show the SQLite version, and confirm everything is working.
-
-### 2. Full Application Test
+### 1. Full Application Test
 
 ```bash
 pnpm run dev
@@ -82,7 +74,7 @@ Start the development server to test the full application with Turso database in
 
 ### Connection Issues
 
-If `pnpm run test-db` fails:
+If database connection fails:
 
 1. **Check environment variables** in `.env.local`:
    ```bash

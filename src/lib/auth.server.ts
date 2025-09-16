@@ -8,10 +8,10 @@ import { sendPasswordResetEmail, sendVerificationEmail } from './email';
 import { getSecurityConfig } from './security-config';
 
 const getAuthDatabase = () => {
-  // Use Turso in any environment where credentials are present (including production)
-  const hasTursoEnv = !!process.env.TURSO_CONNECTION_URL && !!process.env.TURSO_AUTH_TOKEN;
+  // Use Neon Postgres in any environment where credentials are present (including production)
+  const hasDatabaseEnv = !!(process.env.DATABASE_URL || process.env.NETLIFY_DATABASE_URL);
 
-  if (hasTursoEnv) {
+  if (hasDatabaseEnv) {
     return getDatabase();
   }
 
@@ -21,16 +21,14 @@ const getAuthDatabase = () => {
   }
 
   // Otherwise, we cannot continue in production
-  throw new Error(
-    'Production database not configured: set TURSO_CONNECTION_URL and TURSO_AUTH_TOKEN in Netlify env.',
-  );
+  throw new Error('Production database not configured: set DATABASE_URL in Netlify env.');
 };
 
 const createSafeAdapter = () => {
   const db = getAuthDatabase();
 
   const adapter = drizzleAdapter(db, {
-    provider: 'sqlite',
+    provider: 'pg',
     schema: {
       user: schema.user,
       session: schema.session,
