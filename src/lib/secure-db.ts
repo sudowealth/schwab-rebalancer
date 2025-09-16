@@ -1,10 +1,10 @@
 import { and, eq, inArray } from 'drizzle-orm';
 import * as schema from '../db/schema';
-import { getDatabase } from './db-config';
+import { getDatabaseSync } from './db-config';
 import type { AuthContext } from './secure-auth';
 
 export class SecureDB {
-  private db = getDatabase();
+  private db = getDatabaseSync();
 
   constructor(private authContext: AuthContext) {}
 

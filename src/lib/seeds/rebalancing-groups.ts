@@ -1,5 +1,5 @@
 import { eq } from 'drizzle-orm';
-import type { drizzle } from 'drizzle-orm/postgres-js';
+import type { drizzle } from 'drizzle-orm/neon-http';
 import * as schema from '../../db/schema';
 
 // Demo rebalancing groups data

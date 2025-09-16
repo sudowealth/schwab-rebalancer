@@ -12,6 +12,7 @@ export default defineConfig({
   },
   ssr: {
     noExternal: ['better-auth'],
+    external: ['postgres', '@neondatabase/serverless'],
   },
   optimizeDeps: {},
   build: {},

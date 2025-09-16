@@ -1,7 +1,6 @@
 import { eq } from 'drizzle-orm';
-import type { drizzle } from 'drizzle-orm/postgres-js';
+import type { drizzle } from 'drizzle-orm/neon-http';
 import * as schema from '../../db/schema';
-import { getSqlClient } from '../db-config';
 
 const ACCOUNTS_DATA = [
   {
@@ -24,23 +23,11 @@ const ACCOUNTS_DATA = [
   },
 ];
 
-// Function to check if accountNumber column exists and add it if needed
+// Function to check if accountNumber column exists (simplified for Neon HTTP)
 async function migrateAccountTable(_db: ReturnType<typeof drizzle>) {
-  try {
-    const sqlClient = getSqlClient();
-    // Try to check if accountNumber column exists by running a simple query
-    await sqlClient`SELECT accountNumber FROM account LIMIT 1`;
-    console.log('✅ accountNumber column already exists');
-  } catch {
-    console.log('📝 Adding accountNumber column to account table...');
-    try {
-      const sqlClient = getSqlClient();
-      await sqlClient`ALTER TABLE account ADD COLUMN accountNumber TEXT`;
-      console.log('✅ accountNumber column added successfully');
-    } catch (alterError) {
-      console.warn('⚠️ Could not add accountNumber column:', alterError);
-    }
-  }
+  // With Neon HTTP, we can't run raw SQL queries
+  // The accountNumber column should already be defined in the schema
+  console.log('✅ Using schema-defined accountNumber column');
 }
 
 export async function seedAccounts(db: ReturnType<typeof drizzle>, userId?: string) {

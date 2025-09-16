@@ -1,17 +1,30 @@
 import { config } from 'dotenv';
-import { drizzle } from 'drizzle-orm/postgres-js';
-import postgres from 'postgres';
-import * as schema from '../db/schema';
 
 // Load environment variables
 config({ path: '.env.local' });
 
-let sql: ReturnType<typeof postgres> | undefined;
-let db: ReturnType<typeof drizzle> | undefined;
+import { neon } from '@neondatabase/serverless';
+// Type definitions
+import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
+import { drizzle } from 'drizzle-orm/neon-http';
 
-// Initialize database connection
-function initializeDatabase() {
-  if (!sql || !db) {
+type DrizzleInstance = NeonHttpDatabase<Record<string, unknown>> & {
+  $client: ReturnType<typeof neon>;
+};
+
+// Global variables for database connection
+declare global {
+  var __dbInstance: DrizzleInstance | undefined;
+  var __dbInitialized: boolean;
+}
+
+// Initialize global variables
+global.__dbInstance = undefined;
+global.__dbInitialized = false;
+
+// Initialize database connection (server-side only)
+async function initializeDatabase() {
+  if (!global.__dbInitialized) {
     const connectionString = process.env.DATABASE_URL || process.env.NETLIFY_DATABASE_URL;
 
     if (!connectionString) {
@@ -20,44 +33,42 @@ function initializeDatabase() {
       );
     }
 
-    sql = postgres(connectionString);
-    db = drizzle(sql, { schema });
+    // Dynamic imports to avoid bundling in client
+    const [schemaModule] = await Promise.all([import('../db/schema')]);
+
+    const schema = schemaModule;
+
+    // Create Neon HTTP client
+    const sql = neon(connectionString);
+    const dbInstance = drizzle(sql, { schema });
+    // Add the $client property for compatibility with seed functions
+    (dbInstance as any).$client = sql;
+    global.__dbInstance = dbInstance as DrizzleInstance;
+    global.__dbInitialized = true;
   }
 }
 
-// Get database instance
-export function getDatabase(): ReturnType<typeof drizzle> {
-  if (!db) {
-    initializeDatabase();
+// Synchronous versions for existing code (will throw if not initialized)
+export function getDatabaseSync(): DrizzleInstance {
+  if (!global.__dbInitialized || !global.__dbInstance) {
+    throw new Error('Database not initialized. Call initDatabase() first.');
   }
-  if (!db) {
-    throw new Error('Failed to initialize database');
-  }
-  return db;
+  return global.__dbInstance;
 }
 
-// Get raw SQL client for direct queries if needed
-export function getSqlClient(): ReturnType<typeof postgres> {
-  if (!sql) {
-    initializeDatabase();
-  }
-  if (!sql) {
-    throw new Error('Failed to initialize SQL client');
-  }
-  return sql;
+// Neon HTTP client doesn't expose raw SQL client in the same way
+export function getSqlClientSync(): null {
+  // Neon HTTP client doesn't provide direct SQL access for raw queries
+  return null;
 }
 
-// Cleanup database connection (mainly for testing/shutdown)
+// Initialize the database (call this at startup)
+export async function initDatabase(): Promise<void> {
+  await initializeDatabase();
+}
+
+// Cleanup database connection (Neon HTTP handles this automatically)
 export function cleanupDatabase(): void {
-  if (sql) {
-    try {
-      sql.end();
-      console.log('Database connection cleaned up');
-    } catch (error) {
-      console.warn('Error cleaning up database connection:', error);
-    } finally {
-      sql = undefined;
-      db = undefined;
-    }
-  }
+  global.__dbInstance = undefined;
+  global.__dbInitialized = false;
 }

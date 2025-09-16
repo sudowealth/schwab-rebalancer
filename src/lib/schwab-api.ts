@@ -1,7 +1,7 @@
 import { and, eq } from 'drizzle-orm';
 import * as schema from '../db/schema';
 import { decrypt, encrypt } from './crypto';
-import { getDatabase } from './db-config';
+import { getDatabaseSync } from './db-config';
 
 // Note: We attempted to use @sudowealth/schwab-api but encountered module resolution issues.
 // The library structure has been analyzed and this implementation follows similar patterns
@@ -136,7 +136,7 @@ export interface SchwabClientConfig {
 }
 
 export class SchwabApiService {
-  private db = getDatabase();
+  private db = getDatabaseSync();
   private schwabAuth: AuthClient | null = null;
   private apiClient: SchwabApiClient | null = null;
 

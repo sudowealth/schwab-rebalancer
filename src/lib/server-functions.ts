@@ -1,8 +1,9 @@
 import { createServerFn } from '@tanstack/react-start';
 import { getWebRequest } from '@tanstack/react-start/server';
 import { eq, inArray, sql } from 'drizzle-orm';
-import type { drizzle } from 'drizzle-orm/postgres-js';
+import type { drizzle } from 'drizzle-orm/neon-http';
 import * as schema from '../db/schema';
+import { getDatabaseSync } from './db-config';
 
 // Defer server-only auth utilities to runtime to avoid bundling them in the client build
 const requireAuth = async () => {
@@ -94,8 +95,7 @@ export const truncateSecurityTableServerFn = createServerFn({
 }).handler(async () => {
   await requireAdmin();
 
-  const { getDatabase } = await import('./db-config');
-  const db = getDatabase();
+  const db = getDatabaseSync();
   const schema = await import('../db/schema');
   await db.delete(schema.security);
   const { clearCache } = await import('./db-api');
@@ -181,8 +181,7 @@ async function filterImportedTickersForPriceSync(
 export const seedSecuritiesDataServerFn = createServerFn({ method: 'POST' }).handler(async () => {
   await requireAuth();
 
-  const { getDatabase } = await import('./db-config');
-  const db = getDatabase();
+  const db = getDatabaseSync();
   const { seedSecurities } = await import('./seeds/securities');
   const { seedSP500Securities } = await import('./seeds/sp500-model-seeder');
 
@@ -297,8 +296,7 @@ export const seedSecuritiesDataServerFn = createServerFn({ method: 'POST' }).han
 export const seedModelsDataServerFn = createServerFn({ method: 'POST' }).handler(async () => {
   const { user } = await requireAuth();
 
-  const { getDatabase } = await import('./db-config');
-  const db = getDatabase();
+  const db = getDatabaseSync();
   const { seedSleeves, seedModels } = await import('./seeds/sp500-model-seeder');
 
   const sleevesResult = await seedSleeves(db, user.id);
@@ -317,8 +315,7 @@ export const seedGlobalEquityModelServerFn = createServerFn({ method: 'POST' }).
   async () => {
     const { user } = await requireAuth();
 
-    const { getDatabase } = await import('./db-config');
-    const db = getDatabase();
+    const db = getDatabaseSync();
     const { seedGlobalEquitySleeves, seedGlobalEquityModelData } = await import(
       './seeds/global-equity-model-seeder'
     );
@@ -699,8 +696,7 @@ export const getGroupAccountHoldingsServerFn = createServerFn({
     const { user } = await requireAuth();
 
     // Verify that all accountIds belong to the authenticated user
-    const { getDatabase } = await import('./db-config');
-    const db = getDatabase();
+    const db = getDatabaseSync();
     const schema = await import('../db/schema');
     const { eq, inArray, and } = await import('drizzle-orm');
 
@@ -824,8 +820,7 @@ export const unassignModelFromGroupServerFn = createServerFn({ method: 'POST' })
     const { user } = await requireAuth();
 
     // Verify that the rebalancing group belongs to the authenticated user
-    const { getDatabase } = await import('./db-config');
-    const db = getDatabase();
+    const db = getDatabaseSync();
     const schema = await import('../db/schema');
     const { eq } = await import('drizzle-orm');
 
@@ -877,8 +872,7 @@ export const rebalancePortfolioServerFn = createServerFn({ method: 'POST' })
     const { user } = await requireAuth();
 
     // Verify that the portfolio (rebalancing group) belongs to the authenticated user
-    const { getDatabase } = await import('./db-config');
-    const db = getDatabase();
+    const db = getDatabaseSync();
     const schema = await import('../db/schema');
     const { eq } = await import('drizzle-orm');
 
@@ -1227,8 +1221,7 @@ export const updateManualCashServerFn = createServerFn({ method: 'POST' })
     const { user } = await requireAuth();
 
     // Verify that the account belongs to the authenticated user
-    const { getDatabase } = await import('./db-config');
-    const db = getDatabase();
+    const db = getDatabaseSync();
     const schema = await import('../db/schema');
     const { eq } = await import('drizzle-orm');
 
@@ -1311,8 +1304,7 @@ export const getManualCashServerFn = createServerFn({ method: 'POST' })
     const { user } = await requireAuth();
 
     // Import database API only on the server
-    const { getDatabase } = await import('./db-config');
-    const db = getDatabase();
+    const db = getDatabaseSync();
     const schema = await import('../db/schema');
     const { eq } = await import('drizzle-orm');
 
@@ -1622,8 +1614,7 @@ export const getSleeveTargetTickersServerFn = createServerFn({
   try {
     const { user } = await requireAuth();
 
-    const { getDatabase } = await import('./db-config');
-    const db = getDatabase();
+    const db = getDatabaseSync();
 
     const sleeveRows = await db
       .select({ ticker: schema.sleeveMember.ticker })
@@ -1663,8 +1654,7 @@ export const getHeldAndSleeveTickersServerFn = createServerFn({
       .map((position) => position.ticker?.trim())
       .filter((ticker): ticker is string => Boolean(ticker) && !isAnyCashTicker(ticker));
 
-    const { getDatabase } = await import('./db-config');
-    const db = getDatabase();
+    const db = getDatabaseSync();
     const sleeveRows = await db
       .select({ ticker: schema.sleeveMember.ticker })
       .from(schema.sleeveMember)
@@ -1723,8 +1713,7 @@ export const syncSchwabPricesServerFn = createServerFn({ method: 'POST' })
       console.log('👤 [ServerFn] Authenticated user:', user.id);
 
       try {
-        const { getDatabase } = await import('./db-config');
-        const db = getDatabase();
+        const db = getDatabaseSync();
         const schema = await import('../db/schema');
         const { eq } = await import('drizzle-orm');
 
@@ -1855,8 +1844,7 @@ export const syncSchwabPricesServerFn = createServerFn({ method: 'POST' })
         console.error('❌ [ServerFn] Error syncing prices:', error);
         // Attempt to log error in sync log if we started one
         try {
-          const { getDatabase } = await import('./db-config');
-          const db = getDatabase();
+          const db = getDatabaseSync();
           const schema = await import('../db/schema');
           await db.insert(schema.syncLog).values({
             id: crypto.randomUUID(),
@@ -1916,8 +1904,7 @@ export const deleteSyncLogServerFn = createServerFn({ method: 'POST' })
     try {
       const { user } = await requireAuth();
 
-      const { getDatabase } = await import('./db-config');
-      const db = getDatabase();
+      const db = getDatabaseSync();
       const schema = await import('../db/schema');
       const { eq } = await import('drizzle-orm');
 
@@ -1952,8 +1939,7 @@ export const getSyncLogsServerFn = createServerFn({ method: 'GET' }).handler(asy
   try {
     const { user } = await requireAuth();
 
-    const { getDatabase } = await import('./db-config');
-    const db = getDatabase();
+    const db = getDatabaseSync();
     const schema = await import('../db/schema');
     const { eq, desc } = await import('drizzle-orm');
 
@@ -2034,8 +2020,7 @@ export const syncYahooFundamentalsServerFn = createServerFn({ method: 'POST' })
       const scope = data.scope;
       const explicitSymbols = data.symbols;
 
-      const { getDatabase } = await import('./db-config');
-      const db = getDatabase();
+      const db = getDatabaseSync();
       const schema = await import('../db/schema');
       const { eq } = await import('drizzle-orm');
       const yahooFinance = (await import('yahoo-finance2')).default;
@@ -2475,8 +2460,7 @@ export const getGroupOrdersServerFn = createServerFn({ method: 'POST' })
 
     const { user } = await requireAuth();
 
-    const { getDatabase } = await import('./db-config');
-    const db = getDatabase();
+    const db = getDatabaseSync();
     const schema = await import('../db/schema');
     const { eq } = await import('drizzle-orm');
 
@@ -2524,8 +2508,7 @@ export const updateOrderServerFn = createServerFn({ method: 'POST' })
     const { user } = await requireAuth();
 
     // Verify that the order belongs to the authenticated user
-    const { getDatabase } = await import('./db-config');
-    const db = getDatabase();
+    const db = getDatabaseSync();
     const schema = await import('../db/schema');
     const { eq } = await import('drizzle-orm');
 
@@ -2556,8 +2539,7 @@ export const deleteOrderServerFn = createServerFn({ method: 'POST' })
     const { user } = await requireAuth();
 
     // Verify that the order belongs to the authenticated user
-    const { getDatabase } = await import('./db-config');
-    const db = getDatabase();
+    const db = getDatabaseSync();
     const schema = await import('../db/schema');
     const { eq } = await import('drizzle-orm');
 
@@ -2588,8 +2570,7 @@ export const previewOrderServerFn = createServerFn({ method: 'POST' })
 
     const { user } = await requireAuth();
 
-    const { getDatabase } = await import('./db-config');
-    const db = getDatabase();
+    const db = getDatabaseSync();
     const schema = await import('../db/schema');
     const { eq } = await import('drizzle-orm');
 
@@ -2846,8 +2827,7 @@ export const submitOrderServerFn = createServerFn({ method: 'POST' })
 
     const { user } = await requireAuth();
 
-    const { getDatabase } = await import('./db-config');
-    const db = getDatabase();
+    const db = getDatabaseSync();
     const schema = await import('../db/schema');
     const { eq } = await import('drizzle-orm');
 
@@ -2990,8 +2970,7 @@ export const submitOrderServerFn = createServerFn({ method: 'POST' })
 export const getAllUsersServerFn = createServerFn({ method: 'GET' }).handler(async () => {
   await requireAdmin();
 
-  const { getDatabase } = await import('./db-config');
-  const db = getDatabase();
+  const db = getDatabaseSync();
   const schema = await import('../db/schema');
 
   const users = await db
@@ -3018,8 +2997,7 @@ export const updateUserRoleServerFn = createServerFn({ method: 'POST' })
 
     await requireAdmin();
 
-    const { getDatabase } = await import('./db-config');
-    const db = getDatabase();
+    const db = getDatabaseSync();
     const schema = await import('../db/schema');
     const { eq } = await import('drizzle-orm');
 
@@ -3050,8 +3028,7 @@ export const updateUserRoleServerFn = createServerFn({ method: 'POST' })
 export const getSystemStatsServerFn = createServerFn({ method: 'GET' }).handler(async () => {
   await requireAdmin();
 
-  const { getDatabase } = await import('./db-config');
-  const db = getDatabase();
+  const db = getDatabaseSync();
   const schema = await import('../db/schema');
   const { sql } = await import('drizzle-orm');
 
@@ -3096,8 +3073,7 @@ export const getAuditLogsServerFn = createServerFn({ method: 'GET' })
 
     const { limit = 100, offset = 0, userId } = data;
 
-    const { getDatabase } = await import('./db-config');
-    const db = getDatabase();
+    const db = getDatabaseSync();
     const schema = await import('../db/schema');
     const { eq, desc } = await import('drizzle-orm');
 
@@ -3143,8 +3119,7 @@ export const deleteUserServerFn = createServerFn({ method: 'POST' })
       throw new Error('Cannot delete your own account');
     }
 
-    const { getDatabase } = await import('./db-config');
-    const db = getDatabase();
+    const db = getDatabaseSync();
     const schema = await import('../db/schema');
     const { eq } = await import('drizzle-orm');
 
@@ -3176,8 +3151,7 @@ export const getUserDataServerFn = createServerFn({ method: 'GET' })
 
     await requireAdmin();
 
-    const { getDatabase } = await import('./db-config');
-    const db = getDatabase();
+    const db = getDatabaseSync();
     const schema = await import('../db/schema');
     const { eq } = await import('drizzle-orm');
 
@@ -3218,8 +3192,7 @@ export const signUpWithFirstAdminServerFn = createServerFn({ method: 'POST' })
   .handler(async ({ data }) => {
     const { email, password, name } = data;
 
-    const { getDatabase } = await import('./db-config');
-    const db = getDatabase();
+    const db = getDatabaseSync();
     const schema = await import('../db/schema');
     const { sql, eq } = await import('drizzle-orm');
 
@@ -3311,8 +3284,7 @@ export const verifyAdminAccessServerFn = createServerFn({
 export const checkIsFirstUserServerFn = createServerFn({
   method: 'GET',
 }).handler(async () => {
-  const { getDatabase } = await import('./db-config');
-  const db = getDatabase();
+  const db = getDatabaseSync();
   const schema = await import('../db/schema');
   const { sql } = await import('drizzle-orm');
 
@@ -3340,8 +3312,7 @@ export const checkUserCreationAllowedServerFn = createServerFn({
   }
 
   // If INDIVIDUAL_USE is enabled, check if there are already users
-  const { getDatabase } = await import('./db-config');
-  const db = getDatabase();
+  const db = getDatabaseSync();
   const schema = await import('../db/schema');
   const { sql } = await import('drizzle-orm');
 
@@ -3532,8 +3503,7 @@ export const importNasdaqSecuritiesServerFn = createServerFn({
       const securitiesToProcess = limit ? parsedSecurities.slice(0, limit) : parsedSecurities;
 
       // Import to database
-      const { getDatabase } = await import('./db-config');
-      const db = getDatabase();
+      const db = getDatabaseSync();
       const schema = await import('../db/schema');
       const { clearCache } = await import('./db-api');
 
@@ -3668,8 +3638,7 @@ export const truncateDataServerFn = createServerFn({ method: 'POST' })
       throw new Error('Confirmation text required: "TRUNCATE_ALL_DATA"');
     }
 
-    const { getDatabase } = await import('./db-config');
-    const db = getDatabase();
+    const db = getDatabaseSync();
     const schema = await import('../db/schema');
 
     try {
@@ -3755,9 +3724,8 @@ export const truncateDataServerFn = createServerFn({ method: 'POST' })
 // Get counts for Yahoo Finance sync scopes
 export const getYahooSyncCountsServerFn = createServerFn({ method: 'GET' }).handler(async () => {
   const { user } = await requireAuth();
-  const { getDatabase } = await import('./db-config');
   const { count, and, or, inArray, isNull, ne } = await import('drizzle-orm');
-  const db = getDatabase();
+  const db = getDatabaseSync();
   const schema = await import('../db/schema');
 
   // Get total securities count
@@ -3858,9 +3826,8 @@ export const getYahooSyncCountsServerFn = createServerFn({ method: 'GET' }).hand
 // Check if securities exist in the database
 export const checkSecuritiesExistServerFn = createServerFn({ method: 'GET' }).handler(async () => {
   const { user: _user } = await requireAuth();
-  const { getDatabase } = await import('./db-config');
   const { count, ne } = await import('drizzle-orm');
-  const db = getDatabase();
+  const db = getDatabaseSync();
   const schema = await import('../db/schema');
 
   // Get count of securities (excluding cash)
@@ -3878,9 +3845,8 @@ export const checkSecuritiesExistServerFn = createServerFn({ method: 'GET' }).ha
 // Check if models exist for the user
 export const checkModelsExistServerFn = createServerFn({ method: 'GET' }).handler(async () => {
   const { user } = await requireAuth();
-  const { getDatabase } = await import('./db-config');
   const { count, eq } = await import('drizzle-orm');
-  const db = getDatabase();
+  const db = getDatabaseSync();
   const schema = await import('../db/schema');
 
   // Get count of models for this user

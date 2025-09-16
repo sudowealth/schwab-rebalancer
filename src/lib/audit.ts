@@ -1,5 +1,5 @@
 import * as schema from '../db/schema';
-import { getDatabase } from './db-config';
+import { getDatabaseSync } from './db-config';
 
 export async function logAudit(
   userId: string,
@@ -9,7 +9,7 @@ export async function logAudit(
   metadata?: unknown,
   req?: { ip?: string; ua?: string },
 ) {
-  const db = getDatabase();
+  const db = getDatabaseSync();
   await db.insert(schema.auditLog).values({
     id: crypto.randomUUID(),
     userId,

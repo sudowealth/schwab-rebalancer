@@ -1,6 +1,6 @@
 // Import individual seed functions
 
-import { cleanupDatabase, getDatabase } from '../db-config';
+import { cleanupDatabase, getDatabaseSync, initDatabase } from '../db-config';
 import { seedAccounts } from './accounts';
 import { seedHoldings } from './holdings';
 import { seedRebalancingGroups } from './rebalancing-groups';
@@ -8,11 +8,12 @@ import { seedSecurities } from './securities';
 import { seedModels, seedSleeves, seedSP500Securities } from './sp500-model-seeder';
 import { seedTransactions } from './transactions';
 
-// Initialize database connection to D1 local database
-const db = getDatabase();
-
 export async function seedDatabase(userId?: string) {
   console.log('🌱 Starting database seeding...');
+
+  // Initialize database connection
+  await initDatabase();
+  const db = getDatabaseSync();
 
   try {
     // Tables will be created by Drizzle migrations

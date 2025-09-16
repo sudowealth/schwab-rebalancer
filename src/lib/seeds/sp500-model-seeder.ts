@@ -1,5 +1,5 @@
 import { and, eq, inArray, like } from 'drizzle-orm';
-import type { drizzle } from 'drizzle-orm/postgres-js';
+import type { drizzle } from 'drizzle-orm/neon-http';
 import * as schema from '../../db/schema';
 
 // Combined function to seed S&P 500 securities, sleeves, and models

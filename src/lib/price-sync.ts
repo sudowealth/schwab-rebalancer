@@ -2,7 +2,7 @@ import { eq, inArray } from 'drizzle-orm';
 import yahooFinance from 'yahoo-finance2';
 import * as schema from '../db/schema';
 import { CASH_TICKER, MANUAL_CASH_TICKER } from './constants';
-import { getDatabase } from './db-config';
+import { getDatabaseSync } from './db-config';
 import { getSchwabApiService } from './schwab-api';
 
 export interface PriceUpdateResult {
@@ -23,7 +23,7 @@ export interface PriceSyncOptions {
 }
 
 export class PriceSyncService {
-  private db = getDatabase();
+  private db = getDatabaseSync();
   private cache = new Map<string, { price: number; timestamp: number }>();
   private readonly DEFAULT_MAX_AGE = 60; // 60 seconds default cache
   private readonly MAX_QUOTES_PER_REQUEST = 150;

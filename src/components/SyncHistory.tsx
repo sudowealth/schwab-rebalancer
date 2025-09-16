@@ -1,6 +1,17 @@
 import { useQuery } from '@tanstack/react-query';
 import { Download, Loader2, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
+
+interface SyncLog {
+  id: string;
+  syncType: string;
+  startedAt: string | Date;
+  status: string;
+  recordsProcessed?: number;
+  errorMessage?: string | null;
+  details?: unknown[];
+}
+
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
@@ -180,7 +191,7 @@ export function SyncHistory() {
             {(syncLogs ?? []).length === 0 ? (
               <div className="p-3 text-sm text-muted-foreground">No recent syncs.</div>
             ) : (
-              (syncLogs ?? []).map((log, _idx: number) => {
+              (syncLogs ?? []).map((log: SyncLog, _idx: number) => {
                 // Default: closed on initial load; open only if user clicks or when a sync is running
                 const isExpanded = expandedLogId === log.id;
                 return (
@@ -259,7 +270,7 @@ export function SyncHistory() {
                             setDeleteModalLog({
                               id: log.id,
                               syncType: log.syncType,
-                              startedAt: log.startedAt.toISOString(),
+                              startedAt: new Date(log.startedAt).toISOString(),
                             });
                             setDeleteModalOpen(true);
                           }}

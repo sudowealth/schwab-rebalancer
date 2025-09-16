@@ -1,6 +1,6 @@
 import { eq, lt, sql } from 'drizzle-orm';
 import * as schema from '../db/schema';
-import { getDatabase } from './db-config';
+import { getDatabaseSync } from './db-config';
 
 export interface SessionInvalidationOptions {
   userId?: string;
@@ -18,7 +18,7 @@ async function logSessionAuditEvent(
   details: Record<string, unknown>,
 ): Promise<void> {
   try {
-    const db = getDatabase();
+    const db = getDatabaseSync();
     await db.insert(schema.auditLog).values({
       id: crypto.randomUUID(),
       userId,
@@ -46,7 +46,7 @@ export class SessionManager {
   static async invalidateSessions(options: SessionInvalidationOptions): Promise<number> {
     try {
       let invalidatedCount = 0;
-      const db = getDatabase();
+      const db = getDatabaseSync();
 
       if (options.sessionId) {
         // Invalidate specific session by updating expiry
@@ -127,7 +127,7 @@ export class SessionManager {
     }>
   > {
     try {
-      const db = getDatabase();
+      const db = getDatabaseSync();
       const sessions = await db
         .select()
         .from(schema.session)
@@ -153,7 +153,7 @@ export class SessionManager {
    */
   static async cleanupExpiredSessions(): Promise<number> {
     try {
-      const db = getDatabase();
+      const db = getDatabaseSync();
       const _result = await db
         .delete(schema.session)
         .where(lt(schema.session.expiresAt, new Date()));
@@ -182,7 +182,7 @@ export class SessionManager {
     currentUserAgent: string,
   ): Promise<{ valid: boolean; reason?: string }> {
     try {
-      const db = getDatabase();
+      const db = getDatabaseSync();
       const sessions = await db
         .select()
         .from(schema.session)

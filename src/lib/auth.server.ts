@@ -3,7 +3,7 @@ import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { reactStartCookies } from 'better-auth/react-start';
 import * as schema from '../db/schema';
-import { getDatabase } from './db-config';
+import { getDatabaseSync } from './db-config';
 import { sendPasswordResetEmail, sendVerificationEmail } from './email';
 import { getSecurityConfig } from './security-config';
 
@@ -12,12 +12,12 @@ const getAuthDatabase = () => {
   const hasDatabaseEnv = !!(process.env.DATABASE_URL || process.env.NETLIFY_DATABASE_URL);
 
   if (hasDatabaseEnv) {
-    return getDatabase();
+    return getDatabaseSync();
   }
 
   // Fallback to local dev DB when running locally
   if (typeof process !== 'undefined' && process.env.NODE_ENV !== 'production') {
-    return getDatabase();
+    return getDatabaseSync();
   }
 
   // Otherwise, we cannot continue in production

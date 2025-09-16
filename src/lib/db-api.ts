@@ -1,6 +1,6 @@
 import { and, desc, eq, inArray, sql } from 'drizzle-orm';
 import * as schema from '../db/schema';
-import { getDatabase } from './db-config';
+import { getDatabaseSync } from './db-config';
 import { DatabaseError, logError, ValidationError, withRetry } from './error-handler';
 import {
   type CreateModel,
@@ -106,7 +106,7 @@ export interface FinancialPlanSummary {
 }
 
 // Database connection - server-side only
-const db = getDatabase();
+const db = getDatabaseSync();
 
 // Format market cap from millions to appropriate display format
 function formatMarketCap(millions: number): string {
