@@ -19,9 +19,9 @@ function RegisterPage() {
   const emailId = `${uid}-email`;
   const passwordId = `${uid}-password`;
   const { data: session } = useSession();
-  const [email, setEmail] = useState('d@d.com');
-  const [password, setPassword] = useState('Test1234');
-  const [name, setName] = useState('Dan');
+  const [email, setEmail] = useState(() => (import.meta.env.DEV ? 'd@d.com' : ''));
+  const [password, setPassword] = useState(() => (import.meta.env.DEV ? 'Test1234' : ''));
+  const [name, setName] = useState(() => (import.meta.env.DEV ? 'Dan' : ''));
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');

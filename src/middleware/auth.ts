@@ -1,5 +1,5 @@
 import { createMiddleware } from '@tanstack/react-start';
-import { auth } from '../lib/auth';
+import { auth } from '../lib/auth.server';
 
 /**
  * Authentication middleware for TanStack Start

@@ -1,5 +1,5 @@
 import { getWebRequest } from '@tanstack/react-start/server';
-import { auth } from './auth';
+import { auth } from './auth.server';
 
 // Type definitions for user roles
 export type UserRole = 'user' | 'admin';

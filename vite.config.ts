@@ -15,11 +15,13 @@ export default defineConfig({
     noExternal: ['better-auth'],
   },
   optimizeDeps: {
-    exclude: ['better-sqlite3', 'better-auth'],
+    exclude: [
+      'better-sqlite3',
+    ],
   },
   build: {
     rollupOptions: {
-      external: ['better-sqlite3', 'better-auth'],
+      external: ['better-sqlite3'],
     },
   },
   plugins: [
@@ -83,7 +85,7 @@ export default defineConfig({
             // Set NODE_ENV for the auth module
             process.env.NODE_ENV = 'development';
 
-            const { auth } = await import('./src/lib/auth');
+            const { auth } = await import('./src/lib/auth.server');
             const response = await auth.handler(request);
 
             // Set response status

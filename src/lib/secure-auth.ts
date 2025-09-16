@@ -1,4 +1,4 @@
-import { auth } from './auth';
+import { auth } from './auth.server';
 import { ForbiddenError, UnauthorizedError } from './errors';
 
 // Error classes are now in errors.ts to avoid importing from this server-only file
