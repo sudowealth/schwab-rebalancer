@@ -1,13 +1,11 @@
 [build]
-  publish = ".output/public"
+  publish = ".tanstack/start/build/client-dist"
   command = "npm run build"
 
 [build.environment]
   NODE_VERSION = "22"
 
-# Netlify Functions configuration
-[functions]
-  directory = ".output/server"
+# Using TanStack Start + Nitro. Netlify will package functions from .netlify/functions-internal automatically.
 
 # Redirect rules for SPA
 [[redirects]]
