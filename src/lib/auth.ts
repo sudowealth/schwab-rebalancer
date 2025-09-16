@@ -7,13 +7,22 @@ import { sendPasswordResetEmail, sendVerificationEmail } from './email';
 import { getSecurityConfig } from './security-config';
 
 const getAuthDatabase = () => {
-  if (typeof process !== 'undefined' && process.env.NODE_ENV === 'development') {
-    const db = getDatabase();
-    return db;
+  // Use Turso in any environment where credentials are present (including production)
+  const hasTursoEnv = !!process.env.TURSO_CONNECTION_URL && !!process.env.TURSO_AUTH_TOKEN;
+
+  if (hasTursoEnv) {
+    return getDatabase();
   }
 
-  // For production, would need to configure D1 adapter separately
-  throw new Error('Production database not configured');
+  // Fallback to local dev DB when running locally
+  if (typeof process !== 'undefined' && process.env.NODE_ENV !== 'production') {
+    return getDatabase();
+  }
+
+  // Otherwise, we cannot continue in production
+  throw new Error(
+    'Production database not configured: set TURSO_CONNECTION_URL and TURSO_AUTH_TOKEN in Netlify env.',
+  );
 };
 
 const createSafeAdapter = () => {
