@@ -1402,7 +1402,7 @@ export const handleSchwabOAuthCallbackServerFn = createServerFn({
     try {
       const { user } = await requireAuth();
 
-      console.log('👤 [ServerFn] Using authenticated user ID:', user.id.substring(0, 10), '...');
+      console.log(`👤 [ServerFn] Using authenticated user ID: ${user.id.substring(0, 10)}...`);
 
       // Check for required Schwab environment variables
       const clientId = process.env.SCHWAB_CLIENT_ID;
@@ -1446,7 +1446,7 @@ export const getSchwabCredentialsStatusServerFn = createServerFn({
   try {
     const { user } = await requireAuth();
 
-    console.log('👤 [ServerFn] Using authenticated user ID:', user.id.substring(0, 10), '...');
+    console.log(`👤 [ServerFn] Using authenticated user ID: ${user.id.substring(0, 10)}...`);
 
     // Check for required Schwab environment variables
     const clientId = process.env.SCHWAB_CLIENT_ID;

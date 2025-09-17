@@ -1,11 +1,11 @@
 import { neon } from '@neondatabase/serverless';
+import { sql } from 'drizzle-orm';
 // Type definitions
 import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
-import { sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/neon-http';
 
 type DrizzleInstance = NeonHttpDatabase<Record<string, unknown>> & {
-  $client: ReturnType<typeof neon>;
+  $client: ReturnType<typeof neon<false, false>>;
 };
 
 // Global variables for database connection
@@ -108,8 +108,7 @@ async function initializeDatabase() {
     const sql = neon(connectionString);
     const dbInstance = drizzle(sql, { schema }) as DrizzleInstance;
     // Add the $client property for compatibility with seed functions
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (dbInstance as any).$client = sql;
+    dbInstance.$client = sql;
     await ensureMigrations(dbInstance);
     globalForDb.__dbInstance = dbInstance;
     globalForDb.__dbInitialized = true;
@@ -143,8 +142,7 @@ export async function initDatabaseSync(): Promise<void> {
     const { drizzle } = await import('drizzle-orm/neon-http');
     const dbInstance = drizzle(sql, { schema }) as DrizzleInstance;
     // Add the $client property for compatibility with seed functions
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (dbInstance as any).$client = sql;
+    dbInstance.$client = sql;
 
     await ensureMigrations(dbInstance);
     globalForDb.__dbInstance = dbInstance;

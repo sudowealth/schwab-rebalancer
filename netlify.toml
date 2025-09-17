@@ -5,6 +5,9 @@
 [build.environment]
   NODE_VERSION = "22"
 
+[functions]
+  included_files = ["drizzle/**"]
+
 # Using TanStack Start + Nitro. Netlify will package functions from .netlify/functions-internal automatically.
 
 # Template configuration for Deploy to Netlify
