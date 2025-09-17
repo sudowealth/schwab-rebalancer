@@ -7,7 +7,7 @@ import * as schema from '../db/schema';
 import { auth } from './auth.server';
 import { getDatabaseSync } from './db-config';
 
-// Note: Better Auth is handled separately via middleware, not server functions
+// Note: Better Auth integration handled at router level
 
 // Defer server-only auth utilities to runtime to avoid bundling them in the client build
 const requireAuth = async () => {
