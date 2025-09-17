@@ -23,6 +23,71 @@ export default defineConfig({
     },
   },
   plugins: [
+    {
+      name: 'tanstack-router-node-stream-fix',
+      enforce: 'pre',
+      transform(code, id) {
+        if (!id.includes('node_modules')) {
+          return null;
+        }
+        if (!code.includes('node:')) {
+          return null;
+        }
+
+        const nodeImportPattern = /import\s+\{([^}]+)\}\s+from\s+['"](node:[^'"\n]+)['"];?/g;
+        const matches = [...code.matchAll(nodeImportPattern)];
+        if (matches.length === 0) {
+          return null;
+        }
+
+        const modules = new Map();
+        for (const match of matches) {
+          const [, imports, moduleName] = match;
+          const specifiers = imports
+            .split(',')
+            .map((name) => name.trim())
+            .filter(Boolean);
+          const existing = modules.get(moduleName) ?? {
+            specifiers: new Set(),
+            statements: [],
+          };
+          for (const name of specifiers) {
+            existing.specifiers.add(name);
+          }
+          existing.statements.push(match[0]);
+          modules.set(moduleName, existing);
+        }
+
+        let transformed = code;
+        for (const { statements } of modules.values()) {
+          for (const statement of statements) {
+            transformed = transformed.replace(statement, '');
+          }
+        }
+
+        const formatSpecifiers = (specifiers: Set<string>) =>
+          Array.from(specifiers)
+            .map((specifier) => {
+              const [rawName, rawAlias] = specifier.split(/\s+as\s+/);
+              const name = rawName.trim();
+              const alias = rawAlias?.trim();
+              return alias ? `${name}: ${alias}` : name;
+            })
+            .join(', ');
+
+        const importBlock = Array.from(modules.entries())
+          .map(([moduleName, { specifiers }]) => {
+            const aliasBase = moduleName.slice('node:'.length).replace(/[^\w]/g, '_') || 'module';
+            const alias = `node_${aliasBase}`;
+            return `import ${alias} from "${moduleName}";\nconst { ${formatSpecifiers(specifiers)} } = ${alias};`;
+          })
+          .join('\n');
+
+        transformed = `${importBlock}\n${transformed.trimStart()}`;
+
+        return transformed;
+      },
+    },
     tailwindcss(),
     tsConfigPaths({
       projects: ['./tsconfig.json'],
