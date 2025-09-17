@@ -60,7 +60,7 @@ description = "Resend API key for email notifications (optional)"
 # API routes should be handled by Netlify Functions
 [[redirects]]
   from = "/api/*"
-  to = "/.netlify/functions-internal/___netlify-handler"
+  to = "/.netlify/functions-internal/server"
   status = 200
 
 # SPA fallback for all other routes
