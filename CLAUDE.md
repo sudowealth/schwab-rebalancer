@@ -19,7 +19,7 @@
 
 - **Frontend**: TanStack Start (React) + TailwindCSS + shadcn/ui
 - **Backend**: TypeScript on Node.js
-- **Database**: SQLite with Drizzle ORM
+- **Database**: PostgreSQL with Drizzle ORM
 - **Auth**: Better Auth with email/password
 
 ### Core Concepts

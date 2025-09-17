@@ -16,15 +16,6 @@ This guide shows you how to deploy your own instance of the Schwab Rebalancer ap
 - ✅ No credit card required to start
 - ✅ Perfect for low-usage personal apps
 
-### Alternative FREE Options
-
-### Vercel + Neon PostgreSQL
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository=YOUR_REPO_URL)
-- ✅ Free tier available
-- ✅ Global CDN performance
-- ✅ Built-in database support
-- ✅ Zero-config deployment
-
 ## 🗄️ Why Neon PostgreSQL? (Better than Local SQLite)
 
 ### ❌ **Local SQLite WON'T Work on Netlify**

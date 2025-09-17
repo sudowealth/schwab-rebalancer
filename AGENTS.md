@@ -12,7 +12,7 @@
 ## Architecture Overview
 
 - Tax‑loss harvesting platform enforcing wash‑sale rules with “sleeves” (interchangeable securities) to maintain exposure.
-- Stack: TanStack Start + React/Tailwind (UI), Node.js (API), SQLite + Drizzle (DB), Better Auth.
+- Stack: TanStack Start + React/Tailwind (UI), Node.js (API), PostgreSQL + Drizzle (DB), Better Auth.
 
 ## Build, Test, and Development Commands
 
@@ -22,7 +22,7 @@
 - `npm run deploy`: Build then deploy via Netlify CLI.
 - `npm run lint` / `npm run format` / `npm run typecheck`: Lint and format with Biome; type‑check.
 - `npm run db:generate`: Generate Drizzle migrations from schema.
-- `npm run db:migrate`: Apply migrations locally to SQLite database.
+- `npm run db:migrate`: Apply migrations locally to PostgreSQL database.
 - `npm run db:migrate:prod`: Apply migrations to production.
 - `npm run db:studio`: Open Drizzle Studio.
 - `npm run seed`: Seed local data (see `src/lib/seeds/main.ts`).
@@ -51,7 +51,7 @@
 ## Security & Configuration Tips
 
 - Copy `.env.example` to `.env.local`; never commit secrets. Required for local auth, email, and integrations.
-- Local dev uses SQLite file `local.db`; production uses hosted database.
+- Local dev uses PostgreSQL database; production uses hosted database.
 - For HTTPS testing, use local HTTPS setup (see docs/LOCAL_HTTPS_SETUP.md).
 - Production schedules: Corporate Actions 13:00 UTC, Harvest 16:00 UTC.
 

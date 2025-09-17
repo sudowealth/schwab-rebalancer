@@ -7,7 +7,6 @@ yarn.lock
 .env
 .env.*
 !.env.example
-.vercel
 .output
 .nitro
 /build/

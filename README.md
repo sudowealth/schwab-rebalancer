@@ -2,11 +2,12 @@
 
 A portfolio management platform built for rebalancing and tax-loss harvesting with Charles Schwab. The system manages equity portfolios through rebalancing groups and "sleeves" - groups of similar securities that can substitute for each other during rebalancing while maintaining wash-sale compliance and optimal tax efficiency.
 
-## 🚀 One-Click FREE Deployment
+## 🚀 Get Started
 
-Get your own instance running in minutes:
+### Option 1: One-click demo
+Try it instantly (deploys from this repo):
 
-[![Deploy to Netlify](https://www.netlify.com/img/deploy/button.svg)](https://app.netlify.com/start/deploy?repository=YOUR_REPO_URL)
+[![Deploy to Netlify](https://www.netlify.com/img/deploy/button.svg)](https://app.netlify.com/start/deploy?repository=https://github.com/sudowealth/schwab-rebalancer)
 
 **Why Netlify + Neon PostgreSQL?**
 - ✅ **100% FREE** (Netlify's free tier + Neon's free PostgreSQL)
@@ -15,6 +16,21 @@ Get your own instance running in minutes:
 - ✅ No credit card required to start
 - ✅ Serverless PostgreSQL (Neon) - works perfectly with serverless
 - ✅ Perfect for low-usage personal apps
+
+---
+
+### Option 2: Own your code (recommended)
+1. [Use this template on GitHub](https://github.com/sudowealth/schwab-rebalancer/generate)  
+   This creates a new repo in your account.
+2. Push any changes you want.
+3. Deploy to Netlify, connected to your new repo:  
+   [![Deploy to Netlify](https://www.netlify.com/img/deploy/button.svg)](https://app.netlify.com/start)
+
+When you hit Deploy, Netlify will:
+- Ask you to connect your GitHub account.
+- Let you select your new repo.
+- Prompt you for required secrets (from `netlify.toml`).
+- Build and deploy automatically. Every push to your repo will trigger a new deploy.
 
 [📖 Full Deployment Guide](./DEPLOYMENT.md) | [🎯 Quick Setup](./DEPLOYMENT.md#automated-setup-super-easy)
 
@@ -122,7 +138,7 @@ Follow the instructions in [SCHWAB_SETUP.md](./SCHWAB_SETUP.md) to:
 
 ### 5. Local Environment Configuration
 
-Create a `.env.local` file (the app uses a local SQLite database automatically):
+Create a `.env.local` file:
 
 ```env
 INDIVIDUAL_USE=true
@@ -208,7 +224,7 @@ npm run lint
 ### Prerequisites
 
 - **Neon PostgreSQL** (automatically created with Netlify deployment)
-- **Netlify or Vercel account** for hosting
+- **Netlify account** for hosting
 - Environment variables configured (see below)
 
 ### 1. Environment Setup
@@ -223,33 +239,46 @@ Set up your production environment variables in your deployment platform:
 # (see .env.example for complete list)
 ```
 
-### 2. Deploy to Netlify/Vercel
+### 2. Deploy to Netlify
 
 #### Option A: Netlify (Recommended)
-[![Deploy to Netlify](https://www.netlify.com/img/deploy/button.svg)](https://app.netlify.com/start/deploy?repository=YOUR_REPO_URL)
+[![Deploy to Netlify](https://www.netlify.com/img/deploy/button.svg)](https://app.netlify.com/start/deploy?repository=https://github.com/sudowealth/schwab-rebalancer)
 
 1. Connect your GitHub repository
 2. Set build command: `npm run build`
 3. Set publish directory: `.output/public`
 4. Configure environment variables in Netlify dashboard
 
-#### Option B: Vercel
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository=YOUR_REPO_URL)
+### 3. Generate Required Secrets
 
-1. Import your project
-2. Vercel will auto-detect TanStack Start
-3. Configure environment variables in Vercel dashboard
+Before deploying, you'll need to generate secure secrets. Use these commands to create cryptographically secure values:
 
-### 3. Required Environment Variables
+| Secret | Command | Purpose |
+|--------|---------|---------|
+| `BETTER_AUTH_SECRET` | `openssl rand -base64 32` | JWT signing for authentication |
+| `DB_ENCRYPTION_KEY` | `openssl rand -base64 32` | AES-GCM encryption for Schwab API credentials |
+| `CRON_KEY` | `openssl rand -base64 32` | Protection for scheduled worker endpoints |
 
-Add these to your Netlify/Vercel environment variables:
+**Example output:**
+```bash
+$ openssl rand -base64 32
+Y120VPXl09bWYvT8Z9lPbQ==
+```
+
+**Alternative (easier):** Run `npm run generate-secrets` from your project root to generate all secrets at once.
+
+**⚠️ Important**: Store these secrets securely and never commit them to version control.
+
+### 4. Required Environment Variables
+
+Add these to your Netlify environment variables:
 
 ```env
 # Database (already configured)
 
 # Authentication
 # Base URL is auto-detected at runtime from request context
-# Falls back to deployment platform detection (Netlify, Vercel, Railway, Heroku, etc.)
+# Falls back to deployment platform detection (Netlify, Railway, Heroku, etc.)
 BETTER_AUTH_SECRET=your_auth_secret_here
 
 # Schwab API
@@ -261,14 +290,14 @@ CRON_KEY=your_cron_key
 DB_ENCRYPTION_KEY=your_generated_encryption_key
 ```
 
-### 4. Generate Production Encryption Key
+### 5. Generate Production Encryption Key
 
 ```bash
 # Generate fresh secrets for production
 npm run generate-secrets
 ```
 
-### 5. Optional: Email Configuration
+### 6. Optional: Email Configuration
 
 For email notifications, add to your environment variables:
 
@@ -283,7 +312,7 @@ RESEND_API_KEY=your_resend_api_key
 - Never share keys between environments or commit them to version control
 - If migrating data from development to production, you'll need to decrypt with the old key and re-encrypt with the new key
 
-### 4. Set up Production Database
+### 7. Set up Production Database
 
 ```bash
 # For Neon PostgreSQL, the database schema is pushed directly to your Neon instance
@@ -294,12 +323,11 @@ npm run db:push:prod
 # npm run seed
 ```
 
-### 6. Deploy to Netlify/Vercel
+### 8. Deploy to Netlify
 
 Your application will automatically deploy when you push to your main branch on GitHub. The deployment URLs will be:
 
 - **Netlify**: `https://your-app-name.netlify.app`
-- **Vercel**: `https://your-app-name.vercel.app`
 
 Monitor deployment status in your chosen platform's dashboard.
 
@@ -347,7 +375,7 @@ Pre-defined allocation templates that can be applied to rebalancing groups:
 - `npm run dev` - Start development server on port 3000
 - `npm run build` - Build for production (includes TypeScript check)
 - `npm run start` - Start production server
-- `npm run deploy` - Build and deploy to Netlify/Vercel (via Git push)
+- `npm run deploy` - Build and deploy to Netlify (via Git push)
 
 ### Code Quality
 
@@ -411,7 +439,7 @@ Using **Drizzle ORM** with **Neon PostgreSQL** (serverless). Key entities:
 
 ### Backend Architecture
 
-- **Netlify/Vercel**: Serverless deployment with global CDN
+- **Netlify**: Serverless deployment with global CDN
 - **Server Functions**: Type-safe RPC between client and server
 - **Better Auth**: Secure authentication with session management
 - **Drizzle ORM**: Type-safe database operations with Neon PostgreSQL

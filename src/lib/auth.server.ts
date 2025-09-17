@@ -3,9 +3,13 @@ import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { reactStartCookies } from 'better-auth/react-start';
 import * as schema from '../db/schema';
-import { getDatabaseSync } from './db-config';
+import { getDatabaseSync, initDatabaseSync } from './db-config';
 import { sendPasswordResetEmail, sendVerificationEmail } from './email';
 import { getSecurityConfig } from './security-config';
+
+if (typeof window === 'undefined') {
+  await initDatabaseSync();
+}
 
 const getAuthDatabase = () => {
   // Use Neon Postgres in any environment where credentials are present (including production)
