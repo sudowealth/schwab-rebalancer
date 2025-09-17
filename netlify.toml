@@ -54,3 +54,15 @@ default = ""
 description = "Resend API key for email notifications (optional)"
 
 
+# Redirect rules for SPA
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/server"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/*"
+  to = "/.netlify/functions/server"
+  status = 200
+  force = true
