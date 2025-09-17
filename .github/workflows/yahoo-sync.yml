@@ -13,6 +13,11 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
       - name: Trigger Yahoo fundamentals sync
         env:
           CRON_KEY: ${{ secrets.CRON_KEY }}

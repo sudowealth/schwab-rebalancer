@@ -14,8 +14,6 @@ export default defineConfig({
     noExternal: ['better-auth'],
     external: ['postgres', '@neondatabase/serverless'],
   },
-  optimizeDeps: {},
-  build: {},
   plugins: [
     tailwindcss(),
     tsConfigPaths({
