@@ -68,10 +68,6 @@ export async function loadDashboardData(
       dbApiModule.getIndexMembers(),
     ]);
 
-    if (sp500Data.length === 0) {
-      console.warn('⚠️ SP500 data is empty in server-only loader!');
-    }
-
     // Load Schwab environment variables status (for "Configure" step)
     let schwabCredentialsStatus = { hasCredentials: false };
     try {
@@ -86,10 +82,26 @@ export async function loadDashboardData(
     let schwabOAuthStatus = { hasCredentials: false };
     if (userId) {
       try {
-        const { getSchwabApiService } = await import('./schwab-api');
-        const schwabApi = getSchwabApiService();
-        const hasOAuthCredentials = await schwabApi.hasValidCredentials(userId);
-        schwabOAuthStatus = { hasCredentials: hasOAuthCredentials };
+        // Check for required Schwab environment variables
+        const clientId = process.env.SCHWAB_CLIENT_ID;
+        const clientSecret = process.env.SCHWAB_CLIENT_SECRET;
+
+        if (!clientId) {
+          console.warn(
+            '⚠️ Failed to load Schwab OAuth credentials status: SCHWAB_CLIENT_ID is not set in environment variables',
+          );
+          schwabOAuthStatus = { hasCredentials: false };
+        } else if (!clientSecret) {
+          console.warn(
+            '⚠️ Failed to load Schwab OAuth credentials status: SCHWAB_CLIENT_SECRET is not set in environment variables',
+          );
+          schwabOAuthStatus = { hasCredentials: false };
+        } else {
+          const { getSchwabApiService } = await import('./schwab-api');
+          const schwabApi = getSchwabApiService();
+          const hasOAuthCredentials = await schwabApi.hasValidCredentials(userId);
+          schwabOAuthStatus = { hasCredentials: hasOAuthCredentials };
+        }
       } catch (error) {
         console.warn('⚠️ Failed to load Schwab OAuth credentials status:', error);
         schwabOAuthStatus = { hasCredentials: false };

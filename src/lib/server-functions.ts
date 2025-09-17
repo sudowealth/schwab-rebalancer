@@ -1351,6 +1351,20 @@ export const getSchwabOAuthUrlServerFn = createServerFn({ method: 'POST' })
     console.log('📋 [ServerFn] Request data:', data);
 
     try {
+      // Check for required Schwab environment variables
+      const clientId = process.env.SCHWAB_CLIENT_ID;
+      const clientSecret = process.env.SCHWAB_CLIENT_SECRET;
+
+      if (!clientId) {
+        console.error('❌ [ServerFn] SCHWAB_CLIENT_ID is not set in environment variables');
+        throw new Error('SCHWAB_CLIENT_ID is not set in environment variables');
+      }
+
+      if (!clientSecret) {
+        console.error('❌ [ServerFn] SCHWAB_CLIENT_SECRET is not set in environment variables');
+        throw new Error('SCHWAB_CLIENT_SECRET is not set in environment variables');
+      }
+
       console.log('📦 [ServerFn] Importing Schwab API service...');
       const { getSchwabApiService } = await import('./schwab-api');
       const schwabApi = getSchwabApiService();
@@ -1388,7 +1402,21 @@ export const handleSchwabOAuthCallbackServerFn = createServerFn({
     try {
       const { user } = await requireAuth();
 
-      console.log('👤 [ServerFn] Using authenticated user ID:', user.id);
+      console.log('👤 [ServerFn] Using authenticated user ID:', user.id.substring(0, 10), '...');
+
+      // Check for required Schwab environment variables
+      const clientId = process.env.SCHWAB_CLIENT_ID;
+      const clientSecret = process.env.SCHWAB_CLIENT_SECRET;
+
+      if (!clientId) {
+        console.error('❌ [ServerFn] SCHWAB_CLIENT_ID is not set in environment variables');
+        throw new Error('SCHWAB_CLIENT_ID is not set in environment variables');
+      }
+
+      if (!clientSecret) {
+        console.error('❌ [ServerFn] SCHWAB_CLIENT_SECRET is not set in environment variables');
+        throw new Error('SCHWAB_CLIENT_SECRET is not set in environment variables');
+      }
 
       console.log('📦 [ServerFn] Importing Schwab API service...');
       const { getSchwabApiService } = await import('./schwab-api');
@@ -1418,7 +1446,21 @@ export const getSchwabCredentialsStatusServerFn = createServerFn({
   try {
     const { user } = await requireAuth();
 
-    console.log('👤 [ServerFn] Using authenticated user ID:', user.id);
+    console.log('👤 [ServerFn] Using authenticated user ID:', user.id.substring(0, 10), '...');
+
+    // Check for required Schwab environment variables
+    const clientId = process.env.SCHWAB_CLIENT_ID;
+    const clientSecret = process.env.SCHWAB_CLIENT_SECRET;
+
+    if (!clientId) {
+      console.error('❌ [ServerFn] SCHWAB_CLIENT_ID is not set in environment variables');
+      return { hasCredentials: false };
+    }
+
+    if (!clientSecret) {
+      console.error('❌ [ServerFn] SCHWAB_CLIENT_SECRET is not set in environment variables');
+      return { hasCredentials: false };
+    }
 
     console.log('📦 [ServerFn] Importing Schwab API service...');
     const { getSchwabApiService } = await import('./schwab-api');
@@ -1430,10 +1472,9 @@ export const getSchwabCredentialsStatusServerFn = createServerFn({
     console.log('📊 [ServerFn] Credentials status:', hasCredentials);
     return { hasCredentials };
   } catch (error) {
-    console.error('❌ [ServerFn] Error checking Schwab credentials:', error);
     console.error(
       '❌ [ServerFn] Error stack:',
-      error instanceof Error ? error.stack : 'No stack trace',
+      error instanceof Error ? error.message : 'Unknown error',
     );
     return { hasCredentials: false };
   }
@@ -1883,6 +1924,20 @@ export const revokeSchwabCredentialsServerFn = createServerFn({
     const { user } = await requireAuth();
 
     console.log('👤 [ServerFn] Using user ID:', user.id);
+
+    // Check for required Schwab environment variables
+    const clientId = process.env.SCHWAB_CLIENT_ID;
+    const clientSecret = process.env.SCHWAB_CLIENT_SECRET;
+
+    if (!clientId) {
+      console.error('❌ [ServerFn] SCHWAB_CLIENT_ID is not set in environment variables');
+      throw new Error('SCHWAB_CLIENT_ID is not set in environment variables');
+    }
+
+    if (!clientSecret) {
+      console.error('❌ [ServerFn] SCHWAB_CLIENT_SECRET is not set in environment variables');
+      throw new Error('SCHWAB_CLIENT_SECRET is not set in environment variables');
+    }
 
     const { getSchwabApiService } = await import('./schwab-api');
     const schwabApi = getSchwabApiService();
