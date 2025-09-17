@@ -8,11 +8,7 @@
 [functions]
   included_files = ["drizzle/**"]
 
-# Using TanStack Start + Nitro. Netlify will package functions from .netlify/functions-internal automatically.
-
-# Template configuration for Deploy to Netlify
 [template]
-  # If you want the user to see the full config screen (with env vars, repo details, etc.)
   full = true
 
 [[template.environment]]
@@ -68,9 +64,3 @@ description = "Resend API key for email notifications (optional)"
   from = "/*"
   to = "/index.html"
   status = 200
-
-# Environment variables (set these in Netlify dashboard)
-# DATABASE_URL = "your-neon-postgres-connection-string" # Automatically set by @netlify/neon
-# BETTER_AUTH_SECRET = "your-auth-secret"
-# CRON_KEY = "your-cron-key"
-# DB_ENCRYPTION_KEY = "your-32-byte-encryption-key" # Encrypts Schwab API credentials
