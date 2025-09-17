@@ -1,6 +1,7 @@
 import { neon } from '@neondatabase/serverless';
 // Type definitions
 import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
+import { sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/neon-http';
 
 type DrizzleInstance = NeonHttpDatabase<Record<string, unknown>> & {
@@ -13,11 +14,14 @@ declare global {
   var __dbInstance: DrizzleInstance | undefined;
   // eslint-disable-next-line no-var
   var __dbInitialized: boolean | undefined;
+  // eslint-disable-next-line no-var
+  var __dbMigrated: boolean | undefined;
 }
 
 const globalForDb = globalThis as typeof globalThis & {
   __dbInstance?: DrizzleInstance;
   __dbInitialized?: boolean;
+  __dbMigrated?: boolean;
 };
 
 // Initialize global variables only on server side without clobbering existing state
@@ -29,6 +33,57 @@ if (typeof window === 'undefined') {
   if (typeof globalForDb.__dbInitialized === 'undefined') {
     globalForDb.__dbInitialized = false;
   }
+
+  if (typeof globalForDb.__dbMigrated === 'undefined') {
+    globalForDb.__dbMigrated = false;
+  }
+}
+
+async function ensureMigrations(dbInstance: DrizzleInstance): Promise<void> {
+  if (globalForDb.__dbMigrated) {
+    return;
+  }
+
+  const allowAutoReset =
+    (process.env.DATABASE_AUTO_RESET_ON_CONFLICT ??
+      (process.env.NODE_ENV !== 'production' ? 'true' : 'false')) === 'true';
+
+  const { migrate } = await import('drizzle-orm/neon-http/migrator');
+
+  let resetAttempted = false;
+
+  while (true) {
+    try {
+      await migrate(dbInstance, { migrationsFolder: 'drizzle' });
+      globalForDb.__dbMigrated = true;
+      console.log('✅ Database migrations applied');
+      return;
+    } catch (error) {
+      const pgError = (error as { cause?: { code?: string } }).cause;
+      const isSchemaConflict = pgError?.code === '42P07' || pgError?.code === '42710';
+
+      if (allowAutoReset && !resetAttempted && isSchemaConflict) {
+        console.warn(
+          '⚠️  Detected conflicting legacy schema. Dropping the public schema and reapplying migrations...',
+        );
+        await resetDatabaseSchema(dbInstance);
+        resetAttempted = true;
+        // Try migrations again after reset
+        continue;
+      }
+
+      console.error('❌ Failed to apply database migrations:', error);
+      throw error;
+    }
+  }
+}
+
+async function resetDatabaseSchema(dbInstance: DrizzleInstance): Promise<void> {
+  await dbInstance.execute(sql.raw('DROP SCHEMA IF EXISTS public CASCADE'));
+  await dbInstance.execute(sql.raw('CREATE SCHEMA public'));
+  await dbInstance.execute(sql.raw('GRANT ALL ON SCHEMA public TO public'));
+  await dbInstance.execute(sql.raw('GRANT ALL ON SCHEMA public TO CURRENT_USER'));
+  console.info('🧹 Reset public schema');
 }
 
 // Initialize database connection (server-side only)
@@ -55,6 +110,7 @@ async function initializeDatabase() {
     // Add the $client property for compatibility with seed functions
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (dbInstance as any).$client = sql;
+    await ensureMigrations(dbInstance);
     globalForDb.__dbInstance = dbInstance;
     globalForDb.__dbInitialized = true;
   }
@@ -90,6 +146,7 @@ export async function initDatabaseSync(): Promise<void> {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (dbInstance as any).$client = sql;
 
+    await ensureMigrations(dbInstance);
     globalForDb.__dbInstance = dbInstance;
     globalForDb.__dbInitialized = true;
 
@@ -126,4 +183,5 @@ export async function initDatabase(): Promise<void> {
 export function cleanupDatabase(): void {
   globalForDb.__dbInstance = undefined;
   globalForDb.__dbInitialized = false;
+  globalForDb.__dbMigrated = false;
 }

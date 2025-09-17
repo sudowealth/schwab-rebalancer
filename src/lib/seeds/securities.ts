@@ -41,20 +41,30 @@ export async function seedSecurities(db: ReturnType<typeof drizzle>) {
   // Only insert cash securities that don't already exist
   const securitiesToInsert = CASH_DATA.filter((security) => !existingTickers.has(security.ticker));
 
-  if (securitiesToInsert.length > 0) {
-    for (const security of securitiesToInsert) {
-      await db.insert(schema.security).values({
-        ticker: security.ticker,
-        name: security.name,
-        price: security.price,
-        industry: security.industry,
-        sector: security.sector,
-        createdAt: now,
-        updatedAt: now,
-      });
-    }
+  let insertedCount = 0;
 
-    console.log(`✅ Seeded ${securitiesToInsert.length} cash securities`);
+  if (securitiesToInsert.length > 0) {
+    const inserted = await db
+      .insert(schema.security)
+      .values(
+        securitiesToInsert.map((security) => ({
+          ticker: security.ticker,
+          name: security.name,
+          price: security.price,
+          industry: security.industry,
+          sector: security.sector,
+          createdAt: now,
+          updatedAt: now,
+        })),
+      )
+      .onConflictDoNothing({ target: schema.security.ticker })
+      .returning({ ticker: schema.security.ticker });
+
+    insertedCount = inserted.length;
+  }
+
+  if (insertedCount > 0) {
+    console.log(`✅ Seeded ${insertedCount} cash securities`);
   } else {
     console.log('✅ All cash securities already exist');
   }

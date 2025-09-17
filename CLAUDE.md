@@ -2,7 +2,7 @@
 
 ## Development Commands
 
-- `npm run dev` - Start development server on port 3000
+- `pnpm dev` - Start development server on port 3000
 - `npm run build` - Build for production (includes TypeScript check)
 - `npm run typecheck` - Run TypeScript type checking
 - `npm run lint` - Run ESLint

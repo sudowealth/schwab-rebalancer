@@ -1,4 +1,4 @@
-CREATE TABLE "account" (
+CREATE TABLE IF NOT EXISTS "account" (
 	"id" text PRIMARY KEY NOT NULL,
 	"userId" text NOT NULL,
 	"name" text NOT NULL,
@@ -12,7 +12,7 @@ CREATE TABLE "account" (
 	CONSTRAINT "account_userId_accountNumber_unique" UNIQUE("userId","accountNumber")
 );
 --> statement-breakpoint
-CREATE TABLE "audit_log" (
+CREATE TABLE IF NOT EXISTS "audit_log" (
 	"id" text PRIMARY KEY NOT NULL,
 	"userId" text NOT NULL,
 	"action" text NOT NULL,
@@ -24,7 +24,7 @@ CREATE TABLE "audit_log" (
 	"userAgent" text
 );
 --> statement-breakpoint
-CREATE TABLE "auth_account" (
+CREATE TABLE IF NOT EXISTS "auth_account" (
 	"id" text PRIMARY KEY NOT NULL,
 	"accountId" text NOT NULL,
 	"providerId" text NOT NULL,
@@ -40,7 +40,7 @@ CREATE TABLE "auth_account" (
 	"updatedAt" timestamp NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "financial_plan" (
+CREATE TABLE IF NOT EXISTS "financial_plan" (
 	"id" text PRIMARY KEY NOT NULL,
 	"userId" text NOT NULL,
 	"name" text NOT NULL,
@@ -48,7 +48,7 @@ CREATE TABLE "financial_plan" (
 	"updatedAt" timestamp NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "financial_plan_goal" (
+CREATE TABLE IF NOT EXISTS "financial_plan_goal" (
 	"id" text PRIMARY KEY NOT NULL,
 	"planId" text NOT NULL,
 	"purpose" text,
@@ -63,7 +63,7 @@ CREATE TABLE "financial_plan_goal" (
 	"createdAt" timestamp NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "financial_plan_input" (
+CREATE TABLE IF NOT EXISTS "financial_plan_input" (
 	"id" text PRIMARY KEY NOT NULL,
 	"planId" text NOT NULL,
 	"filingStatus" text DEFAULT 'single' NOT NULL,
@@ -80,7 +80,7 @@ CREATE TABLE "financial_plan_input" (
 	"updatedAt" timestamp NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "financial_plan_result" (
+CREATE TABLE IF NOT EXISTS "financial_plan_result" (
 	"id" text PRIMARY KEY NOT NULL,
 	"planId" text NOT NULL,
 	"year" integer NOT NULL,
@@ -111,7 +111,7 @@ CREATE TABLE "financial_plan_result" (
 	"calculatedAt" timestamp NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "holding" (
+CREATE TABLE IF NOT EXISTS "holding" (
 	"id" text PRIMARY KEY NOT NULL,
 	"accountId" text NOT NULL,
 	"ticker" text NOT NULL,
@@ -125,7 +125,7 @@ CREATE TABLE "holding" (
 	"updatedAt" integer NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "index_member" (
+CREATE TABLE IF NOT EXISTS "index_member" (
 	"id" text PRIMARY KEY NOT NULL,
 	"indexId" text NOT NULL,
 	"securityId" text NOT NULL,
@@ -133,14 +133,14 @@ CREATE TABLE "index_member" (
 	"updatedAt" integer NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "index" (
+CREATE TABLE IF NOT EXISTS "index" (
 	"id" text PRIMARY KEY NOT NULL,
 	"name" text NOT NULL,
 	"createdAt" integer NOT NULL,
 	"updatedAt" integer NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "model" (
+CREATE TABLE IF NOT EXISTS "model" (
 	"id" text PRIMARY KEY NOT NULL,
 	"userId" text NOT NULL,
 	"name" text NOT NULL,
@@ -151,7 +151,7 @@ CREATE TABLE "model" (
 	CONSTRAINT "model_userId_name_unique" UNIQUE("userId","name")
 );
 --> statement-breakpoint
-CREATE TABLE "model_group_assignment" (
+CREATE TABLE IF NOT EXISTS "model_group_assignment" (
 	"id" text PRIMARY KEY NOT NULL,
 	"modelId" text NOT NULL,
 	"rebalancingGroupId" text NOT NULL,
@@ -160,7 +160,7 @@ CREATE TABLE "model_group_assignment" (
 	CONSTRAINT "model_group_assignment_modelId_rebalancingGroupId_unique" UNIQUE("modelId","rebalancingGroupId")
 );
 --> statement-breakpoint
-CREATE TABLE "model_member" (
+CREATE TABLE IF NOT EXISTS "model_member" (
 	"id" text PRIMARY KEY NOT NULL,
 	"modelId" text NOT NULL,
 	"sleeveId" text NOT NULL,
@@ -170,7 +170,7 @@ CREATE TABLE "model_member" (
 	"updatedAt" integer NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "order_execution" (
+CREATE TABLE IF NOT EXISTS "order_execution" (
 	"id" text PRIMARY KEY NOT NULL,
 	"orderId" text NOT NULL,
 	"legId" integer,
@@ -184,7 +184,7 @@ CREATE TABLE "order_execution" (
 	"createdAt" timestamp NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "rebalancing_group" (
+CREATE TABLE IF NOT EXISTS "rebalancing_group" (
 	"id" text PRIMARY KEY NOT NULL,
 	"userId" text NOT NULL,
 	"name" text NOT NULL,
@@ -193,7 +193,7 @@ CREATE TABLE "rebalancing_group" (
 	"updatedAt" integer NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "rebalancing_group_member" (
+CREATE TABLE IF NOT EXISTS "rebalancing_group_member" (
 	"id" text PRIMARY KEY NOT NULL,
 	"groupId" text NOT NULL,
 	"accountId" text NOT NULL,
@@ -202,7 +202,7 @@ CREATE TABLE "rebalancing_group_member" (
 	"updatedAt" integer NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "restricted_security" (
+CREATE TABLE IF NOT EXISTS "restricted_security" (
 	"id" text PRIMARY KEY NOT NULL,
 	"ticker" text NOT NULL,
 	"sleeveId" text NOT NULL,
@@ -213,13 +213,13 @@ CREATE TABLE "restricted_security" (
 	"updatedAt" integer NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "schwab_account" (
+CREATE TABLE IF NOT EXISTS "schwab_account" (
 	"id" text PRIMARY KEY NOT NULL,
 	"type" text NOT NULL,
 	"accountNumber" text NOT NULL,
 	"roundTrips" integer,
 	"isDayTrader" boolean,
-	"isClosingOnlyRestricted" integer,
+	"isClosingOnlyRestricted" boolean,
 	"pfcbFlag" boolean,
 	"cashAvailableForTrading" real,
 	"cashAvailableForWithdrawal" real,
@@ -233,20 +233,20 @@ CREATE TABLE "schwab_account" (
 	CONSTRAINT "schwab_account_accountNumber_unique" UNIQUE("accountNumber")
 );
 --> statement-breakpoint
-CREATE TABLE "schwab_credentials" (
+CREATE TABLE IF NOT EXISTS "schwab_credentials" (
 	"id" text PRIMARY KEY NOT NULL,
 	"userId" text NOT NULL,
 	"encryptedAccessToken" text NOT NULL,
 	"encryptedRefreshToken" text NOT NULL,
 	"tokenExpiresAt" timestamp NOT NULL,
-	"refreshTokenExpiresAt" integer NOT NULL,
+	"refreshTokenExpiresAt" timestamp NOT NULL,
 	"schwabClientId" text NOT NULL,
 	"isActive" boolean DEFAULT true NOT NULL,
 	"createdAt" timestamp NOT NULL,
 	"updatedAt" timestamp NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "schwab_holding" (
+CREATE TABLE IF NOT EXISTS "schwab_holding" (
 	"id" text PRIMARY KEY NOT NULL,
 	"accountNumber" text NOT NULL,
 	"symbol" text NOT NULL,
@@ -273,7 +273,7 @@ CREATE TABLE "schwab_holding" (
 	"importedAt" timestamp NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "schwab_security" (
+CREATE TABLE IF NOT EXISTS "schwab_security" (
 	"id" text PRIMARY KEY NOT NULL,
 	"symbol" text NOT NULL,
 	"cusip" text,
@@ -287,7 +287,7 @@ CREATE TABLE "schwab_security" (
 	CONSTRAINT "schwab_security_symbol_unique" UNIQUE("symbol")
 );
 --> statement-breakpoint
-CREATE TABLE "schwab_transaction" (
+CREATE TABLE IF NOT EXISTS "schwab_transaction" (
 	"id" text PRIMARY KEY NOT NULL,
 	"activityId" integer,
 	"time" text,
@@ -307,7 +307,7 @@ CREATE TABLE "schwab_transaction" (
 	CONSTRAINT "schwab_transaction_activityId_unique" UNIQUE("activityId")
 );
 --> statement-breakpoint
-CREATE TABLE "security" (
+CREATE TABLE IF NOT EXISTS "security" (
 	"ticker" text PRIMARY KEY NOT NULL,
 	"name" text NOT NULL,
 	"price" real NOT NULL,
@@ -321,7 +321,7 @@ CREATE TABLE "security" (
 	"updatedAt" integer NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "session" (
+CREATE TABLE IF NOT EXISTS "session" (
 	"id" text PRIMARY KEY NOT NULL,
 	"expiresAt" timestamp NOT NULL,
 	"token" text NOT NULL,
@@ -333,7 +333,7 @@ CREATE TABLE "session" (
 	CONSTRAINT "session_token_unique" UNIQUE("token")
 );
 --> statement-breakpoint
-CREATE TABLE "sleeve" (
+CREATE TABLE IF NOT EXISTS "sleeve" (
 	"id" text PRIMARY KEY NOT NULL,
 	"userId" text NOT NULL,
 	"name" text NOT NULL,
@@ -343,7 +343,7 @@ CREATE TABLE "sleeve" (
 	CONSTRAINT "sleeve_userId_name_unique" UNIQUE("userId","name")
 );
 --> statement-breakpoint
-CREATE TABLE "sleeve_member" (
+CREATE TABLE IF NOT EXISTS "sleeve_member" (
 	"id" text PRIMARY KEY NOT NULL,
 	"sleeveId" text NOT NULL,
 	"ticker" text NOT NULL,
@@ -354,7 +354,7 @@ CREATE TABLE "sleeve_member" (
 	"updatedAt" integer NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "sync_log" (
+CREATE TABLE IF NOT EXISTS "sync_log" (
 	"id" text PRIMARY KEY NOT NULL,
 	"userId" text NOT NULL,
 	"syncType" text NOT NULL,
@@ -366,7 +366,7 @@ CREATE TABLE "sync_log" (
 	"createdAt" timestamp NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "sync_log_detail" (
+CREATE TABLE IF NOT EXISTS "sync_log_detail" (
 	"id" text PRIMARY KEY NOT NULL,
 	"logId" text NOT NULL,
 	"entityType" text NOT NULL,
@@ -378,7 +378,7 @@ CREATE TABLE "sync_log_detail" (
 	"createdAt" timestamp NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "tax_bracket" (
+CREATE TABLE IF NOT EXISTS "tax_bracket" (
 	"id" text PRIMARY KEY NOT NULL,
 	"bracketType" text NOT NULL,
 	"filingStatus" text NOT NULL,
@@ -389,7 +389,7 @@ CREATE TABLE "tax_bracket" (
 	"createdAt" timestamp NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "trade_order" (
+CREATE TABLE IF NOT EXISTS "trade_order" (
 	"id" text PRIMARY KEY NOT NULL,
 	"userId" text NOT NULL,
 	"accountId" text NOT NULL,
@@ -445,7 +445,7 @@ CREATE TABLE "trade_order" (
 	CONSTRAINT "trade_order_accountId_idempotencyKey_unique" UNIQUE("accountId","idempotencyKey")
 );
 --> statement-breakpoint
-CREATE TABLE "transaction" (
+CREATE TABLE IF NOT EXISTS "transaction" (
 	"id" text PRIMARY KEY NOT NULL,
 	"accountId" text NOT NULL,
 	"sleeveId" text,
@@ -459,7 +459,7 @@ CREATE TABLE "transaction" (
 	"updatedAt" integer NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "user" (
+CREATE TABLE IF NOT EXISTS "user" (
 	"id" text PRIMARY KEY NOT NULL,
 	"email" text NOT NULL,
 	"emailVerified" boolean,
@@ -471,7 +471,7 @@ CREATE TABLE "user" (
 	CONSTRAINT "user_email_unique" UNIQUE("email")
 );
 --> statement-breakpoint
-CREATE TABLE "verification" (
+CREATE TABLE IF NOT EXISTS "verification" (
 	"id" text PRIMARY KEY NOT NULL,
 	"identifier" text NOT NULL,
 	"value" text NOT NULL,

@@ -1,4 +1,5 @@
 import {
+  bigint,
   boolean,
   index,
   integer,
@@ -71,8 +72,8 @@ export const security = pgTable('security', {
   sector: text('sector'),
   assetType: text('assetType').notNull().default('EQUITY'), // BOND, EQUITY, FOREX, FUTURE, FUTURE_OPTION, INDEX, MUTUAL_FUND, OPTION
   assetTypeSub: text('assetTypeSub'), // null or one of: COE, PRF, ADR, GDR, CEF, ETF, ETN, UIT, WAR, RGT, OEF, MMF
-  createdAt: integer('createdAt').notNull(),
-  updatedAt: integer('updatedAt').notNull(),
+  createdAt: bigint('createdAt', { mode: 'number' }).notNull(),
+  updatedAt: bigint('updatedAt', { mode: 'number' }).notNull(),
 });
 
 export const account = pgTable(
@@ -88,8 +89,8 @@ export const account = pgTable(
     schwabAccountId: text('schwabAccountId'), // Schwab account identifier
     dataSource: text('dataSource').notNull().default('MANUAL'), // "MANUAL" | "SCHWAB"
     lastSyncAt: timestamp('lastSyncAt'), // Last sync with Schwab
-    createdAt: integer('createdAt').notNull(),
-    updatedAt: integer('updatedAt').notNull(),
+    createdAt: bigint('createdAt', { mode: 'number' }).notNull(),
+    updatedAt: bigint('updatedAt', { mode: 'number' }).notNull(),
   },
   (table) => [
     // Ensure a user cannot have duplicate account numbers; allows multiple NULLs
@@ -106,8 +107,8 @@ export const sleeve = pgTable(
       .references(() => user.id, { onDelete: 'cascade' }),
     name: text('name').notNull(),
     isActive: boolean('isActive').notNull().default(true),
-    createdAt: integer('createdAt').notNull(),
-    updatedAt: integer('updatedAt').notNull(),
+    createdAt: bigint('createdAt', { mode: 'number' }).notNull(),
+    updatedAt: bigint('updatedAt', { mode: 'number' }).notNull(),
   },
   (table) => [
     // Ensure a user cannot have duplicate sleeve names when active
@@ -126,8 +127,8 @@ export const sleeveMember = pgTable('sleeve_member', {
   rank: integer('rank').notNull(),
   isActive: boolean('isActive').notNull().default(true),
   isLegacy: boolean('isLegacy').notNull().default(false),
-  createdAt: integer('createdAt').notNull(),
-  updatedAt: integer('updatedAt').notNull(),
+  createdAt: bigint('createdAt', { mode: 'number' }).notNull(),
+  updatedAt: bigint('updatedAt', { mode: 'number' }).notNull(),
 });
 
 export const holding = pgTable('holding', {
@@ -140,12 +141,12 @@ export const holding = pgTable('holding', {
     .references(() => security.ticker, { onDelete: 'cascade' }),
   qty: real('qty').notNull(),
   averageCost: real('averageCost').notNull(),
-  openedAt: integer('openedAt').notNull(),
+  openedAt: bigint('openedAt', { mode: 'number' }).notNull(),
   schwabPositionId: text('schwabPositionId'), // Schwab position identifier
   dataSource: text('dataSource').notNull().default('MANUAL'), // "MANUAL" | "SCHWAB"
   lastSyncAt: timestamp('lastSyncAt'), // Last sync with Schwab
-  createdAt: integer('createdAt').notNull(),
-  updatedAt: integer('updatedAt').notNull(),
+  createdAt: bigint('createdAt', { mode: 'number' }).notNull(),
+  updatedAt: bigint('updatedAt', { mode: 'number' }).notNull(),
 });
 
 export const transaction = pgTable('transaction', {
@@ -163,9 +164,9 @@ export const transaction = pgTable('transaction', {
   qty: real('qty').notNull(),
   price: real('price').notNull(),
   realizedGainLoss: real('realizedGainLoss'),
-  executedAt: integer('executedAt').notNull(),
-  createdAt: integer('createdAt').notNull(),
-  updatedAt: integer('updatedAt').notNull(),
+  executedAt: bigint('executedAt', { mode: 'number' }).notNull(),
+  createdAt: bigint('createdAt', { mode: 'number' }).notNull(),
+  updatedAt: bigint('updatedAt', { mode: 'number' }).notNull(),
 });
 
 export const restrictedSecurity = pgTable('restricted_security', {
@@ -177,17 +178,17 @@ export const restrictedSecurity = pgTable('restricted_security', {
     .notNull()
     .references(() => sleeve.id, { onDelete: 'cascade' }),
   lossAmount: real('lossAmount').notNull(),
-  soldAt: integer('soldAt').notNull(),
-  blockedUntil: integer('blockedUntil').notNull(),
-  createdAt: integer('createdAt').notNull(),
-  updatedAt: integer('updatedAt').notNull(),
+  soldAt: bigint('soldAt', { mode: 'number' }).notNull(),
+  blockedUntil: bigint('blockedUntil', { mode: 'number' }).notNull(),
+  createdAt: bigint('createdAt', { mode: 'number' }).notNull(),
+  updatedAt: bigint('updatedAt', { mode: 'number' }).notNull(),
 });
 
 export const indexTable = pgTable('index', {
   id: text('id').primaryKey(),
   name: text('name').notNull(),
-  createdAt: integer('createdAt').notNull(),
-  updatedAt: integer('updatedAt').notNull(),
+  createdAt: bigint('createdAt', { mode: 'number' }).notNull(),
+  updatedAt: bigint('updatedAt', { mode: 'number' }).notNull(),
 });
 
 export const indexMember = pgTable('index_member', {
@@ -198,8 +199,8 @@ export const indexMember = pgTable('index_member', {
   securityId: text('securityId')
     .notNull()
     .references(() => security.ticker, { onDelete: 'cascade' }),
-  createdAt: integer('createdAt').notNull(),
-  updatedAt: integer('updatedAt').notNull(),
+  createdAt: bigint('createdAt', { mode: 'number' }).notNull(),
+  updatedAt: bigint('updatedAt', { mode: 'number' }).notNull(),
 });
 
 // Central audit log
@@ -227,8 +228,8 @@ export const model = pgTable(
     name: text('name').notNull(),
     description: text('description'),
     isActive: boolean('isActive').notNull().default(true),
-    createdAt: integer('createdAt').notNull(),
-    updatedAt: integer('updatedAt').notNull(),
+    createdAt: bigint('createdAt', { mode: 'number' }).notNull(),
+    updatedAt: bigint('updatedAt', { mode: 'number' }).notNull(),
   },
   (table) => [
     // Ensure a user cannot have duplicate model names when active
@@ -246,8 +247,8 @@ export const modelGroupAssignment = pgTable(
     rebalancingGroupId: text('rebalancingGroupId')
       .notNull()
       .references(() => rebalancingGroup.id, { onDelete: 'cascade' }),
-    createdAt: integer('createdAt').notNull(),
-    updatedAt: integer('updatedAt').notNull(),
+    createdAt: bigint('createdAt', { mode: 'number' }).notNull(),
+    updatedAt: bigint('updatedAt', { mode: 'number' }).notNull(),
   },
   (table) => ({
     uniqueAssignment: unique().on(table.modelId, table.rebalancingGroupId),
@@ -264,8 +265,8 @@ export const modelMember = pgTable('model_member', {
     .references(() => sleeve.id, { onDelete: 'cascade' }),
   targetWeight: integer('targetWeight').notNull(), // Store as basis points (10000 = 100%)
   isActive: boolean('isActive').notNull().default(true),
-  createdAt: integer('createdAt').notNull(),
-  updatedAt: integer('updatedAt').notNull(),
+  createdAt: bigint('createdAt', { mode: 'number' }).notNull(),
+  updatedAt: bigint('updatedAt', { mode: 'number' }).notNull(),
 });
 
 export const rebalancingGroup = pgTable('rebalancing_group', {
@@ -275,8 +276,8 @@ export const rebalancingGroup = pgTable('rebalancing_group', {
     .references(() => user.id, { onDelete: 'cascade' }),
   name: text('name').notNull(),
   isActive: boolean('isActive').notNull().default(true),
-  createdAt: integer('createdAt').notNull(),
-  updatedAt: integer('updatedAt').notNull(),
+  createdAt: bigint('createdAt', { mode: 'number' }).notNull(),
+  updatedAt: bigint('updatedAt', { mode: 'number' }).notNull(),
 });
 
 export const rebalancingGroupMember = pgTable('rebalancing_group_member', {
@@ -288,8 +289,8 @@ export const rebalancingGroupMember = pgTable('rebalancing_group_member', {
     .notNull()
     .references(() => account.id, { onDelete: 'cascade' }),
   isActive: boolean('isActive').notNull().default(true),
-  createdAt: integer('createdAt').notNull(),
-  updatedAt: integer('updatedAt').notNull(),
+  createdAt: bigint('createdAt', { mode: 'number' }).notNull(),
+  updatedAt: bigint('updatedAt', { mode: 'number' }).notNull(),
 });
 
 // New table for Schwab API credentials

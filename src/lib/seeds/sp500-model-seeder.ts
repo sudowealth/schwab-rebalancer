@@ -134,9 +134,10 @@ export async function seedSP500Securities(db: ReturnType<typeof drizzle>) {
   // Insert S&P 500 securities
   let insertedCount = 0;
   let skippedCount = 0;
-  for (const security of SP500_SECURITIES_DATA) {
-    try {
-      await db.insert(schema.security).values({
+  if (SP500_SECURITIES_DATA.length > 0) {
+    const chunkSize = 500;
+    for (let i = 0; i < SP500_SECURITIES_DATA.length; i += chunkSize) {
+      const chunk = SP500_SECURITIES_DATA.slice(i, i + chunkSize).map((security) => ({
         ticker: security.ticker,
         name: security.name,
         price: security.price,
@@ -144,76 +145,61 @@ export async function seedSP500Securities(db: ReturnType<typeof drizzle>) {
         sector: security.sector,
         createdAt: now,
         updatedAt: now,
-      });
-      insertedCount++;
-    } catch (insertError: unknown) {
-      // Handle UNIQUE constraint violations gracefully
-      const error = insertError as { code?: string; message?: string };
-      if (
-        error?.code === '23505' ||
-        error?.code === '23505' ||
-        error?.message?.includes('UNIQUE constraint failed')
-      ) {
-        // Security already exists, count it as skipped
-        skippedCount++;
-        console.log(`⚠️  S&P 500 security ${security.ticker} already exists, skipping`);
-      } else {
-        // Re-throw other errors
-        throw insertError;
-      }
+      }));
+
+      const inserted = await db
+        .insert(schema.security)
+        .values(chunk)
+        .onConflictDoNothing({ target: schema.security.ticker })
+        .returning({ ticker: schema.security.ticker });
+
+      insertedCount += inserted.length;
+      skippedCount += chunk.length - inserted.length;
     }
   }
 
   console.log(`✅ Seeded ${insertedCount} S&P 500 securities (${skippedCount} already existed)`);
 
   // Seed S&P 500 index and members
-  try {
-    await db.insert(schema.indexTable).values({
+  const indexInsert = await db
+    .insert(schema.indexTable)
+    .values({
       id: 'sp500',
       name: 'S&P 500',
       createdAt: now,
       updatedAt: now,
-    });
+    })
+    .onConflictDoNothing({ target: schema.indexTable.id })
+    .returning({ id: schema.indexTable.id });
+
+  if (indexInsert.length > 0) {
     console.log('✅ Created S&P 500 index');
-  } catch (indexError: unknown) {
-    // Handle UNIQUE constraint violations gracefully
-    const error = indexError as { code?: string; message?: string };
-    if (
-      error?.code === '23505' ||
-      error?.code === '23505' ||
-      error?.message?.includes('UNIQUE constraint failed')
-    ) {
-      console.log('⚠️  S&P 500 index already exists, skipping creation');
-    } else {
-      throw indexError;
-    }
+  } else {
+    console.log('⚠️  S&P 500 index already exists, skipping creation');
   }
 
   // Insert all S&P 500 companies as index members
   let membersInsertedCount = 0;
   let membersSkippedCount = 0;
-  for (const security of SP500_SECURITIES_DATA) {
-    try {
-      await db.insert(schema.indexMember).values({
+  if (SP500_SECURITIES_DATA.length > 0) {
+    const chunkSize = 500;
+    for (let i = 0; i < SP500_SECURITIES_DATA.length; i += chunkSize) {
+      const chunk = SP500_SECURITIES_DATA.slice(i, i + chunkSize).map((security) => ({
         id: `sp500-${security.ticker}`,
         indexId: 'sp500',
         securityId: security.ticker,
         createdAt: now,
         updatedAt: now,
-      });
-      membersInsertedCount++;
-    } catch (memberError: unknown) {
-      // Handle UNIQUE constraint violations gracefully
-      const error = memberError as { code?: string; message?: string };
-      if (
-        error?.code === '23505' ||
-        error?.code === '23505' ||
-        error?.message?.includes('UNIQUE constraint failed')
-      ) {
-        membersSkippedCount++;
-      } else {
-        throw memberError;
-      }
+      }));
+
+      const inserted = await db
+        .insert(schema.indexMember)
+        .values(chunk)
+        .onConflictDoNothing({ target: schema.indexMember.id })
+        .returning({ id: schema.indexMember.id });
+
+      membersInsertedCount += inserted.length;
+      membersSkippedCount += chunk.length - inserted.length;
     }
   }
 

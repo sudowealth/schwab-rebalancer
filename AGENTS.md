@@ -16,7 +16,7 @@
 
 ## Build, Test, and Development Commands
 
-- `npm run dev`: Start Vite dev server on port 3000.
+- `pnpm dev`: Start Vite dev server on port 3000.
 - `npm run build`: Production build and TypeScript check.
 - `npm start`: Run built server from `.output/`.
 - `npm run deploy`: Build then deploy via Netlify CLI.

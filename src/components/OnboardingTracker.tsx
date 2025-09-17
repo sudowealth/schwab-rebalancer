@@ -204,10 +204,8 @@ export function OnboardingTracker({
                             </p>
                           </div>
                           <div>
-                            <p className="font-medium mb-1">
-                              2. Register in the Schwab Developer Portal
-                            </p>
-                            <p>
+                            <p className="font-medium mb-1">2. Schwab Developer Portal Setup</p>
+                            <p className="text-xs mb-2">
                               Visit{' '}
                               <a
                                 href="https://developer.schwab.com/register"
@@ -219,20 +217,17 @@ export function OnboardingTracker({
                               </a>{' '}
                               and register using your Schwab login credentials.
                             </p>
-                          </div>
-                          <div>
-                            <p className="font-medium mb-1">3. Create Application</p>
                             <p>
                               Go to{' '}
                               <a
                                 href="https://developer.schwab.com/dashboard/apps/apps/add"
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="text-blue-600 underline hover:text-blue-700 font-medium"
+                                className="text-blue-600 underline hover:text-blue-700"
                               >
                                 Apps dashboard and create a new personal use application
-                              </a>
-                              . Fill in the following details:
+                              </a>{' '}
+                              using the following information:
                             </p>
                             <ul className="text-xs space-y-1 ml-3 mt-2 list-disc text-blue-700">
                               <li>
@@ -270,17 +265,18 @@ export function OnboardingTracker({
                             </ul>
                           </div>
                           <div>
-                            <p className="font-medium mb-1">4. Get Credentials</p>
-                            <p>
-                              Copy your App Key (Client ID) and Secret from the application page.
+                            <p className="font-medium mb-3">3. Configure Environment Variables</p>
+                            <p className="text-xs mb-2">
+                              Copy your App Key (Client ID) and Secret from the Schwab Developer
+                              Portal application page.
                             </p>
-                          </div>
-                          <div>
-                            <p className="font-medium mb-3">5. Configure Environment Variables</p>
                             <Tabs defaultValue="local" className="w-full">
-                              <TabsList className="grid w-full grid-cols-2">
-                                <TabsTrigger value="local">Local Development</TabsTrigger>
-                                <TabsTrigger value="production">Production</TabsTrigger>
+                              <TabsList className="grid w-full grid-cols-3">
+                                <TabsTrigger value="local">Local</TabsTrigger>
+                                <TabsTrigger value="prod-cli">Netlify via CLI</TabsTrigger>
+                                <TabsTrigger value="prod-dashboard">
+                                  Netlify via Dashboard
+                                </TabsTrigger>
                               </TabsList>
                               <TabsContent value="local" className="space-y-3">
                                 <div>
@@ -294,60 +290,68 @@ export function OnboardingTracker({
 SCHWAB_CLIENT_SECRET=your_secret_here`}
                                   </pre>
                                 </div>
-                              </TabsContent>
-                              <TabsContent value="production" className="space-y-3">
                                 <div>
-                                  <p className="text-xs mb-2">
-                                    Set environment variables in your hosting platform:
-                                  </p>
-                                  <pre className="bg-blue-100 p-2 rounded text-xs">
-                                    {`SCHWAB_CLIENT_ID=your_app_key
-SCHWAB_CLIENT_SECRET=your_app_secret`}
-                                  </pre>
-                                  <p className="text-xs text-blue-700 mt-1">
-                                    Add these environment variables to your production deployment.
-                                  </p>
-                                </div>
-                              </TabsContent>
-                            </Tabs>
-                          </div>
-                          <div>
-                            <p className="font-medium mb-3">6. Apply Configuration Changes</p>
-                            <Tabs defaultValue="local" className="w-full">
-                              <TabsList className="grid w-full grid-cols-2">
-                                <TabsTrigger value="local">Local Development</TabsTrigger>
-                                <TabsTrigger value="production">Production</TabsTrigger>
-                              </TabsList>
-                              <TabsContent value="local" className="space-y-3">
-                                <div>
-                                  <p className="font-medium text-xs text-blue-800 mb-2">
-                                    Restart Development Server:
-                                  </p>
-                                  <p className="text-xs mb-2">
-                                    Restart your development server for the changes to take effect:
-                                  </p>
+                                  <p className="text-xs mb-2">Restart Development Server:</p>
+
                                   <pre className="bg-blue-100 p-2 rounded text-xs">
                                     {`# Stop the current server (Ctrl+C)
 # Then restart it
-npm run dev`}
+pnpm dev`}
                                   </pre>
                                 </div>
                               </TabsContent>
-                              <TabsContent value="production" className="space-y-3">
+                              <TabsContent value="prod-cli" className="space-y-3">
                                 <div>
-                                  <p className="font-medium text-xs text-blue-800 mb-2">
-                                    Redeploy Application:
-                                  </p>
-                                  <p className="text-xs mb-2">
-                                    Redeploy your application to apply the new secrets:
-                                  </p>
-                                  <pre className="bg-blue-100 p-2 rounded text-xs">
-                                    {'npm run deploy'}
-                                  </pre>
-                                  <p className="text-xs text-blue-700 mt-1">
-                                    This will build and deploy your application with the new
-                                    environment variables.
-                                  </p>
+                                  <div className="text-xs">
+                                    <div className="text-gray-700 space-y-1 mb-2">
+                                      <p>
+                                        1. Install CLI: <code>npm install -g netlify-cli</code>
+                                      </p>
+                                      <p>
+                                        2. Link site: <code>netlify link</code>
+                                      </p>
+                                      <p>3. Set variables:</p>
+                                    </div>
+                                    <pre className="bg-blue-100 p-2 rounded text-xs mb-1">
+                                      {`netlify env:set SCHWAB_CLIENT_ID your_app_key
+netlify env:set SCHWAB_CLIENT_SECRET your_app_secret
+# replace your_app_key and your_app_secret with your actual Schwab credentials`}
+                                    </pre>
+                                    <p className="text-gray-700 mb-1">
+                                      4. Deploy to activate: <code>netlify deploy --prod</code>
+                                    </p>
+                                  </div>
+                                </div>
+                              </TabsContent>
+                              <TabsContent value="prod-dashboard" className="space-y-3">
+                                <div>
+                                  <div className="text-xs">
+                                    <div className="text-gray-700 space-y-1 mb-2">
+                                      <p>
+                                        1.{' '}
+                                        <a
+                                          href="https://app.netlify.com/sites/schwab-rebalancer/settings/environment"
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="text-blue-600 underline hover:text-blue-700"
+                                        >
+                                          Login to Netlify
+                                        </a>
+                                      </p>
+                                      <p>
+                                        2. Go to Project → Project configuration → Environment
+                                        variables
+                                      </p>
+                                      <p>
+                                        3. Add <code>SCHWAB_CLIENT_ID</code> and{' '}
+                                        <code>SCHWAB_CLIENT_SECRET</code>
+                                      </p>
+                                      <p>
+                                        4. Deploy to activate: Go to Deploys tab → Trigger deploy →
+                                        Deploy project
+                                      </p>
+                                    </div>
+                                  </div>
                                 </div>
                               </TabsContent>
                             </Tabs>

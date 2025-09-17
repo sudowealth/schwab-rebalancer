@@ -1,6 +1,6 @@
 {
-  "id": "8174a560-a451-473f-9f73-cec6e95c7e1a",
-  "prevId": "00000000-0000-0000-0000-000000000000",
+  "id": "bf273ea0-8811-42a1-bbe6-bf78bd9ba87c",
+  "prevId": "ef9911fa-7883-4052-a287-04deaa1f94a0",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -60,13 +60,13 @@
         },
         "createdAt": {
           "name": "createdAt",
-          "type": "integer",
+          "type": "bigint",
           "primaryKey": false,
           "notNull": true
         },
         "updatedAt": {
           "name": "updatedAt",
-          "type": "integer",
+          "type": "bigint",
           "primaryKey": false,
           "notNull": true
         }
@@ -800,7 +800,7 @@
         },
         "openedAt": {
           "name": "openedAt",
-          "type": "integer",
+          "type": "bigint",
           "primaryKey": false,
           "notNull": true
         },
@@ -825,13 +825,13 @@
         },
         "createdAt": {
           "name": "createdAt",
-          "type": "integer",
+          "type": "bigint",
           "primaryKey": false,
           "notNull": true
         },
         "updatedAt": {
           "name": "updatedAt",
-          "type": "integer",
+          "type": "bigint",
           "primaryKey": false,
           "notNull": true
         }
@@ -895,13 +895,13 @@
         },
         "createdAt": {
           "name": "createdAt",
-          "type": "integer",
+          "type": "bigint",
           "primaryKey": false,
           "notNull": true
         },
         "updatedAt": {
           "name": "updatedAt",
-          "type": "integer",
+          "type": "bigint",
           "primaryKey": false,
           "notNull": true
         }
@@ -959,13 +959,13 @@
         },
         "createdAt": {
           "name": "createdAt",
-          "type": "integer",
+          "type": "bigint",
           "primaryKey": false,
           "notNull": true
         },
         "updatedAt": {
           "name": "updatedAt",
-          "type": "integer",
+          "type": "bigint",
           "primaryKey": false,
           "notNull": true
         }
@@ -1015,13 +1015,13 @@
         },
         "createdAt": {
           "name": "createdAt",
-          "type": "integer",
+          "type": "bigint",
           "primaryKey": false,
           "notNull": true
         },
         "updatedAt": {
           "name": "updatedAt",
-          "type": "integer",
+          "type": "bigint",
           "primaryKey": false,
           "notNull": true
         }
@@ -1081,13 +1081,13 @@
         },
         "createdAt": {
           "name": "createdAt",
-          "type": "integer",
+          "type": "bigint",
           "primaryKey": false,
           "notNull": true
         },
         "updatedAt": {
           "name": "updatedAt",
-          "type": "integer",
+          "type": "bigint",
           "primaryKey": false,
           "notNull": true
         }
@@ -1173,13 +1173,13 @@
         },
         "createdAt": {
           "name": "createdAt",
-          "type": "integer",
+          "type": "bigint",
           "primaryKey": false,
           "notNull": true
         },
         "updatedAt": {
           "name": "updatedAt",
-          "type": "integer",
+          "type": "bigint",
           "primaryKey": false,
           "notNull": true
         }
@@ -1365,13 +1365,13 @@
         },
         "createdAt": {
           "name": "createdAt",
-          "type": "integer",
+          "type": "bigint",
           "primaryKey": false,
           "notNull": true
         },
         "updatedAt": {
           "name": "updatedAt",
-          "type": "integer",
+          "type": "bigint",
           "primaryKey": false,
           "notNull": true
         }
@@ -1429,13 +1429,13 @@
         },
         "createdAt": {
           "name": "createdAt",
-          "type": "integer",
+          "type": "bigint",
           "primaryKey": false,
           "notNull": true
         },
         "updatedAt": {
           "name": "updatedAt",
-          "type": "integer",
+          "type": "bigint",
           "primaryKey": false,
           "notNull": true
         }
@@ -1505,25 +1505,25 @@
         },
         "soldAt": {
           "name": "soldAt",
-          "type": "integer",
+          "type": "bigint",
           "primaryKey": false,
           "notNull": true
         },
         "blockedUntil": {
           "name": "blockedUntil",
-          "type": "integer",
+          "type": "bigint",
           "primaryKey": false,
           "notNull": true
         },
         "createdAt": {
           "name": "createdAt",
-          "type": "integer",
+          "type": "bigint",
           "primaryKey": false,
           "notNull": true
         },
         "updatedAt": {
           "name": "updatedAt",
-          "type": "integer",
+          "type": "bigint",
           "primaryKey": false,
           "notNull": true
         }
@@ -2299,13 +2299,13 @@
         },
         "createdAt": {
           "name": "createdAt",
-          "type": "integer",
+          "type": "bigint",
           "primaryKey": false,
           "notNull": true
         },
         "updatedAt": {
           "name": "updatedAt",
-          "type": "integer",
+          "type": "bigint",
           "primaryKey": false,
           "notNull": true
         }
@@ -2432,13 +2432,13 @@
         },
         "createdAt": {
           "name": "createdAt",
-          "type": "integer",
+          "type": "bigint",
           "primaryKey": false,
           "notNull": true
         },
         "updatedAt": {
           "name": "updatedAt",
-          "type": "integer",
+          "type": "bigint",
           "primaryKey": false,
           "notNull": true
         }
@@ -2518,13 +2518,13 @@
         },
         "createdAt": {
           "name": "createdAt",
-          "type": "integer",
+          "type": "bigint",
           "primaryKey": false,
           "notNull": true
         },
         "updatedAt": {
           "name": "updatedAt",
-          "type": "integer",
+          "type": "bigint",
           "primaryKey": false,
           "notNull": true
         }
@@ -3264,19 +3264,19 @@
         },
         "executedAt": {
           "name": "executedAt",
-          "type": "integer",
+          "type": "bigint",
           "primaryKey": false,
           "notNull": true
         },
         "createdAt": {
           "name": "createdAt",
-          "type": "integer",
+          "type": "bigint",
           "primaryKey": false,
           "notNull": true
         },
         "updatedAt": {
           "name": "updatedAt",
-          "type": "integer",
+          "type": "bigint",
           "primaryKey": false,
           "notNull": true
         }

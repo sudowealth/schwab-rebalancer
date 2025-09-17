@@ -38,7 +38,7 @@
     "db:push:prod": "drizzle-kit push --config drizzle.config.ts",
     "db:studio": "drizzle-kit studio",
     "seed": "tsx src/lib/seeds/main.ts",
-    "generate-secrets": "tsx scripts/generate-secrets.ts",
+    "setup": "tsx scripts/setup.ts",
     "precommit": "biome check --write"
   },
   "dependencies": {

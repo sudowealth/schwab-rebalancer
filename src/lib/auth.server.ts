@@ -173,9 +173,11 @@ export const auth = betterAuth({
       return process.env.NODE_ENV === 'production' || baseURL?.startsWith('https');
     })(),
     cookiePrefix: 'auth',
-    generateId: () => {
-      // Use crypto.randomUUID for better entropy
-      return crypto.randomUUID();
+    database: {
+      generateId: () => {
+        // Use crypto.randomUUID for better entropy
+        return crypto.randomUUID();
+      },
     },
   },
   cookies: {

@@ -3522,6 +3522,7 @@ export const importNasdaqSecuritiesServerFn = createServerFn({
       let skippedCount = 0;
       const errors: string[] = [];
       const importedTickers: string[] = [];
+      const recordsByTicker = new Map<string, typeof schema.security.$inferInsert>();
 
       for (const security of securitiesToProcess) {
         try {
@@ -3549,74 +3550,88 @@ export const importNasdaqSecuritiesServerFn = createServerFn({
             continue;
           }
 
-          // Check if security already exists (only if skipExisting is true)
-          let shouldSkip = false;
-          if (skipExisting) {
-            const existing = await db
-              .select()
-              .from(schema.security)
-              .where(eq(schema.security.ticker, ticker))
-              .limit(1);
-
-            if (existing.length > 0) {
-              skippedCount++;
-              shouldSkip = true;
-            }
+          // Skip duplicates within the feed to avoid redundant inserts
+          if (recordsByTicker.has(ticker)) {
+            skippedCount++;
+            continue;
           }
 
-          if (!shouldSkip) {
-            // Determine asset type
-            let assetType = 'EQUITY';
-            let assetTypeSub = null;
+          // Determine asset type
+          let assetType = 'EQUITY';
+          let assetTypeSub = null;
 
-            if (security.etf === 'Y') {
-              assetType = 'EQUITY';
-              assetTypeSub = 'ETF';
-            }
-
-            // Create a descriptive name
-            const exchangeInfo = security.exchange || security.marketCategory || 'NASDAQ';
-            const name = security.securityName || `${ticker} - ${exchangeInfo}`;
-
-            try {
-              // Insert security (will be ignored if it already exists due to UNIQUE constraint)
-              await db.insert(schema.security).values({
-                ticker: ticker,
-                name: name,
-                price: 1, // Will be updated by price sync
-                marketCap: null,
-                peRatio: null,
-                industry: null,
-                sector: null,
-                assetType: assetType,
-                assetTypeSub: assetTypeSub,
-                createdAt: Date.now(),
-                updatedAt: Date.now(),
-              });
-
-              importedCount++;
-              importedTickers.push(ticker);
-            } catch (insertError: unknown) {
-              // Handle UNIQUE constraint violations gracefully
-              const error = insertError as { code?: string; message?: string };
-              if (
-                error?.code === '23505' ||
-                error?.code === '23505' ||
-                error?.message?.includes('UNIQUE constraint failed')
-              ) {
-                // Security already exists, count it as skipped
-                skippedCount++;
-                console.log(`⚠️  Security ${ticker} already exists, skipping`);
-              } else {
-                // Re-throw other errors
-                throw insertError;
-              }
-            }
+          if (security.etf === 'Y') {
+            assetType = 'EQUITY';
+            assetTypeSub = 'ETF';
           }
+
+          // Create a descriptive name
+          const exchangeInfo = security.exchange || security.marketCategory || 'NASDAQ';
+          const name = security.securityName || `${ticker} - ${exchangeInfo}`;
+
+          recordsByTicker.set(ticker, {
+            ticker,
+            name,
+            price: 1,
+            marketCap: null,
+            peRatio: null,
+            industry: null,
+            sector: null,
+            assetType,
+            assetTypeSub,
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+          });
         } catch (error) {
           const errorMsg = `Failed to import ${security.ticker}: ${getErrorMessage(error)}`;
           errors.push(errorMsg);
           logError(error, errorMsg);
+        }
+      }
+
+      let recordsToInsert = Array.from(recordsByTicker.values());
+
+      if (skipExisting && recordsToInsert.length > 0) {
+        const existingTickers = new Set<string>();
+        const tickers = Array.from(recordsByTicker.keys());
+        const chunkSize = 500;
+        for (let i = 0; i < tickers.length; i += chunkSize) {
+          const chunk = tickers.slice(i, i + chunkSize);
+          const existing = await db
+            .select({ ticker: schema.security.ticker })
+            .from(schema.security)
+            .where(inArray(schema.security.ticker, chunk));
+          for (const row of existing) {
+            existingTickers.add(row.ticker);
+          }
+        }
+
+        if (existingTickers.size > 0) {
+          skippedCount += existingTickers.size;
+          recordsToInsert = recordsToInsert.filter((record) => !existingTickers.has(record.ticker));
+        }
+      }
+
+      if (recordsToInsert.length > 0) {
+        const nowTimestamp = Date.now();
+        recordsToInsert = recordsToInsert.map((record) => ({
+          ...record,
+          createdAt: nowTimestamp,
+          updatedAt: nowTimestamp,
+        }));
+
+        const chunkSize = 500;
+        for (let i = 0; i < recordsToInsert.length; i += chunkSize) {
+          const chunk = recordsToInsert.slice(i, i + chunkSize);
+          const inserted = await db
+            .insert(schema.security)
+            .values(chunk)
+            .onConflictDoNothing({ target: schema.security.ticker })
+            .returning({ ticker: schema.security.ticker });
+
+          importedCount += inserted.length;
+          importedTickers.push(...inserted.map((row) => row.ticker));
+          skippedCount += chunk.length - inserted.length;
         }
       }
 
@@ -3653,77 +3668,104 @@ export const truncateDataServerFn = createServerFn({ method: 'POST' })
     const schema = await import('../db/schema');
 
     try {
-      // Get request info for audit logging before transaction
+      // Get request info for audit logging
       const request = getWebRequest();
 
-      // Start a transaction to ensure all operations succeed or fail together
-      await db.transaction(async (tx) => {
-        // Tables to truncate (all financial data and user-created content)
-        // PRESERVE: user, session, auth_account, verification, audit_log (system-level)
+      // Tables to truncate (all financial data and user-created content)
+      // PRESERVE: user, session, auth_account, verification, audit_log (system-level)
+      // NOTE: Neon HTTP driver doesn't support transactions, so operations may partially succeed
 
-        const tablesToTruncate = [
-          'security',
-          'account',
-          'sleeve',
-          'sleeve_member',
-          'holding',
-          'transaction',
-          'restricted_security',
-          'index',
-          'index_member',
-          'model',
-          'model_group_assignment',
-          'model_member',
-          'rebalancing_group',
-          'rebalancing_group_member',
-          'schwab_credentials',
-          'sync_log',
-          'sync_log_detail',
-          'schwab_holding',
-          'schwab_account',
-          'schwab_security',
-          'schwab_transaction',
-          'trade_order',
-          'order_execution',
-          'financial_plan',
-          'financial_plan_input',
-          'financial_plan_goal',
-          'tax_bracket',
-          'financial_plan_result',
-        ];
+      const tablesToTruncate = [
+        'security',
+        'account',
+        'sleeve',
+        'sleeve_member',
+        'holding',
+        'transaction',
+        'restricted_security',
+        'index',
+        'index_member',
+        'model',
+        'model_group_assignment',
+        'model_member',
+        'rebalancing_group',
+        'rebalancing_group_member',
+        'schwab_credentials',
+        'sync_log',
+        'sync_log_detail',
+        'schwab_holding',
+        'schwab_account',
+        'schwab_security',
+        'schwab_transaction',
+        'trade_order',
+        'order_execution',
+        'financial_plan',
+        'financial_plan_input',
+        'financial_plan_goal',
+        'tax_bracket',
+        'financial_plan_result',
+      ];
 
-        // Truncate each table
-        for (const tableName of tablesToTruncate) {
-          await tx.execute(sql`DELETE FROM ${sql.identifier(tableName)}`);
-          // PostgreSQL handles sequence resets automatically
+      // Track successfully truncated tables for error reporting
+      const truncatedTables: string[] = [];
+      const failedTables: string[] = [];
+
+      // Truncate each table individually (no transaction support in Neon HTTP)
+      for (const tableName of tablesToTruncate) {
+        try {
+          await db.execute(sql`DELETE FROM ${sql.identifier(tableName)}`);
+          truncatedTables.push(tableName);
+        } catch (tableError) {
+          failedTables.push(tableName);
+          logError(tableError, `Failed to truncate table: ${tableName}`);
         }
+      }
 
-        // Log the truncation in audit log
-        tx.insert(schema.auditLog).values({
-          id: crypto.randomUUID(),
-          userId: user.id,
-          action: 'TRUNCATE_ALL_DATA',
-          entityType: 'SYSTEM',
-          entityId: null,
-          metadata: JSON.stringify({
-            truncatedTables: tablesToTruncate.length,
-            tables: tablesToTruncate,
-          }),
-          createdAt: new Date(),
-          ipAddress: request.headers.get('X-Forwarded-For')?.split(',')[0]?.trim() || null,
-          userAgent: request.headers.get('User-Agent') || null,
-        });
+      // Log the truncation in audit log
+      await db.insert(schema.auditLog).values({
+        id: crypto.randomUUID(),
+        userId: user.id,
+        action: 'TRUNCATE_ALL_DATA',
+        entityType: 'SYSTEM',
+        entityId: null,
+        metadata: JSON.stringify({
+          truncatedTables: truncatedTables.length,
+          failedTables: failedTables.length,
+          tables: truncatedTables,
+          failed: failedTables,
+          note: 'Neon HTTP driver used - no transaction support',
+        }),
+        createdAt: new Date(),
+        ipAddress: request.headers.get('X-Forwarded-For')?.split(',')[0]?.trim() || null,
+        userAgent: request.headers.get('User-Agent') || null,
       });
+
+      // If any tables failed to truncate, include this in the response
+      const hasPartialFailure = failedTables.length > 0;
 
       // Clear all caches to ensure UI reflects truncated data
       const { clearCache } = await import('./db-api');
       clearCache();
 
+      // Prepare response based on success/failure
+      const totalTables = tablesToTruncate.length;
+      const successCount = truncatedTables.length;
+      const failureCount = failedTables.length;
+
+      let message: string;
+      if (hasPartialFailure) {
+        message = `Partial truncation completed. ${successCount}/${totalTables} tables truncated successfully. Failed tables: ${failedTables.join(', ')}. User accounts and authentication data preserved.`;
+      } else {
+        message = `All financial data has been truncated successfully. User accounts and authentication data preserved.`;
+      }
+
       return {
-        success: true,
-        message:
-          'All financial data has been truncated successfully. User accounts and authentication data preserved.',
-        truncatedTables: 29,
+        success: !hasPartialFailure,
+        message,
+        truncatedTables: successCount,
+        failedTables: failureCount,
+        totalTables,
+        failedTableNames: failedTables,
         invalidateAllCaches: true, // Flag to tell client to invalidate all React Query caches
       };
     } catch (error) {

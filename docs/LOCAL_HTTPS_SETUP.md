@@ -56,7 +56,7 @@ mkcert 127.0.0.1    # creates 127.0.0.1.pem and 127.0.0.1-key.pem in the repo
 #### Ongoing (daily) development
 
 ```bash
-npm run dev
+pnpm dev
 # browse https://127.0.0.1 (not http://localhost:3000)
 ```
 
@@ -104,7 +104,7 @@ You can now access your app at `https://127.0.0.1` with a valid SSL certificate.
 - Start dev
 
 ```bash
-npm run dev
+pnpm dev
 ```
 
 If something fails, share the exact error and we’ll tune the config.

@@ -1847,7 +1847,7 @@ export const getRebalancingGroups = async (userId: string): Promise<RebalancingG
     })
     .from(schema.rebalancingGroup)
     .where(
-      sql`${schema.rebalancingGroup.userId} = ${userId} AND ${schema.rebalancingGroup.isActive} = 1`,
+      sql`${schema.rebalancingGroup.userId} = ${userId} AND ${schema.rebalancingGroup.isActive} = true`,
     )
     .orderBy(schema.rebalancingGroup.name);
 

@@ -1,7 +1,7 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { createFileRoute, redirect } from '@tanstack/react-router';
 import { AlertTriangle, Database, Trash2 } from 'lucide-react';
-import { useId, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import { Alert, AlertDescription, AlertTitle } from '~/components/ui/alert';
 import { Button } from '~/components/ui/button';
 import { Input } from '~/components/ui/input';
@@ -41,8 +41,22 @@ function AdminDashboardIndex() {
     success: boolean;
     message: string;
     truncatedTables?: number;
+    failedTables?: number;
+    totalTables?: number;
+    failedTableNames?: string[];
     invalidateAllCaches?: boolean;
   } | null>(null);
+
+  // Auto-dismiss the truncate result message after 10 seconds
+  useEffect(() => {
+    if (truncateResult) {
+      const timer = setTimeout(() => {
+        setTruncateResult(null);
+      }, 10000); // 10 seconds
+
+      return () => clearTimeout(timer);
+    }
+  }, [truncateResult]);
 
   const handleTruncateData = async () => {
     if (confirmText !== 'TRUNCATE_ALL_DATA') {
@@ -82,11 +96,34 @@ function AdminDashboardIndex() {
       {/* Show truncate result if any */}
       {truncateResult && (
         <Alert
-          className={`mb-6 ${truncateResult.success ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'}`}
+          className={`mb-6 ${truncateResult.success ? 'border-green-200 bg-green-50' : 'border-yellow-200 bg-yellow-50'}`}
         >
           <AlertTriangle className="h-4 w-4" />
-          <AlertTitle>{truncateResult.success ? 'Success' : 'Error'}</AlertTitle>
-          <AlertDescription>{truncateResult.message}</AlertDescription>
+          <AlertTitle>{truncateResult.success ? 'Success' : 'Partial Success'}</AlertTitle>
+          <AlertDescription>
+            <div className="space-y-2">
+              <p>{truncateResult.message}</p>
+              {truncateResult.totalTables && truncateResult.failedTables !== undefined && (
+                <div className="text-sm">
+                  <p>
+                    <strong>Results:</strong> {truncateResult.truncatedTables} of{' '}
+                    {truncateResult.totalTables} tables truncated successfully
+                    {truncateResult.failedTables > 0 && (
+                      <>
+                        , {truncateResult.failedTables} failed
+                        {truncateResult.failedTableNames &&
+                          truncateResult.failedTableNames.length > 0 && (
+                            <span className="block mt-1 text-xs text-gray-600">
+                              Failed tables: {truncateResult.failedTableNames.join(', ')}
+                            </span>
+                          )}
+                      </>
+                    )}
+                  </p>
+                </div>
+              )}
+            </div>
+          </AlertDescription>
         </Alert>
       )}
 

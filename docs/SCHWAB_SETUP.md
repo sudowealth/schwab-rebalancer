@@ -60,7 +60,7 @@ SCHWAB_CLIENT_SECRET=your_secret_here
 2. Run the development server:
 
    ```bash
-   npm run dev  # Open https://127.0.0.1 in your browser
+   pnpm dev  # Open https://127.0.0.1 in your browser
    ```
 
 3. Test OAuth flow:
