@@ -55,8 +55,15 @@ default = ""
 description = "Resend API key for email notifications (optional)"
 
 
-# Redirect rules for SPA
+# Redirect rules for SPA and API routes
 
+# API routes should be handled by Netlify Functions
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions-internal/___netlify-handler"
+  status = 200
+
+# SPA fallback for all other routes
 [[redirects]]
   from = "/*"
   to = "/index.html"

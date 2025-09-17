@@ -22,6 +22,7 @@ export default defineConfig({
     }),
     tanstackStart({
       target: 'netlify',
+      customViteReactPlugin: true,
     }),
     {
       name: 'auth-middleware',
