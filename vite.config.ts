@@ -12,7 +12,15 @@ export default defineConfig({
   },
   ssr: {
     noExternal: ['better-auth'],
-    external: ['postgres', '@neondatabase/serverless'],
+    external: ['postgres', '@neondatabase/serverless', '@tanstack/router-core'],
+  },
+  build: {
+    rollupOptions: {
+      external: (id) => {
+        // Externalize Node.js built-ins to avoid bundling issues with TanStack Router
+        return id.startsWith('node:') || id === 'stream';
+      },
+    },
   },
   plugins: [
     tailwindcss(),
