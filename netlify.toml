@@ -59,8 +59,10 @@ description = "Resend API key for email notifications (optional)"
   from = "/api/*"
   to = "/.netlify/functions/server/api/:splat"
   status = 200
+  force = true
 
 [[redirects]]
   from = "/*"
-  to = "/index.html"
+  to = "/.netlify/functions/server"
   status = 200
+  force = true
