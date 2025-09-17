@@ -57,7 +57,7 @@ description = "Resend API key for email notifications (optional)"
 # Redirect rules for SPA
 [[redirects]]
   from = "/api/*"
-  to = "/.netlify/functions/:splat"
+  to = "/.netlify/functions/server/api/:splat"
   status = 200
 
 [[redirects]]
