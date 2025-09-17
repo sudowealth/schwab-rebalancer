@@ -1,8 +1,10 @@
 import { createServerFn } from '@tanstack/react-start';
 import { getWebRequest } from '@tanstack/react-start/server';
+import { APIError } from 'better-auth/api';
 import { eq, inArray, sql } from 'drizzle-orm';
 import type { drizzle } from 'drizzle-orm/neon-http';
 import * as schema from '../db/schema';
+import { auth } from './auth.server';
 import { getDatabaseSync } from './db-config';
 
 // Defer server-only auth utilities to runtime to avoid bundling them in the client build
@@ -3218,26 +3220,29 @@ export const signUpWithFirstAdminServerFn = createServerFn({ method: 'POST' })
       const totalUsers = Number(userCount[0]?.count ?? 0);
       const isFirstUser = totalUsers === 0;
 
-      // Use Better Auth's signUp.email method directly
-      const { signUp } = await import('./auth-client');
-
-      // Create user with Better Auth
-      await signUp.email({
-        email,
-        password,
-        name,
+      // Create user via Better Auth API to ensure password and related records are handled correctly
+      const signUpResult = await auth.api.signUpEmail({
+        body: {
+          email,
+          password,
+          name,
+          rememberMe: true,
+        },
       });
 
       // If this was the first user, update their role to admin
       if (isFirstUser) {
         console.log('🔑 First user created, setting admin role for:', email);
 
-        // Find the newly created user
-        const newUser = await db
-          .select({ id: schema.user.id })
-          .from(schema.user)
-          .where(eq(schema.user.email, email))
-          .limit(1);
+        // Find the newly created user (prefer id returned by Better Auth when available)
+        const newUserId = signUpResult?.user?.id;
+        const newUser = newUserId
+          ? [{ id: newUserId }]
+          : await db
+              .select({ id: schema.user.id })
+              .from(schema.user)
+              .where(eq(schema.user.email, email))
+              .limit(1);
 
         if (newUser.length > 0) {
           await db
@@ -3261,6 +3266,12 @@ export const signUpWithFirstAdminServerFn = createServerFn({ method: 'POST' })
       };
     } catch (error) {
       console.error('❌ Signup error:', error);
+
+      if (error instanceof APIError) {
+        // Surface the message Better Auth provides for easier debugging
+        throw new Error(error.message || 'Registration failed.');
+      }
+
       throw error;
     }
   });
