@@ -25,7 +25,7 @@ const getAuthDatabase = () => {
   }
 
   // Otherwise, we cannot continue in production
-  throw new Error('Production database not configured: set DATABASE_URL in Netlify env.');
+  throw new Error('Production database not configured: set NETLIFY_DATABASE_URL in Netlify env.');
 };
 
 const createSafeAdapter = () => {

@@ -95,7 +95,7 @@ async function initializeDatabase() {
 
     if (!connectionString) {
       throw new Error(
-        'DATABASE_URL environment variable is required. Make sure @netlify/neon is properly configured.',
+        'DATABASE_URL or NETLIFY_DATABASE_URL environment variable is required. Make sure @netlify/neon is properly configured.',
       );
     }
 
@@ -128,7 +128,7 @@ export async function initDatabaseSync(): Promise<void> {
 
     const connectionString = process.env.DATABASE_URL || process.env.NETLIFY_DATABASE_URL;
     if (!connectionString) {
-      throw new Error('DATABASE_URL environment variable is required');
+      throw new Error('DATABASE_URL or NETLIFY_DATABASE_URL environment variable is required');
     }
 
     // Import schema
