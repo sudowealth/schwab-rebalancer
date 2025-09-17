@@ -21,11 +21,11 @@ export default defineConfig({
     tsConfigPaths({
       projects: ['./tsconfig.json'],
     }),
+    viteReact(),
     tanstackStart({
       target: 'netlify',
       customViteReactPlugin: true,
     }),
-    viteReact(),
     {
       name: 'auth-middleware',
       configureServer(server) {
