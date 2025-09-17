@@ -7,7 +7,7 @@
 
 [functions]
   included_files = ["drizzle/**"]
-  directory = ".netlify/functions-internal"
+  directory = ".netlify/functions"
 
 [template]
   full = true
@@ -57,10 +57,16 @@ description = "Resend API key for email notifications (optional)"
 
 # Redirect rules for SPA and API routes
 
-# API routes should be handled by Netlify Functions
+# Auth routes handled by dedicated API route
+[[redirects]]
+  from = "/api/auth*"
+  to = "/.netlify/functions/server"
+  status = 200
+
+# Other API routes should be handled by Netlify Functions
 [[redirects]]
   from = "/api/*"
-  to = "/.netlify/functions-internal/server"
+  to = "/.netlify/functions/server"
   status = 200
 
 # SPA fallback for all other routes
