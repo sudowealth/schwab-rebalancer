@@ -24,7 +24,7 @@ import {
 } from '~/components/ui/navigation-menu';
 import { useAuth } from '~/hooks/useAuth';
 import { signOut, useSession } from '~/lib/auth-client';
-import { initDatabase } from '~/lib/db-config';
+import { initDatabaseSync } from '~/lib/db-config';
 import { cn } from '~/lib/utils';
 import appCss from '~/styles/app.css?url';
 import { seo } from '~/utils/seo';
@@ -70,8 +70,11 @@ export const Route = createRootRoute({
     scripts: [],
   }),
   loader: async () => {
-    // Initialize database connection on server startup
-    await initDatabase();
+    // Initialize database connection synchronously on server side
+    // This must happen before any other modules try to use the database
+    if (typeof window === 'undefined') {
+      await initDatabaseSync();
+    }
     return {};
   },
   errorComponent: DefaultCatchBoundary,

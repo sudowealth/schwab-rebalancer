@@ -3054,14 +3054,14 @@ export const getSystemStatsServerFn = createServerFn({ method: 'GET' }).handler(
   const orderCount = await db.select({ count: sql<number>`count(*)` }).from(schema.tradeOrder);
 
   return {
-    users: userCount[0]?.count || 0,
-    accounts: accountCount[0]?.count || 0,
-    sleeves: sleeveCount[0]?.count || 0,
-    models: modelCount[0]?.count || 0,
-    holdings: holdingCount[0]?.count || 0,
-    transactions: transactionCount[0]?.count || 0,
-    rebalancingGroups: rebalancingGroupCount[0]?.count || 0,
-    orders: orderCount[0]?.count || 0,
+    users: Number(userCount[0]?.count ?? 0),
+    accounts: Number(accountCount[0]?.count ?? 0),
+    sleeves: Number(sleeveCount[0]?.count ?? 0),
+    models: Number(modelCount[0]?.count ?? 0),
+    holdings: Number(holdingCount[0]?.count ?? 0),
+    transactions: Number(transactionCount[0]?.count ?? 0),
+    rebalancingGroups: Number(rebalancingGroupCount[0]?.count ?? 0),
+    orders: Number(orderCount[0]?.count ?? 0),
   };
 });
 
@@ -3203,7 +3203,7 @@ export const signUpWithFirstAdminServerFn = createServerFn({ method: 'POST' })
       if (individualUse) {
         const userCount = await db.select({ count: sql<number>`count(*)` }).from(schema.user);
 
-        const totalUsers = userCount[0]?.count || 0;
+        const totalUsers = Number(userCount[0]?.count ?? 0);
 
         if (totalUsers > 0) {
           throw new Error(
@@ -3215,7 +3215,7 @@ export const signUpWithFirstAdminServerFn = createServerFn({ method: 'POST' })
       // Check if this would be the first user
       const userCount = await db.select({ count: sql<number>`count(*)` }).from(schema.user);
 
-      const totalUsers = userCount[0]?.count || 0;
+      const totalUsers = Number(userCount[0]?.count ?? 0);
       const isFirstUser = totalUsers === 0;
 
       // Use Better Auth's signUp.email method directly
@@ -3290,7 +3290,7 @@ export const checkIsFirstUserServerFn = createServerFn({
 
   const userCount = await db.select({ count: sql<number>`count(*)` }).from(schema.user);
 
-  const totalUsers = userCount[0]?.count || 0;
+  const totalUsers = Number(userCount[0]?.count ?? 0);
   return {
     isFirstUser: totalUsers === 0,
     totalUsers,
@@ -3318,7 +3318,7 @@ export const checkUserCreationAllowedServerFn = createServerFn({
 
   const userCount = await db.select({ count: sql<number>`count(*)` }).from(schema.user);
 
-  const totalUsers = userCount[0]?.count || 0;
+  const totalUsers = Number(userCount[0]?.count ?? 0);
   const allowed = totalUsers === 0;
 
   return {

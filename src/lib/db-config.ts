@@ -1,8 +1,3 @@
-import { config } from 'dotenv';
-
-// Load environment variables
-config({ path: '.env.local' });
-
 import { neon } from '@neondatabase/serverless';
 // Type definitions
 import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
@@ -14,17 +9,33 @@ type DrizzleInstance = NeonHttpDatabase<Record<string, unknown>> & {
 
 // Global variables for database connection
 declare global {
+  // eslint-disable-next-line no-var
   var __dbInstance: DrizzleInstance | undefined;
-  var __dbInitialized: boolean;
+  // eslint-disable-next-line no-var
+  var __dbInitialized: boolean | undefined;
 }
 
-// Initialize global variables
-global.__dbInstance = undefined;
-global.__dbInitialized = false;
+const globalForDb = globalThis as typeof globalThis & {
+  __dbInstance?: DrizzleInstance;
+  __dbInitialized?: boolean;
+};
+
+// Initialize global variables only on server side without clobbering existing state
+if (typeof window === 'undefined') {
+  if (typeof globalForDb.__dbInstance === 'undefined') {
+    globalForDb.__dbInstance = undefined;
+  }
+
+  if (typeof globalForDb.__dbInitialized === 'undefined') {
+    globalForDb.__dbInitialized = false;
+  }
+}
 
 // Initialize database connection (server-side only)
+// This is now called synchronously at module load time above
 async function initializeDatabase() {
-  if (!global.__dbInitialized) {
+  if (!globalForDb.__dbInitialized) {
+    // If not initialized synchronously, try async initialization as fallback
     const connectionString = process.env.DATABASE_URL || process.env.NETLIFY_DATABASE_URL;
 
     if (!connectionString) {
@@ -40,20 +51,64 @@ async function initializeDatabase() {
 
     // Create Neon HTTP client
     const sql = neon(connectionString);
-    const dbInstance = drizzle(sql, { schema });
+    const dbInstance = drizzle(sql, { schema }) as DrizzleInstance;
     // Add the $client property for compatibility with seed functions
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (dbInstance as any).$client = sql;
-    global.__dbInstance = dbInstance as DrizzleInstance;
-    global.__dbInitialized = true;
+    globalForDb.__dbInstance = dbInstance;
+    globalForDb.__dbInitialized = true;
   }
 }
 
-// Synchronous versions for existing code (will throw if not initialized)
-export function getDatabaseSync(): DrizzleInstance {
-  if (!global.__dbInitialized || !global.__dbInstance) {
-    throw new Error('Database not initialized. Call initDatabase() first.');
+// Synchronous database initialization for startup
+export async function initDatabaseSync(): Promise<void> {
+  if (globalForDb.__dbInitialized) {
+    return; // Already initialized
   }
-  return global.__dbInstance;
+
+  try {
+    // Load environment variables
+    const { config } = await import('dotenv');
+    config({ path: '.env.local' });
+
+    const connectionString = process.env.DATABASE_URL || process.env.NETLIFY_DATABASE_URL;
+    if (!connectionString) {
+      throw new Error('DATABASE_URL environment variable is required');
+    }
+
+    // Import schema
+    const schema = await import('../db/schema');
+
+    // Create Neon HTTP client
+    const { neon } = await import('@neondatabase/serverless');
+    const sql = neon(connectionString);
+
+    // Create database instance
+    const { drizzle } = await import('drizzle-orm/neon-http');
+    const dbInstance = drizzle(sql, { schema }) as DrizzleInstance;
+    // Add the $client property for compatibility with seed functions
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (dbInstance as any).$client = sql;
+
+    globalForDb.__dbInstance = dbInstance;
+    globalForDb.__dbInitialized = true;
+
+    console.log('✅ Database initialized synchronously');
+  } catch (error) {
+    console.error('❌ Failed to initialize database synchronously:', error);
+    throw error;
+  }
+}
+
+// Synchronous database access
+export function getDatabaseSync(): DrizzleInstance {
+  const dbInstance = globalForDb.__dbInstance;
+
+  if (!globalForDb.__dbInitialized || !dbInstance) {
+    throw new Error('Database not initialized. Call initDatabaseSync() first.');
+  }
+
+  return dbInstance;
 }
 
 // Neon HTTP client doesn't expose raw SQL client in the same way
@@ -69,6 +124,6 @@ export async function initDatabase(): Promise<void> {
 
 // Cleanup database connection (Neon HTTP handles this automatically)
 export function cleanupDatabase(): void {
-  global.__dbInstance = undefined;
-  global.__dbInitialized = false;
+  globalForDb.__dbInstance = undefined;
+  globalForDb.__dbInitialized = false;
 }
