@@ -12,8 +12,8 @@ export const Route = createFileRoute('/login')({
 function LoginPage() {
   const { reset } = Route.useSearch();
   const { data: session } = useSession();
-  const [email, setEmail] = useState(() => (import.meta.env.DEV ? 'd@d.com' : ''));
-  const [password, setPassword] = useState(() => (import.meta.env.DEV ? 'Test1234' : ''));
+  const [email, setEmail] = useState(() => (import.meta.env.DEV ? '' : ''));
+  const [password, setPassword] = useState(() => (import.meta.env.DEV ? '' : ''));
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');

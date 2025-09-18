@@ -33,9 +33,9 @@ function RegisterPage() {
   // Get data from server loader
   const { firstUserCheck, userCreationCheck } = Route.useLoaderData();
 
-  const [email, setEmail] = useState(() => (import.meta.env.DEV ? 'd@d.com' : ''));
-  const [password, setPassword] = useState(() => (import.meta.env.DEV ? 'Test1234' : ''));
-  const [name, setName] = useState(() => (import.meta.env.DEV ? 'Dan' : ''));
+  const [email, setEmail] = useState(() => (import.meta.env.DEV ? '' : ''));
+  const [password, setPassword] = useState(() => (import.meta.env.DEV ? '' : ''));
+  const [name, setName] = useState(() => (import.meta.env.DEV ? '' : ''));
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');

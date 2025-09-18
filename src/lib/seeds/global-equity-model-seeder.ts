@@ -291,7 +291,7 @@ export const getGlobalEquityModelData = async (db: ReturnType<typeof drizzle>, u
     const users = await db
       .select({ id: schema.user.id })
       .from(schema.user)
-      .where(eq(schema.user.email, 'd@d.com'))
+      .where(eq(schema.user.role, 'admin'))
       .limit(1);
 
     if (users.length > 0) {
@@ -331,7 +331,7 @@ export async function generateGlobalEquityModelMembers(
     const users = await db
       .select({ id: schema.user.id })
       .from(schema.user)
-      .where(eq(schema.user.email, 'd@d.com'))
+      .where(eq(schema.user.role, 'admin'))
       .limit(1);
 
     if (users.length > 0) {

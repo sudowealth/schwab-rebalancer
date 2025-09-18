@@ -12,7 +12,7 @@ export const Route = createFileRoute('/reset-password')({
 function ResetPasswordPage() {
   const { token } = Route.useSearch();
   const { data: session } = useSession();
-  const [email] = useState('d@d.com');
+  const [email] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);

@@ -28,7 +28,7 @@ export async function seedRebalancingGroups(db: ReturnType<typeof drizzle>, user
     const existingUser = await db
       .select()
       .from(schema.user)
-      .where(eq(schema.user.email, 'd@d.com'))
+      .where(eq(schema.user.role, 'admin'))
       .limit(1);
     targetUserId = existingUser[0]?.id || 'demo-user';
   }
