@@ -199,3 +199,5 @@ export const auth = betterAuth({
     reactStartCookies(), // Essential for TanStack Start integration
   ],
 });
+
+export const authHandler = auth.handler;

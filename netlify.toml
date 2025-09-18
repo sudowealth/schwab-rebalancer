@@ -1,13 +1,14 @@
 [build]
-  publish = ".tanstack/start/build/client-dist"
-  command = "npm run build"
+  command = "pnpm build"
+  publish = ".output/public"
 
 [build.environment]
-  NODE_VERSION = "20"
+  NODE_VERSION = "22"
 
 [functions]
+  directory = ".output/server"
+  node_bundler = "esbuild"
   included_files = ["drizzle/**"]
-  directory = ".netlify/functions"
 
 [template]
   full = true
@@ -53,24 +54,3 @@ name = "RESEND_API_KEY"
 required = false
 default = ""
 description = "Resend API key for email notifications (optional)"
-
-
-# Redirect rules for SPA and API routes
-
-# Auth routes handled by dedicated API route
-[[redirects]]
-  from = "/api/auth*"
-  to = "/.netlify/functions/server"
-  status = 200
-
-# Other API routes should be handled by Netlify Functions
-[[redirects]]
-  from = "/api/*"
-  to = "/.netlify/functions/server"
-  status = 200
-
-# SPA fallback for all other routes
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200

@@ -12,7 +12,7 @@ export function SimpleTooltip({ children, content, cursor }: SimpleTooltipProps)
   const [isVisible, setIsVisible] = React.useState(false);
   // Anchor stores the trigger's centerX, top and bottom for placement calculations
   const [anchor, setAnchor] = React.useState({ centerX: 0, top: 0, bottom: 0 });
-  const triggerRef = React.useRef<HTMLDivElement>(null);
+  const triggerRef = React.useRef<HTMLElement>(null);
   const tooltipRef = React.useRef<HTMLDivElement>(null);
   const [tooltipSize, setTooltipSize] = React.useState({ width: 0, height: 0 });
 
@@ -93,25 +93,82 @@ export function SimpleTooltip({ children, content, cursor }: SimpleTooltipProps)
     return true; // Elements, numbers, etc.
   }, [content]);
 
+  // Check if children contain interactive elements (button, input, select, etc.)
+  const hasInteractiveChildren = React.useMemo(() => {
+    const checkInteractive = (node: React.ReactNode): boolean => {
+      if (React.isValidElement(node)) {
+        // Check if this element is an HTML interactive element
+        if (typeof node.type === 'string') {
+          const interactiveTags = ['button', 'input', 'select', 'textarea', 'a'];
+          if (interactiveTags.includes(node.type)) {
+            return true;
+          }
+        }
+
+        // Check if this is a custom component that might render interactive elements
+        if (typeof node.type === 'function' || typeof node.type === 'object') {
+          // Check component name/displayName for common interactive patterns
+          const componentType = node.type as any;
+          const componentName = componentType.displayName || componentType.name || '';
+          if (
+            componentName.toLowerCase().includes('button') ||
+            componentName.toLowerCase().includes('input') ||
+            componentName.toLowerCase().includes('select') ||
+            componentName.toLowerCase().includes('link')
+          ) {
+            return true;
+          }
+        }
+
+        // Check if this element has interactive props
+        const props = node.props as any;
+        if (
+          props?.onClick ||
+          props?.onKeyDown ||
+          props?.onKeyUp ||
+          props?.onMouseDown ||
+          props?.onMouseUp ||
+          props?.tabIndex !== undefined ||
+          props?.role === 'button' ||
+          props?.role === 'link' ||
+          props?.role === 'menuitem'
+        ) {
+          return true;
+        }
+
+        // Recursively check children
+        if (props?.children) {
+          return React.Children.toArray(props.children).some(checkInteractive);
+        }
+      }
+      return false;
+    };
+
+    return React.Children.toArray(children).some(checkInteractive);
+  }, [children]);
+
   // If there's nothing to show, avoid rendering the interactive wrapper entirely.
   if (!hasContent) {
     return <>{children}</>;
   }
 
+  // Use div wrapper if children are interactive to avoid nested buttons
+  const Wrapper = hasInteractiveChildren ? 'div' : 'button';
+
   return (
     <>
-      <button
-        type="button"
-        ref={triggerRef as unknown as React.RefObject<HTMLButtonElement>}
+      <Wrapper
+        ref={triggerRef as any}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
         className="inline-block bg-transparent p-0 m-0 border-0"
         style={cursor ? { cursor } : undefined}
         onFocus={handleMouseEnter}
         onBlur={handleMouseLeave}
+        {...(hasInteractiveChildren ? {} : { type: 'button' as const })}
       >
         {children}
-      </button>
+      </Wrapper>
       {isVisible &&
         typeof document !== 'undefined' &&
         createPortal(

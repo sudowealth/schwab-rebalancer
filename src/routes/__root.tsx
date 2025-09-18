@@ -241,7 +241,7 @@ function AuthNav() {
   };
 
   if (isLoading) {
-    return <div>Loading...</div>;
+    return <div className="text-sm text-gray-500">Loading...</div>;
   }
 
   if (session?.user) {

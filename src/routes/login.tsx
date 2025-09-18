@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { useId, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import { signIn, useSession } from '../lib/auth-client';
 
 export const Route = createFileRoute('/login')({
@@ -24,15 +24,22 @@ function LoginPage() {
   const emailId = useId();
   const passwordId = useId();
 
-  // Set success message if coming from password reset
-  if (reset === 'success') {
-    setSuccessMessage('Password reset successful! Please sign in with your new password.');
-    setPassword(''); // Clear default password
-  }
+  useEffect(() => {
+    if (reset === 'success') {
+      setSuccessMessage('Password reset successful! Please sign in with your new password.');
+      setPassword('');
+    } else {
+      setSuccessMessage('');
+    }
+  }, [reset]);
 
-  // Redirect if already logged in
+  useEffect(() => {
+    if (session?.user) {
+      window.location.href = '/';
+    }
+  }, [session]);
+
   if (session?.user) {
-    window.location.href = '/';
     return null;
   }
 
@@ -221,6 +228,7 @@ function LoginPage() {
               type="email"
               required
               autoComplete="email"
+              data-lpignore="true"
               className={`relative block w-full px-3 py-2 bg-white border placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:z-10 sm:text-sm ${
                 validationErrors.email
                   ? 'border-red-300 focus:ring-red-500 focus:border-red-500'
@@ -244,6 +252,7 @@ function LoginPage() {
               type="password"
               required
               autoComplete="current-password"
+              data-lpignore="true"
               className={`relative block w-full px-3 py-2 bg-white border placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:z-10 sm:text-sm ${
                 validationErrors.password
                   ? 'border-red-300 focus:ring-red-500 focus:border-red-500'

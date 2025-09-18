@@ -1,4 +1,19 @@
-import { auth } from './auth.server';
+type AuthModule = typeof import('./auth.server');
+
+let authClient: AuthModule['auth'] | undefined;
+
+async function resolveAuth(): Promise<AuthModule['auth']> {
+  if (!import.meta.env.SSR) {
+    throw new Error('Server auth utilities must run on the server');
+  }
+
+  if (!authClient) {
+    const mod: AuthModule = await import('./auth.server');
+    authClient = mod.auth;
+  }
+
+  return authClient;
+}
 
 export interface ServerAuthContext {
   user: {
@@ -16,6 +31,7 @@ export async function requireServerAuth(
   headers: Headers | Record<string, string>,
 ): Promise<ServerAuthContext> {
   try {
+    const auth = await resolveAuth();
     console.log('Server auth: Checking session with headers:', {
       hasHeaders: !!headers,
       headerKeys: headers ? Object.keys(headers) : [],

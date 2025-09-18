@@ -1,10 +1,8 @@
 import { createServerFn } from '@tanstack/react-start';
-import { getWebRequest } from '@tanstack/react-start/server';
 import { APIError } from 'better-auth/api';
 import { eq, inArray, sql } from 'drizzle-orm';
 import type { drizzle } from 'drizzle-orm/neon-http';
 import * as schema from '../db/schema';
-import { auth } from './auth.server';
 import { getDatabaseSync } from './db-config';
 
 // Note: Better Auth integration handled at router level
@@ -3278,6 +3276,7 @@ export const signUpWithFirstAdminServerFn = createServerFn({ method: 'POST' })
       const isFirstUser = totalUsers === 0;
 
       // Create user via Better Auth API to ensure password and related records are handled correctly
+      const { auth } = await import('./auth.server');
       const signUpResult = await auth.api.signUpEmail({
         body: {
           email,
@@ -3726,6 +3725,10 @@ export const truncateDataServerFn = createServerFn({ method: 'POST' })
 
     try {
       // Get request info for audit logging
+      if (!import.meta.env.SSR) {
+        throw new Error('truncateDataServerFn is only available on the server');
+      }
+      const { getWebRequest } = await import('@tanstack/react-start/server');
       const request = getWebRequest();
 
       // Tables to truncate (all financial data and user-created content)

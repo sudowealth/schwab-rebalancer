@@ -8,6 +8,8 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
+import { createServerRootRoute } from '@tanstack/react-start/server'
+
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SchwabRouteImport } from './routes/schwab'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
@@ -32,7 +34,9 @@ import { Route as ApiTestRouteImport } from './routes/api/test'
 import { Route as AdminUsersRouteImport } from './routes/admin/users'
 import { Route as AdminStatsRouteImport } from './routes/admin/stats'
 import { Route as ApiWorkersYahooSyncRouteImport } from './routes/api/workers/yahoo-sync'
-import { Route as ApiAuthActionRouteImport } from './routes/api/auth.$action'
+import { ServerRoute as ApiAuthSplatServerRouteImport } from './routes/api/auth/$'
+
+const rootServerRouteImport = createServerRootRoute()
 
 const SchwabRoute = SchwabRouteImport.update({
   id: '/schwab',
@@ -150,10 +154,10 @@ const ApiWorkersYahooSyncRoute = ApiWorkersYahooSyncRouteImport.update({
   path: '/api/workers/yahoo-sync',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiAuthActionRoute = ApiAuthActionRouteImport.update({
-  id: '/api/auth/$action',
-  path: '/api/auth/$action',
-  getParentRoute: () => rootRouteImport,
+const ApiAuthSplatServerRoute = ApiAuthSplatServerRouteImport.update({
+  id: '/api/auth/$',
+  path: '/api/auth/$',
+  getParentRoute: () => rootServerRouteImport,
 } as any)
 
 export interface FileRoutesByFullPath {
@@ -179,7 +183,6 @@ export interface FileRoutesByFullPath {
   '/models': typeof ModelsIndexRoute
   '/rebalancing-groups': typeof RebalancingGroupsIndexRoute
   '/sleeves': typeof SleevesIndexRoute
-  '/api/auth/$action': typeof ApiAuthActionRoute
   '/api/workers/yahoo-sync': typeof ApiWorkersYahooSyncRoute
 }
 export interface FileRoutesByTo {
@@ -203,7 +206,6 @@ export interface FileRoutesByTo {
   '/models': typeof ModelsIndexRoute
   '/rebalancing-groups': typeof RebalancingGroupsIndexRoute
   '/sleeves': typeof SleevesIndexRoute
-  '/api/auth/$action': typeof ApiAuthActionRoute
   '/api/workers/yahoo-sync': typeof ApiWorkersYahooSyncRoute
 }
 export interface FileRoutesById {
@@ -230,7 +232,6 @@ export interface FileRoutesById {
   '/models/': typeof ModelsIndexRoute
   '/rebalancing-groups/': typeof RebalancingGroupsIndexRoute
   '/sleeves/': typeof SleevesIndexRoute
-  '/api/auth/$action': typeof ApiAuthActionRoute
   '/api/workers/yahoo-sync': typeof ApiWorkersYahooSyncRoute
 }
 export interface FileRouteTypes {
@@ -258,7 +259,6 @@ export interface FileRouteTypes {
     | '/models'
     | '/rebalancing-groups'
     | '/sleeves'
-    | '/api/auth/$action'
     | '/api/workers/yahoo-sync'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -282,7 +282,6 @@ export interface FileRouteTypes {
     | '/models'
     | '/rebalancing-groups'
     | '/sleeves'
-    | '/api/auth/$action'
     | '/api/workers/yahoo-sync'
   id:
     | '__root__'
@@ -308,7 +307,6 @@ export interface FileRouteTypes {
     | '/models/'
     | '/rebalancing-groups/'
     | '/sleeves/'
-    | '/api/auth/$action'
     | '/api/workers/yahoo-sync'
   fileRoutesById: FileRoutesById
 }
@@ -330,8 +328,28 @@ export interface RootRouteChildren {
   ModelsIndexRoute: typeof ModelsIndexRoute
   RebalancingGroupsIndexRoute: typeof RebalancingGroupsIndexRoute
   SleevesIndexRoute: typeof SleevesIndexRoute
-  ApiAuthActionRoute: typeof ApiAuthActionRoute
   ApiWorkersYahooSyncRoute: typeof ApiWorkersYahooSyncRoute
+}
+export interface FileServerRoutesByFullPath {
+  '/api/auth/$': typeof ApiAuthSplatServerRoute
+}
+export interface FileServerRoutesByTo {
+  '/api/auth/$': typeof ApiAuthSplatServerRoute
+}
+export interface FileServerRoutesById {
+  __root__: typeof rootServerRouteImport
+  '/api/auth/$': typeof ApiAuthSplatServerRoute
+}
+export interface FileServerRouteTypes {
+  fileServerRoutesByFullPath: FileServerRoutesByFullPath
+  fullPaths: '/api/auth/$'
+  fileServerRoutesByTo: FileServerRoutesByTo
+  to: '/api/auth/$'
+  id: '__root__' | '/api/auth/$'
+  fileServerRoutesById: FileServerRoutesById
+}
+export interface RootServerRouteChildren {
+  ApiAuthSplatServerRoute: typeof ApiAuthSplatServerRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -497,12 +515,16 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiWorkersYahooSyncRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/auth/$action': {
-      id: '/api/auth/$action'
-      path: '/api/auth/$action'
-      fullPath: '/api/auth/$action'
-      preLoaderRoute: typeof ApiAuthActionRouteImport
-      parentRoute: typeof rootRouteImport
+  }
+}
+declare module '@tanstack/react-start/server' {
+  interface ServerFileRoutesByPath {
+    '/api/auth/$': {
+      id: '/api/auth/$'
+      path: '/api/auth/$'
+      fullPath: '/api/auth/$'
+      preLoaderRoute: typeof ApiAuthSplatServerRouteImport
+      parentRoute: typeof rootServerRouteImport
     }
   }
 }
@@ -562,9 +584,14 @@ const rootRouteChildren: RootRouteChildren = {
   ModelsIndexRoute: ModelsIndexRoute,
   RebalancingGroupsIndexRoute: RebalancingGroupsIndexRoute,
   SleevesIndexRoute: SleevesIndexRoute,
-  ApiAuthActionRoute: ApiAuthActionRoute,
   ApiWorkersYahooSyncRoute: ApiWorkersYahooSyncRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+const rootServerRouteChildren: RootServerRouteChildren = {
+  ApiAuthSplatServerRoute: ApiAuthSplatServerRoute,
+}
+export const serverRouteTree = rootServerRouteImport
+  ._addFileChildren(rootServerRouteChildren)
+  ._addFileTypes<FileServerRouteTypes>()
