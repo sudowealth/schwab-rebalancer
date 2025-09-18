@@ -4,7 +4,14 @@ import type { z } from 'zod';
 import type { Order, OrderTypeSchema } from '../../../lib/schemas';
 import { previewOrderServerFn, updateOrderServerFn } from '../../../lib/server-functions';
 import { Button } from '../../ui/button';
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '../../ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '../../ui/dialog';
 import { Input } from '../../ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../ui/select';
 import { QuantityCalculatorModal } from './quantity-calculator-modal';
@@ -106,6 +113,9 @@ export function EditOrderModal({ open, onOpenChange, order, onSaved, prices }: P
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Edit Order</DialogTitle>
+            <DialogDescription className="sr-only">
+              Modify order details including symbol, quantity, and pricing.
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
             <div className="grid grid-cols-1 gap-3">

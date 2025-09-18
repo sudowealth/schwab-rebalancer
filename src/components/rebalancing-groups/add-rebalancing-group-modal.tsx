@@ -12,6 +12,7 @@ import { Button } from '../ui/button';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -243,6 +244,9 @@ export function AddRebalancingGroupModal({
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Create Rebalancing Group</DialogTitle>
+          <DialogDescription className="sr-only">
+            Create a new rebalancing group by selecting accounts and assigning a model.
+          </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
           <div className="space-y-2">

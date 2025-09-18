@@ -1,6 +1,13 @@
 import { useId, useMemo, useState } from 'react';
 import { Button } from '../../ui/button';
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '../../ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '../../ui/dialog';
 import { Input } from '../../ui/input';
 
 type Props = {
@@ -35,6 +42,9 @@ export function QuantityCalculatorModal({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Calculate number of shares</DialogTitle>
+          <DialogDescription className="sr-only">
+            Enter an investment amount to calculate the number of shares you can purchase.
+          </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
           <div>

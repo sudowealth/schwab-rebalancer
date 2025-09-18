@@ -9,7 +9,14 @@ import {
   updateRebalancingGroupServerFn,
 } from '../../lib/server-functions';
 import { Button } from '../ui/button';
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '../ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '../ui/dialog';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
@@ -187,6 +194,9 @@ export function EditRebalancingGroupModal({
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Edit Rebalancing Group</DialogTitle>
+          <DialogDescription className="sr-only">
+            Modify the group name, accounts, and assigned model.
+          </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
           <div className="space-y-2">

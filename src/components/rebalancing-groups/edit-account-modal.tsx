@@ -1,7 +1,14 @@
 import { useEffect, useId, useState } from 'react';
 import { updateAccountServerFn } from '../../lib/server-functions';
 import { Button } from '../ui/button';
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '../ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '../ui/dialog';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
@@ -103,6 +110,9 @@ export function EditAccountModal({
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Edit Account</DialogTitle>
+          <DialogDescription className="sr-only">
+            Update the account name and type information.
+          </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
           <div className="space-y-2">

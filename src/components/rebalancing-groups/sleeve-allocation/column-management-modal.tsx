@@ -6,6 +6,7 @@ import { Checkbox } from '../../ui/checkbox';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -104,13 +105,12 @@ export const ColumnManagementModal: React.FC<ColumnManagementModalProps> = ({
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>Manage Table Columns</DialogTitle>
+          <DialogDescription className="sr-only">
+            Check/uncheck to show/hide columns. Drag to reorder.
+          </DialogDescription>
         </DialogHeader>
 
         <ul className="space-y-2 max-h-96 overflow-y-auto">
-          <p className="text-sm text-gray-600 mb-4">
-            Check/uncheck to show/hide columns. Drag to reorder.
-          </p>
-
           {localColumns.map((column, index) => (
             <li
               key={column.id}

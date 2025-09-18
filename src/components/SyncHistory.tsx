@@ -14,7 +14,7 @@ interface SyncLog {
 
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 
 async function exportSyncToExcel(log: unknown) {
@@ -406,6 +406,9 @@ export function SyncHistory() {
         <DialogContent className="max-w-3xl">
           <DialogHeader>
             <DialogTitle>{changesModalTitle || 'Changes'}</DialogTitle>
+            <DialogDescription className="sr-only">
+              View detailed changes from the sync operation.
+            </DialogDescription>
           </DialogHeader>
           <pre className="mt-2 max-h-[60vh] overflow-auto rounded bg-muted p-3 text-xs">
             {changesModalText}
@@ -417,11 +420,11 @@ export function SyncHistory() {
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Delete Sync Log</DialogTitle>
+            <DialogDescription className="sr-only">
+              Are you sure you want to delete this sync log?
+            </DialogDescription>
           </DialogHeader>
           <div className="mt-2">
-            <p className="text-sm text-muted-foreground">
-              Are you sure you want to delete this sync log?
-            </p>
             {deleteModalLog && (
               <div className="mt-3 p-3 bg-muted rounded-md">
                 <div className="text-sm">
