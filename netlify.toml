@@ -1,5 +1,5 @@
 [build]
-  command = "pnpm build"
+  command = "pnpm run db:migrate && pnpm build"
   publish = ".output/public"
 
 [build.environment]
