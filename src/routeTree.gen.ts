@@ -14,7 +14,6 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as SchwabRouteImport } from './routes/schwab'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as RegisterRouteImport } from './routes/register'
-import { Route as PlanningRouteImport } from './routes/planning'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as DataFeedsRouteImport } from './routes/data-feeds'
@@ -50,11 +49,6 @@ const ResetPasswordRoute = ResetPasswordRouteImport.update({
 const RegisterRoute = RegisterRouteImport.update({
   id: '/register',
   path: '/register',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PlanningRoute = PlanningRouteImport.update({
-  id: '/planning',
-  path: '/planning',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -160,7 +154,6 @@ export interface FileRoutesByFullPath {
   '/data-feeds': typeof DataFeedsRouteWithChildren
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
-  '/planning': typeof PlanningRoute
   '/register': typeof RegisterRoute
   '/reset-password': typeof ResetPasswordRoute
   '/schwab': typeof SchwabRouteWithChildren
@@ -181,7 +174,6 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
-  '/planning': typeof PlanningRoute
   '/register': typeof RegisterRoute
   '/reset-password': typeof ResetPasswordRoute
   '/schwab': typeof SchwabRouteWithChildren
@@ -205,7 +197,6 @@ export interface FileRoutesById {
   '/data-feeds': typeof DataFeedsRouteWithChildren
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
-  '/planning': typeof PlanningRoute
   '/register': typeof RegisterRoute
   '/reset-password': typeof ResetPasswordRoute
   '/schwab': typeof SchwabRouteWithChildren
@@ -230,7 +221,6 @@ export interface FileRouteTypes {
     | '/data-feeds'
     | '/forgot-password'
     | '/login'
-    | '/planning'
     | '/register'
     | '/reset-password'
     | '/schwab'
@@ -251,7 +241,6 @@ export interface FileRouteTypes {
     | '/'
     | '/forgot-password'
     | '/login'
-    | '/planning'
     | '/register'
     | '/reset-password'
     | '/schwab'
@@ -274,7 +263,6 @@ export interface FileRouteTypes {
     | '/data-feeds'
     | '/forgot-password'
     | '/login'
-    | '/planning'
     | '/register'
     | '/reset-password'
     | '/schwab'
@@ -298,7 +286,6 @@ export interface RootRouteChildren {
   DataFeedsRoute: typeof DataFeedsRouteWithChildren
   ForgotPasswordRoute: typeof ForgotPasswordRoute
   LoginRoute: typeof LoginRoute
-  PlanningRoute: typeof PlanningRoute
   RegisterRoute: typeof RegisterRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   SchwabRoute: typeof SchwabRouteWithChildren
@@ -357,13 +344,6 @@ declare module '@tanstack/react-router' {
       path: '/register'
       fullPath: '/register'
       preLoaderRoute: typeof RegisterRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/planning': {
-      id: '/planning'
-      path: '/planning'
-      fullPath: '/planning'
-      preLoaderRoute: typeof PlanningRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -549,7 +529,6 @@ const rootRouteChildren: RootRouteChildren = {
   DataFeedsRoute: DataFeedsRouteWithChildren,
   ForgotPasswordRoute: ForgotPasswordRoute,
   LoginRoute: LoginRoute,
-  PlanningRoute: PlanningRoute,
   RegisterRoute: RegisterRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   SchwabRoute: SchwabRouteWithChildren,

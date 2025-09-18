@@ -3759,11 +3759,6 @@ export const truncateDataServerFn = createServerFn({ method: 'POST' })
         'schwab_transaction',
         'trade_order',
         'order_execution',
-        'financial_plan',
-        'financial_plan_input',
-        'financial_plan_goal',
-        'tax_bracket',
-        'financial_plan_result',
       ];
 
       // Track successfully truncated tables for error reporting
