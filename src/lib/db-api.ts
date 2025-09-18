@@ -2805,7 +2805,7 @@ export const assignModelToGroup = async (
     .select({
       id: schema.rebalancingGroup.id,
       userId: schema.rebalancingGroup.userId,
-      isActive: schema.rebalancingGroup.isActive
+      isActive: schema.rebalancingGroup.isActive,
     })
     .from(schema.rebalancingGroup)
     .where(eq(schema.rebalancingGroup.id, groupId))
@@ -2824,7 +2824,9 @@ export const assignModelToGroup = async (
   console.log('DEBUG: Group ownership check result:', group);
 
   if (group.length === 0) {
-    throw new Error(`Rebalancing group with ID "${groupId}" not found or does not belong to user "${userId}" or is not active. Group exists: ${groupExists.length > 0 ? 'YES' : 'NO'}, User match: ${groupExists.length > 0 ? groupExists[0].userId === userId : 'N/A'}, Is active: ${groupExists.length > 0 ? groupExists[0].isActive : 'N/A'}`);
+    throw new Error(
+      `Rebalancing group with ID "${groupId}" not found or does not belong to user "${userId}" or is not active. Group exists: ${groupExists.length > 0 ? 'YES' : 'NO'}, User match: ${groupExists.length > 0 ? groupExists[0].userId === userId : 'N/A'}, Is active: ${groupExists.length > 0 ? groupExists[0].isActive : 'N/A'}`,
+    );
   }
 
   try {
