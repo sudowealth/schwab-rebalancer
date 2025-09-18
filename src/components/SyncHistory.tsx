@@ -196,6 +196,7 @@ export function SyncHistory() {
                 const isExpanded = expandedLogId === log.id;
                 return (
                   <div key={log.id} className="text-sm">
+                    {/* biome-ignore lint/a11y/useSemanticElements: Complex layout requires div with role="button" */}
                     <div
                       role="button"
                       tabIndex={0}
