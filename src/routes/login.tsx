@@ -1,5 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { useEffect, useId, useState } from 'react';
+import { ClientOnly } from '../components/ClientOnly';
 import { signIn, useSession } from '../lib/auth-client';
 
 export const Route = createFileRoute('/login')({
@@ -208,96 +209,109 @@ function LoginPage() {
             Sign in to your account
           </h2>
         </div>
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          {successMessage && (
-            <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded">
-              {successMessage}
+        <ClientOnly
+          fallback={
+            <div className="mt-8 space-y-6 animate-pulse">
+              <div className="h-4 bg-gray-200 rounded w-3/4 mx-auto"></div>
+              <div className="space-y-4">
+                <div className="h-10 bg-gray-200 rounded"></div>
+                <div className="h-10 bg-gray-200 rounded"></div>
+                <div className="h-10 bg-gray-200 rounded"></div>
+              </div>
             </div>
-          )}
-          {error && (
-            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-              {error}
-            </div>
-          )}
-          <div>
-            <label htmlFor={emailId} className="sr-only">
-              Email address
-            </label>
-            <input
-              id={emailId}
-              name="email"
-              type="email"
-              required
-              autoComplete="email"
-              data-lpignore="true"
-              className={`relative block w-full px-3 py-2 bg-white border placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:z-10 sm:text-sm ${
-                validationErrors.email
-                  ? 'border-red-300 focus:ring-red-500 focus:border-red-500'
-                  : 'border-gray-300 focus:ring-indigo-500 focus:border-indigo-500'
-              }`}
-              placeholder="Email address"
-              value={email}
-              onChange={(e) => handleEmailChange(e.target.value)}
-            />
-            {validationErrors.email && (
-              <p className="mt-1 text-sm text-red-600">{validationErrors.email}</p>
+          }
+        >
+          <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+            {successMessage && (
+              <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded">
+                {successMessage}
+              </div>
             )}
-          </div>
-          <div>
-            <label htmlFor={passwordId} className="sr-only">
-              Password
-            </label>
-            <input
-              id={passwordId}
-              name="password"
-              type="password"
-              required
-              autoComplete="current-password"
-              data-lpignore="true"
-              className={`relative block w-full px-3 py-2 bg-white border placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:z-10 sm:text-sm ${
-                validationErrors.password
-                  ? 'border-red-300 focus:ring-red-500 focus:border-red-500'
-                  : 'border-gray-300 focus:ring-indigo-500 focus:border-indigo-500'
-              }`}
-              placeholder="Password"
-              value={password}
-              onChange={(e) => handlePasswordChange(e.target.value)}
-            />
-            {validationErrors.password && (
-              <p className="mt-1 text-sm text-red-600">{validationErrors.password}</p>
+            {error && (
+              <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+                {error}
+              </div>
             )}
-          </div>
-          <div>
-            <button
-              type="submit"
-              disabled={
-                isLoading ||
-                !email ||
-                !password ||
-                !!validationErrors.email ||
-                !!validationErrors.password
-              }
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isLoading ? 'Signing in...' : 'Sign in'}
-            </button>
-          </div>
-          <div className="text-center space-y-2">
             <div>
-              <a
-                href={`/forgot-password${email ? `?email=${encodeURIComponent(email)}` : ''}`}
-                className="font-medium text-indigo-600 hover:text-indigo-500"
+              <label htmlFor={emailId} className="sr-only">
+                Email address
+              </label>
+              <input
+                id={emailId}
+                name="email"
+                type="email"
+                required
+                autoComplete="email"
+                data-lpignore="true"
+                className={`relative block w-full px-3 py-2 bg-white border placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:z-10 sm:text-sm ${
+                  validationErrors.email
+                    ? 'border-red-300 focus:ring-red-500 focus:border-red-500'
+                    : 'border-gray-300 focus:ring-indigo-500 focus:border-indigo-500'
+                }`}
+                placeholder="Email address"
+                value={email}
+                onChange={(e) => handleEmailChange(e.target.value)}
+              />
+              {validationErrors.email && (
+                <p className="mt-1 text-sm text-red-600">{validationErrors.email}</p>
+              )}
+            </div>
+            <div>
+              <label htmlFor={passwordId} className="sr-only">
+                Password
+              </label>
+              <input
+                id={passwordId}
+                name="password"
+                type="password"
+                required
+                autoComplete="current-password"
+                data-lpignore="true"
+                className={`relative block w-full px-3 py-2 bg-white border placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:z-10 sm:text-sm ${
+                  validationErrors.password
+                    ? 'border-red-300 focus:ring-red-500 focus:border-red-500'
+                    : 'border-gray-300 focus:ring-indigo-500 focus:border-indigo-500'
+                }`}
+                placeholder="Password"
+                value={password}
+                onChange={(e) => handlePasswordChange(e.target.value)}
+              />
+              {validationErrors.password && (
+                <p className="mt-1 text-sm text-red-600">{validationErrors.password}</p>
+              )}
+            </div>
+            <div>
+              <button
+                type="submit"
+                disabled={
+                  isLoading ||
+                  !email ||
+                  !password ||
+                  !!validationErrors.email ||
+                  !!validationErrors.password
+                }
+                className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Forgot your password?
-              </a>
+                {isLoading ? 'Signing in...' : 'Sign in'}
+              </button>
             </div>
-            <div>
-              <a href="/register" className="font-medium text-indigo-600 hover:text-indigo-500">
-                Don't have an account? Sign up
-              </a>
+            <div className="text-center space-y-2">
+              <div>
+                <a
+                  href={`/forgot-password${email ? `?email=${encodeURIComponent(email)}` : ''}`}
+                  className="font-medium text-indigo-600 hover:text-indigo-500"
+                >
+                  Forgot your password?
+                </a>
+              </div>
+              <div>
+                <a href="/register" className="font-medium text-indigo-600 hover:text-indigo-500">
+                  Don't have an account? Sign up
+                </a>
+              </div>
             </div>
-          </div>
-        </form>
+          </form>
+        </ClientOnly>
       </div>
     </div>
   );

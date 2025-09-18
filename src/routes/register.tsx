@@ -1,6 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { ArrowRight, Ban, Crown, ShieldCheck } from 'lucide-react';
 import { useId, useState } from 'react';
+import { ClientOnly } from '../components/ClientOnly';
 import { useSession } from '../lib/auth-client';
 import {
   checkIsFirstUserServerFn,
@@ -214,120 +215,134 @@ function RegisterPage() {
           )}
         </div>
         {userCreationCheck?.allowed ? (
-          <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-            {error && (
-              <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-                {error}
+          <ClientOnly
+            fallback={
+              <div className="mt-8 space-y-6 animate-pulse">
+                <div className="h-4 bg-gray-200 rounded w-3/4 mx-auto"></div>
+                <div className="space-y-4">
+                  <div className="h-10 bg-gray-200 rounded"></div>
+                  <div className="h-10 bg-gray-200 rounded"></div>
+                  <div className="h-10 bg-gray-200 rounded"></div>
+                  <div className="h-10 bg-gray-200 rounded"></div>
+                </div>
               </div>
-            )}
-            {successMessage && (
-              <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded">
-                {successMessage}
-                {successMessage.includes('Admin') && (
-                  <div className="mt-2 text-sm flex items-center">
-                    <ShieldCheck className="h-4 w-4 mr-1" />
-                    You have been granted administrator privileges as the first user!
+            }
+          >
+            <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+              {error && (
+                <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+                  {error}
+                </div>
+              )}
+              {successMessage && (
+                <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded">
+                  {successMessage}
+                  {successMessage.includes('Admin') && (
+                    <div className="mt-2 text-sm flex items-center">
+                      <ShieldCheck className="h-4 w-4 mr-1" />
+                      You have been granted administrator privileges as the first user!
+                    </div>
+                  )}
+                </div>
+              )}
+              <div>
+                <label htmlFor={nameId} className="sr-only">
+                  Full Name
+                </label>
+                <input
+                  id={nameId}
+                  name="name"
+                  type="text"
+                  required
+                  className={`relative block w-full px-3 py-2 bg-white border placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:z-10 sm:text-sm ${
+                    validationErrors.name
+                      ? 'border-red-300 focus:ring-red-500 focus:border-red-500'
+                      : 'border-gray-300 focus:ring-indigo-500 focus:border-indigo-500'
+                  }`}
+                  placeholder="Full name"
+                  value={name}
+                  onChange={(e) => handleNameChange(e.target.value)}
+                />
+                {validationErrors.name && (
+                  <p className="mt-1 text-sm text-red-600">{validationErrors.name}</p>
+                )}
+              </div>
+              <div>
+                <label htmlFor={emailId} className="sr-only">
+                  Email address
+                </label>
+                <input
+                  id={emailId}
+                  name="email"
+                  type="email"
+                  required
+                  autoComplete="email"
+                  className={`relative block w-full px-3 py-2 bg-white border placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:z-10 sm:text-sm ${
+                    validationErrors.email
+                      ? 'border-red-300 focus:ring-red-500 focus:border-red-500'
+                      : 'border-gray-300 focus:ring-indigo-500 focus:border-indigo-500'
+                  }`}
+                  placeholder="Email address"
+                  value={email}
+                  onChange={(e) => handleEmailChange(e.target.value)}
+                />
+                {validationErrors.email && (
+                  <p className="mt-1 text-sm text-red-600">{validationErrors.email}</p>
+                )}
+              </div>
+              <div>
+                <label htmlFor={passwordId} className="sr-only">
+                  Password
+                </label>
+                <input
+                  id={passwordId}
+                  name="password"
+                  type="password"
+                  required
+                  autoComplete="new-password"
+                  className={`relative block w-full px-3 py-2 bg-white border placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:z-10 sm:text-sm ${
+                    validationErrors.password
+                      ? 'border-red-300 focus:ring-red-500 focus:border-red-500'
+                      : 'border-gray-300 focus:ring-indigo-500 focus:border-indigo-500'
+                  }`}
+                  placeholder="Password"
+                  value={password}
+                  onChange={(e) => handlePasswordChange(e.target.value)}
+                />
+                {validationErrors.password && (
+                  <p className="mt-1 text-sm text-red-600">{validationErrors.password}</p>
+                )}
+                {!validationErrors.password && password && (
+                  <div className="mt-1 text-xs text-gray-500">
+                    Password must contain: 8+ characters, uppercase, lowercase, and number
                   </div>
                 )}
               </div>
-            )}
-            <div>
-              <label htmlFor={nameId} className="sr-only">
-                Full Name
-              </label>
-              <input
-                id={nameId}
-                name="name"
-                type="text"
-                required
-                className={`relative block w-full px-3 py-2 bg-white border placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:z-10 sm:text-sm ${
-                  validationErrors.name
-                    ? 'border-red-300 focus:ring-red-500 focus:border-red-500'
-                    : 'border-gray-300 focus:ring-indigo-500 focus:border-indigo-500'
-                }`}
-                placeholder="Full name"
-                value={name}
-                onChange={(e) => handleNameChange(e.target.value)}
-              />
-              {validationErrors.name && (
-                <p className="mt-1 text-sm text-red-600">{validationErrors.name}</p>
-              )}
-            </div>
-            <div>
-              <label htmlFor={emailId} className="sr-only">
-                Email address
-              </label>
-              <input
-                id={emailId}
-                name="email"
-                type="email"
-                required
-                autoComplete="email"
-                className={`relative block w-full px-3 py-2 bg-white border placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:z-10 sm:text-sm ${
-                  validationErrors.email
-                    ? 'border-red-300 focus:ring-red-500 focus:border-red-500'
-                    : 'border-gray-300 focus:ring-indigo-500 focus:border-indigo-500'
-                }`}
-                placeholder="Email address"
-                value={email}
-                onChange={(e) => handleEmailChange(e.target.value)}
-              />
-              {validationErrors.email && (
-                <p className="mt-1 text-sm text-red-600">{validationErrors.email}</p>
-              )}
-            </div>
-            <div>
-              <label htmlFor={passwordId} className="sr-only">
-                Password
-              </label>
-              <input
-                id={passwordId}
-                name="password"
-                type="password"
-                required
-                autoComplete="new-password"
-                className={`relative block w-full px-3 py-2 bg-white border placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:z-10 sm:text-sm ${
-                  validationErrors.password
-                    ? 'border-red-300 focus:ring-red-500 focus:border-red-500'
-                    : 'border-gray-300 focus:ring-indigo-500 focus:border-indigo-500'
-                }`}
-                placeholder="Password"
-                value={password}
-                onChange={(e) => handlePasswordChange(e.target.value)}
-              />
-              {validationErrors.password && (
-                <p className="mt-1 text-sm text-red-600">{validationErrors.password}</p>
-              )}
-              {!validationErrors.password && password && (
-                <div className="mt-1 text-xs text-gray-500">
-                  Password must contain: 8+ characters, uppercase, lowercase, and number
-                </div>
-              )}
-            </div>
-            <div>
-              <button
-                type="submit"
-                disabled={
-                  isLoading ||
-                  !!successMessage ||
-                  !email ||
-                  !password ||
-                  !name ||
-                  !!validationErrors.email ||
-                  !!validationErrors.password ||
-                  !!validationErrors.name
-                }
-                className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isLoading ? 'Creating account...' : 'Create account'}
-              </button>
-            </div>
-            <div className="text-center">
-              <a href="/login" className="font-medium text-indigo-600 hover:text-indigo-500">
-                Already have an account? Sign in
-              </a>
-            </div>
-          </form>
+              <div>
+                <button
+                  type="submit"
+                  disabled={
+                    isLoading ||
+                    !!successMessage ||
+                    !email ||
+                    !password ||
+                    !name ||
+                    !!validationErrors.email ||
+                    !!validationErrors.password ||
+                    !!validationErrors.name
+                  }
+                  className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isLoading ? 'Creating account...' : 'Create account'}
+                </button>
+              </div>
+              <div className="text-center">
+                <a href="/login" className="font-medium text-indigo-600 hover:text-indigo-500">
+                  Already have an account? Sign in
+                </a>
+              </div>
+            </form>
+          </ClientOnly>
         ) : (
           <div className="mt-8 text-center">
             <p className="text-gray-600">Registration is not available at this time.</p>
