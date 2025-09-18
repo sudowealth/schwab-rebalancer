@@ -1,56 +1,91 @@
 [build]
-  command = "pnpm run db:migrate && pnpm build"
-  publish = ".output/public"
+  command = "pnpm run db:migrate && pnpm build && node scripts/copy-drizzle-assets.mjs"
+  publish = ".tanstack/start/build/client-dist"
 
 [build.environment]
   NODE_VERSION = "22"
 
 [functions]
-  directory = ".output/server"
-  node_bundler = "esbuild"
   included_files = ["drizzle/**"]
 
-[template]
-  full = true
+# The following redirect is intended for use with deploying a SPA.
+# It is not needed for TanStack Start, which is a full-stack framework.
+# If you were to enable this, you would see a flash of a 404 page on refresh.
+# [[redirects]]
+#  from = "/*"
+#  to = "/index.html"
+#  status = 200
 
-[[template.environment]]
-name = "BETTER_AUTH_SECRET"
-required = true
-default = ""
-description = "Signs JWTs for authentication. Run 'openssl rand -base64 32' in your terminal to generate"
+# The following redirect is intended for use with Better Auth.
+# It ensures that all authentication API calls are handled by the server function.
+[[redirects]]
+  from = "/api/auth/*"
+  to = "/.netlify/functions/server"
+  status = 200
 
-[[template.environment]]
-name = "DB_ENCRYPTION_KEY"
-required = true
-default = ""
-description = "Encrypts Schwab API credentials before database storage. Run 'openssl rand -base64 32' in your terminal to generate"
+[dev]
+  command = "pnpm dev"
+  targetPort = 3000
+  port = 8888
+  publish = ".tanstack/start/build/client-dist"
 
-[[template.environment]]
-name = "CRON_KEY"
-required = true
-default = ""
-description = "Protects scheduled worker API endpoints. Run 'openssl rand -base64 32' in your terminal to generate"
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-XSS-Protection = "1; mode=block"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Content-Security-Policy = "default-src 'self' https://api.brandfetch.com; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; img-src 'self' data: https://logo.clearbit.com; connect-src 'self' https://api.brandfetch.com;"
+    Strict-Transport-Security = "max-age=63072000; includeSubDomains; preload"
+    Permissions-Policy = "camera=(), microphone=(), geolocation=(), payment=()"
 
-[[template.environment]]
-name = "INDIVIDUAL_USE"
-required = true
-default = "true"
-description = "Set to 'true' for single-user mode (recommended for personal deployments)"
+[functions."server"]
+  included_files = ["drizzle/migrations/*"]
+  # Timeout in seconds for Netlify Functions
+  timeout = 30
+  # Memory in MB for Netlify Functions
+  memory = 1024
 
-[[template.environment]]
-name = "SCHWAB_CLIENT_ID"
-required = false
-default = ""
-description = "Schwab API client ID (required for Schwab integration - see SCHWAB_SETUP.md)"
+[functions."server-db-push"]
+  schedule = "@daily"
 
-[[template.environment]]
-name = "SCHWAB_CLIENT_SECRET"
-required = false
-default = ""
-description = "Schwab API client secret (required for Schwab integration - see SCHWAB_SETUP.md)"
+[functions."server-sync-prices"]
+  schedule = "0 13 * * *"
 
-[[template.environment]]
-name = "RESEND_API_KEY"
-required = false
-default = ""
-description = "Resend API key for email notifications (optional)"
+[functions."server-sync-schwab"]
+  schedule = "0 14 * * *"
+
+[functions."server-harvest"]
+  schedule = "0 16 * * MON-FRI"
+
+[functions."server-send-harvest-notification"]
+  schedule = "0 17 * * MON-FRI"
+
+[[edge_functions]]
+  path = "/*"
+  function = "server"
+
+[context.production.environment]
+  INDIVIDUAL_USE = "false"
+  [context.production.environment.secrets]
+    BETTER_AUTH_SECRET = "BETTER_AUTH_SECRET"
+    CRON_KEY = "CRON_KEY"
+    DB_ENCRYPTION_KEY = "DB_ENCRYPTION_KEY"
+    NETLIFY_DATABASE_URL = "PROD_NEON_DATABASE_URL"
+    RESEND_API_KEY = "RESEND_API_KEY"
+    SCHWAB_CLIENT_ID = "PROD_SCHWAB_CLIENT_ID"
+    SCHWAB_CLIENT_SECRET = "PROD_SCHWAB_CLIENT_SECRET"
+    NETLIFY_DATABASE_URL_UNPOOLED = "PROD_NEON_DATABASE_URL_UNPOOLED"
+
+[context.branch-deploy.environment]
+  INDIVIDUAL_USE = "false"
+  [context.branch-deploy.environment.secrets]
+    BETTER_AUTH_SECRET = "BETTER_AUTH_SECRET"
+    CRON_KEY = "CRON_KEY"
+    DB_ENCRYPTION_KEY = "DB_ENCRYPTION_KEY"
+    NETLIFY_DATABASE_URL = "STAGING_NEON_DATABASE_URL"
+    RESEND_API_KEY = "RESEND_API_KEY"
+    SCHWAB_CLIENT_ID = "STAGING_SCHWAB_CLIENT_ID"
+    SCHWAB_CLIENT_SECRET = "STAGING_SCHWAB_CLIENT_SECRET"
+    NETLIFY_DATABASE_URL_UNPOOLED = "STAGING_NEON_DATABASE_URL_UNPOOLED"
