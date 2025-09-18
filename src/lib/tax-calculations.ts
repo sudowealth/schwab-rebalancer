@@ -484,7 +484,7 @@ export function calculateTaxes(
 }
 
 // Default 2025 standard deductions (IRS projected values)
-export const DEFAULT_STANDARD_DEDUCTIONS_2025: StandardDeductions = {
+const DEFAULT_STANDARD_DEDUCTIONS_2025: StandardDeductions = {
   federal: {
     single: 15750, // 2025 updated values
     married_filing_jointly: 31500, // 2025 updated values
@@ -617,14 +617,10 @@ export const DEFAULT_TAX_BRACKETS_2025: TaxBrackets = {
   standardDeductions: DEFAULT_STANDARD_DEDUCTIONS_2025,
 };
 
-// Utility function to calculate effective tax rate
-export function calculateEffectiveTaxRate(totalIncome: number, totalTaxes: number): number {
-  if (totalIncome === 0) return 0;
-  return (totalTaxes / totalIncome) * 100;
-}
+// Removed: calculateEffectiveTaxRate - was unused and never called
 
 // Utility function to calculate marginal tax rate
-export function calculateMarginalTaxRate(income: number, brackets: TaxBracket[]): number {
+function calculateMarginalTaxRate(income: number, brackets: TaxBracket[]): number {
   const sortedBrackets = [...brackets].sort((a, b) => a.minIncome - b.minIncome);
 
   for (const bracket of sortedBrackets) {

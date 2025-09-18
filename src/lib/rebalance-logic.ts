@@ -142,7 +142,7 @@ export function executeRebalance(
   }
 }
 
-export function calculateAllocationRebalance(
+function calculateAllocationRebalance(
   securities: RebalanceSecurityData[],
   washSaleRestrictions: WashSaleRestriction[] = [],
   transactions: Transaction[] = [],
@@ -445,7 +445,7 @@ function deployCashOverinvestment(
   return additionalTrades;
 }
 
-export function calculateSleeveBasedAllocationRebalance(
+function calculateSleeveBasedAllocationRebalance(
   sleeves: RebalanceSleeveDataNew[],
   washSaleRestrictions: WashSaleRestriction[] = [],
   allowOverinvestment = false,
@@ -926,7 +926,7 @@ export function calculateSleeveBasedAllocationRebalance(
   return consolidateTrades(trades);
 }
 
-export function calculateTLHSwap(
+function calculateTLHSwap(
   securities: RebalanceSecurityData[],
   washSaleRestrictions: WashSaleRestriction[],
   replacementCandidates: SecurityReplacement[],
@@ -1016,7 +1016,7 @@ export function calculateTLHSwap(
   return consolidateTrades(trades);
 }
 
-export function calculateTLHAndRebalance(
+function calculateTLHAndRebalance(
   securities: RebalanceSecurityData[],
   washSaleRestrictions: WashSaleRestriction[],
   replacementCandidates: SecurityReplacement[],
@@ -1410,18 +1410,6 @@ function consolidateTrades(trades: Trade[]): Trade[] {
   return Array.from(consolidatedMap.values()).filter((trade) => Math.abs(trade.qty) > 0.001);
 }
 
-// Export parameter types and return types for better type safety
-export type ExecuteRebalancePortfolioId = Parameters<typeof executeRebalance>[0];
-export type ExecuteRebalanceMethod = Parameters<typeof executeRebalance>[1];
-export type ExecuteRebalanceSleeves = Parameters<typeof executeRebalance>[2];
-export type ExecuteRebalanceWashSaleRestrictions = Parameters<typeof executeRebalance>[3];
-export type ExecuteRebalanceReplacementCandidates = Parameters<typeof executeRebalance>[4];
-export type ExecuteRebalanceResult = ReturnType<typeof executeRebalance>;
+// Removed: ExecuteRebalancePortfolioId, ExecuteRebalanceMethod, ExecuteRebalanceSleeves, ExecuteRebalanceWashSaleRestrictions, ExecuteRebalanceReplacementCandidates, ExecuteRebalanceResult - were unused internal types
 
-// Export return types for other rebalance functions
-export type CalculateAllocationRebalanceResult = ReturnType<typeof calculateAllocationRebalance>;
-export type CalculateSleeveBasedAllocationRebalanceResult = ReturnType<
-  typeof calculateSleeveBasedAllocationRebalance
->;
-export type CalculateTLHSwapResult = ReturnType<typeof calculateTLHSwap>;
-export type CalculateTLHAndRebalanceResult = ReturnType<typeof calculateTLHAndRebalance>;
+// Removed: CalculateAllocationRebalanceResult, CalculateSleeveBasedAllocationRebalanceResult, CalculateTLHSwapResult, CalculateTLHAndRebalanceResult - were unused internal types

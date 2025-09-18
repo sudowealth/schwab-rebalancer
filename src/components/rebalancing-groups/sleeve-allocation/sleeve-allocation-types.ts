@@ -105,11 +105,4 @@ export interface SleeveAllocationTableProps {
   renderSummaryCards?: () => ReactNode;
 }
 
-export interface TradeCalculationResult {
-  netQty?: number;
-  netValue?: number;
-  postTradeValue?: number;
-  postTradePercent?: number;
-  postTradeDiff?: number;
-  percentDistanceFromTarget?: number;
-}
+// Removed: TradeCalculationResult - was unused internal type

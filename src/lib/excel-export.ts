@@ -64,7 +64,7 @@ async function downloadExcelFile(workbook: ExcelJS.Workbook, filename: string) {
   globalThis.URL.revokeObjectURL(url);
 }
 
-export async function exportTableToExcel<T extends Record<string, unknown>>(
+async function exportTableToExcel<T extends Record<string, unknown>>(
   data: T[],
   columns: Array<{
     header: string;

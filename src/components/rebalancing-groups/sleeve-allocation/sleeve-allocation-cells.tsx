@@ -620,38 +620,7 @@ export const TradeValueCell: React.FC<TradeCellProps> = ({
   );
 };
 
-export const PostTradeValueCell: React.FC<PostTradeValueCellProps & { isCashSleeve?: boolean }> = ({
-  currentValue,
-  trades,
-  tickers,
-  totalCurrentValue,
-  className = '',
-  onClick,
-  isCashSleeve,
-}) => {
-  if (trades.length === 0) return null;
-
-  const { postTradeValue } = calculateTradeMetrics.getPostTradeMetrics(
-    currentValue,
-    trades,
-    tickers,
-    totalCurrentValue,
-    0,
-    isCashSleeve,
-  );
-
-  return (
-    <td className={`p-2 text-right ${className}`}>
-      {onClick ? (
-        <button type="button" className="w-full text-right bg-transparent" onClick={onClick}>
-          {formatCurrency(postTradeValue)}
-        </button>
-      ) : (
-        formatCurrency(postTradeValue)
-      )}
-    </td>
-  );
-};
+// Removed: PostTradeValueCell - was unused and never imported
 
 export const PostTradeDiffCell: React.FC<PostTradeValueCellProps & { totalCashValue?: number }> = ({
   currentValue,

@@ -222,25 +222,4 @@ export class SessionManager {
   }
 }
 
-/**
- * Middleware-style session security validator
- */
-export async function validateSessionSecurity(
-  sessionId: string,
-  request: globalThis.Request,
-): Promise<boolean> {
-  const ip =
-    request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
-    request.headers.get('x-real-ip') ||
-    'unknown';
-  const userAgent = request.headers.get('user-agent') || 'unknown';
-
-  const validation = await SessionManager.validateSessionSecurity(sessionId, ip, userAgent);
-
-  if (!validation.valid) {
-    console.warn(`Session security validation failed: ${validation.reason}`);
-    return false;
-  }
-
-  return true;
-}
+// Removed: validateSessionSecurity - was unused and never called

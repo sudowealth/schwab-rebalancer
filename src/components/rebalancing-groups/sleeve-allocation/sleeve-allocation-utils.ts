@@ -130,20 +130,4 @@ export const calculateTradeMetrics = {
   },
 };
 
-export const formatDistanceColor = (
-  percentDistance: number,
-  thresholds = { warning: 2, danger: 5 },
-): string => {
-  if (percentDistance > thresholds.danger) return 'text-red-600';
-  if (percentDistance > thresholds.warning) return 'text-yellow-600';
-  return 'text-green-600';
-};
-
-export const getBadgeVariant = (
-  percentDistance: number,
-  thresholds = { warning: 2, danger: 5 },
-): 'default' | 'secondary' | 'destructive' => {
-  if (percentDistance > thresholds.danger) return 'destructive';
-  if (percentDistance > thresholds.warning) return 'secondary';
-  return 'default';
-};
+// Removed: formatDistanceColor and getBadgeVariant - were unused and never imported

@@ -1,12 +1,6 @@
 export type RebalanceMethod = 'allocation' | 'tlhSwap' | 'tlhRebalance' | 'investCash';
 
-export interface RebalanceRequest {
-  portfolioId: string;
-  method: RebalanceMethod;
-  allowOverinvestment?: boolean;
-  maxOverinvestmentPercent?: number;
-  cashAmount?: number;
-}
+// Removed: RebalanceRequest interface - was unused internal type
 
 export interface Trade {
   accountId: string;
@@ -27,26 +21,6 @@ export interface SleeveSummary {
   tradeQty: number;
   tradeUSD: number;
   postPct: number;
-}
-
-export interface RebalanceSummary {
-  totalBuyValue: number;
-  totalSellValue: number;
-  estimatedTaxLoss: number;
-  tradeCount: number;
-}
-
-// Use function return type instead of manual interface
-export type { ExecuteRebalanceResult as RebalanceResponse } from '../lib/rebalance-logic';
-
-export interface SleeveTarget {
-  ticker: string;
-  targetWeight: number;
-  targetValue: number;
-  currentValue: number;
-  currentWeight: number;
-  drift: number;
-  marketPrice?: number;
 }
 
 export interface AccountHolding {

@@ -94,7 +94,7 @@ export const checkTransactionHistoryForWashSale = (
   return { hasRisk: false, info: null };
 };
 
-export class WashSaleRestrictionChecker implements RestrictionChecker {
+class WashSaleRestrictionChecker implements RestrictionChecker {
   private restrictedTickers: Set<string>;
   private restrictionMap: Map<string, WashSaleRestriction>;
 
@@ -184,19 +184,6 @@ export function createRestrictionChecker(
   return new WashSaleRestrictionChecker(washSaleRestrictions, transactions);
 }
 
-export function isSecurityPurchasable(
-  ticker: string,
-  restrictionChecker: RestrictionChecker,
-): boolean {
-  const restrictionResult = restrictionChecker.isSecurityRestricted(ticker);
-
-  if (restrictionResult.isRestricted) {
-    return false;
-  }
-
-  return true;
-}
-
 export function validateTradeAgainstRestrictions(
   ticker: string,
   action: 'BUY' | 'SELL',
@@ -216,45 +203,6 @@ export function validateTradeAgainstRestrictions(
   return { isAllowed: true };
 }
 
-export function findLowestRankedPurchasableSecurity<
-  T extends { securityId: string; rank?: number; targetPct?: number },
->(
-  securities: Array<T>,
-  restrictionChecker: RestrictionChecker,
-  requirePositiveTarget = false,
-): T | null {
-  const sortedSecurities = [...securities].sort((a, b) => {
-    const rankA = a.rank || 999;
-    const rankB = b.rank || 999;
-    return rankA - rankB;
-  });
+// Removed: findLowestRankedPurchasableSecurity - was unused and never called
 
-  for (const security of sortedSecurities) {
-    const restrictionResult = restrictionChecker.isSecurityRestricted(security.securityId);
-
-    if (restrictionResult.isRestricted) {
-      continue;
-    }
-
-    if (
-      requirePositiveTarget &&
-      'targetPct' in security &&
-      (!security.targetPct || security.targetPct <= 0)
-    ) {
-      continue;
-    }
-
-    return security;
-  }
-
-  return null;
-}
-
-export function filterPurchasableSecurities<T extends { securityId: string }>(
-  securities: Array<T>,
-  restrictionChecker: RestrictionChecker,
-): Array<T> {
-  return securities.filter((security) =>
-    isSecurityPurchasable(security.securityId, restrictionChecker),
-  );
-}
+// Removed: filterPurchasableSecurities - was unused and never called

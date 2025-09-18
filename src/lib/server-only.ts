@@ -245,4 +245,4 @@ export async function loadDashboardData(
   }
 }
 
-export type DashboardDataResult = Awaited<ReturnType<typeof loadDashboardData>>;
+// Removed: DashboardDataResult - was unused internal type

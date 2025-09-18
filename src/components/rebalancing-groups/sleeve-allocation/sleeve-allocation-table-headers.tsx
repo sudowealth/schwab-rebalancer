@@ -448,36 +448,4 @@ export const getDefaultColumnConfigs = (hasTrades: boolean): ColumnConfig[] => {
   return hasTrades ? [...baseColumns, ...tradeColumns] : baseColumns;
 };
 
-export const SecurityTableHeaders: React.FC<{ hasTrades: boolean }> = ({ hasTrades }) => {
-  const baseHeaders = (
-    <>
-      <th className="p-2 text-left border-b font-medium">Security</th>
-      <th className="p-2 text-right border-b font-medium">Current Value</th>
-      <th className="p-2 text-right border-b font-medium">Current %</th>
-      <th className="p-2 text-right border-b font-medium">Target Value</th>
-      <th className="p-2 text-right border-b font-medium">Target %</th>
-      <th className="p-2 text-right border-b font-medium">Target Qty</th>
-      <th className="p-2 text-right border-b font-medium">Difference</th>
-      <th className="p-2 text-right border-b font-medium">% Distance</th>
-    </>
-  );
-
-  const tradeHeaders = hasTrades ? (
-    <>
-      <th className="p-2 text-center border-b font-medium">Trade Qty</th>
-      <th className="p-2 text-center border-b font-medium">Trade Value</th>
-      <th className="p-2 text-right border-b font-medium">Post-Trade Value</th>
-      <th className="p-2 text-right border-b font-medium">Post-Trade Diff</th>
-      <th className="p-2 text-right border-b font-medium">Post-Trade %</th>
-    </>
-  ) : null;
-
-  return (
-    <thead>
-      <tr>
-        {baseHeaders}
-        {tradeHeaders}
-      </tr>
-    </thead>
-  );
-};
+// Removed: SecurityTableHeaders - was unused and never imported

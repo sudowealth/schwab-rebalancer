@@ -20,17 +20,6 @@ export class DatabaseError extends Error {
   }
 }
 
-export class ExternalServiceError extends Error {
-  constructor(
-    message: string,
-    public service: string,
-    public originalError?: unknown,
-  ) {
-    super(message);
-    this.name = 'ExternalServiceError';
-  }
-}
-
 export class RebalanceError extends Error {
   constructor(
     message: string,
@@ -97,51 +86,4 @@ export async function withRetry<T>(
   }
 
   throw lastError;
-}
-
-export function handleServerError(error: unknown): Response {
-  if (error instanceof UnauthorizedError) {
-    logError(error, 'Unauthorized access attempt');
-    return new Response('Unauthorized', { status: 401 });
-  }
-
-  if (error instanceof ForbiddenError) {
-    logError(error, 'Forbidden access attempt');
-    return new Response('Forbidden', { status: 403 });
-  }
-
-  if (error instanceof ValidationError) {
-    logError(error, 'Validation error');
-    return new Response(JSON.stringify({ error: error.message, field: error.field }), {
-      status: 400,
-      headers: { 'Content-Type': 'application/json' },
-    });
-  }
-
-  if (error instanceof DatabaseError) {
-    logError(error, 'Database error', { originalError: error.originalError });
-    return new Response('Database operation failed', { status: 500 });
-  }
-
-  if (error instanceof ExternalServiceError) {
-    logError(error, 'External service error', {
-      service: error.service,
-      originalError: error.originalError,
-    });
-    return new Response(`${error.service} service unavailable`, { status: 503 });
-  }
-
-  if (error instanceof RebalanceError) {
-    logError(error, 'Rebalance error', {
-      portfolioId: error.portfolioId,
-      originalError: error.originalError,
-    });
-    return new Response(JSON.stringify({ error: error.message, portfolioId: error.portfolioId }), {
-      status: 400,
-      headers: { 'Content-Type': 'application/json' },
-    });
-  }
-
-  logError(error, 'Unhandled server error');
-  return new Response('Internal Server Error', { status: 500 });
 }

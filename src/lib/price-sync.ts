@@ -456,38 +456,3 @@ export function getPriceSyncService(): PriceSyncService {
   }
   return priceSyncService;
 }
-
-// Utility function for scheduled price updates
-export async function scheduledPriceSync(userId?: string): Promise<{
-  success: boolean;
-  updatedCount: number;
-  errorCount: number;
-  results: PriceUpdateResult[];
-}> {
-  try {
-    const priceSyncService = getPriceSyncService();
-    const results = await priceSyncService.syncPrices({
-      userId,
-      forceRefresh: false,
-      maxAge: 300, // 5 minutes for scheduled sync
-    });
-
-    const successCount = results.filter((r) => r.success).length;
-    const errorCount = results.filter((r) => !r.success).length;
-
-    return {
-      success: errorCount === 0,
-      updatedCount: successCount,
-      errorCount,
-      results,
-    };
-  } catch (error) {
-    console.error('Scheduled price sync failed:', error);
-    return {
-      success: false,
-      updatedCount: 0,
-      errorCount: 1,
-      results: [],
-    };
-  }
-}

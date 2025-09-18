@@ -109,31 +109,3 @@ export async function generateSecret(bytes: number = 32): Promise<string> {
   const key = randomBytes(bytes);
   return key.toString('base64url');
 }
-
-/**
- * Utility function to check if encryption is properly configured
- */
-export function isEncryptionConfigured(): boolean {
-  return !!process.env.DB_ENCRYPTION_KEY;
-}
-
-/**
- * Migrate old base64-encoded data to proper encryption
- * Call this when upgrading existing data
- */
-export async function migrateToEncryption(base64Data: string): Promise<string> {
-  if (!process.env.DB_ENCRYPTION_KEY) {
-    // Can't migrate without encryption key
-    return base64Data;
-  }
-
-  try {
-    // Try to decode as base64
-    const plaintext = Buffer.from(base64Data, 'base64').toString('utf-8');
-    // Re-encrypt with proper encryption
-    return await encrypt(plaintext);
-  } catch {
-    // If it fails, assume it's already encrypted
-    return base64Data;
-  }
-}

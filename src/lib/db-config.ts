@@ -135,12 +135,6 @@ export function getDatabaseSync(): DrizzleInstance {
   return dbInstance;
 }
 
-// Neon HTTP client doesn't expose raw SQL client in the same way
-export function getSqlClientSync(): null {
-  // Neon HTTP client doesn't provide direct SQL access for raw queries
-  return null;
-}
-
 // Initialize the database (call this at startup)
 export async function initDatabase(): Promise<void> {
   await initializeDatabase();

@@ -125,11 +125,7 @@ export interface SchwabCredentials {
   schwabClientId: string;
 }
 
-export interface SchwabClientConfig {
-  clientId: string;
-  clientSecret: string;
-  redirectUri: string;
-}
+// Removed: SchwabClientConfig interface - was unused internal type
 
 export class SchwabApiService {
   private db = getDatabaseSync();

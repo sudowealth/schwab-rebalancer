@@ -14,60 +14,6 @@ function getResend() {
   return resend;
 }
 
-export async function sendVerificationEmail({
-  email,
-  url,
-  name,
-}: {
-  email: string;
-  url: string;
-  name?: string;
-}) {
-  const isDevelopment = process.env.NODE_ENV === 'development';
-
-  if (isDevelopment) {
-    return { success: true };
-  }
-
-  const resendClient = getResend();
-  if (!resendClient) {
-    console.error('Resend not initialized - missing RESEND_API_KEY');
-    return { success: false, error: 'Email service not configured' };
-  }
-
-  try {
-    const { data, error } = await resendClient.emails.send({
-      from: 'Tax Loss Harvesting <noreply@your-domain.com>',
-      to: [email],
-      subject: 'Verify your email address',
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h2>Welcome to Tax Loss Harvesting Platform</h2>
-          <p>Hi ${name || 'there'},</p>
-          <p>Please verify your email address by clicking the link below:</p>
-          <p>
-            <a href="${url}" style="background-color: #4F46E5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
-              Verify Email Address
-            </a>
-          </p>
-          <p>If you didn't create an account, you can safely ignore this email.</p>
-          <p>This link will expire in 24 hours.</p>
-        </div>
-      `,
-    });
-
-    if (error) {
-      console.error('Failed to send verification email:', error);
-      return { success: false, error };
-    }
-
-    return { success: true, data };
-  } catch (error) {
-    console.error('Error sending verification email:', error);
-    return { success: false, error };
-  }
-}
-
 export async function sendPasswordResetEmail({
   email,
   url,

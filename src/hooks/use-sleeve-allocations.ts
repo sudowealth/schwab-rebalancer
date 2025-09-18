@@ -33,7 +33,4 @@ export function useSleeveAllocations(
   };
 }
 
-// Export function return type instead of manual interface
-export type SleeveAllocationsResult = ReturnType<typeof useSleeveAllocations>;
-
-export type SleeveTableDataResult = ReturnType<typeof generateSleeveTableData>;
+// Removed: SleeveAllocationsResult and SleeveTableDataResult - were unused internal types

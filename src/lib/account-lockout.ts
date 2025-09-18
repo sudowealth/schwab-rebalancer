@@ -1,10 +1,10 @@
-import { and, eq, lt, sql } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import * as schema from '../db/schema';
 import { getDatabaseSync } from './db-config';
 import { logSecurityEvent } from './log';
 
 // Account lockout configuration
-export const LOCKOUT_CONFIG = {
+const LOCKOUT_CONFIG = {
   MAX_FAILED_ATTEMPTS: 5,
   LOCKOUT_DURATION_MINUTES: 15,
   RESET_WINDOW_MINUTES: 30, // Reset failed attempts after this window
@@ -163,107 +163,8 @@ export async function recordSuccessfulLogin(userId: string): Promise<void> {
 /**
  * Get account lockout status for a user
  */
-export async function getAccountLockoutStatus(userId: string): Promise<{
-  isLocked: boolean;
-  failedAttempts: number;
-  lockoutExpiresAt?: Date;
-  lastFailedLoginAt?: Date;
-}> {
-  try {
-    const users = await getDatabaseSync()
-      .select({
-        failedLoginAttempts: schema.user.failedLoginAttempts,
-        lastFailedLoginAt: schema.user.lastFailedLoginAt,
-        lockedUntil: schema.user.lockedUntil,
-      })
-      .from(schema.user)
-      .where(eq(schema.user.id, userId))
-      .limit(1);
+// Removed: getAccountLockoutStatus - was unused and never called
 
-    if (users.length === 0) {
-      return {
-        isLocked: false,
-        failedAttempts: 0,
-      };
-    }
+// Removed: unlockAccount - was unused and never called
 
-    const user = users[0];
-    const now = new Date();
-
-    return {
-      isLocked: user.lockedUntil ? user.lockedUntil > now : false,
-      failedAttempts: user.failedLoginAttempts || 0,
-      lockoutExpiresAt: user.lockedUntil || undefined,
-      lastFailedLoginAt: user.lastFailedLoginAt || undefined,
-    };
-  } catch (error) {
-    console.error('Error getting account lockout status:', error);
-    return {
-      isLocked: false,
-      failedAttempts: 0,
-    };
-  }
-}
-
-/**
- * Manually unlock an account (admin function)
- */
-export async function unlockAccount(userId: string): Promise<boolean> {
-  try {
-    const now = new Date();
-
-    const result = await getDatabaseSync()
-      .update(schema.user)
-      .set({
-        failedLoginAttempts: 0,
-        lastFailedLoginAt: null,
-        lockedUntil: null,
-        updatedAt: now,
-      })
-      .where(eq(schema.user.id, userId));
-
-    if (result.rowCount && result.rowCount > 0) {
-      await logSecurityEvent('account_unlocked', 'ADMIN_ACTION', {
-        userId,
-        timestamp: now.toISOString(),
-      });
-      return true;
-    }
-
-    return false;
-  } catch (error) {
-    console.error('Error unlocking account:', error);
-    return false;
-  }
-}
-
-/**
- * Clean up expired lockouts (maintenance function)
- */
-export async function cleanupExpiredLockouts(): Promise<number> {
-  try {
-    const now = new Date();
-
-    const result = await getDatabaseSync()
-      .update(schema.user)
-      .set({
-        lockedUntil: null,
-        updatedAt: now,
-      })
-      .where(and(sql`${schema.user.lockedUntil} IS NOT NULL`, lt(schema.user.lockedUntil, now)));
-
-    const cleanedCount = result.rowCount || 0;
-
-    if (cleanedCount > 0) {
-      await logSecurityEvent('expired_lockouts_cleaned', 'MAINTENANCE', {
-        count: cleanedCount,
-        timestamp: now.toISOString(),
-      });
-    }
-
-    return cleanedCount;
-  } catch (error) {
-    console.error('Error cleaning up expired lockouts:', error);
-    return 0;
-  }
-}
+// Removed: cleanupExpiredLockouts - was unused and never called

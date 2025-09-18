@@ -47,7 +47,7 @@ export interface AggregatedSleeveData {
 }
 
 // Color palette for charts
-export const CHART_COLORS = [
+const CHART_COLORS = [
   '#0088FE',
   '#00C49F',
   '#FFBB28',
@@ -65,7 +65,7 @@ interface Transaction extends BaseTransaction {
   price: number;
 }
 
-export const checkWashSaleRisk = (ticker: string, transactions: Transaction[] = []) => {
+const checkWashSaleRisk = (ticker: string, transactions: Transaction[] = []) => {
   return checkTransactionHistoryForWashSale(ticker, transactions);
 };
 
@@ -138,20 +138,10 @@ export const generateAllocationData = (
   return result;
 };
 
-export type GenerateAllocationDataResult = ReturnType<typeof generateAllocationData>;
-
-export type GenerateSectorAllocationDataResult = ReturnType<typeof generateSectorAllocationData>;
-
-export type GenerateIndustryAllocationDataResult = ReturnType<
-  typeof generateIndustryAllocationData
->;
-
-export type GenerateSleeveAllocationDataResult = ReturnType<typeof generateSleeveAllocationData>;
-
-export type CheckWashSaleRiskResult = ReturnType<typeof checkWashSaleRisk>;
+// Removed: GenerateAllocationDataResult, GenerateSectorAllocationDataResult, GenerateIndustryAllocationDataResult, GenerateSleeveAllocationDataResult, CheckWashSaleRiskResult - were unused internal types
 
 // Generate sector allocation data
-export const generateSectorAllocationData = (
+const generateSectorAllocationData = (
   accountHoldings: AccountHoldingData[],
   sp500Data: SP500Security[],
   totalValue: number,
@@ -182,7 +172,7 @@ export const generateSectorAllocationData = (
 };
 
 // Generate industry allocation data
-export const generateIndustryAllocationData = (
+const generateIndustryAllocationData = (
   accountHoldings: AccountHoldingData[],
   sp500Data: SP500Security[],
   totalValue: number,
@@ -213,7 +203,7 @@ export const generateIndustryAllocationData = (
 };
 
 // Generate sleeve allocation data
-export const generateSleeveAllocationData = (
+const generateSleeveAllocationData = (
   accountHoldings: AccountHoldingData[],
   totalValue: number,
 ) => {
@@ -273,7 +263,7 @@ export const generateTopHoldingsData = (
   return result;
 };
 
-export type GenerateTopHoldingsDataResult = ReturnType<typeof generateTopHoldingsData>;
+// Removed: GenerateTopHoldingsDataResult - was unused internal type
 
 // Calculate sleeve allocations for each account
 interface SleeveData {
@@ -735,20 +725,9 @@ export const calculateSleeveAllocations = (
   return results;
 };
 
-// Export parameter types for better type safety
-export type CalculateSleeveAllocationsGroup = Parameters<typeof calculateSleeveAllocations>[0];
-export type CalculateSleeveAllocationsAccountHoldings = Parameters<
-  typeof calculateSleeveAllocations
->[1];
-export type CalculateSleeveAllocationsSleeveMembers = Parameters<
-  typeof calculateSleeveAllocations
->[2];
-export type CalculateSleeveAllocationsTransactions = Parameters<
-  typeof calculateSleeveAllocations
->[3];
+// Removed: CalculateSleeveAllocationsGroup, CalculateSleeveAllocationsAccountHoldings, CalculateSleeveAllocationsSleeveMembers, CalculateSleeveAllocationsTransactions - were unused internal types
 
-export type GenerateAllocationDataAccountHoldings = Parameters<typeof generateAllocationData>[2];
-export type GenerateTopHoldingsDataAccountHoldings = Parameters<typeof generateTopHoldingsData>[0];
+// Removed: GenerateAllocationDataAccountHoldings, GenerateTopHoldingsDataAccountHoldings - were unused internal types
 
 // Calculate target securities for a sleeve
 interface ModelMember {
@@ -876,16 +855,7 @@ const calculateSleeveTargetSecurities = (
   return targetSecurities;
 };
 
-// Export parameter types for calculateSleeveTargetSecurities
-export type CalculateSleeveTargetSecuritiesModelMember = Parameters<
-  typeof calculateSleeveTargetSecurities
->[0];
-export type CalculateSleeveTargetSecuritiesSleeveMembersMap = Parameters<
-  typeof calculateSleeveTargetSecurities
->[1];
-export type CalculateSleeveTargetSecuritiesCurrentSleeveData = Parameters<
-  typeof calculateSleeveTargetSecurities
->[2];
+// Removed: CalculateSleeveTargetSecuritiesModelMember, CalculateSleeveTargetSecuritiesSleeveMembersMap, CalculateSleeveTargetSecuritiesCurrentSleeveData - were unused internal types
 
 // Generate sleeve table data with aggregation
 interface SleeveAllocationDataWithSleeves {
@@ -1025,5 +995,5 @@ export const generateSleeveTableData = (
     : [];
 };
 
-export type CalculateSleeveAllocationsResult = ReturnType<typeof calculateSleeveAllocations>;
+// Removed: CalculateSleeveAllocationsResult - was unused internal type
 export type GenerateSleeveTableDataResult = ReturnType<typeof generateSleeveTableData>;

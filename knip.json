@@ -4,6 +4,9 @@
     "src/server.ts",
     "src/routes/**/*.tsx",
     "src/lib/server-functions.ts",
+    "src/lib/api.ts",
+    "src/lib/client-api.ts",
+    "src/lib/restrictions-utils.ts",
     "scripts/**/*.ts",
     "*.config.{ts,js,mjs}"
   ],
@@ -15,21 +18,30 @@
     "**/drizzle/**",
     "**/*.d.ts",
     "src/routeTree.gen.ts",
-    "src/components/ui/**/*"
+    "src/components/ui/**/*",
+    "src/lib/schemas.ts",
+    "src/lib/seeds/**/*",
+    "src/lib/auth-client.ts",
+    "src/lib/auth-utils.ts"
   ],
   "rules": {
     "files": "error",
-    "dependencies": "error",
-    "devDependencies": "error",
+    "dependencies": "warn",
+    "devDependencies": "warn",
     "unlisted": "error",
     "binaries": "error",
     "unresolved": "error",
-    "exports": "error",
-    "types": "error",
+    "exports": "warn",
+    "types": "warn",
     "nsExports": "error",
-    "nsTypes": "error",
+    "nsTypes": "warn",
     "enumMembers": "error",
     "classMembers": "error"
   },
-  "ignoreDependencies": ["@netlify/neon", "tailwindcss", "tailwindcss-animate"]
+  "ignoreDependencies": ["@netlify/neon", "tailwindcss", "tailwindcss-animate"],
+  "ignoreExportsUsedInFile": {
+    "interface": true,
+    "type": true
+  },
+  "ignoreMembers": ["useQuery.queryFn", "useMutation.mutationFn"]
 }

@@ -1,16 +1,8 @@
-import { useRouter } from '@tanstack/react-router';
-import { useEffect } from 'react';
 import { useSession } from '~/lib/auth-client';
 
 export type UserRole = 'user' | 'admin';
 
-export interface User {
-  id: string;
-  email: string;
-  name?: string;
-  role: UserRole;
-  emailVerified?: boolean;
-}
+// Removed: User interface - was unused internal type
 
 export function useAuth() {
   const { data: session, isPending, error } = useSession();
@@ -32,34 +24,4 @@ export function useAuth() {
     isPending,
     error,
   };
-}
-
-export function useRequireAuth() {
-  const { user, isPending } = useAuth();
-  const router = useRouter();
-
-  useEffect(() => {
-    if (!isPending && !user) {
-      router.navigate({ to: '/login', search: { reset: '' } });
-    }
-  }, [user, isPending, router]);
-
-  return { user, isPending };
-}
-
-export function useRequireAdmin() {
-  const { user, isAdmin, isPending } = useAuth();
-  const router = useRouter();
-
-  useEffect(() => {
-    if (!isPending) {
-      if (!user) {
-        router.navigate({ to: '/login', search: { reset: '' } });
-      } else if (!isAdmin) {
-        router.navigate({ to: '/' }); // Redirect to dashboard if not admin
-      }
-    }
-  }, [user, isAdmin, isPending, router]);
-
-  return { user, isPending, isAdmin };
 }

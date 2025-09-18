@@ -385,7 +385,7 @@ const defaultCaliforniaIncomeBrackets2025: Omit<TaxBracket, 'id'>[] = [
 ];
 
 // Helper function to convert tax brackets to the format expected by the financial planning engine
-export function convertBracketsToTaxBrackets(
+function convertBracketsToTaxBrackets(
   brackets: TaxBracket[],
   standardDeductions?: StandardDeductions,
 ): TaxBrackets {
