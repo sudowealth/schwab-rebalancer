@@ -1870,7 +1870,7 @@ export const getRebalancingGroups = async (userId: string): Promise<RebalancingG
           .where(
             sql`${schema.rebalancingGroupMember.groupId} IN (${sql.raw(
               groupIds.map((id) => `'${id}'`).join(','),
-            )}) AND ${schema.rebalancingGroupMember.isActive} = 1`,
+            )}) AND ${schema.rebalancingGroupMember.isActive} = true`,
           )
       : [];
 
@@ -1895,7 +1895,7 @@ export const getRebalancingGroups = async (userId: string): Promise<RebalancingG
           .where(
             sql`${schema.modelGroupAssignment.rebalancingGroupId} IN (${sql.raw(
               groupIds.map((id) => `'${id}'`).join(','),
-            )}) AND ${schema.model.isActive} = 1`,
+            )}) AND ${schema.model.isActive} = true`,
           )
       : [];
 
@@ -2015,7 +2015,7 @@ export const getRebalancingGroupById = async (
     .from(schema.rebalancingGroupMember)
     .innerJoin(schema.account, eq(schema.rebalancingGroupMember.accountId, schema.account.id))
     .where(
-      sql`${schema.rebalancingGroupMember.groupId} = ${groupId} AND ${schema.rebalancingGroupMember.isActive} = 1`,
+      sql`${schema.rebalancingGroupMember.groupId} = ${groupId} AND ${schema.rebalancingGroupMember.isActive} = true`,
     );
 
   // Get assigned model via junction table
@@ -2034,7 +2034,7 @@ export const getRebalancingGroupById = async (
       eq(schema.model.id, schema.modelGroupAssignment.modelId),
     )
     .where(
-      sql`${schema.modelGroupAssignment.rebalancingGroupId} = ${groupId} AND ${schema.model.isActive} = 1`,
+      sql`${schema.modelGroupAssignment.rebalancingGroupId} = ${groupId} AND ${schema.model.isActive} = true`,
     )
     .limit(1);
 
@@ -2656,35 +2656,59 @@ export const getAccountsForRebalancingGroups = async (
   }
 
   // Get all accounts for the user
-  const accounts = await db
-    .select({
-      id: schema.account.id,
-      name: schema.account.name,
-      type: schema.account.type,
-      accountNumber: schema.account.accountNumber,
-      dataSource: schema.account.dataSource,
-    })
-    .from(schema.account)
-    .where(eq(schema.account.userId, userId))
-    .orderBy(schema.account.name);
+  let accounts: Array<{
+    id: string;
+    name: string;
+    type: string | null;
+    accountNumber: string | null;
+    dataSource: string;
+  }> = [];
+  try {
+    accounts = await db
+      .select({
+        id: schema.account.id,
+        name: schema.account.name,
+        type: schema.account.type,
+        accountNumber: schema.account.accountNumber,
+        dataSource: schema.account.dataSource,
+      })
+      .from(schema.account)
+      .where(eq(schema.account.userId, userId))
+      .orderBy(schema.account.name);
+  } catch (error) {
+    // If database tables don't exist or there's a connection issue, return empty accounts
+    console.warn('Failed to fetch accounts, returning empty result:', error);
+    accounts = [];
+  }
 
   // Get all active rebalancing group memberships
-  const memberships = await db
-    .select({
-      accountId: schema.rebalancingGroupMember.accountId,
-      groupId: schema.rebalancingGroupMember.groupId,
-      groupName: schema.rebalancingGroup.name,
-    })
-    .from(schema.rebalancingGroupMember)
-    .innerJoin(
-      schema.rebalancingGroup,
-      eq(schema.rebalancingGroupMember.groupId, schema.rebalancingGroup.id),
-    )
-    .where(
-      sql`${schema.rebalancingGroupMember.isActive} = 1 AND ${schema.rebalancingGroup.isActive} = 1 AND ${schema.rebalancingGroup.userId} = ${userId}${
-        excludeGroupId ? sql` AND ${schema.rebalancingGroup.id} != ${excludeGroupId}` : sql``
-      }`,
-    );
+  let memberships: Array<{
+    accountId: string;
+    groupId: string;
+    groupName: string;
+  }> = [];
+  try {
+    memberships = await db
+      .select({
+        accountId: schema.rebalancingGroupMember.accountId,
+        groupId: schema.rebalancingGroupMember.groupId,
+        groupName: schema.rebalancingGroup.name,
+      })
+      .from(schema.rebalancingGroupMember)
+      .innerJoin(
+        schema.rebalancingGroup,
+        eq(schema.rebalancingGroupMember.groupId, schema.rebalancingGroup.id),
+      )
+      .where(
+        sql`${schema.rebalancingGroupMember.isActive} = true AND ${schema.rebalancingGroup.isActive} = true AND ${schema.rebalancingGroup.userId} = ${userId}${
+          excludeGroupId ? sql` AND ${schema.rebalancingGroup.id} != ${excludeGroupId}` : sql``
+        }`,
+      );
+  } catch (error) {
+    // If database tables don't exist or there's a connection issue, return empty memberships
+    console.warn('Failed to fetch rebalancing group memberships, returning empty result:', error);
+    memberships = [];
+  }
 
   // Create a map of account assignments
   const assignmentMap = new Map<string, { groupName: string }>();
@@ -2698,21 +2722,35 @@ export const getAccountsForRebalancingGroups = async (
   const accountBalances = new Map<string, number>();
 
   if (accounts.length > 0) {
-    const sp500Data = await getSnP500Data();
-    const priceMap = new Map<string, number>(sp500Data.map((stock) => [stock.ticker, stock.price]));
+    let holdings: Array<{
+      accountId: string;
+      ticker: string;
+      qty: number;
+    }> = [];
+    let priceMap = new Map<string, number>();
 
-    const accountIds = accounts.map((account) => account.id);
-    const holdings = await db
-      .select({
-        accountId: schema.holding.accountId,
-        ticker: schema.holding.ticker,
-        qty: schema.holding.qty,
-      })
-      .from(schema.holding)
-      .innerJoin(schema.account, eq(schema.holding.accountId, schema.account.id))
-      .where(
-        sql`${schema.account.id} IN (${sql.raw(accountIds.map((id) => `'${id}'`).join(','))})`,
-      );
+    try {
+      const sp500Data = await getSnP500Data();
+      priceMap = new Map<string, number>(sp500Data.map((stock) => [stock.ticker, stock.price]));
+
+      const accountIds = accounts.map((account) => account.id);
+      holdings = await db
+        .select({
+          accountId: schema.holding.accountId,
+          ticker: schema.holding.ticker,
+          qty: schema.holding.qty,
+        })
+        .from(schema.holding)
+        .innerJoin(schema.account, eq(schema.holding.accountId, schema.account.id))
+        .where(
+          sql`${schema.account.id} IN (${sql.raw(accountIds.map((id) => `'${id}'`).join(','))})`,
+        );
+    } catch (error) {
+      // If holdings query fails, use empty holdings (balances will be 0)
+      console.warn('Failed to fetch holdings, using empty holdings:', error);
+      holdings = [];
+      priceMap = new Map<string, number>();
+    }
 
     // Calculate balance for each account
     for (const holding of holdings) {
@@ -2760,16 +2798,33 @@ export const assignModelToGroup = async (
   }
 
   // Verify the group exists and belongs to the user
+  console.log('DEBUG: assignModelToGroup - Checking group existence:', { groupId, userId });
+
+  // First, check if the group exists at all
+  const groupExists = await db
+    .select({
+      id: schema.rebalancingGroup.id,
+      userId: schema.rebalancingGroup.userId,
+      isActive: schema.rebalancingGroup.isActive
+    })
+    .from(schema.rebalancingGroup)
+    .where(eq(schema.rebalancingGroup.id, groupId))
+    .limit(1);
+
+  console.log('DEBUG: Group exists check:', groupExists);
+
   const group = await db
     .select({ id: schema.rebalancingGroup.id })
     .from(schema.rebalancingGroup)
     .where(
-      sql`${schema.rebalancingGroup.id} = ${groupId} AND ${schema.rebalancingGroup.userId} = ${userId} AND ${schema.rebalancingGroup.isActive} = 1`,
+      sql`${schema.rebalancingGroup.id} = ${groupId} AND ${schema.rebalancingGroup.userId} = ${userId} AND ${schema.rebalancingGroup.isActive} = true`,
     )
     .limit(1);
 
+  console.log('DEBUG: Group ownership check result:', group);
+
   if (group.length === 0) {
-    throw new Error(`Rebalancing group with ID "${groupId}" not found`);
+    throw new Error(`Rebalancing group with ID "${groupId}" not found or does not belong to user "${userId}" or is not active. Group exists: ${groupExists.length > 0 ? 'YES' : 'NO'}, User match: ${groupExists.length > 0 ? groupExists[0].userId === userId : 'N/A'}, Is active: ${groupExists.length > 0 ? groupExists[0].isActive : 'N/A'}`);
   }
 
   try {

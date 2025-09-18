@@ -89,9 +89,28 @@ export function AddRebalancingGroupModal({
         })),
       );
       setModels(modelsData);
+
+      // Check if user has no accounts (likely hasn't connected Schwab)
+      if (accountsData.length === 0) {
+        setError(
+          'No accounts found. Please connect your Schwab account first by going to the homepage and clicking "Connect to Schwab".',
+        );
+      }
     } catch (err) {
       console.error('Failed to load data:', err);
-      setError('Failed to load data');
+
+      // Check if this is likely because the user hasn't connected Schwab
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      if (
+        errorMessage.includes('Failed query') ||
+        errorMessage.includes('rebalancing_group_member')
+      ) {
+        setError(
+          'No accounts found. Please connect your Schwab account first by going to the homepage and clicking "Connect to Schwab".',
+        );
+      } else {
+        setError('Failed to load data');
+      }
     }
   }, []);
 
@@ -256,7 +275,7 @@ export function AddRebalancingGroupModal({
               value={groupName}
               onChange={(e) => setGroupName(e.target.value)}
               placeholder="e.g., Miller, John and Jane - Retirement"
-              disabled={isLoading}
+              disabled={isLoading || accounts.length === 0}
             />
           </div>
           <div className="space-y-2">
@@ -284,9 +303,13 @@ export function AddRebalancingGroupModal({
                 }))}
               placeholder="Add accounts to group..."
               searchPlaceholder="Search accounts..."
-              emptyMessage="No available accounts found."
+              emptyMessage={
+                accounts.length === 0
+                  ? 'No accounts available. Please connect your Schwab account first by going to the homepage.'
+                  : 'No available accounts found.'
+              }
               onValueChange={(accountId) => {
-                if (accountId) {
+                if (accountId && accounts.length > 0) {
                   handleAccountToggle(accountId);
                 }
               }}
@@ -304,7 +327,7 @@ export function AddRebalancingGroupModal({
                   setSelectedModelId(value);
                 }
               }}
-              disabled={isLoading}
+              disabled={isLoading || accounts.length === 0}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Select a model for this group" />
@@ -324,13 +347,34 @@ export function AddRebalancingGroupModal({
               </SelectContent>
             </Select>
           </div>
-          {error && <div className="text-sm text-red-600 bg-red-50 p-2 rounded">{error}</div>}
+          {error && (
+            <div className="text-sm text-red-600 bg-red-50 p-2 rounded">
+              {error.includes('homepage') ? (
+                <>
+                  No accounts found. Please connect your Schwab account first by going to the{' '}
+                  <a
+                    href="/"
+                    className="underline hover:text-red-800"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      router.navigate({ to: '/' });
+                    }}
+                  >
+                    homepage
+                  </a>{' '}
+                  and clicking "Connect to Schwab".
+                </>
+              ) : (
+                error
+              )}
+            </div>
+          )}
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => setIsOpen(false)} disabled={isLoading}>
             Cancel
           </Button>
-          <Button onClick={handleSubmit} disabled={isLoading}>
+          <Button onClick={handleSubmit} disabled={isLoading || accounts.length === 0}>
             {isLoading ? 'Creating...' : 'Create Group'}
           </Button>
         </DialogFooter>
