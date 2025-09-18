@@ -3,12 +3,12 @@ import { ChevronRight, Menu, Shield } from 'lucide-react';
 import { useState } from 'react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '~/components/ui/sheet';
 import { useAuth } from '~/hooks/useAuth';
-import { signOut, useSession } from '~/lib/auth-client';
+import { signOut } from '~/lib/auth-client';
 import { cn } from '~/lib/utils';
 
 export function MobileNavigation() {
-  const { data: session, isPending: isLoading } = useSession();
-  const { isAdmin } = useAuth();
+  const { user, isAuthenticated, isAdmin, isPending: isLoading } = useAuth();
+  const session = { user: isAuthenticated ? user : null };
   const [open, setOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const navigate = useNavigate();

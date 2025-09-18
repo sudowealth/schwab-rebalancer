@@ -121,7 +121,6 @@ export const generateAllocationData = (
       percentage: ((member.balance || 0) / totalValue) * 100,
       color: CHART_COLORS[index % CHART_COLORS.length],
     }));
-    console.log('Account allocation result:', result);
     return result;
   }
   if (allocationView === 'sector') {
@@ -130,15 +129,11 @@ export const generateAllocationData = (
   }
   if (allocationView === 'sleeve') {
     const result = generateSleeveAllocationData(accountHoldings, totalValue);
-    console.log('Sleeve allocation result:', result);
     return result;
   }
   const result = generateIndustryAllocationData(accountHoldings, sp500Data, totalValue);
-  console.log('Industry allocation result:', result);
   return result;
 };
-
-// Removed: GenerateAllocationDataResult, GenerateSectorAllocationDataResult, GenerateIndustryAllocationDataResult, GenerateSleeveAllocationDataResult, CheckWashSaleRiskResult - were unused internal types
 
 // Generate sector allocation data
 const generateSectorAllocationData = (

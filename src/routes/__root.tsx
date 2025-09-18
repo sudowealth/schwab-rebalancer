@@ -23,7 +23,7 @@ import {
   navigationMenuTriggerStyle,
 } from '~/components/ui/navigation-menu';
 import { useAuth } from '~/hooks/useAuth';
-import { signOut, useSession } from '~/lib/auth-client';
+import { signOut } from '~/lib/auth-client';
 import { initDatabaseSync } from '~/lib/db-config';
 import { cn } from '~/lib/utils';
 import appCss from '~/styles/app.css?url';
@@ -225,7 +225,8 @@ function AdminSettingsLink() {
 }
 
 function AuthNav() {
-  const { data: session, isPending: isLoading } = useSession();
+  const { user, isAuthenticated, isPending: isLoading } = useAuth();
+  const session = { user: isAuthenticated ? user : null };
   const navigate = useNavigate();
 
   const handleSignOut = async () => {

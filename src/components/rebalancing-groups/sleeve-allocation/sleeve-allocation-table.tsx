@@ -170,6 +170,13 @@ export function SleeveAllocationTable({
 
   const [addingToBlotter, setAddingToBlotter] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+
+  const hasSingleAccount = useMemo(() => {
+    const uniqueAccountIds = new Set(
+      groupMembers.map((member) => member.accountId).filter(Boolean),
+    );
+    return uniqueAccountIds.size <= 1;
+  }, [groupMembers]);
   const handleAddToBlotter = async () => {
     try {
       setAddingToBlotter(true);
@@ -1003,14 +1010,67 @@ export function SleeveAllocationTable({
 
           {/* Nested Rows */}
           {isSleeveExpanded &&
-            // Sleeve -> Accounts -> Securities (per account)
-            sleeveAllocationData
-              .filter((account) =>
+            (() => {
+              const relatedAccounts = sleeveAllocationData.filter((account) =>
                 (account.sleeves || []).some(
                   (accSleeve: SleeveData) => accSleeve.sleeveId === sleeve.sleeveId,
                 ),
-              )
-              .map((account) => {
+              );
+
+              if (hasSingleAccount) {
+                const account = relatedAccounts[0];
+                const accountSleeve = account?.sleeves.find(
+                  (accSleeve: SleeveData) => accSleeve.sleeveId === sleeve.sleeveId,
+                ) as SleeveData | undefined;
+
+                if (!account || !accountSleeve) {
+                  return null;
+                }
+
+                return (accountSleeve.securities || []).map((security: Security) => (
+                  <tr key={`${sleeveKey}-${security.ticker}`} className="bg-gray-50">
+                    {getVisibleColumnIds().map((columnId) => {
+                      if (columnId === 'name') {
+                        return (
+                          <td key={columnId} className="p-2 pl-12">
+                            <div className="flex items-center gap-1">
+                              <button
+                                type="button"
+                                onClick={() => onTickerClick(security.ticker)}
+                                className="text-blue-600 hover:underline"
+                              >
+                                {security.ticker === 'MCASH' ? 'Manual Cash' : security.ticker}
+                              </button>
+                              {security.hasWashSaleRisk && (
+                                <WashSaleTooltip
+                                  washSaleInfo={security.washSaleInfo as UIWashSaleInfo | null}
+                                />
+                              )}
+                            </div>
+                          </td>
+                        );
+                      }
+
+                      const securityData = {
+                        ...security,
+                        currentPercent:
+                          ((security.currentValue || 0) / (account.totalValue || 1)) * 100,
+                        targetPercent:
+                          ((security.targetValue || 0) / (account.totalValue || 1)) * 100,
+                        difference: (security.currentValue || 0) - (security.targetValue || 0),
+                      } as Record<string, unknown>;
+
+                      return (
+                        <React.Fragment key={columnId}>
+                          {renderCell(columnId, securityData, 'security', 'text-sm')}
+                        </React.Fragment>
+                      );
+                    })}
+                  </tr>
+                ));
+              }
+
+              return relatedAccounts.map((account) => {
                 const accountKey = account.accountId || '';
                 const compositeKey = `${sleeveKey}-${accountKey}`;
                 const isAccountExpanded = expandedAccounts.has(compositeKey);
@@ -1170,7 +1230,8 @@ export function SleeveAllocationTable({
                       ))}
                   </Fragment>
                 );
-              })}
+              });
+            })()}
         </Fragment>
       );
     });

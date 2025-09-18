@@ -29,6 +29,7 @@ import {
   getRebalancingGroupByIdServerFn,
   getSleeveMembersServerFn,
   rebalancePortfolioServerFn,
+  syncGroupPricesIfNeededServerFn,
   syncSchwabPricesServerFn,
 } from '../../lib/server-functions';
 import type { RebalanceMethod } from '../../types/rebalance';
@@ -102,8 +103,29 @@ export const Route = createFileRoute('/rebalancing-groups/$groupId')({
         };
       });
 
-      // Get dashboard data for SP500 info and position data
-      const dashboardData = await getDashboardDataServerFn();
+      // Trigger automatic price sync for group securities if user is connected to Schwab
+      // This runs synchronously to ensure data is fresh when the page loads
+      let dashboardData = await getDashboardDataServerFn();
+      let syncResult: { synced: boolean; message: string; updatedCount?: number } = {
+        synced: false,
+        message: 'No sync attempted',
+      };
+
+      try {
+        syncResult = await syncGroupPricesIfNeededServerFn({
+          data: { groupId: params.groupId },
+        });
+        console.log('🔄 [GroupLoader] Automatic price sync completed:', syncResult);
+
+        // If prices were updated, refetch dashboard data to get fresh prices
+        if (syncResult.synced && syncResult.updatedCount && syncResult.updatedCount > 0) {
+          console.log('🔄 [GroupLoader] Refetching dashboard data after price updates');
+          dashboardData = await getDashboardDataServerFn();
+        }
+      } catch (syncError) {
+        console.warn('⚠️ [GroupLoader] Automatic price sync failed:', syncError);
+        // Continue loading the page even if price sync fails
+      }
 
       return {
         group: {
@@ -145,7 +167,25 @@ function RebalancingGroupDetail() {
   const router = useRouter();
   const searchParams = Route.useSearch();
 
-  // Server-side auth check in loader handles authentication
+  // Trigger automatic price sync when component mounts (if user is connected to Schwab)
+  useEffect(() => {
+    const triggerPriceSync = async () => {
+      try {
+        const syncResult = await syncGroupPricesIfNeededServerFn({
+          data: { groupId: group.id },
+        });
+        console.log('🔄 [GroupComponent] Automatic price sync result:', syncResult);
+      } catch (error) {
+        console.warn('⚠️ [GroupComponent] Automatic price sync failed:', error);
+        // Don't show user error - this is background operation
+      }
+    };
+
+    triggerPriceSync().catch((error) => {
+      console.warn('⚠️ [GroupComponent] Price sync failed:', error);
+    });
+  }, [group.id]);
+
   const [selectedAccount, setSelectedAccount] = useState<string | null>(null);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -563,251 +603,263 @@ function RebalancingGroupDetail() {
     };
   };
 
-  return (
-    <div className="container mx-auto p-6 space-y-6">
-      {/* Breadcrumb and Navigation */}
-      <div className="flex items-center justify-between">
-        <div className="flex flex-col gap-2">
-          <h1 className="text-2xl font-bold text-gray-900">{group.name}</h1>
-          <div className="flex flex-col items-start gap-1">
-            {group.assignedModel ? (
-              <Link
-                to="/models/$modelId"
-                params={{ modelId: group.assignedModel.id }}
-                className="inline-flex"
-              >
-                <Badge variant="default" className="cursor-pointer">
-                  {group.assignedModel.name}
-                </Badge>
-              </Link>
-            ) : (
-              <Badge variant="outline">No Model</Badge>
-            )}
+  try {
+    return (
+      <div className="container mx-auto p-6 space-y-6">
+        {/* Breadcrumb and Navigation */}
+        <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-2">
+            <h1 className="text-2xl font-bold text-gray-900">{group.name}</h1>
+            <div className="flex flex-col items-start gap-1">
+              {group.assignedModel ? (
+                <Link
+                  to="/models/$modelId"
+                  params={{ modelId: group.assignedModel.id }}
+                  className="inline-flex"
+                >
+                  <Badge variant="default" className="cursor-pointer">
+                    {group.assignedModel.name}
+                  </Badge>
+                </Link>
+              ) : (
+                <Badge variant="outline">No Model</Badge>
+              )}
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={() => setEditModalOpen(true)}>
+              <Edit className="mr-1 h-4 w-4" />
+              Edit
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-destructive"
+              onClick={() => setDeleteModalOpen(true)}
+            >
+              <Trash2 className="mr-1 h-4 w-4" />
+              Delete
+            </Button>
           </div>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={() => setEditModalOpen(true)}>
-            <Edit className="mr-1 h-4 w-4" />
-            Edit
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="text-destructive"
-            onClick={() => setDeleteModalOpen(true)}
-          >
-            <Trash2 className="mr-1 h-4 w-4" />
-            Delete
-          </Button>
-        </div>
-      </div>
 
-      {/* Account Summary Section */}
-      <AccountSummary
-        members={group.members.map((member) => ({
-          id: member.id,
-          accountId: member.accountId,
-          accountName: member.accountName || '',
-          accountType: member.accountType || '',
-          accountNumber: (member as { accountNumber?: string }).accountNumber,
-          balance: member.balance || 0,
-        }))}
-        selectedAccount={selectedAccount}
-        totalValue={totalValue}
-        onAccountSelect={setSelectedAccount}
-        onManualCashUpdate={() => router.invalidate()}
-        onAccountUpdate={() => router.invalidate()}
-      />
-
-      {/* Current vs Target Allocation Table */}
-      {group.assignedModel && (
-        <SleeveAllocationTable
-          sleeveTableData={sleeveTableData.map((sleeve) => ({
-            ...sleeve,
-            targetPercent:
-              'targetPercent' in sleeve && typeof sleeve.targetPercent === 'number'
-                ? sleeve.targetPercent
-                : 0,
-          }))}
-          expandedSleeves={expandedSleeves}
-          expandedAccounts={expandedAccounts}
-          groupMembers={group.members.map((member) => ({
-            ...member,
+        {/* Account Summary Section */}
+        <AccountSummary
+          members={group.members.map((member) => ({
+            id: member.id,
+            accountId: member.accountId,
             accountName: member.accountName || '',
             accountType: member.accountType || '',
+            accountNumber: (member as { accountNumber?: string }).accountNumber,
+            balance: member.balance || 0,
           }))}
-          sleeveAllocationData={sleeveAllocationData.map((account) => ({
-            ...account,
-            sleeves: account.sleeves.map((sleeve) => ({
+          selectedAccount={selectedAccount}
+          totalValue={totalValue}
+          onAccountSelect={setSelectedAccount}
+          onManualCashUpdate={() => router.invalidate()}
+          onAccountUpdate={() => router.invalidate()}
+        />
+
+        {/* Current vs Target Allocation Table */}
+        {group.assignedModel && (
+          <SleeveAllocationTable
+            sleeveTableData={sleeveTableData.map((sleeve) => ({
               ...sleeve,
               targetPercent:
                 'targetPercent' in sleeve && typeof sleeve.targetPercent === 'number'
                   ? sleeve.targetPercent
                   : 0,
-              securities: (sleeve.securities || []).map((security) => ({
-                ...security,
-                targetPercent: security.targetPercent || 0,
-                accountNames: Array.from(security.accountNames || []),
+            }))}
+            expandedSleeves={expandedSleeves}
+            expandedAccounts={expandedAccounts}
+            groupMembers={group.members.map((member) => ({
+              ...member,
+              accountName: member.accountName || '',
+              accountType: member.accountType || '',
+            }))}
+            sleeveAllocationData={sleeveAllocationData.map((account) => ({
+              ...account,
+              sleeves: account.sleeves.map((sleeve) => ({
+                ...sleeve,
+                targetPercent:
+                  'targetPercent' in sleeve && typeof sleeve.targetPercent === 'number'
+                    ? sleeve.targetPercent
+                    : 0,
+                securities: (sleeve.securities || []).map((security) => ({
+                  ...security,
+                  targetPercent: security.targetPercent || 0,
+                  accountNames: Array.from(security.accountNames || []),
+                })),
               })),
-            })),
-          }))}
-          groupingMode={groupingMode}
-          onGroupingModeChange={setGroupingMode}
-          onSleeveExpansionToggle={toggleSleeveExpansion}
-          onAccountExpansionToggle={toggleAccountExpansion}
-          onTickerClick={handleTickerClick}
-          onSleeveClick={handleSleeveClick}
-          onRebalance={handleRebalance}
-          onToggleExpandAll={handleToggleExpandAll}
-          isAllExpanded={isAllExpanded}
-          trades={rebalanceTrades}
-          sortField={sortField}
-          sortDirection={sortDirection}
-          onSort={handleSort}
-          onTradeQtyChange={handleTradeQtyChange}
-          accountHoldings={
-            Array.isArray(accountHoldings)
-              ? accountHoldings.flatMap((account) =>
-                  Array.isArray(account.holdings)
-                    ? account.holdings.map((holding) => ({
-                        accountId: account.accountId,
-                        ticker: holding.ticker,
-                        qty: holding.qty || 0,
-                        costBasis: holding.costBasisPerShare || 0,
-                        marketValue: holding.marketValue || 0,
-                        unrealizedGain: holding.unrealizedGain || 0,
-                        isTaxable: account.accountType === 'taxable',
-                        purchaseDate: holding.openedAt || new Date(),
-                      }))
-                    : [],
-                )
-              : []
-          }
-          renderSummaryCards={() => (
-            <RebalanceSummaryCards
-              trades={rebalanceTrades
-                .filter((trade) => trade.securityId || trade.ticker)
-                .map((trade) => ({
-                  ...trade,
-                  securityId: trade.securityId || trade.ticker || '',
-                }))}
-              sleeveTableData={sleeveTableData}
-              group={group}
-              accountHoldings={
-                Array.isArray(accountHoldings)
-                  ? accountHoldings.flatMap((account) =>
-                      Array.isArray(account.holdings)
-                        ? account.holdings.map((holding) => ({
-                            accountId: account.accountId,
-                            ticker: holding.ticker,
-                            qty: holding.qty || 0,
-                            costBasis: holding.costBasisPerShare || 0,
-                            marketValue: holding.marketValue || 0,
-                            unrealizedGain: holding.unrealizedGain || 0,
-                            isTaxable: account.accountType === 'taxable',
-                            purchaseDate: holding.openedAt || new Date(),
-                          }))
-                        : [],
-                    )
-                  : []
-              }
-            />
-          )}
-        />
-      )}
+            }))}
+            groupingMode={groupingMode}
+            onGroupingModeChange={setGroupingMode}
+            onSleeveExpansionToggle={toggleSleeveExpansion}
+            onAccountExpansionToggle={toggleAccountExpansion}
+            onTickerClick={handleTickerClick}
+            onSleeveClick={handleSleeveClick}
+            onRebalance={handleRebalance}
+            onToggleExpandAll={handleToggleExpandAll}
+            isAllExpanded={isAllExpanded}
+            trades={rebalanceTrades}
+            sortField={sortField}
+            sortDirection={sortDirection}
+            onSort={handleSort}
+            onTradeQtyChange={handleTradeQtyChange}
+            accountHoldings={
+              Array.isArray(accountHoldings)
+                ? accountHoldings.flatMap((account) =>
+                    Array.isArray(account.holdings)
+                      ? account.holdings.map((holding) => ({
+                          accountId: account.accountId,
+                          ticker: holding.ticker,
+                          qty: holding.qty || 0,
+                          costBasis: holding.costBasisPerShare || 0,
+                          marketValue: holding.marketValue || 0,
+                          unrealizedGain: holding.unrealizedGain || 0,
+                          isTaxable: account.accountType === 'taxable',
+                          purchaseDate: holding.openedAt || new Date(),
+                        }))
+                      : [],
+                  )
+                : []
+            }
+            renderSummaryCards={() => (
+              <RebalanceSummaryCards
+                trades={rebalanceTrades
+                  .filter((trade) => trade.securityId || trade.ticker)
+                  .map((trade) => ({
+                    ...trade,
+                    securityId: trade.securityId || trade.ticker || '',
+                  }))}
+                sleeveTableData={sleeveTableData}
+                group={group}
+                accountHoldings={
+                  Array.isArray(accountHoldings)
+                    ? accountHoldings.flatMap((account) =>
+                        Array.isArray(account.holdings)
+                          ? account.holdings.map((holding) => ({
+                              accountId: account.accountId,
+                              ticker: holding.ticker,
+                              qty: holding.qty || 0,
+                              costBasis: holding.costBasisPerShare || 0,
+                              marketValue: holding.marketValue || 0,
+                              unrealizedGain: holding.unrealizedGain || 0,
+                              isTaxable: account.accountType === 'taxable',
+                              purchaseDate: holding.openedAt || new Date(),
+                            }))
+                          : [],
+                      )
+                    : []
+                }
+              />
+            )}
+          />
+        )}
 
-      {/* Trade Blotter */}
-      <OrdersBlotter
-        groupId={group.id}
-        prices={(() => {
-          const holdingsPairs = (Array.isArray(accountHoldings) ? accountHoldings : [])
-            .flatMap((a) => (Array.isArray(a.holdings) ? a.holdings : []))
-            .map((h) => [h.ticker, h.currentPrice || 0] as const);
-          const sp500Pairs = (Array.isArray(sp500Data) ? sp500Data : []).map(
-            (s) => [s.ticker, s.price || 0] as const,
-          );
-          // Prefer holdings price when available, else fallback to sp500 quote
-          const merged = new Map<string, number>([...sp500Pairs, ...holdingsPairs]);
-          return Object.fromEntries(merged);
-        })()}
-        accounts={(() => {
-          const map = new Map<string, { name: string; number?: string | null }>();
-          (Array.isArray(group.members) ? group.members : []).forEach((m) => {
-            map.set(m.accountId, {
-              name: m.accountName || '',
-              number: (m as { accountNumber?: string }).accountNumber || null,
+        {/* Trade Blotter */}
+        <OrdersBlotter
+          groupId={group.id}
+          prices={(() => {
+            const holdingsPairs = (Array.isArray(accountHoldings) ? accountHoldings : [])
+              .flatMap((a) => (Array.isArray(a.holdings) ? a.holdings : []))
+              .map((h) => [h.ticker, h.currentPrice || 0] as const);
+            const sp500Pairs = (Array.isArray(sp500Data) ? sp500Data : []).map(
+              (s) => [s.ticker, s.price || 0] as const,
+            );
+            // Prefer holdings price when available, else fallback to sp500 quote
+            const merged = new Map<string, number>([...sp500Pairs, ...holdingsPairs]);
+            return Object.fromEntries(merged);
+          })()}
+          accounts={(() => {
+            const map = new Map<string, { name: string; number?: string | null }>();
+            (Array.isArray(group.members) ? group.members : []).forEach((m) => {
+              map.set(m.accountId, {
+                name: m.accountName || '',
+                number: (m as { accountNumber?: string }).accountNumber || null,
+              });
             });
-          });
-          return Object.fromEntries(map);
-        })()}
-        onPricesUpdated={() => router.invalidate()}
-      />
-
-      <div className="grid gap-6 lg:grid-cols-2">
-        {/* Portfolio Allocation Chart */}
-        <AllocationChart
-          allocationData={allocationData}
-          allocationView={allocationView}
-          onAllocationViewChange={setAllocationView}
-          onSleeveClick={handleSleeveClickByName}
+            return Object.fromEntries(map);
+          })()}
+          onPricesUpdated={() => router.invalidate()}
         />
 
-        {/* Top Holdings */}
-        <TopHoldings holdingsData={holdingsData} onTickerClick={handleTickerClick} />
+        <div className="grid gap-6 lg:grid-cols-2">
+          {/* Portfolio Allocation Chart */}
+          <AllocationChart
+            allocationData={allocationData}
+            allocationView={allocationView}
+            onAllocationViewChange={setAllocationView}
+            onSleeveClick={handleSleeveClickByName}
+          />
+
+          {/* Top Holdings */}
+          <TopHoldings holdingsData={holdingsData} onTickerClick={handleTickerClick} />
+        </div>
+
+        {/* Modals */}
+        <EditRebalancingGroupModal
+          group={group}
+          open={editModalOpen}
+          onOpenChange={setEditModalOpen}
+          onClose={() => {
+            setEditModalOpen(false);
+            router.invalidate();
+          }}
+        />
+
+        <DeleteRebalancingGroupModal
+          group={group}
+          open={deleteModalOpen}
+          onOpenChange={setDeleteModalOpen}
+          onClose={() => {
+            setDeleteModalOpen(false);
+            // Navigate back to the list after deletion
+            router.navigate({ to: '/rebalancing-groups' });
+          }}
+        />
+
+        <SecurityModal
+          isOpen={showSecurityModal}
+          onClose={() => setShowSecurityModal(false)}
+          ticker={selectedTicker}
+          sp500Data={sp500Data}
+          positions={positions}
+          transactions={transactions}
+          proposedTrades={proposedTrades}
+        />
+
+        <SleeveModal
+          isOpen={showSleeveModal}
+          onClose={() => setShowSleeveModal(false)}
+          sleeve={selectedSleeve ? getSleeveForModal(selectedSleeve) : null}
+        />
+
+        <RebalanceModal
+          open={rebalanceModalOpen}
+          onOpenChange={setRebalanceModalOpen}
+          onGenerateTrades={handleGenerateTrades}
+          onFetchPrices={handleFetchPrices}
+          isLoading={rebalanceLoading}
+          availableCash={availableCash}
+          isSyncing={syncingPrices}
+          syncMessage={
+            waitingForSync && syncingPrices
+              ? 'Fetching updated security prices. Once completed, the rebalance will begin automatically.'
+              : undefined
+          }
+        />
       </div>
-
-      {/* Modals */}
-      <EditRebalancingGroupModal
-        group={group}
-        open={editModalOpen}
-        onOpenChange={setEditModalOpen}
-        onClose={() => {
-          setEditModalOpen(false);
-          router.invalidate();
-        }}
-      />
-
-      <DeleteRebalancingGroupModal
-        group={group}
-        open={deleteModalOpen}
-        onOpenChange={setDeleteModalOpen}
-        onClose={() => {
-          setDeleteModalOpen(false);
-          // Navigate back to the list after deletion
-          router.navigate({ to: '/rebalancing-groups' });
-        }}
-      />
-
-      <SecurityModal
-        isOpen={showSecurityModal}
-        onClose={() => setShowSecurityModal(false)}
-        ticker={selectedTicker}
-        sp500Data={sp500Data}
-        positions={positions}
-        transactions={transactions}
-        proposedTrades={proposedTrades}
-      />
-
-      <SleeveModal
-        isOpen={showSleeveModal}
-        onClose={() => setShowSleeveModal(false)}
-        sleeve={selectedSleeve ? getSleeveForModal(selectedSleeve) : null}
-      />
-
-      <RebalanceModal
-        open={rebalanceModalOpen}
-        onOpenChange={setRebalanceModalOpen}
-        onGenerateTrades={handleGenerateTrades}
-        onFetchPrices={handleFetchPrices}
-        isLoading={rebalanceLoading}
-        availableCash={availableCash}
-        isSyncing={syncingPrices}
-        syncMessage={
-          waitingForSync && syncingPrices
-            ? 'Fetching updated security prices. Once completed, the rebalance will begin automatically.'
-            : undefined
-        }
-      />
-    </div>
-  );
+    );
+  } catch (error) {
+    console.error('🔄 [GroupComponent] Component error:', error);
+    return (
+      <div className="container mx-auto p-6">
+        <div className="text-red-600">
+          Error loading rebalancing group:{' '}
+          {error instanceof Error ? error.message : 'Unknown error'}
+        </div>
+      </div>
+    );
+  }
 }

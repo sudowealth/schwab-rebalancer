@@ -92,12 +92,6 @@ export function AddSleeveModal({
     },
   });
 
-  const _resetFormAndState = () => {
-    resetForm();
-    setCsvData('');
-    setMode('single');
-  };
-
   const downloadTemplate = () => {
     const csvContent =
       'sleeve,ticker,rank,type\nSample Sleeve,AAPL,1,target\nSample Sleeve,MSFT,2,alternate\nSample Sleeve,GOOGL,3,alternate\nSample Sleeve,TSLA,4,legacy\nAnother Sleeve,SPY,1,target\nAnother Sleeve,VOO,2,alternate\n';

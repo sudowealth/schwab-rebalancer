@@ -1723,6 +1723,201 @@ export const getHeldAndSleeveTickersServerFn = createServerFn({
   }
 });
 
+// Server function to get securities that need price updates for a rebalancing group
+export const getGroupSecuritiesNeedingPriceUpdatesServerFn = createServerFn({
+  method: 'POST',
+})
+  .validator((data: { groupId: string }) => data)
+  .handler(async ({ data }): Promise<string[]> => {
+    console.log('🔄 [ServerFn] Getting securities needing price updates for group:', data.groupId);
+
+    const { user } = await requireAuth();
+    const { groupId } = data;
+
+    const db = getDatabaseSync();
+    const schema = await import('../db/schema');
+    const { eq, inArray, and, or, lt } = await import('drizzle-orm');
+
+    // First, verify the group belongs to the user
+    const groupResult = await db
+      .select()
+      .from(schema.rebalancingGroup)
+      .where(
+        and(eq(schema.rebalancingGroup.id, groupId), eq(schema.rebalancingGroup.userId, user.id)),
+      )
+      .limit(1);
+
+    if (groupResult.length === 0) {
+      throw new Error('Rebalancing group not found or access denied');
+    }
+
+    // Get account IDs for this group
+    const groupMembers = await db
+      .select({ accountId: schema.rebalancingGroupMember.accountId })
+      .from(schema.rebalancingGroupMember)
+      .where(eq(schema.rebalancingGroupMember.groupId, groupId));
+
+    const accountIds = groupMembers.map((member) => member.accountId);
+
+    // Get securities held in group accounts
+    const heldTickers = new Set<string>();
+    if (accountIds.length > 0) {
+      const holdings = await db
+        .select({
+          ticker: schema.holding.ticker,
+        })
+        .from(schema.holding)
+        .where(inArray(schema.holding.accountId, accountIds));
+
+      for (const holding of holdings) {
+        if (holding.ticker && !isAnyCashTicker(holding.ticker)) {
+          heldTickers.add(holding.ticker);
+        }
+      }
+    }
+
+    // Get securities in sleeves associated with the group's model
+    const sleeveTickers = new Set<string>();
+    const modelAssignments = await db
+      .select({ modelId: schema.modelGroupAssignment.modelId })
+      .from(schema.modelGroupAssignment)
+      .where(eq(schema.modelGroupAssignment.rebalancingGroupId, groupId));
+
+    if (modelAssignments.length > 0) {
+      const modelId = modelAssignments[0].modelId;
+      const sleeveMembers = await db
+        .select({ ticker: schema.sleeveMember.ticker })
+        .from(schema.sleeveMember)
+        .innerJoin(schema.sleeve, eq(schema.sleeveMember.sleeveId, schema.sleeve.id))
+        .innerJoin(schema.modelMember, eq(schema.sleeve.id, schema.modelMember.sleeveId))
+        .where(eq(schema.modelMember.modelId, modelId));
+
+      for (const member of sleeveMembers) {
+        if (member.ticker && !isAnyCashTicker(member.ticker)) {
+          sleeveTickers.add(member.ticker);
+        }
+      }
+    }
+
+    // Combine all unique tickers from holdings and sleeves
+    const allTickers = new Set([...heldTickers, ...sleeveTickers]);
+
+    if (allTickers.size === 0) {
+      console.log('🔄 [ServerFn] No securities found for group');
+      return [];
+    }
+
+    // Get securities that need price updates:
+    // 1. Price is 1 (likely never properly priced)
+    // 2. Last updated more than 1 hour ago
+    const oneHourAgo = Date.now() - 60 * 60 * 1000; // 1 hour in milliseconds
+
+    const securitiesNeedingUpdate = await db
+      .select({
+        ticker: schema.security.ticker,
+        price: schema.security.price,
+        updatedAt: schema.security.updatedAt,
+      })
+      .from(schema.security)
+      .where(
+        and(
+          inArray(schema.security.ticker, Array.from(allTickers)),
+          or(eq(schema.security.price, 1), lt(schema.security.updatedAt, oneHourAgo)),
+        ),
+      );
+
+    const tickersNeedingUpdate = securitiesNeedingUpdate.map((s) => s.ticker);
+
+    console.log('🔄 [ServerFn] Securities analysis for group:', {
+      groupId,
+      totalSecuritiesInGroup: allTickers.size,
+      securitiesNeedingUpdate: tickersNeedingUpdate.length,
+      tickersNeedingUpdate: tickersNeedingUpdate,
+      allTickersInGroup: Array.from(allTickers),
+    });
+
+    // Log details about securities with price = 1
+    if (securitiesNeedingUpdate.length > 0) {
+      const priceOneSecurities = securitiesNeedingUpdate.filter((s) => s.price === 1);
+      const oldSecurities = securitiesNeedingUpdate.filter((s) => s.price !== 1);
+      console.log('🔄 [ServerFn] Breakdown of securities needing update:', {
+        priceExactlyOne: priceOneSecurities.map((s) => ({ ticker: s.ticker, price: s.price })),
+        olderThanOneHour: oldSecurities.map((s) => ({
+          ticker: s.ticker,
+          price: s.price,
+          lastUpdated: s.updatedAt > 0 ? new Date(s.updatedAt).toISOString() : 'Never updated',
+          ageMinutes:
+            s.updatedAt > 0 ? Math.floor((Date.now() - s.updatedAt) / (1000 * 60)) : 'Unknown',
+        })),
+      });
+    }
+
+    return tickersNeedingUpdate;
+  });
+
+// Server function to sync prices for rebalancing group securities when user is connected to Schwab
+export const syncGroupPricesIfNeededServerFn = createServerFn({
+  method: 'POST',
+})
+  .validator((data: { groupId: string }) => data)
+  .handler(
+    async ({ data }): Promise<{ synced: boolean; message: string; updatedCount?: number }> => {
+      console.log('🔄 [ServerFn] Checking if group prices need syncing:', data.groupId);
+
+      const { user } = await requireAuth();
+      const { groupId } = data;
+
+      // Check if user is connected to Schwab
+      const { getSchwabApiService } = await import('./schwab-api');
+      const schwabApi = getSchwabApiService();
+
+      let isConnectedToSchwab = false;
+      try {
+        isConnectedToSchwab = await schwabApi.hasValidCredentials(user.id);
+      } catch (error) {
+        console.log('🔄 [ServerFn] Schwab connection check failed:', error);
+        isConnectedToSchwab = false;
+      }
+
+      if (!isConnectedToSchwab) {
+        console.log('🔄 [ServerFn] User not connected to Schwab, skipping price sync');
+        return { synced: false, message: 'User not connected to Schwab' };
+      }
+
+      // Get securities that need price updates
+      const tickersNeedingUpdate = await getGroupSecuritiesNeedingPriceUpdatesServerFn({
+        data: { groupId },
+      });
+
+      if (tickersNeedingUpdate.length === 0) {
+        console.log('🔄 [ServerFn] No securities need price updates');
+        return { synced: false, message: 'No securities need price updates' };
+      }
+
+      console.log('🔄 [ServerFn] Syncing prices for', tickersNeedingUpdate.length, 'securities');
+
+      // Sync prices for these securities
+      const results = await syncSchwabPricesServerFn({
+        data: { symbols: tickersNeedingUpdate },
+      });
+
+      const updatedCount = results.recordsProcessed || 0;
+
+      console.log('🔄 [ServerFn] Price sync completed:', {
+        groupId,
+        tickersNeedingUpdate: tickersNeedingUpdate.length,
+        updatedCount,
+        success: results.success,
+      });
+
+      return {
+        synced: true,
+        message: `Synced prices for ${updatedCount} securities`,
+        updatedCount,
+      };
+    },
+  );
+
 // Server function to sync prices from Schwab
 export const syncSchwabPricesServerFn = createServerFn({ method: 'POST' })
   .validator((data: { symbols?: string[] }) => data)

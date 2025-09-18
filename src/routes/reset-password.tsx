@@ -1,6 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { useEffect, useId, useState } from 'react';
-import { authClient, signIn, useSession } from '../lib/auth-client';
+import { useEffect, useId, useMemo, useState } from 'react';
+import { useAuth } from '../hooks/useAuth';
+import { authClient, signIn } from '../lib/auth-client';
 
 export const Route = createFileRoute('/reset-password')({
   component: ResetPasswordPage,
@@ -11,7 +12,8 @@ export const Route = createFileRoute('/reset-password')({
 
 function ResetPasswordPage() {
   const { token } = Route.useSearch();
-  const { data: session } = useSession();
+  const { user, isAuthenticated } = useAuth();
+  const session = useMemo(() => ({ user: isAuthenticated ? user : null }), [user, isAuthenticated]);
   const [email] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');

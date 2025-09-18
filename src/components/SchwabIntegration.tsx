@@ -602,14 +602,6 @@ export function SchwabIntegration() {
     isImportingEquities ||
     isSyncingYahoo;
 
-  console.log('📊 [UI] Component state:', {
-    isConnected,
-    isSyncing,
-    statusLoading,
-    isConnecting,
-    credentialsStatus,
-  });
-
   return (
     <Card>
       <CardHeader>

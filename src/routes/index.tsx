@@ -9,7 +9,6 @@ import { SleeveModal } from '../components/dashboard/sleeve-modal';
 import { TransactionsTable } from '../components/dashboard/transactions-table';
 import { OnboardingTracker } from '../components/OnboardingTracker';
 import { ExportButton } from '../components/ui/export-button';
-import { useSession } from '../lib/auth-client';
 import { exportPositionsToExcel, exportTransactionsToExcel } from '../lib/excel-export';
 import type { Sleeve } from '../lib/schemas';
 // Use server functions for live data so client refetches return real results
@@ -75,7 +74,6 @@ export const Route = createFileRoute('/')({
 });
 
 function DashboardComponent() {
-  const { data: session } = useSession();
   const loaderData = Route.useLoaderData();
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<'positions' | 'transactions' | 'rebalancing-groups'>(
@@ -89,9 +87,7 @@ function DashboardComponent() {
     }, 100);
   }, [queryClient]);
 
-  // Use server-loaded user data as fallback/initial data
-  const _userData = loaderData.user || session?.user;
-  // Note: _userData is available for future use if needed
+  // Note: loaderData.user is available as fallback for session?.user if needed
 
   // Note: Server-side auth check in loader ensures user is authenticated
   // No client-side redirect needed
@@ -153,10 +149,6 @@ function DashboardComponent() {
 
   const hasAccounts =
     loaderData && 'accountsCount' in loaderData ? loaderData.accountsCount > 0 : false;
-  const _hasRebalancingGroups =
-    loaderData && 'rebalancingGroupsStatus' in loaderData
-      ? loaderData.rebalancingGroupsStatus.hasGroups
-      : false;
 
   // For the dashboard, we also want to show rebalancing groups if we have accounts
   // and the user has completed onboarding (has models, etc.)

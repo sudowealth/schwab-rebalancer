@@ -1,7 +1,8 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { useEffect, useId, useState } from 'react';
+import { useEffect, useId, useMemo, useState } from 'react';
 import { ClientOnly } from '../components/ClientOnly';
-import { signIn, useSession } from '../lib/auth-client';
+import { useAuth } from '../hooks/useAuth';
+import { signIn } from '../lib/auth-client';
 
 export const Route = createFileRoute('/login')({
   component: LoginPage,
@@ -13,7 +14,8 @@ export const Route = createFileRoute('/login')({
 
 function LoginPage() {
   const { reset } = Route.useSearch();
-  const { data: session } = useSession();
+  const { user, isAuthenticated } = useAuth();
+  const session = useMemo(() => ({ user: isAuthenticated ? user : null }), [user, isAuthenticated]);
   const [email, setEmail] = useState(() => (import.meta.env.DEV ? '' : ''));
   const [password, setPassword] = useState(() => (import.meta.env.DEV ? '' : ''));
   const [isLoading, setIsLoading] = useState(false);

@@ -2,7 +2,7 @@ import { createFileRoute } from '@tanstack/react-router';
 import { ArrowRight, Ban, Crown, ShieldCheck } from 'lucide-react';
 import { useId, useState } from 'react';
 import { ClientOnly } from '../components/ClientOnly';
-import { useSession } from '../lib/auth-client';
+import { useAuth } from '../hooks/useAuth';
 import {
   checkIsFirstUserServerFn,
   checkUserCreationAllowedServerFn,
@@ -29,7 +29,8 @@ function RegisterPage() {
   const nameId = `${uid}-name`;
   const emailId = `${uid}-email`;
   const passwordId = `${uid}-password`;
-  const { data: session } = useSession();
+  const { user, isAuthenticated } = useAuth();
+  const session = { user: isAuthenticated ? user : null };
 
   // Get data from server loader
   const { firstUserCheck, userCreationCheck } = Route.useLoaderData();

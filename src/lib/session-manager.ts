@@ -154,9 +154,7 @@ export class SessionManager {
   static async cleanupExpiredSessions(): Promise<number> {
     try {
       const db = getDatabaseSync();
-      const _result = await db
-        .delete(schema.session)
-        .where(lt(schema.session.expiresAt, new Date()));
+      await db.delete(schema.session).where(lt(schema.session.expiresAt, new Date()));
 
       // PostgreSQL doesn't have rowsAffected, use a separate count query
       const countResult = await db
