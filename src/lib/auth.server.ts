@@ -2,9 +2,15 @@ import { getWebRequest } from '@tanstack/react-start/server';
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { reactStartCookies } from 'better-auth/react-start';
+import { eq } from 'drizzle-orm';
 import * as schema from '../db/schema';
+import {
+  isAccountLocked,
+  recordFailedLoginAttempt,
+  recordSuccessfulLogin,
+} from './account-lockout';
 import { getDatabaseSync, initDatabaseSync } from './db-config';
-import { sendPasswordResetEmail, sendVerificationEmail } from './email';
+import { sendPasswordResetEmail } from './email';
 import { getSecurityConfig } from './security-config';
 
 if (typeof window === 'undefined') {
@@ -142,19 +148,12 @@ export const auth = betterAuth({
         name: user.name,
       });
     },
-    sendVerificationEmail: async ({
-      user,
-      url,
-    }: {
-      user: { email: string; name: string };
-      url: string;
-    }) => {
-      await sendVerificationEmail({
-        email: user.email,
-        url,
-        name: user.name,
-      });
-    },
+  },
+  rateLimit: {
+    enabled: true,
+    storage: 'memory', // Use memory storage for simplicity
+    max: 5, // 5 attempts per window
+    window: 15 * 60 * 1000, // 15 minutes
   },
   session: {
     expiresIn: 60 * 60 * 2, // 2 hours for better security
@@ -201,4 +200,91 @@ export const auth = betterAuth({
   ],
 });
 
-export const authHandler = auth.handler;
+// Enhanced authentication handler with account lockout (rate limiting handled by Better Auth)
+export const authHandler = async (request: Request) => {
+  // For sign-in requests, check if account is locked before processing
+  if (request.method === 'POST' && request.url.includes('/sign-in')) {
+    try {
+      // Extract email from request body for lockout check
+      const body = await request
+        .clone()
+        .json()
+        .catch(() => ({}));
+      const email = body.email;
+
+      if (email) {
+        // Check if this email belongs to a locked account
+        const users = await getDatabaseSync()
+          .select({ id: schema.user.id })
+          .from(schema.user)
+          .where(eq(schema.user.email, email))
+          .limit(1);
+
+        if (users[0]?.id) {
+          const locked = await isAccountLocked(users[0].id);
+          if (locked) {
+            // Record this as another failed attempt and return lockout error
+            const ipAddress =
+              request.headers.get('x-forwarded-for') ||
+              request.headers.get('x-real-ip') ||
+              'unknown';
+            const userAgent = request.headers.get('user-agent') || 'unknown';
+
+            await recordFailedLoginAttempt(email, ipAddress, userAgent);
+
+            return new Response(
+              JSON.stringify({
+                error:
+                  'Account is temporarily locked due to too many failed login attempts. Please try again later.',
+              }),
+              {
+                status: 423, // Locked
+                headers: { 'Content-Type': 'application/json' },
+              },
+            );
+          }
+        }
+      }
+    } catch (error) {
+      // If lockout check fails, continue with normal auth flow
+      console.error('Account lockout check failed:', error);
+    }
+  }
+
+  // Process the authentication request
+  const response = await auth.handler(request);
+
+  // Handle authentication responses to track success/failure
+  if (request.method === 'POST') {
+    try {
+      const responseClone = response.clone();
+      const responseData = await responseClone.json().catch(() => ({}));
+
+      // Extract request details for logging
+      const ipAddress =
+        request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown';
+      const userAgent = request.headers.get('user-agent') || 'unknown';
+
+      if (response.status === 200 && responseData.user) {
+        // Successful authentication - reset failed attempts
+        await recordSuccessfulLogin(responseData.user.id);
+      } else if (response.status >= 400 && request.url.includes('/sign-in')) {
+        // Failed authentication - record attempt
+        const body = await request
+          .clone()
+          .json()
+          .catch(() => ({}));
+        const email = body.email;
+
+        if (email) {
+          await recordFailedLoginAttempt(email, ipAddress, userAgent);
+        }
+      }
+    } catch (error) {
+      // If response processing fails, just continue
+      console.error('Auth response processing failed:', error);
+    }
+  }
+
+  return response;
+};

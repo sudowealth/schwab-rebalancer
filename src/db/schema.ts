@@ -17,6 +17,10 @@ export const user = pgTable('user', {
   name: text('name'),
   image: text('image'),
   role: text('role').default('user'),
+  // Account lockout fields
+  failedLoginAttempts: integer('failedLoginAttempts').default(0).notNull(),
+  lastFailedLoginAt: timestamp('lastFailedLoginAt'),
+  lockedUntil: timestamp('lockedUntil'),
   createdAt: timestamp('createdAt').notNull(),
   updatedAt: timestamp('updatedAt').notNull(),
 });
