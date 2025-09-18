@@ -89,177 +89,187 @@ const getBaseURL = () => {
   return 'https://127.0.0.1';
 };
 
-export const auth = betterAuth({
-  secret: process.env.BETTER_AUTH_SECRET || 'dev-only-secret',
-  database: createSafeAdapter(),
-  baseURL: getBaseURL(),
-  telemetry: {
-    enabled: false,
-  },
-  trustedOrigins: (() => {
-    try {
-      // Parse allowed origins from environment variable
-      const envOrigins = process.env.ALLOWED_ORIGINS;
-      let origins: string[];
+// Lazy initialization of auth to ensure database is ready
+let _auth: ReturnType<typeof betterAuth> | null = null;
 
-      if (envOrigins) {
-        // Parse comma-separated origins from environment
-        origins = envOrigins
-          .split(',')
-          .map((origin) => origin.trim())
-          .filter(Boolean);
-      } else {
-        // Default origins based on environment
-        const nodeEnv = process.env.NODE_ENV || 'development';
-        if (nodeEnv === 'production') {
-          // Dynamically determine production origins
-          origins = [];
+export const auth = new Proxy({} as ReturnType<typeof betterAuth>, {
+  get(_target, prop) {
+    if (!_auth) {
+      _auth = betterAuth({
+        secret: process.env.BETTER_AUTH_SECRET || 'dev-only-secret',
+        database: createSafeAdapter(),
+        baseURL: getBaseURL(),
+        telemetry: {
+          enabled: false,
+        },
+        trustedOrigins: (() => {
+          try {
+            // Parse allowed origins from environment variable
+            const envOrigins = process.env.ALLOWED_ORIGINS;
+            let origins: string[];
 
-          // Always include the detected base URL
-          const baseURL = getBaseURL();
-          if (baseURL) {
-            origins.push(baseURL);
+            if (envOrigins) {
+              // Parse comma-separated origins from environment
+              origins = envOrigins
+                .split(',')
+                .map((origin) => origin.trim())
+                .filter(Boolean);
+            } else {
+              // Default origins based on environment
+              const nodeEnv = process.env.NODE_ENV || 'development';
+              if (nodeEnv === 'production') {
+                // Dynamically determine production origins
+                origins = [];
 
-            // Add common variations
-            try {
-              const url = new URL(baseURL);
-              const domain = url.hostname;
+                // Always include the detected base URL
+                const baseURL = getBaseURL();
+                if (baseURL) {
+                  origins.push(baseURL);
 
-              // Add www variant if base URL doesn't have it
-              if (!domain.startsWith('www.')) {
-                origins.push(`https://www.${domain}`);
-              }
+                  // Add common variations
+                  try {
+                    const url = new URL(baseURL);
+                    const domain = url.hostname;
 
-              // Add staging variant for common patterns
-              if (domain.includes('.')) {
-                const parts = domain.split('.');
-                if (parts.length >= 2) {
-                  const stagingDomain = `staging.${parts.slice(-2).join('.')}`;
-                  origins.push(`https://${stagingDomain}`);
+                    // Add www variant if base URL doesn't have it
+                    if (!domain.startsWith('www.')) {
+                      origins.push(`https://www.${domain}`);
+                    }
+
+                    // Add staging variant for common patterns
+                    if (domain.includes('.')) {
+                      const parts = domain.split('.');
+                      if (parts.length >= 2) {
+                        const stagingDomain = `staging.${parts.slice(-2).join('.')}`;
+                        origins.push(`https://${stagingDomain}`);
+                      }
+                    }
+                  } catch {
+                    // If URL parsing fails, just use the base URL
+                  }
                 }
+
+                // Fallback if no base URL detected
+                if (origins.length === 0) {
+                  console.warn(
+                    '⚠️ No production origins detected. Set ALLOWED_ORIGINS environment variable.',
+                  );
+                  origins = ['https://localhost:3000']; // Safe fallback
+                }
+              } else {
+                // Development origins
+                origins = [
+                  'http://localhost:3000',
+                  'http://localhost:3001',
+                  'http://127.0.0.1:3000',
+                  'https://127.0.0.1', // Local HTTPS via Caddy
+                ].filter(Boolean);
               }
-            } catch {
-              // If URL parsing fails, just use the base URL
             }
+
+            // Add the dynamically detected base URL if it's different
+            const baseURL = getBaseURL();
+            if (baseURL && !origins.includes(baseURL)) {
+              origins.push(baseURL);
+            }
+
+            return origins;
+          } catch {
+            console.warn('⚠️ Auth: Using fallback origins due to config error');
+            // Fallback to basic origins
+            const origins = ['http://localhost:3000', 'http://localhost:3001', 'https://127.0.0.1'];
+
+            // Add the dynamically detected base URL if it's different
+            const baseURL = getBaseURL();
+            if (baseURL && !origins.includes(baseURL)) {
+              origins.push(baseURL);
+            }
+
+            return origins;
           }
-
-          // Fallback if no base URL detected
-          if (origins.length === 0) {
-            console.warn(
-              '⚠️ No production origins detected. Set ALLOWED_ORIGINS environment variable.',
-            );
-            origins = ['https://localhost:3000']; // Safe fallback
-          }
-        } else {
-          // Development origins
-          origins = [
-            'http://localhost:3000',
-            'http://localhost:3001',
-            'http://127.0.0.1:3000',
-            'https://127.0.0.1', // Local HTTPS via Caddy
-          ].filter(Boolean);
-        }
-      }
-
-      // Add the dynamically detected base URL if it's different
-      const baseURL = getBaseURL();
-      if (baseURL && !origins.includes(baseURL)) {
-        origins.push(baseURL);
-      }
-
-      return origins;
-    } catch {
-      console.warn('⚠️ Auth: Using fallback origins due to config error');
-      // Fallback to basic origins
-      const origins = ['http://localhost:3000', 'http://localhost:3001', 'https://127.0.0.1'];
-
-      // Add the dynamically detected base URL if it's different
-      const baseURL = getBaseURL();
-      if (baseURL && !origins.includes(baseURL)) {
-        origins.push(baseURL);
-      }
-
-      return origins;
-    }
-  })(),
-  user: {
-    additionalFields: {
-      role: {
-        type: 'string',
-        defaultValue: 'user',
-        input: false, // Don't allow users to set their own role during signup
-      },
-    },
-  },
-  emailAndPassword: {
-    enabled: true,
-    requireEmailVerification:
-      process.env.NODE_ENV === 'production' && process.env.INDIVIDUAL_USE !== 'true',
-    minPasswordLength: 8,
-    maxPasswordLength: 128,
-    sendResetPassword: async ({
-      user,
-      url,
-    }: {
-      user: { email: string; name: string };
-      url: string;
-    }) => {
-      await sendPasswordResetEmail({
-        email: user.email,
-        url,
-        name: user.name,
-      });
-    },
-  },
-  rateLimit: {
-    enabled: true,
-    storage: 'memory', // Use memory storage for simplicity
-    max: 5, // 5 attempts per window
-    window: 15 * 60 * 1000, // 15 minutes
-  },
-  session: {
-    expiresIn: 60 * 60 * 2, // 2 hours for better security
-    updateAge: 60 * 30, // 30 minutes - more frequent updates
-    cookieCache: {
-      enabled: false, // Keep disabled for security
-      maxAge: 60 * 5, // 5 minutes
-    },
-  },
-  advanced: {
-    crossSubDomainCookies: {
-      enabled: false, // Not needed for local HTTPS setup
-    },
-    useSecureCookies: (() => {
-      // Use secure cookies in production or when base URL is HTTPS
-      const baseURL = getBaseURL();
-      return process.env.NODE_ENV === 'production' || baseURL?.startsWith('https');
-    })(),
-    cookiePrefix: 'auth',
-    database: {
-      generateId: () => {
-        // Use crypto.randomUUID for better entropy
-        return crypto.randomUUID();
-      },
-    },
-  },
-  cookies: {
-    sessionToken: {
-      name: 'auth.session-token',
-      options: {
-        httpOnly: true,
-        secure: (() => {
-          const baseURL = getBaseURL();
-          return process.env.NODE_ENV === 'production' || baseURL?.startsWith('https');
         })(),
-        sameSite: 'lax' as const,
-        path: '/',
-        maxAge: 60 * 60 * 2, // 2 hours to match session expiry
-      },
-    },
+        user: {
+          additionalFields: {
+            role: {
+              type: 'string',
+              defaultValue: 'user',
+              input: false, // Don't allow users to set their own role during signup
+            },
+          },
+        },
+        emailAndPassword: {
+          enabled: true,
+          requireEmailVerification:
+            process.env.NODE_ENV === 'production' && process.env.INDIVIDUAL_USE !== 'true',
+          minPasswordLength: 8,
+          maxPasswordLength: 128,
+          sendResetPassword: async ({
+            user,
+            url,
+          }: {
+            user: { email: string; name: string };
+            url: string;
+          }) => {
+            await sendPasswordResetEmail({
+              email: user.email,
+              url,
+              name: user.name,
+            });
+          },
+        },
+        rateLimit: {
+          enabled: true,
+          storage: 'memory', // Use memory storage for simplicity
+          max: 5, // 5 attempts per window
+          window: 15 * 60 * 1000, // 15 minutes
+        },
+        session: {
+          expiresIn: 60 * 60 * 2, // 2 hours for better security
+          updateAge: 60 * 30, // 30 minutes - more frequent updates
+          cookieCache: {
+            enabled: false, // Keep disabled for security
+            maxAge: 60 * 5, // 5 minutes
+          },
+        },
+        advanced: {
+          crossSubDomainCookies: {
+            enabled: false, // Not needed for local HTTPS setup
+          },
+          useSecureCookies: (() => {
+            // Use secure cookies in production or when base URL is HTTPS
+            const baseURL = getBaseURL();
+            return process.env.NODE_ENV === 'production' || baseURL?.startsWith('https');
+          })(),
+          cookiePrefix: 'auth',
+          database: {
+            generateId: () => {
+              // Use crypto.randomUUID for better entropy
+              return crypto.randomUUID();
+            },
+          },
+        },
+        cookies: {
+          sessionToken: {
+            name: 'auth.session-token',
+            options: {
+              httpOnly: true,
+              secure: (() => {
+                const baseURL = getBaseURL();
+                return process.env.NODE_ENV === 'production' || baseURL?.startsWith('https');
+              })(),
+              sameSite: 'lax' as const,
+              path: '/',
+              maxAge: 60 * 60 * 2, // 2 hours to match session expiry
+            },
+          },
+        },
+        plugins: [
+          reactStartCookies(), // Essential for TanStack Start integration
+        ],
+      });
+    }
+    return _auth[prop as keyof ReturnType<typeof betterAuth>];
   },
-  plugins: [
-    reactStartCookies(), // Essential for TanStack Start integration
-  ],
 });
 
 // Enhanced authentication handler with account lockout (rate limiting handled by Better Auth)
