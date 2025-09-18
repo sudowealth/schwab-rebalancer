@@ -39,51 +39,19 @@ if (typeof window === 'undefined') {
   }
 }
 
-async function ensureMigrations(dbInstance: DrizzleInstance): Promise<void> {
-  if (globalForDb.__dbMigrated) {
-    return;
+// Database connectivity verification (no migrations at runtime)
+async function verifyDatabaseConnectivity(dbInstance: DrizzleInstance): Promise<void> {
+  try {
+    // Simple query to verify database connection and schema exists
+    await dbInstance.execute(sql`SELECT 1`);
+    console.log('✅ Database connection verified');
+  } catch (error) {
+    console.error('❌ Database connectivity check failed:', error);
+    throw new Error(
+      'Database connection failed. Ensure migrations have been run during deployment. ' +
+        'In development, run `pnpm run db:migrate`. In production, check your deployment build logs.',
+    );
   }
-
-  const allowAutoReset =
-    (process.env.DATABASE_AUTO_RESET_ON_CONFLICT ??
-      (process.env.NODE_ENV !== 'production' ? 'true' : 'false')) === 'true';
-
-  const { migrate } = await import('drizzle-orm/neon-http/migrator');
-
-  let resetAttempted = false;
-
-  while (true) {
-    try {
-      await migrate(dbInstance, { migrationsFolder: 'drizzle' });
-      globalForDb.__dbMigrated = true;
-      console.log('✅ Database migrations applied');
-      return;
-    } catch (error) {
-      const pgError = (error as { cause?: { code?: string } }).cause;
-      const isSchemaConflict = pgError?.code === '42P07' || pgError?.code === '42710';
-
-      if (allowAutoReset && !resetAttempted && isSchemaConflict) {
-        console.warn(
-          '⚠️  Detected conflicting legacy schema. Dropping the public schema and reapplying migrations...',
-        );
-        await resetDatabaseSchema(dbInstance);
-        resetAttempted = true;
-        // Try migrations again after reset
-        continue;
-      }
-
-      console.error('❌ Failed to apply database migrations:', error);
-      throw error;
-    }
-  }
-}
-
-async function resetDatabaseSchema(dbInstance: DrizzleInstance): Promise<void> {
-  await dbInstance.execute(sql.raw('DROP SCHEMA IF EXISTS public CASCADE'));
-  await dbInstance.execute(sql.raw('CREATE SCHEMA public'));
-  await dbInstance.execute(sql.raw('GRANT ALL ON SCHEMA public TO public'));
-  await dbInstance.execute(sql.raw('GRANT ALL ON SCHEMA public TO CURRENT_USER'));
-  console.info('🧹 Reset public schema');
 }
 
 // Initialize database connection (server-side only)
@@ -109,7 +77,7 @@ async function initializeDatabase() {
     const dbInstance = drizzle(sql, { schema }) as DrizzleInstance;
     // Add the $client property for compatibility with seed functions
     dbInstance.$client = sql;
-    await ensureMigrations(dbInstance);
+    await verifyDatabaseConnectivity(dbInstance);
     globalForDb.__dbInstance = dbInstance;
     globalForDb.__dbInitialized = true;
   }
@@ -144,7 +112,8 @@ export async function initDatabaseSync(): Promise<void> {
     // Add the $client property for compatibility with seed functions
     dbInstance.$client = sql;
 
-    await ensureMigrations(dbInstance);
+    // Verify database connectivity (migrations should be run at build time)
+    await verifyDatabaseConnectivity(dbInstance);
     globalForDb.__dbInstance = dbInstance;
     globalForDb.__dbInitialized = true;
 

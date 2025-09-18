@@ -12,7 +12,7 @@ export function SimpleTooltip({ children, content, cursor }: SimpleTooltipProps)
   const [isVisible, setIsVisible] = React.useState(false);
   // Anchor stores the trigger's centerX, top and bottom for placement calculations
   const [anchor, setAnchor] = React.useState({ centerX: 0, top: 0, bottom: 0 });
-  const triggerRef = React.useRef<HTMLElement>(null);
+  const [triggerElement, setTriggerElement] = React.useState<HTMLElement | null>(null);
   const tooltipRef = React.useRef<HTMLDivElement>(null);
   const [tooltipSize, setTooltipSize] = React.useState({ width: 0, height: 0 });
 
@@ -33,10 +33,10 @@ export function SimpleTooltip({ children, content, cursor }: SimpleTooltipProps)
   };
 
   const updateAnchor = React.useCallback(() => {
-    if (!triggerRef.current) return;
-    const rect = triggerRef.current.getBoundingClientRect();
+    if (!triggerElement) return;
+    const rect = triggerElement.getBoundingClientRect();
     setAnchor({ centerX: rect.left + rect.width / 2, top: rect.top, bottom: rect.bottom });
-  }, []);
+  }, [triggerElement]);
 
   const handleMouseEnter = () => {
     updateAnchor();
@@ -108,7 +108,9 @@ export function SimpleTooltip({ children, content, cursor }: SimpleTooltipProps)
         // Check if this is a custom component that might render interactive elements
         if (typeof node.type === 'function' || typeof node.type === 'object') {
           // Check component name/displayName for common interactive patterns
-          const componentType = node.type as any;
+          const componentType = node.type as
+            | React.ComponentType<Record<string, unknown>>
+            | React.FunctionComponent<Record<string, unknown>>;
           const componentName = componentType.displayName || componentType.name || '';
           if (
             componentName.toLowerCase().includes('button') ||
@@ -121,7 +123,7 @@ export function SimpleTooltip({ children, content, cursor }: SimpleTooltipProps)
         }
 
         // Check if this element has interactive props
-        const props = node.props as any;
+        const props = node.props as Record<string, unknown>;
         if (
           props?.onClick ||
           props?.onKeyDown ||
@@ -138,7 +140,7 @@ export function SimpleTooltip({ children, content, cursor }: SimpleTooltipProps)
 
         // Recursively check children
         if (props?.children) {
-          return React.Children.toArray(props.children).some(checkInteractive);
+          return React.Children.toArray(props.children as React.ReactNode[]).some(checkInteractive);
         }
       }
       return false;
@@ -158,7 +160,7 @@ export function SimpleTooltip({ children, content, cursor }: SimpleTooltipProps)
   return (
     <>
       <Wrapper
-        ref={triggerRef as any}
+        ref={setTriggerElement}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
         className="inline-block bg-transparent p-0 m-0 border-0"

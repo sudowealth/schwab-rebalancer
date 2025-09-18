@@ -307,7 +307,7 @@ export const schwabCredentials = pgTable('schwab_credentials', {
   encryptedRefreshToken: text('encryptedRefreshToken').notNull(),
   tokenExpiresAt: timestamp('tokenExpiresAt').notNull(),
   refreshTokenExpiresAt: timestamp('refreshTokenExpiresAt').notNull(),
-  schwabClientId: text('schwabClientId').notNull(),
+  encryptedSchwabClientId: text('encryptedSchwabClientId').notNull(),
   isActive: boolean('isActive').notNull().default(true),
   createdAt: timestamp('createdAt').notNull(),
   updatedAt: timestamp('updatedAt').notNull(),

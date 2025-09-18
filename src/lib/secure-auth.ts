@@ -14,6 +14,7 @@ async function resolveAuth(): Promise<AuthModule['auth']> {
 
   return authClient;
 }
+
 import { ForbiddenError, UnauthorizedError } from './errors';
 
 // Error classes are now in errors.ts to avoid importing from this server-only file

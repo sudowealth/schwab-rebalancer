@@ -1,5 +1,5 @@
 [build]
-  command = "pnpm run db:migrate && pnpm build && node scripts/copy-drizzle-assets.mjs"
+  command = "echo '🏗️ Starting build process...' && echo '🗄️ Running database migrations...' && pnpm run db:migrate && echo '✅ Database migrations completed' && echo '🏗️ Building application...' && pnpm build && echo '📋 Copying assets...' && node scripts/copy-drizzle-assets.mjs && echo '🎉 Build completed successfully'"
   publish = ".tanstack/start/build/client-dist"
 
 [build.environment]

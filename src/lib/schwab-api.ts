@@ -423,10 +423,11 @@ export class SchwabApiService {
     console.log('⏰ [SchwabApi] Token expiry configured');
 
     try {
-      console.log('🔐 [SchwabApi] Encrypting tokens...');
+      console.log('🔐 [SchwabApi] Encrypting tokens and client ID...');
       const encryptedAccessToken = await encrypt(credentials.accessToken);
       const encryptedRefreshToken = await encrypt(credentials.refreshToken);
-      console.log('✅ [SchwabApi] Tokens encrypted successfully');
+      const encryptedSchwabClientId = await encrypt(this.clientId);
+      console.log('✅ [SchwabApi] Tokens and client ID encrypted successfully');
 
       const now = new Date();
 
@@ -453,7 +454,7 @@ export class SchwabApiService {
         encryptedRefreshToken,
         tokenExpiresAt: new Date(credentials.tokenExpiresAt),
         refreshTokenExpiresAt: new Date(credentials.refreshTokenExpiresAt),
-        schwabClientId: this.clientId,
+        encryptedSchwabClientId,
         isActive: true,
         createdAt: now,
         updatedAt: now,
@@ -487,13 +488,14 @@ export class SchwabApiService {
 
       const accessToken = await decrypt(creds.encryptedAccessToken);
       const refreshToken = await decrypt(creds.encryptedRefreshToken);
+      const schwabClientId = await decrypt(creds.encryptedSchwabClientId);
 
       return {
         accessToken,
         refreshToken,
         tokenExpiresAt: creds.tokenExpiresAt,
         refreshTokenExpiresAt: creds.refreshTokenExpiresAt,
-        schwabClientId: creds.schwabClientId,
+        schwabClientId,
       };
     } catch (error) {
       console.error('❌ [SchwabApi] Error retrieving credentials:', error);
