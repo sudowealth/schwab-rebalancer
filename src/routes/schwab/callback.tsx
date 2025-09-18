@@ -14,6 +14,22 @@ export const Route = createFileRoute('/schwab/callback')({
   }),
 });
 
+// Helper function to safely access sessionStorage
+const getFromSessionStorage = (key: string, defaultValue: string = ''): string => {
+  if (typeof window === 'undefined' || !window.sessionStorage) {
+    return defaultValue;
+  }
+  return window.sessionStorage.getItem(key) || defaultValue;
+};
+
+// Helper function to safely remove from sessionStorage
+const removeFromSessionStorage = (key: string): void => {
+  if (typeof window === 'undefined' || !window.sessionStorage) {
+    return;
+  }
+  window.sessionStorage.removeItem(key);
+};
+
 function SchwabCallbackPage() {
   const router = useRouter();
   const { code, state, error } = Route.useSearch();
@@ -22,18 +38,26 @@ function SchwabCallbackPage() {
   const [success, setSuccess] = useState(false);
 
   // Get return URL from sessionStorage
-  const returnUrl = sessionStorage.getItem('schwabReturnUrl') || '/';
+  const returnUrl = getFromSessionStorage('schwabReturnUrl', '/');
 
   useEffect(() => {
     const processCallback = async () => {
+      // Validate OAuth state parameter to prevent token interception attacks
+      const storedState = getFromSessionStorage('schwab_oauth_state');
+      if (storedState && state && storedState !== state) {
+        setCallbackError('Invalid OAuth state parameter - security validation failed');
+        setIsProcessing(false);
+        return;
+      }
+
       if (error) {
-        sessionStorage.removeItem('schwabReturnUrl');
+        removeFromSessionStorage('schwabReturnUrl');
         setCallbackError(`Schwab OAuth error: ${error}`);
         setIsProcessing(false);
         return;
       }
       if (!code) {
-        sessionStorage.removeItem('schwabReturnUrl');
+        removeFromSessionStorage('schwabReturnUrl');
         setCallbackError('Authorization code not found in the callback');
         setIsProcessing(false);
         return;
@@ -57,7 +81,8 @@ function SchwabCallbackPage() {
           console.log('🔄 [Callback] Redirecting to:', redirectTo);
 
           // Clean up sessionStorage
-          sessionStorage.removeItem('schwabReturnUrl');
+          removeFromSessionStorage('schwabReturnUrl');
+          removeFromSessionStorage('schwab_oauth_state');
 
           // Preserve OAuth callback parameters so the destination page can detect the connection
           router.navigate({
@@ -67,7 +92,8 @@ function SchwabCallbackPage() {
         }, 2000);
       } catch (err) {
         // Clean up sessionStorage on error
-        sessionStorage.removeItem('schwabReturnUrl');
+        removeFromSessionStorage('schwabReturnUrl');
+        removeFromSessionStorage('schwab_oauth_state');
         setCallbackError(err instanceof Error ? err.message : 'Failed to connect to Schwab');
         setIsProcessing(false);
       }
@@ -78,7 +104,8 @@ function SchwabCallbackPage() {
 
   const handleRetry = () => {
     const redirectTo = returnUrl === '/data-feeds' ? '/data-feeds' : '/';
-    sessionStorage.removeItem('schwabReturnUrl');
+    removeFromSessionStorage('schwabReturnUrl');
+    removeFromSessionStorage('schwab_oauth_state');
     router.navigate({ to: redirectTo });
   };
 

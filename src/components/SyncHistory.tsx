@@ -196,15 +196,27 @@ export function SyncHistory() {
                 const isExpanded = expandedLogId === log.id;
                 return (
                   <div key={log.id} className="text-sm">
-                    <button
-                      type="button"
-                      className="p-2 grid grid-cols-[auto_1fr_7rem_8rem_1fr_auto] gap-2 items-center cursor-pointer select-none w-full text-left bg-transparent"
+                    <div
+                      role="button"
+                      tabIndex={0}
+                      aria-expanded={isExpanded}
+                      className="p-2 grid grid-cols-[auto_1fr_7rem_8rem_1fr_auto] gap-2 items-center cursor-pointer select-none w-full text-left bg-transparent hover:bg-gray-50/50 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
                       onClick={() => {
                         setExpandedLogId((prev) => {
                           const next = prev === log.id ? undefined : log.id;
                           return next;
                         });
                         setHasExpandedSelection(true);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          setExpandedLogId((prev) => {
+                            const next = prev === log.id ? undefined : log.id;
+                            return next;
+                          });
+                          setHasExpandedSelection(true);
+                        }
                       }}
                     >
                       <span className="px-2 py-0.5 rounded border text-xs w-[110px]">
@@ -279,7 +291,7 @@ export function SyncHistory() {
                           <Trash2 className="h-3 w-3" />
                         </Button>
                       </div>
-                    </button>
+                    </div>
                     {isExpanded && (
                       <div className="px-2 pb-2">
                         <div className="rounded border bg-white">

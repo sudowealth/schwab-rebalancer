@@ -17,7 +17,7 @@ export const Route = createFileRoute('/data-feeds/')({
     } catch (error) {
       // If authentication error, redirect to login
       if (error instanceof Error && error.message.includes('Authentication required')) {
-        throw redirect({ to: '/login', search: { reset: '' } });
+        throw redirect({ to: '/login', search: { reset: '', redirect: '/data-feeds' } });
       }
       // Re-throw other errors
       throw error;

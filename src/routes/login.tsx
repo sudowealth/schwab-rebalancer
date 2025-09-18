@@ -6,6 +6,7 @@ export const Route = createFileRoute('/login')({
   component: LoginPage,
   validateSearch: (search) => ({
     reset: typeof search.reset === 'string' ? search.reset : '',
+    redirect: typeof search.redirect === 'string' ? search.redirect : '',
   }),
 });
 

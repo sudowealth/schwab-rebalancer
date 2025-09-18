@@ -232,11 +232,11 @@ function AuthNav() {
     try {
       await signOut();
       // Navigate to login page after successful sign out
-      navigate({ to: '/login', search: { reset: '' } });
+      navigate({ to: '/login', search: { reset: '', redirect: window.location.pathname } });
     } catch (error) {
       console.error('Error signing out:', error);
       // Still navigate to login even if there's an error
-      navigate({ to: '/login', search: { reset: '' } });
+      navigate({ to: '/login', search: { reset: '', redirect: window.location.pathname } });
     }
   };
 
@@ -265,7 +265,7 @@ function AuthNav() {
     <div className="flex items-center space-x-4">
       <Link
         to="/login"
-        search={{ reset: '' }}
+        search={{ reset: '', redirect: window.location.pathname }}
         className="text-sm text-gray-500 hover:text-gray-700"
       >
         Sign in

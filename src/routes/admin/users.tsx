@@ -59,7 +59,7 @@ export const Route = createFileRoute('/admin/users')({
           throw redirect({ to: '/' });
         }
         if (error.message.includes('Authentication required')) {
-          throw redirect({ to: '/login', search: { reset: '' } });
+          throw redirect({ to: '/login', search: { reset: '', redirect: '/' } });
         }
       }
       throw error;

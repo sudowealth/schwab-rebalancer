@@ -29,12 +29,12 @@ export function MobileNavigation() {
       await signOut();
       handleLinkClick(); // Close the mobile menu
       // Navigate to login page after successful sign out
-      navigate({ to: '/login', search: { reset: '' } });
+      navigate({ to: '/login', search: { reset: '', redirect: window.location.pathname } });
     } catch (error) {
       console.error('Error signing out:', error);
       handleLinkClick(); // Close the mobile menu
       // Still navigate to login even if there's an error
-      navigate({ to: '/login', search: { reset: '' } });
+      navigate({ to: '/login', search: { reset: '', redirect: window.location.pathname } });
     }
   };
 
@@ -138,7 +138,7 @@ export function MobileNavigation() {
               <div className="space-y-2">
                 <Link
                   to="/login"
-                  search={{ reset: '' }}
+                  search={{ reset: '', redirect: window.location.pathname }}
                   onClick={handleLinkClick}
                   className="block w-full px-3 py-2 text-sm text-gray-700 hover:text-gray-900 hover:bg-gray-50 rounded-md transition-colors"
                 >

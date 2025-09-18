@@ -14,7 +14,7 @@ export const Route = createFileRoute('/models/')({
     } catch (error) {
       // If authentication error, redirect to login
       if (error instanceof Error && error.message.includes('Authentication required')) {
-        throw redirect({ to: '/login', search: { reset: '' } });
+        throw redirect({ to: '/login', search: { reset: '', redirect: '/models' } });
       }
       // Re-throw other errors
       throw error;

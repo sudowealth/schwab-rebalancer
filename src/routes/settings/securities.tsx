@@ -30,7 +30,7 @@ export const Route = createFileRoute('/settings/securities')({
     } catch (error) {
       // If authentication error, redirect to login
       if (error instanceof Error && error.message.includes('Authentication required')) {
-        throw redirect({ to: '/login', search: { reset: '' } });
+        throw redirect({ to: '/login', search: { reset: '', redirect: '/settings/securities' } });
       }
       // Re-throw other errors
       throw error;

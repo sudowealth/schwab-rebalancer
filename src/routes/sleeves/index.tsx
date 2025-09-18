@@ -18,7 +18,7 @@ export const Route = createFileRoute('/sleeves/')({
     } catch (error) {
       // If authentication error, redirect to login
       if (error instanceof Error && error.message.includes('Authentication required')) {
-        throw redirect({ to: '/login', search: { reset: '' } });
+        throw redirect({ to: '/login', search: { reset: '', redirect: '/sleeves' } });
       }
       // Re-throw other errors
       throw error;

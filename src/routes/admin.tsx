@@ -15,7 +15,7 @@ export const Route = createFileRoute('/admin')({
           throw redirect({ to: '/' }); // Regular users go to dashboard
         }
         if (error.message.includes('Authentication required')) {
-          throw redirect({ to: '/login', search: { reset: '' } });
+          throw redirect({ to: '/login', search: { reset: '', redirect: '/' } });
         }
       }
       throw error;

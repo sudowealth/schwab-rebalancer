@@ -120,7 +120,10 @@ export const Route = createFileRoute('/rebalancing-groups/$groupId')({
     } catch (error) {
       // If authentication error, redirect to login
       if (error instanceof Error && error.message.includes('Authentication required')) {
-        throw redirect({ to: '/login', search: { reset: '' } });
+        throw redirect({
+          to: '/login',
+          search: { reset: '', redirect: `/rebalancing-groups/${params.groupId}` },
+        });
       }
       // Re-throw other errors
       throw error;

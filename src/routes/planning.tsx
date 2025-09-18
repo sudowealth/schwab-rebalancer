@@ -1,4 +1,4 @@
-import { createFileRoute } from '@tanstack/react-router';
+import { createFileRoute, redirect } from '@tanstack/react-router';
 import { Settings, Trash2 } from 'lucide-react';
 import { useCallback, useId, useMemo, useState } from 'react';
 import { ResultsTable } from '~/components/planning/ResultsTable';
@@ -35,9 +35,25 @@ import {
   type Goal,
   type PlanInputs,
 } from '~/lib/financial-planning-engine';
+import { getDashboardDataServerFn } from '~/lib/server-functions';
 import type { TaxBrackets } from '~/lib/tax-calculations';
 
 export const Route = createFileRoute('/planning')({
+  beforeLoad: async ({ location }) => {
+    try {
+      // Use existing server function that already handles auth
+      await getDashboardDataServerFn();
+      return { authenticated: true };
+    } catch (error) {
+      if (error instanceof Error && error.message.includes('Authentication required')) {
+        throw redirect({
+          to: '/login',
+          search: { reset: '', redirect: location.href },
+        });
+      }
+      throw error;
+    }
+  },
   component: PlanningPage,
 });
 
