@@ -1,14 +1,9 @@
 [build]
-  command = "echo '🏗️ Starting build process...' && echo '🗄️ Running database migrations...' && pnpm run db:migrate && echo '✅ Database migrations completed' && echo '🏗️ Building application...' && pnpm build && echo '📋 Copying assets...' && node scripts/copy-drizzle-assets.mjs && echo '🎉 Build completed successfully'"
+  command = "echo '🏗️ Starting build process...' && echo '🗄️ Running database migrations...' && pnpm run db:migrate && echo '✅ Database migrations completed' && echo '🏗️ Building application...' && pnpm build && echo '🎉 Build completed successfully'"
   publish = ".tanstack/start/build/client-dist"
 
 [build.environment]
   NODE_VERSION = "20"
-
-[functions]
-  included_files = ["drizzle/**"]
-  # directory = ".output/server"
-  # node_bundler = "esbuild"
 
 [template]
   full = true
@@ -54,17 +49,3 @@ name = "RESEND_API_KEY"
 required = false
 default = ""
 description = "Resend API key for email notifications (optional)"
-# The following redirect is intended for use with deploying a SPA.
-# It is not needed for TanStack Start, which is a full-stack framework.
-# If you were to enable this, you would see a flash of a 404 page on refresh.
-# [[redirects]]
-#  from = "/*"
-#  to = "/index.html"
-#  status = 200
-
-# The following redirect is intended for use with Better Auth.
-# It ensures that all authentication API calls are handled by the server function.
-# [[redirects]]
-#   from = "/api/auth/*"
-#   to = "/.netlify/functions/server"
-#   status = 200
