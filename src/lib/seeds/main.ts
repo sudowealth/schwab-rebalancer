@@ -1,12 +1,9 @@
 // Import individual seed functions
 
 import { cleanupDatabase, getDatabaseSync, initDatabase } from '../db-config';
-import { seedAccounts } from './accounts';
-import { seedHoldings } from './holdings';
 import { seedRebalancingGroups } from './rebalancing-groups';
 import { seedSecurities } from './securities';
 import { seedModels, seedSleeves, seedSP500Securities } from './sp500-model-seeder';
-import { seedTransactions } from './transactions';
 
 export async function seedDatabase(userId?: string) {
   console.log('🌱 Starting database seeding...');
@@ -21,12 +18,9 @@ export async function seedDatabase(userId?: string) {
     // PostgreSQL doesn't need to disable foreign keys - seed data in correct order
     await seedSP500Securities(db); // S&P 500 securities and index first
     await seedSecurities(db); // Then ETFs and cash
-    await seedAccounts(db, userId);
     await seedSleeves(db, userId);
     await seedModels(db, userId);
     await seedRebalancingGroups(db, userId);
-    await seedHoldings(db, userId);
-    await seedTransactions(db, userId);
 
     // PostgreSQL handles WAL and checkpoints automatically
     // Clear the connection pool to ensure fresh connections see the new data

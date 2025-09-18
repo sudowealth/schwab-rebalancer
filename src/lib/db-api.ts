@@ -24,7 +24,6 @@ import {
   type Trade,
   TradesSchema,
   type Transaction,
-  TransactionsSchema,
   validateData,
 } from './schemas';
 import { generateId } from './utils';
@@ -330,130 +329,72 @@ export const getPositions = async (userId?: string) => {
   }
 };
 
-export const getTransactions = async (userId?: string) => {
-  // If no userId provided, return empty array for security
-  if (!userId) {
-    console.warn('getTransactions called without userId - returning empty array for security');
+export async function getTransactions(userId: string) {
+  console.log('🔄 Getting all transactions for user:', userId);
+  const db = getDatabaseSync();
+  const userAccounts = await db
+    .select({ id: schema.account.id })
+    .from(schema.account)
+    .where(eq(schema.account.userId, userId));
+
+  if (userAccounts.length === 0) {
     return [];
   }
+  const accountIds = userAccounts.map((a) => a.id);
+  return getGroupTransactions(accountIds);
+}
 
-  const cacheKey = `transactions-${userId}`;
-  const cached = getCached<Transaction[]>(cacheKey);
-  if (cached) {
-    return cached;
+export async function getGroupTransactions(accountIds: string[]) {
+  if (accountIds.length === 0) {
+    return [];
   }
+  const db = getDatabaseSync();
 
-  // Get transactions with related data - try with accountNumber first, fallback without it
-  interface TransactionWithAccount {
-    id: string;
-    ticker: string;
-    type: string;
-    qty: number;
-    price: number;
-    realizedGainLoss: number | null;
-    executedAt: Date | number;
-    accountId: string;
-    accountName: string;
-    accountType: string;
-    accountNumber?: string | null;
-  }
-
-  let transactions: TransactionWithAccount[];
-  try {
-    transactions = await db
-      .select({
-        id: schema.transaction.id,
-        ticker: schema.transaction.ticker,
-        type: schema.transaction.type,
-        qty: schema.transaction.qty,
-        price: schema.transaction.price,
-        realizedGainLoss: schema.transaction.realizedGainLoss,
-        executedAt: schema.transaction.executedAt,
-        accountId: schema.account.id,
-        accountName: schema.account.name,
-        accountType: schema.account.type,
-        accountNumber: schema.account.accountNumber,
-      })
-      .from(schema.transaction)
-      .innerJoin(schema.account, eq(schema.transaction.accountId, schema.account.id))
-      .where(eq(schema.account.userId, userId))
-      .orderBy(desc(schema.transaction.executedAt));
-  } catch {
-    // If accountNumber column doesn't exist, query without it
-    transactions = await db
-      .select({
-        id: schema.transaction.id,
-        ticker: schema.transaction.ticker,
-        type: schema.transaction.type,
-        qty: schema.transaction.qty,
-        price: schema.transaction.price,
-        realizedGainLoss: schema.transaction.realizedGainLoss,
-        executedAt: schema.transaction.executedAt,
-        accountId: schema.account.id,
-        accountName: schema.account.name,
-        accountType: schema.account.type,
-      })
-      .from(schema.transaction)
-      .innerJoin(schema.account, eq(schema.transaction.accountId, schema.account.id))
-      .where(eq(schema.account.userId, userId))
-      .orderBy(desc(schema.transaction.executedAt));
-  }
-
-  // Get sleeve information for each ticker (similar to positions)
-  const sleeveMembers = await db
+  // Join transactions with accounts and sleeves to get enriched data
+  const rawTransactions = await db
     .select({
-      ticker: schema.sleeveMember.ticker,
-      sleeveId: schema.sleeve.id,
+      id: schema.transaction.id,
+      accountId: schema.transaction.accountId,
+      sleeveId: schema.transaction.sleeveId,
+      ticker: schema.transaction.ticker,
+      type: schema.transaction.type,
+      qty: schema.transaction.qty,
+      price: schema.transaction.price,
+      realizedGainLoss: schema.transaction.realizedGainLoss,
+      executedAt: schema.transaction.executedAt,
+      createdAt: schema.transaction.createdAt,
+      updatedAt: schema.transaction.updatedAt,
+      accountName: schema.account.name,
+      accountType: schema.account.type,
+      accountNumber: schema.account.accountNumber,
       sleeveName: schema.sleeve.name,
     })
-    .from(schema.sleeveMember)
-    .innerJoin(schema.sleeve, eq(schema.sleeveMember.sleeveId, schema.sleeve.id))
-    .where(eq(schema.sleeveMember.isActive, true));
+    .from(schema.transaction)
+    .innerJoin(schema.account, eq(schema.transaction.accountId, schema.account.id))
+    .leftJoin(schema.sleeve, eq(schema.transaction.sleeveId, schema.sleeve.id))
+    .where(inArray(schema.transaction.accountId, accountIds))
+    .orderBy(desc(schema.transaction.executedAt));
 
-  // Create a map of ticker to sleeves
-  const tickerToSleeves = new Map<string, Array<{ sleeveId: string; sleeveName: string }>>();
-  for (const member of sleeveMembers) {
-    if (!tickerToSleeves.has(member.ticker)) {
-      tickerToSleeves.set(member.ticker, []);
-    }
-    tickerToSleeves.get(member.ticker)?.push({
-      sleeveId: member.sleeveId,
-      sleeveName: member.sleeveName,
-    });
-  }
+  // Transform to match Transaction type expectations
+  const transactions: Transaction[] = rawTransactions.map((tx) => ({
+    id: tx.id,
+    accountId: tx.accountId,
+    sleeveId: tx.sleeveId || '', // Convert null to empty string as expected by type
+    ticker: tx.ticker,
+    type: tx.type as 'BUY' | 'SELL',
+    qty: tx.qty,
+    price: tx.price,
+    executedAt: new Date(tx.executedAt), // Convert number to Date
+    realizedGainLoss: tx.realizedGainLoss || 0, // Convert null to 0
+    sleeveName: tx.sleeveName || '',
+    accountName: tx.accountName,
+    accountType: tx.accountType,
+    accountNumber: tx.accountNumber || undefined,
+    isLongTerm: undefined, // Not available in current schema
+  }));
 
-  const formattedTransactions: Transaction[] = transactions
-    .filter((tx) => tx.qty > 0)
-    .map((tx) => {
-      // Get sleeve information from sleeve_member table
-      const sleeves = tickerToSleeves.get(tx.ticker) || [];
-      const primarySleeve = sleeves[0]; // For now, just use the first sleeve if multiple exist
-      const sleeveId = primarySleeve?.sleeveId || '';
-      const sleeveName = primarySleeve?.sleeveName || 'No Sleeve';
-
-      return {
-        id: tx.id,
-        sleeveId: sleeveId,
-        sleeveName: sleeveName,
-        ticker: tx.ticker,
-        type: tx.type as 'BUY' | 'SELL',
-        qty: tx.qty,
-        price: tx.price,
-        executedAt: new Date(tx.executedAt),
-        realizedGainLoss: tx.realizedGainLoss || 0,
-        accountId: tx.accountId || '',
-        accountName: tx.accountName || 'No Account',
-        accountType: tx.accountType || '',
-        accountNumber: tx.accountNumber || 'N/A', // Use actual value or fallback
-      };
-    });
-
-  // Validate data
-  const validatedData = validateData(TransactionsSchema, formattedTransactions, 'transactions');
-  setCache(cacheKey, validatedData);
-
-  return validatedData;
-};
+  return transactions;
+}
 
 export const getSleeves = async (userId?: string) => {
   // If no userId provided, return empty array for security

@@ -48,6 +48,9 @@ export async function loadDashboardData(
     // Dynamic import to prevent client-side bundling
     const dbApiModule = await import('./db-api');
 
+    // Ensure userId is defined for functions that require it
+    const safeUserId = userId || '';
+
     const [
       positions,
       metrics,
@@ -58,12 +61,12 @@ export async function loadDashboardData(
       indices,
       indexMembers,
     ] = await Promise.all([
-      dbApiModule.getPositions(userId),
-      dbApiModule.getPortfolioMetrics(userId),
-      dbApiModule.getTransactions(userId),
+      dbApiModule.getPositions(safeUserId),
+      dbApiModule.getPortfolioMetrics(safeUserId),
+      dbApiModule.getTransactions(safeUserId),
       dbApiModule.getSnP500Data(),
-      dbApiModule.getProposedTrades(userId),
-      dbApiModule.getSleeves(userId),
+      dbApiModule.getProposedTrades(safeUserId),
+      dbApiModule.getSleeves(safeUserId),
       dbApiModule.getIndices(),
       dbApiModule.getIndexMembers(),
     ]);

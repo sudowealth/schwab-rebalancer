@@ -26,10 +26,10 @@ export const getPositions = async (): Promise<Position[]> => {
   return [];
 };
 
-export const getTransactions = async (): Promise<Transaction[]> => {
+export const getTransactions = async (userId?: string): Promise<Transaction[]> => {
   if (isServer) {
     const { getTransactions } = await import('./db-api');
-    return getTransactions();
+    return getTransactions(userId || '');
   }
   return [];
 };

@@ -76,6 +76,44 @@ export const getTransactionsServerFn = createServerFn({ method: 'GET' }).handler
   return getTransactions(user.id);
 });
 
+export const getProposedTradesServerFn = createServerFn({ method: 'GET' }).handler(async () => {
+  const { user } = await requireAuth();
+  const { getProposedTrades } = await import('./db-api');
+  return getProposedTrades(user.id);
+});
+
+export const getGroupTransactionsServerFn = createServerFn({
+  method: 'POST',
+})
+  .validator((data: { accountIds: string[] }) => data)
+  .handler(async ({ data }) => {
+    const { accountIds } = data;
+    const { user } = await requireAuth();
+    // Verify that all accountIds belong to the authenticated user
+    const db = getDatabaseSync();
+    const schema = await import('../db/schema');
+    const { eq, inArray, and } = await import('drizzle-orm');
+
+    const ownedAccounts = await db
+      .select({ id: schema.account.id })
+      .from(schema.account)
+      .where(and(eq(schema.account.userId, user.id), inArray(schema.account.id, accountIds)));
+
+    if (ownedAccounts.length !== accountIds.length) {
+      throw new Error('Access denied: One or more accounts do not belong to you');
+    }
+
+    const { getGroupTransactions } = await import('./db-api');
+    return getGroupTransactions(accountIds);
+  });
+
+export const getSp500DataServerFn = createServerFn({
+  method: 'GET',
+}).handler(async () => {
+  const { getSnP500Data } = await import('./db-api');
+  return getSnP500Data();
+});
+
 export const getPortfolioMetricsServerFn = createServerFn({ method: 'GET' }).handler(async () => {
   const { user } = await requireAuth();
   const { getPortfolioMetrics } = await import('./db-api');

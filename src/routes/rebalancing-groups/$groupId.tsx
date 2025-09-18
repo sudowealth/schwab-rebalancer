@@ -23,11 +23,15 @@ import { useSleeveAllocations } from '../../hooks/use-sleeve-allocations';
 import { generateAllocationData, generateTopHoldingsData } from '../../lib/rebalancing-utils';
 import type { Order } from '../../lib/schemas';
 import {
-  getDashboardDataServerFn,
+  type getDashboardDataServerFn,
   getGroupAccountHoldingsServerFn,
   getGroupOrdersServerFn,
+  getGroupTransactionsServerFn,
+  getPositionsServerFn,
+  getProposedTradesServerFn,
   getRebalancingGroupByIdServerFn,
   getSleeveMembersServerFn,
+  getSp500DataServerFn,
   rebalancePortfolioServerFn,
   syncGroupPricesIfNeededServerFn,
   syncSchwabPricesServerFn,
@@ -74,13 +78,6 @@ export const Route = createFileRoute('/rebalancing-groups/$groupId')({
 
       // Get account holdings
       const accountIds = group.members.map((member) => member.accountId);
-      const accountHoldings =
-        accountIds.length > 0
-          ? await getGroupAccountHoldingsServerFn({
-              data: { accountIds },
-            })
-          : [];
-
       // Get sleeve members (target securities) if there's an assigned model
       let sleeveMembers: Awaited<ReturnType<typeof getSleeveMembersServerFn>> = [];
       if (group.assignedModel?.members && group.assignedModel.members.length > 0) {
@@ -91,6 +88,13 @@ export const Route = createFileRoute('/rebalancing-groups/$groupId')({
           });
         }
       }
+
+      // Run remaining data fetching in parallel
+      const [accountHoldings, transactions, sp500Data] = await Promise.all([
+        getGroupAccountHoldingsServerFn({ data: { accountIds } }),
+        getGroupTransactionsServerFn({ data: { accountIds } }),
+        getSp500DataServerFn(),
+      ]);
 
       // Update group members with calculated balances from holdings
       const updatedGroupMembers = group.members.map((member) => {
@@ -103,30 +107,6 @@ export const Route = createFileRoute('/rebalancing-groups/$groupId')({
         };
       });
 
-      // Trigger automatic price sync for group securities if user is connected to Schwab
-      // This runs synchronously to ensure data is fresh when the page loads
-      let dashboardData = await getDashboardDataServerFn();
-      let syncResult: { synced: boolean; message: string; updatedCount?: number } = {
-        synced: false,
-        message: 'No sync attempted',
-      };
-
-      try {
-        syncResult = await syncGroupPricesIfNeededServerFn({
-          data: { groupId: params.groupId },
-        });
-        console.log('🔄 [GroupLoader] Automatic price sync completed:', syncResult);
-
-        // If prices were updated, refetch dashboard data to get fresh prices
-        if (syncResult.synced && syncResult.updatedCount && syncResult.updatedCount > 0) {
-          console.log('🔄 [GroupLoader] Refetching dashboard data after price updates');
-          dashboardData = await getDashboardDataServerFn();
-        }
-      } catch (syncError) {
-        console.warn('⚠️ [GroupLoader] Automatic price sync failed:', syncError);
-        // Continue loading the page even if price sync fails
-      }
-
       return {
         group: {
           ...group,
@@ -134,10 +114,11 @@ export const Route = createFileRoute('/rebalancing-groups/$groupId')({
         },
         accountHoldings,
         sleeveMembers,
-        sp500Data: dashboardData.sp500Data,
-        positions: dashboardData.positions,
-        transactions: dashboardData.transactions,
-        proposedTrades: dashboardData.proposedTrades,
+        sp500Data,
+        transactions,
+        // Defer loading positions and proposedTrades
+        positions: [],
+        proposedTrades: [],
       };
     } catch (error) {
       // If authentication error, redirect to login
@@ -155,17 +136,14 @@ export const Route = createFileRoute('/rebalancing-groups/$groupId')({
 });
 
 function RebalancingGroupDetail() {
-  const {
-    group,
-    accountHoldings,
-    sleeveMembers,
-    sp500Data,
-    positions,
-    transactions,
-    proposedTrades,
-  } = Route.useLoaderData();
+  const { group, accountHoldings, sleeveMembers, sp500Data, transactions } = Route.useLoaderData();
   const router = useRouter();
   const searchParams = Route.useSearch();
+
+  const [positions, setPositions] = useState<Awaited<ReturnType<typeof getPositionsServerFn>>>([]);
+  const [proposedTrades, setProposedTrades] = useState<
+    Awaited<ReturnType<typeof getProposedTradesServerFn>>
+  >([]);
 
   // Trigger automatic price sync when component mounts (if user is connected to Schwab)
   useEffect(() => {
@@ -174,17 +152,18 @@ function RebalancingGroupDetail() {
         const syncResult = await syncGroupPricesIfNeededServerFn({
           data: { groupId: group.id },
         });
-        console.log('🔄 [GroupComponent] Automatic price sync result:', syncResult);
+
+        if (syncResult.synced && syncResult.updatedCount && syncResult.updatedCount > 0) {
+          console.log('🔄 [GroupComponent] Prices updated, invalidating router data...');
+          router.invalidate();
+        }
       } catch (error) {
         console.warn('⚠️ [GroupComponent] Automatic price sync failed:', error);
-        // Don't show user error - this is background operation
       }
     };
 
-    triggerPriceSync().catch((error) => {
-      console.warn('⚠️ [GroupComponent] Price sync failed:', error);
-    });
-  }, [group.id]);
+    triggerPriceSync();
+  }, [group.id, router]);
 
   const [selectedAccount, setSelectedAccount] = useState<string | null>(null);
   const [editModalOpen, setEditModalOpen] = useState(false);
@@ -312,9 +291,21 @@ function RebalancingGroupDetail() {
     }
   };
 
-  const handleTickerClick = (ticker: string) => {
+  const handleTickerClick = async (ticker: string) => {
     setSelectedTicker(ticker);
     setShowSecurityModal(true);
+
+    // Fetch positions and proposed trades on demand
+    try {
+      const [positionsData, proposedTradesData] = await Promise.all([
+        getPositionsServerFn(),
+        getProposedTradesServerFn(),
+      ]);
+      setPositions(positionsData);
+      setProposedTrades(proposedTradesData);
+    } catch (error) {
+      console.error('Failed to fetch modal data:', error);
+    }
   };
 
   const handleSleeveClick = (sleeveId: string) => {

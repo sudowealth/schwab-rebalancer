@@ -5,7 +5,7 @@ import { AddSleeveModal } from '../../components/sleeves/add-sleeve-modal';
 import { DeleteSleeveModal } from '../../components/sleeves/delete-sleeve-modal';
 import { EditSleeveModal } from '../../components/sleeves/edit-sleeve-modal';
 import { Button } from '../../components/ui/button';
-import type { Sleeve } from '../../lib/schemas';
+import type { Sleeve, Transaction } from '../../lib/schemas';
 import { getDashboardDataServerFn } from '../../lib/server-functions';
 
 export const Route = createFileRoute('/sleeves/')({
@@ -143,7 +143,10 @@ function SleevesComponent() {
           const position = positions?.find((p) => p.ticker === selectedTicker);
           const recentTransactions = transactions
             ?.filter((t) => t.ticker === selectedTicker)
-            ?.sort((a, b) => new Date(b.executedAt).getTime() - new Date(a.executedAt).getTime())
+            ?.sort(
+              (a: Transaction, b: Transaction) =>
+                new Date(b.executedAt).getTime() - new Date(a.executedAt).getTime(),
+            )
             ?.slice(0, 5);
 
           return (
@@ -292,7 +295,7 @@ function SleevesComponent() {
                           Recent Transactions (Last 5)
                         </h4>
                         <div className="space-y-2">
-                          {recentTransactions.map((transaction) => (
+                          {recentTransactions.map((transaction: Transaction) => (
                             <div
                               key={transaction.id}
                               className="flex justify-between items-center text-xs p-2 bg-white rounded border"
