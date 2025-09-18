@@ -60,8 +60,12 @@ export const Route = createFileRoute('/')({
   component: DashboardComponent,
   loader: async ({ context: _context }) => {
     try {
-      // Try to load dashboard data (will fail if not authenticated)
-      return await getDashboardDataServerFn();
+      // Fetch all dashboard data in parallel to eliminate waterfalls
+      const [dashboardData, rebalancingGroups] = await Promise.all([
+        getDashboardDataServerFn(),
+        loadRebalancingGroupsData(),
+      ]);
+      return { ...dashboardData, rebalancingGroups };
     } catch (error) {
       // If authentication error, redirect to login
       if (error instanceof Error && error.message.includes('Authentication required')) {
@@ -79,13 +83,6 @@ function DashboardComponent() {
   const [activeTab, setActiveTab] = useState<'positions' | 'transactions' | 'rebalancing-groups'>(
     'rebalancing-groups',
   );
-
-  // Manually trigger the query on mount
-  useEffect(() => {
-    setTimeout(() => {
-      queryClient.invalidateQueries({ queryKey: ['rebalancing-groups'] });
-    }, 100);
-  }, [queryClient]);
 
   // Note: loaderData.user is available as fallback for session?.user if needed
 
@@ -187,6 +184,7 @@ function DashboardComponent() {
   const { data: rebalancingGroups, isLoading: rebalancingGroupsLoading } = useQuery({
     queryKey: ['rebalancing-groups-dashboard'],
     queryFn: loadRebalancingGroupsData,
+    initialData: loaderData.rebalancingGroups,
     staleTime: 1000 * 60 * 2,
   });
 
