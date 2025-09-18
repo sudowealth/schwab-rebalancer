@@ -21,7 +21,7 @@ import {
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
-import { VirtualizedSelect } from '../ui/virtualized-select-fixed';
+import { VirtualizedSelect } from '../ui/virtualized-select';
 import { SelectedAccountsDisplay } from './selected-accounts-display';
 
 interface Account {

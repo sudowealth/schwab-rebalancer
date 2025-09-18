@@ -2,7 +2,7 @@ import { Plus, Trash2 } from 'lucide-react';
 import { useId } from 'react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
-import { VirtualizedSelect } from '../ui/virtualized-select-fixed';
+import { VirtualizedSelect } from '../ui/virtualized-select';
 
 interface SleeveFormProps {
   sleeveName: string;

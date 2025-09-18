@@ -11,7 +11,6 @@ import {
 } from './account-lockout';
 import { getDatabaseSync, initDatabaseSync } from './db-config';
 import { sendPasswordResetEmail } from './email';
-import { getSecurityConfig } from './security-config';
 
 if (typeof window === 'undefined') {
   await initDatabaseSync();
@@ -103,12 +102,79 @@ export const auth = betterAuth({
   },
   trustedOrigins: (() => {
     try {
-      const securityConfig = getSecurityConfig();
-      // Security config loaded successfully
-      return securityConfig.allowedOrigins;
+      // Parse allowed origins from environment variable
+      const envOrigins = process.env.ALLOWED_ORIGINS;
+      let origins: string[];
+
+      if (envOrigins) {
+        // Parse comma-separated origins from environment
+        origins = envOrigins
+          .split(',')
+          .map((origin) => origin.trim())
+          .filter(Boolean);
+      } else {
+        // Default origins based on environment
+        const nodeEnv = process.env.NODE_ENV || 'development';
+        if (nodeEnv === 'production') {
+          // Dynamically determine production origins
+          origins = [];
+
+          // Always include the detected base URL
+          const baseURL = getBaseURL();
+          if (baseURL) {
+            origins.push(baseURL);
+
+            // Add common variations
+            try {
+              const url = new URL(baseURL);
+              const domain = url.hostname;
+
+              // Add www variant if base URL doesn't have it
+              if (!domain.startsWith('www.')) {
+                origins.push(`https://www.${domain}`);
+              }
+
+              // Add staging variant for common patterns
+              if (domain.includes('.')) {
+                const parts = domain.split('.');
+                if (parts.length >= 2) {
+                  const stagingDomain = `staging.${parts.slice(-2).join('.')}`;
+                  origins.push(`https://${stagingDomain}`);
+                }
+              }
+            } catch {
+              // If URL parsing fails, just use the base URL
+            }
+          }
+
+          // Fallback if no base URL detected
+          if (origins.length === 0) {
+            console.warn(
+              '⚠️ No production origins detected. Set ALLOWED_ORIGINS environment variable.',
+            );
+            origins = ['https://localhost:3000']; // Safe fallback
+          }
+        } else {
+          // Development origins
+          origins = [
+            'http://localhost:3000',
+            'http://localhost:3001',
+            'http://127.0.0.1:3000',
+            'https://127.0.0.1', // Local HTTPS via Caddy
+          ].filter(Boolean);
+        }
+      }
+
+      // Add the dynamically detected base URL if it's different
+      const baseURL = getBaseURL();
+      if (baseURL && !origins.includes(baseURL)) {
+        origins.push(baseURL);
+      }
+
+      return origins;
     } catch {
       console.warn('⚠️ Auth: Using fallback origins due to config error');
-      // Fallback to dynamic origins based on environment
+      // Fallback to basic origins
       const origins = ['http://localhost:3000', 'http://localhost:3001', 'https://127.0.0.1'];
 
       // Add the dynamically detected base URL if it's different

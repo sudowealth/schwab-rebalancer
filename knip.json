@@ -1,0 +1,35 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "entry": [
+    "src/server.ts",
+    "src/routes/**/*.tsx",
+    "src/lib/server-functions.ts",
+    "scripts/**/*.ts",
+    "*.config.{ts,js,mjs}"
+  ],
+  "project": ["src/**/*.{ts,tsx}", "scripts/**/*.{ts,tsx}"],
+  "ignore": [
+    "**/node_modules/**",
+    "**/dist/**",
+    "**/.output/**",
+    "**/drizzle/**",
+    "**/*.d.ts",
+    "src/routeTree.gen.ts",
+    "src/components/ui/**/*"
+  ],
+  "rules": {
+    "files": "error",
+    "dependencies": "error",
+    "devDependencies": "error",
+    "unlisted": "error",
+    "binaries": "error",
+    "unresolved": "error",
+    "exports": "error",
+    "types": "error",
+    "nsExports": "error",
+    "nsTypes": "error",
+    "enumMembers": "error",
+    "classMembers": "error"
+  },
+  "ignoreDependencies": ["@netlify/neon", "tailwindcss", "tailwindcss-animate"]
+}

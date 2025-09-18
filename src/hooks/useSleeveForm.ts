@@ -1,6 +1,6 @@
 import { useRouter } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
-import type { Option } from '../components/ui/virtualized-select-fixed';
+import type { Option } from '../components/ui/virtualized-select';
 import type { Sleeve } from '../lib/schemas';
 import { getAvailableSecuritiesServerFn } from '../lib/server-functions';
 

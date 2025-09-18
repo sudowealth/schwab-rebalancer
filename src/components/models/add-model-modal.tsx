@@ -12,10 +12,10 @@ import {
   DialogTrigger,
 } from '../../components/ui/dialog';
 import { Input } from '../../components/ui/input';
-import { type Option, VirtualizedSelect } from '../../components/ui/virtualized-select-fixed';
 import { createModelServerFn, getAvailableSleevesServerFn } from '../../lib/server-functions';
 import { cn } from '../../lib/utils';
 import { AddSleeveModal } from '../sleeves/add-sleeve-modal';
+import { type Option, VirtualizedSelect } from '../ui/virtualized-select';
 
 interface ModelMember {
   id: string;

@@ -3,10 +3,6 @@ import * as schema from '../db/schema';
 import { decrypt, encrypt } from './crypto';
 import { getDatabaseSync } from './db-config';
 
-// Note: We attempted to use @sudowealth/schwab-api but encountered module resolution issues.
-// The library structure has been analyzed and this implementation follows similar patterns
-// while maintaining compatibility with our existing codebase.
-
 // Types based on sudowealth/schwab-api structure
 interface SchwabApiClient {
   trader: {

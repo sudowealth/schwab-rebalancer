@@ -11,10 +11,10 @@ import {
   DialogTitle,
 } from '../../components/ui/dialog';
 import { Input } from '../../components/ui/input';
-import { type Option, VirtualizedSelect } from '../../components/ui/virtualized-select-fixed';
 import type { Model } from '../../lib/schemas';
 import { getAvailableSleevesServerFn, updateModelServerFn } from '../../lib/server-functions';
 import { cn } from '../../lib/utils';
+import { type Option, VirtualizedSelect } from '../ui/virtualized-select';
 
 // Use function return types instead of manual interfaces
 type Sleeve = Awaited<ReturnType<typeof getAvailableSleevesServerFn>>[number];
