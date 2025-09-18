@@ -330,7 +330,6 @@ export const getPositions = async (userId?: string) => {
 };
 
 export async function getTransactions(userId: string) {
-  console.log('🔄 Getting all transactions for user:', userId);
   const db = getDatabaseSync();
   const userAccounts = await db
     .select({ id: schema.account.id })

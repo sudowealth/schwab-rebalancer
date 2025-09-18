@@ -9,12 +9,8 @@ import {
   recordFailedLoginAttempt,
   recordSuccessfulLogin,
 } from './account-lockout';
-import { getDatabaseSync, initDatabaseSync } from './db-config';
+import { getDatabaseSync } from './db-config';
 import { sendPasswordResetEmail } from './email';
-
-if (typeof window === 'undefined') {
-  await initDatabaseSync();
-}
 
 const getAuthDatabase = () => {
   // Use Neon Postgres in any environment where credentials are present (including production)

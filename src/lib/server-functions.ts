@@ -3,7 +3,7 @@ import { APIError } from 'better-auth/api';
 import { eq, inArray, sql } from 'drizzle-orm';
 import type { drizzle } from 'drizzle-orm/neon-http';
 import * as schema from '../db/schema';
-import { getDatabaseSync, initDatabaseSync } from './db-config';
+import { getDatabaseSync } from './db-config';
 
 // Note: Better Auth integration handled at router level
 
@@ -4224,9 +4224,6 @@ export const healthCheckServerFn = createServerFn({ method: 'GET' }).handler(asy
   const startTime = Date.now();
 
   try {
-    // Ensure database is initialized
-    await initDatabaseSync();
-
     // Test database connectivity with a simple query
     const db = getDatabaseSync();
     await db.execute(sql`SELECT 1 as health_check`);
