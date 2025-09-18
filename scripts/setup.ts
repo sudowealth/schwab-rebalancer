@@ -68,19 +68,22 @@ NODE_ENV=development
 # OPTIONAL INTEGRATIONS
 # ==========================================
 
-# Email notifications (optional - get from https://resend.com)
-# RESEND_API_KEY=your-resend-api-key
-
 # Schwab API Integration (see docs/SCHWAB_SETUP.md)
 # SCHWAB_CLIENT_ID=your-schwab-client-id
 # SCHWAB_CLIENT_SECRET=your-schwab-client-secret
 
+# Email notifications (optional - get from https://resend.com)
+# RESEND_API_KEY=your-resend-api-key
+
 # ==========================================
-# DATABASE (Usually auto-configured by Neon)
+# DATABASE (Configure for Local Development)
 # ==========================================
 
-# Database URL will be automatically set by Neon when deploying
-# For local development, Neon handles this automatically
+# For local development: Set this to your Neon branch connection string
+# Get this by running: neonctl branches create --project-id YOUR_PROJECT_ID --name local
+# NETLIFY_DATABASE_URL=postgresql://neondb_owner:your_password@ep-your-endpoint.neon.tech/neondb?sslmode=require
+
+# For production: Netlify will automatically set NETLIFY_DATABASE_URL when deploying
 `;
 
   writeFileSync(envPath, envContent, 'utf8');

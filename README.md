@@ -35,6 +35,26 @@ That's it! Your app will be live at `https://your-app-name.netlify.app`
 
 - Node.js 22+
 - pnpm
+- [Neon CLI](https://neon.tech/docs/reference/neon-cli) (`neonctl`)
+
+  **Install neonctl:**
+
+  ```bash
+  # Using npm
+  npm install -g neonctl
+
+  # Or using Homebrew (macOS/Linux)
+  brew install neonctl
+
+  # Or download directly from GitHub releases
+  # https://github.com/neondatabase/neonctl/releases
+  ```
+
+  **Verify installation:**
+
+  ```bash
+  neonctl --version
+  ```
 
 ##### Installation & Setup
 
@@ -50,13 +70,46 @@ pnpm install
 pnpm run setup
 
 # Start development server
-ppnpm dev
+pnpm dev
 ```
 
 #### Database Setup
 
+This project uses **Neon PostgreSQL** with database branching for safe local development.
+
+##### 1. Authenticate with Neon
+
 ```bash
-# Push schema to database
+# Login to your Neon account
+neonctl auth
+
+# List your projects
+neonctl projects list
+```
+
+##### 2. Create a Local Development Branch
+
+```bash
+# Get your project ID from the list above, then create a branch
+neonctl branches create --project-id YOUR_PROJECT_ID --name local
+```
+
+This creates an isolated database branch for development that won't affect your production data.
+
+##### 3. Configure Database Connection
+
+After creating the branch, you'll get a connection string. Add it to your `.env.local`:
+
+```bash
+# Add to .env.local (created by pnpm run setup)
+# For local development with your Neon branch:
+NETLIFY_DATABASE_URL=postgresql://neondb_owner:your_password@ep-your-endpoint.neon.tech/neondb?sslmode=require
+```
+
+##### 4. Push Schema and Seed Data
+
+```bash
+# Push database schema to your local branch
 pnpm run db:push
 
 # Seed with sample data
