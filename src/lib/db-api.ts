@@ -1358,9 +1358,10 @@ export const getModels = async (userId?: string) => {
           .from(schema.modelMember)
           .innerJoin(schema.sleeve, eq(schema.modelMember.sleeveId, schema.sleeve.id))
           .where(
-            sql`${schema.modelMember.modelId} IN (${sql.raw(
-              modelIds.map((id) => `'${id}'`).join(','),
-            )}) AND ${schema.modelMember.isActive} = 1`,
+            and(
+              inArray(schema.modelMember.modelId, modelIds),
+              eq(schema.modelMember.isActive, true),
+            ),
           )
       : [];
 
