@@ -10,7 +10,7 @@ import {
   syncSchwabPricesServerFn,
   syncYahooFundamentalsServerFn,
 } from '../lib/server-functions';
-import type { SyncYahooFundamentalsResult } from '../lib/yahoo-server-fns';
+import type { SyncYahooFundamentalsResult } from '../lib/yahoo.server';
 
 export function useSchwabConnection(
   initialCredentialsStatus?: { hasCredentials: boolean },

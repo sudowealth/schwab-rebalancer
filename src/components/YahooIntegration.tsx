@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { DollarSign, Loader2, RefreshCw } from 'lucide-react';
 import { useState } from 'react';
 import { getYahooSyncCountsServerFn, syncYahooFundamentalsServerFn } from '../lib/server-functions';
-import type { SyncYahooFundamentalsResult } from '../lib/yahoo-server-fns';
+import type { SyncYahooFundamentalsResult } from '../lib/yahoo.server';
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';

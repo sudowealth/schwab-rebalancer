@@ -5,7 +5,7 @@
 export {
   getAuditLogsServerFn,
   getSystemStatsServerFn,
-} from './admin-server-fns';
+} from './admin.server';
 // Authentication and session management functions
 export {
   checkIsFirstUserServerFn,
@@ -24,7 +24,7 @@ export {
   updateUserRoleServerFn,
   verifyAdminAccessServerFn,
   verifyUserAccessServerFn,
-} from './auth-server-fns';
+} from './auth.server';
 // Dashboard and basic data access functions
 export {
   clearCacheServerFn,
@@ -44,10 +44,10 @@ export {
   getTransactionsServerFn,
   truncateSecurityTableServerFn,
   updateAccountServerFn,
-} from './dashboard-server-fns';
+} from './dashboard.server';
 // Legacy type exports for backward compatibility
 export type { AccountHoldingsResult } from './db-api';
-export type { GroupAccountHoldingsResult, SleeveMember } from './group-server-fns';
+export type { GroupAccountHoldingsResult, SleeveMember } from './group.server';
 // Rebalancing group operations
 export {
   assignModelToGroupServerFn,
@@ -60,7 +60,7 @@ export {
   getSleeveMembersServerFn,
   unassignModelFromGroupServerFn,
   updateRebalancingGroupServerFn,
-} from './group-server-fns';
+} from './group.server';
 // Data import and seeding functions
 export {
   checkModelsExistServerFn,
@@ -73,7 +73,7 @@ export {
   seedModelsDataServerFn,
   seedSecuritiesDataServerFn,
   truncateDataServerFn,
-} from './import-server-fns';
+} from './import.server';
 // Model CRUD operations
 export {
   createModelServerFn,
@@ -81,14 +81,14 @@ export {
   getModelByIdServerFn,
   getModelsServerFn,
   updateModelServerFn,
-} from './model-server-fns';
-export type { RebalancePortfolioServerFnResult } from './portfolio-server-fns';
+} from './model.server';
+export type { RebalancePortfolioServerFnResult } from './portfolio.server';
 // Portfolio management and rebalancing
 export {
   getManualCashServerFn,
   rebalancePortfolioServerFn,
   updateManualCashServerFn,
-} from './portfolio-server-fns';
+} from './portfolio.server';
 export type { RebalanceSecurityData, RebalanceSleeveDataNew } from './rebalance-logic';
 export type { RebalancingGroup, Trade } from './schemas';
 // Schwab integration functions
@@ -114,7 +114,7 @@ export {
   syncSchwabPricesServerFn,
   syncSchwabTransactionsServerFn,
   updateOrderServerFn,
-} from './schwab-server-fns';
+} from './schwab.server';
 export type { SyncResult } from './schwab-sync';
 
 // Sleeve CRUD operations
@@ -126,10 +126,10 @@ export {
   getSleeveHoldingsInfoServerFn,
   getSleevesServerFn,
   updateSleeveServerFn,
-} from './sleeve-server-fns';
+} from './sleeves.server';
 
 // Utility functions
-export { healthCheckServerFn } from './utility-server-fns';
+export { healthCheckServerFn } from './utility.server';
 
 // Yahoo Finance integration
-export { syncYahooFundamentalsServerFn } from './yahoo-server-fns';
+export { syncYahooFundamentalsServerFn } from './yahoo.server';
