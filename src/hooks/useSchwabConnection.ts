@@ -10,6 +10,7 @@ import {
   syncSchwabPricesServerFn,
   syncYahooFundamentalsServerFn,
 } from '../lib/server-functions';
+import type { SyncYahooFundamentalsResult } from '../lib/yahoo-server-fns';
 
 export function useSchwabConnection(
   initialCredentialsStatus?: { hasCredentials: boolean },
@@ -150,17 +151,14 @@ export function useSchwabConnection(
       try {
         console.log('🟡 [UI] Step 4: Starting Yahoo fundamentals sync...');
         console.log('🟡 [UI] Current time:', new Date().toISOString());
-        const yahooResult = await syncYahooFundamentalsServerFn({
+        const yahooResult = (await syncYahooFundamentalsServerFn({
           data: { scope: 'missing-fundamentals-holdings' },
-        });
+        })) as SyncYahooFundamentalsResult;
         console.log('🟡 [UI] Yahoo fundamentals sync result:', {
-          success: yahooResult && 'success' in yahooResult ? yahooResult.success : undefined,
-          recordsProcessed:
-            yahooResult && 'recordsProcessed' in yahooResult
-              ? yahooResult.recordsProcessed
-              : undefined,
-          errorMessage:
-            yahooResult && 'errorMessage' in yahooResult ? yahooResult.errorMessage : undefined,
+          success: yahooResult.success,
+          recordsProcessed: yahooResult.recordsProcessed,
+          errorMessage: yahooResult.errorMessage,
+          detailsPreview: yahooResult.details.slice(0, 5),
           timestamp: new Date().toISOString(),
         });
       } catch (yErr) {

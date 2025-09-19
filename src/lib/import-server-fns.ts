@@ -4,6 +4,7 @@ import * as schema from '../db/schema';
 import { CASH_TICKER, isAnyCashTicker } from './constants';
 import { getDatabaseSync } from './db-config';
 import { getErrorMessage, ValidationError } from './error-handler';
+import type { SyncYahooFundamentalsResult } from './yahoo-server-fns';
 
 // Defer server-only auth utilities to runtime to avoid bundling them in the client build
 const requireAuth = async () => {
@@ -115,13 +116,13 @@ export const seedSecuritiesDataServerFn = createServerFn({ method: 'POST' }).han
   }
 
   // Run Yahoo sync for held/sleeve securities missing data
-  let yahooSyncResult = null;
+  let yahooSyncResult: SyncYahooFundamentalsResult | null = null;
   try {
     console.log('🔄 Starting Yahoo sync for held/sleeve securities missing data...');
     const { syncYahooFundamentalsServerFn } = await import('./yahoo-server-fns');
-    yahooSyncResult = await syncYahooFundamentalsServerFn({
+    yahooSyncResult = (await syncYahooFundamentalsServerFn({
       data: { scope: 'held-sleeve-securities-missing-data' },
-    });
+    })) as SyncYahooFundamentalsResult;
     console.log('✅ Yahoo sync completed:', yahooSyncResult);
   } catch (error) {
     console.error('❌ Yahoo sync failed:', error);
@@ -130,7 +131,7 @@ export const seedSecuritiesDataServerFn = createServerFn({ method: 'POST' }).han
       recordsProcessed: 0,
       errorMessage: error instanceof Error ? error.message : 'Unknown error occurred',
       details: [],
-      logId: '',
+      logId: crypto.randomUUID(),
     };
   }
 
@@ -143,12 +144,7 @@ export const seedSecuritiesDataServerFn = createServerFn({ method: 'POST' }).han
         message += ` Prices updated for ${schwabSyncResult.recordsProcessed} securities via Schwab.`;
       }
 
-      if (
-        yahooSyncResult &&
-        'recordsProcessed' in yahooSyncResult &&
-        yahooSyncResult.recordsProcessed &&
-        yahooSyncResult.recordsProcessed > 0
-      ) {
+      if (yahooSyncResult && yahooSyncResult.recordsProcessed > 0) {
         message += ` Yahoo data synced for ${yahooSyncResult.recordsProcessed} securities.`;
       }
 
@@ -436,7 +432,7 @@ export const importNasdaqSecuritiesServerFn = createServerFn({
       }
 
       // Clear cache to refresh data
-      const { clearCache } = await import('./db-api');
+      const { clearCache } = await import('../lib/db-api');
       clearCache();
 
       return {

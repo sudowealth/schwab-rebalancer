@@ -365,7 +365,7 @@ export function SchwabIntegration() {
                 errorMessage:
                   yahooError instanceof Error ? yahooError.message : 'Yahoo sync failed',
                 details: [],
-                logId: '',
+                logId: crypto.randomUUID(),
               });
             } finally {
               setIsSyncingYahoo(false);
@@ -397,12 +397,16 @@ export function SchwabIntegration() {
   });
 
   // Mutation to sync Yahoo Finance fundamentals
-  const yahooSyncMutation = useMutation({
+  const yahooSyncMutation = useMutation<
+    YahooSyncResult,
+    Error,
+    'missing-fundamentals-holdings' | 'missing-fundamentals-sleeves'
+  >({
     mutationFn: async (scope: 'missing-fundamentals-holdings' | 'missing-fundamentals-sleeves') => {
       console.log('📊 [UI] Starting Yahoo Finance sync for scope:', scope);
-      return await syncYahooFundamentalsServerFn({
+      return (await syncYahooFundamentalsServerFn({
         data: { scope },
-      });
+      })) as YahooSyncResult;
     },
     onSuccess: (result) => {
       console.log('✅ [UI] Yahoo Finance sync completed successfully:', result);
@@ -415,7 +419,7 @@ export function SchwabIntegration() {
         recordsProcessed: 0,
         errorMessage: error instanceof Error ? error.message : 'Unknown error occurred',
         details: [],
-        logId: '',
+        logId: crypto.randomUUID(),
       });
     },
   });

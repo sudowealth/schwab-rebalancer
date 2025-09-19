@@ -2,17 +2,14 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { DollarSign, Loader2, RefreshCw } from 'lucide-react';
 import { useState } from 'react';
 import { getYahooSyncCountsServerFn, syncYahooFundamentalsServerFn } from '../lib/server-functions';
+import type { SyncYahooFundamentalsResult } from '../lib/yahoo-server-fns';
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 
 export function YahooIntegration() {
   const queryClient = useQueryClient();
-  const [lastSummary, setLastSummary] = useState<{
-    success: boolean;
-    recordsProcessed: number;
-    errorMessage?: string;
-  } | null>(null);
+  const [lastSummary, setLastSummary] = useState<SyncYahooFundamentalsResult | null>(null);
   const [selectedScope, setSelectedScope] = useState<string>('all-securities');
 
   // Fetch counts for each sync scope
@@ -25,26 +22,13 @@ export function YahooIntegration() {
   });
 
   const yahooMutation = useMutation({
-    mutationFn: async (
-      scope: YahooScope,
-    ): Promise<{ success: boolean; recordsProcessed: number; errorMessage?: string }> => {
-      const result = (await syncYahooFundamentalsServerFn({ data: { scope } })) as {
-        success?: boolean;
-        recordsProcessed?: number;
-        errorMessage?: string;
-      };
-      return {
-        success: Boolean(result?.success),
-        recordsProcessed: Number(result?.recordsProcessed ?? 0),
-        errorMessage: (result as { errorMessage?: string })?.errorMessage,
-      };
+    mutationFn: async (scope: YahooScope): Promise<SyncYahooFundamentalsResult> => {
+      return (await syncYahooFundamentalsServerFn({
+        data: { scope },
+      })) as SyncYahooFundamentalsResult;
     },
-    onSuccess: (data: { success: boolean; recordsProcessed: number; errorMessage?: string }) => {
-      setLastSummary({
-        success: Boolean(data?.success),
-        recordsProcessed: Number(data?.recordsProcessed ?? 0),
-        errorMessage: data?.errorMessage,
-      });
+    onSuccess: (data: SyncYahooFundamentalsResult) => {
+      setLastSummary(data);
       queryClient.invalidateQueries({ queryKey: ['sync-logs'] });
       queryClient.invalidateQueries({ queryKey: ['yahoo-sync-counts'] });
     },
