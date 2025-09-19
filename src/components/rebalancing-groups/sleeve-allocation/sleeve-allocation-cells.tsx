@@ -620,8 +620,6 @@ export const TradeValueCell: React.FC<TradeCellProps> = ({
   );
 };
 
-// Removed: PostTradeValueCell - was unused and never imported
-
 export const PostTradeDiffCell: React.FC<PostTradeValueCellProps & { totalCashValue?: number }> = ({
   currentValue,
   targetValue,

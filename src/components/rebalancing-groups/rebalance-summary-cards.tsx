@@ -1,6 +1,5 @@
 import { DollarSign, Target, TrendingDown, TrendingUp } from 'lucide-react';
 import { CASH_TICKER } from '../../lib/constants';
-import type { GenerateSleeveTableDataResult } from '../../lib/rebalancing-utils';
 import { cn, formatCurrency, formatPercent } from '../../lib/utils';
 import type { Trade } from '../../types/rebalance';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
@@ -10,7 +9,30 @@ import type { Security } from './sleeve-allocation/sleeve-allocation-types';
 export interface RebalanceTrade extends Trade {
   ticker?: string;
 }
-export type SleeveTableData = GenerateSleeveTableDataResult[number];
+// Use the same type as AllocationSection for consistency
+export type SleeveTableData = {
+  sleeveId: string;
+  sleeveName: string;
+  currentValue: number;
+  targetValue: number;
+  targetPercent?: number;
+  totalGainLoss: number;
+  longTermGainLoss: number;
+  shortTermGainLoss: number;
+  accountNames: string[];
+  securities: Array<{
+    ticker: string;
+    currentValue: number;
+    targetValue: number;
+    targetPercent: number;
+    accountNames: string[];
+    currentPercent: number;
+    difference: number;
+    differencePercent: number;
+    qty: number;
+    isHeld: boolean;
+  }>;
+};
 // Define a proper type for individual holdings used in this component
 interface AccountHolding {
   ticker: string;

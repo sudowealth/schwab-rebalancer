@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useRouter } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
 import { seedSecuritiesDataServerFn } from '../lib/server-functions';
 
@@ -31,6 +32,7 @@ export function useSecuritiesSeeding(securitiesStatus?: {
   securitiesCount: number;
 }) {
   const queryClient = useQueryClient();
+  const router = useRouter();
   const [hasStartedSeeding, setHasStartedSeeding] = useState(false);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
 
@@ -41,6 +43,8 @@ export function useSecuritiesSeeding(securitiesStatus?: {
       setShowSuccessMessage(true);
       // Invalidate all queries to refresh the dashboard
       queryClient.invalidateQueries();
+      // Invalidate the home route loader to refresh onboarding status
+      router.invalidate();
     },
     onError: (error) => {
       console.error('Error seeding securities data:', error);

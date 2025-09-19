@@ -202,7 +202,3 @@ export function validateTradeAgainstRestrictions(
   // Sells are generally allowed even for restricted securities
   return { isAllowed: true };
 }
-
-// Removed: findLowestRankedPurchasableSecurity - was unused and never called
-
-// Removed: filterPurchasableSecurities - was unused and never called

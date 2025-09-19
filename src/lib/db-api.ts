@@ -424,92 +424,183 @@ export const getSleeves = async (userId?: string) => {
     ]),
   );
 
-  // Get sleeves with their members for this user only
-  const sleeves = await db
+  // Get sleeves and members in one query
+  const sleevesAndMembers = await db
     .select({
-      id: schema.sleeve.id,
-      name: schema.sleeve.name,
-      isActive: schema.sleeve.isActive,
+      // Sleeve data
+      sleeveId: schema.sleeve.id,
+      sleeveName: schema.sleeve.name,
+      sleeveIsActive: schema.sleeve.isActive,
+      // Member data
+      memberId: schema.sleeveMember.id,
+      memberTicker: schema.sleeveMember.ticker,
+      memberRank: schema.sleeveMember.rank,
+      memberIsActive: schema.sleeveMember.isActive,
+      memberIsLegacy: schema.sleeveMember.isLegacy,
     })
     .from(schema.sleeve)
-    .where(and(eq(schema.sleeve.isActive, true), eq(schema.sleeve.userId, userId)));
+    .leftJoin(
+      schema.sleeveMember,
+      and(
+        eq(schema.sleeve.id, schema.sleeveMember.sleeveId),
+        eq(schema.sleeveMember.isActive, true),
+      ),
+    )
+    .where(and(eq(schema.sleeve.isActive, true), eq(schema.sleeve.userId, userId)))
+    .orderBy(schema.sleeve.name, schema.sleeveMember.rank);
 
-  const sleevesWithMembers: Sleeve[] = [];
+  // Get member tickers for holdings query
+  const memberTickers = [
+    ...new Set(
+      sleevesAndMembers.map((row) => row.memberTicker).filter((ticker) => ticker !== null),
+    ),
+  ];
 
-  for (const sleeve of sleeves) {
-    // Get members for this sleeve
-    const members = await db
+  // Get holdings for member tickers that belong to the user
+  let holdingsData: Array<{
+    id: string;
+    ticker: string;
+    qty: number;
+    costBasis: number;
+    openedAt: Date | number;
+  }> = [];
+
+  if (memberTickers.length > 0) {
+    holdingsData = await db
       .select({
-        id: schema.sleeveMember.id,
-        ticker: schema.sleeveMember.ticker,
-        rank: schema.sleeveMember.rank,
-        isActive: schema.sleeveMember.isActive,
-        isLegacy: schema.sleeveMember.isLegacy,
+        id: schema.holding.id,
+        ticker: schema.holding.ticker,
+        qty: schema.holding.qty,
+        costBasis: schema.holding.averageCost,
+        openedAt: schema.holding.openedAt,
       })
-      .from(schema.sleeveMember)
-      .where(eq(schema.sleeveMember.sleeveId, sleeve.id))
-      .orderBy(schema.sleeveMember.rank);
+      .from(schema.holding)
+      .innerJoin(schema.account, eq(schema.holding.accountId, schema.account.id))
+      .where(and(inArray(schema.holding.ticker, memberTickers), eq(schema.account.userId, userId)));
+  }
 
-    // Get position for this sleeve (if any) - look for holdings that match any sleeve member ticker
-    const memberTickers = members.map((m) => m.ticker);
-    interface HoldingData {
+  // Group data by sleeve
+  const sleevesMap = new Map<
+    string,
+    {
       id: string;
+      name: string;
+      members: Array<{
+        id: string;
+        ticker: string;
+        rank: number;
+        isActive: boolean;
+        isLegacy: boolean;
+      }>;
+      holdings: Array<{
+        id: string;
+        ticker: string;
+        qty: number;
+        costBasis: number;
+        openedAt: Date | number;
+      }>;
+    }
+  >();
+
+  // First, group sleeves and members
+  for (const row of sleevesAndMembers) {
+    let sleeve = sleevesMap.get(row.sleeveId);
+    if (!sleeve) {
+      sleeve = {
+        id: row.sleeveId,
+        name: row.sleeveName,
+        members: [],
+        holdings: [],
+      };
+      sleevesMap.set(row.sleeveId, sleeve);
+    }
+
+    // Add member if not already added
+    if (row.memberId && row.memberTicker && !sleeve.members.some((m) => m.id === row.memberId)) {
+      sleeve.members.push({
+        id: row.memberId,
+        ticker: row.memberTicker,
+        rank: row.memberRank || 0,
+        isActive: !!row.memberIsActive,
+        isLegacy: !!row.memberIsLegacy || restrictedTickers.has(row.memberTicker),
+      });
+    }
+  }
+
+  // Then add holdings to the appropriate sleeves
+  const holdingsByTicker = new Map<string, (typeof holdingsData)[0]>();
+  holdingsData.forEach((holding) => {
+    holdingsByTicker.set(holding.ticker, holding);
+  });
+
+  // Add holdings to sleeves that have members with matching tickers
+  for (const sleeve of sleevesMap.values()) {
+    for (const member of sleeve.members) {
+      const holding = holdingsByTicker.get(member.ticker);
+      if (holding && !sleeve.holdings.some((h) => h.ticker === holding.ticker)) {
+        sleeve.holdings.push(holding);
+      }
+    }
+  }
+
+  // Process each sleeve to find position and create final result
+  const sleevesWithMembers: Array<{
+    id: string;
+    name: string;
+    members: Array<{
+      id: string;
+      ticker: string;
+      rank: number;
+      isActive: boolean;
+      isLegacy: boolean;
+    }>;
+    position?: {
+      id: string;
+      sleeveId?: string;
       ticker: string;
       qty: number;
       costBasis: number;
       openedAt: Date | number;
-    }
+      currentPrice?: number;
+      marketValue?: number;
+      dollarGainLoss?: number;
+      percentGainLoss?: number;
+    } | null;
+    restrictedInfo?: string | { soldAt: string; blockedUntil: string };
+  }> = [];
 
-    let holding: HoldingData[] = [];
-    if (memberTickers.length > 0) {
-      holding = await db
-        .select({
-          id: schema.holding.id,
-          ticker: schema.holding.ticker,
-          qty: schema.holding.qty,
-          costBasis: schema.holding.averageCost,
-          openedAt: schema.holding.openedAt,
-        })
-        .from(schema.holding)
-        .where(inArray(schema.holding.ticker, memberTickers))
-        .limit(1);
-    }
-
+  for (const sleeve of sleevesMap.values()) {
     let position = null;
-    if (holding.length > 0) {
-      const h = holding[0];
-      const currentPrice = priceMap.get(h.ticker) || 0;
-      const qty = h.qty;
-      const costBasis = h.costBasis;
+
+    // Find first available holding for any of this sleeve's member tickers
+    for (const holding of sleeve.holdings) {
+      const currentPrice = priceMap.get(holding.ticker) || 0;
+      const qty = holding.qty;
+      const costBasis = holding.costBasis;
       const marketValue = qty * currentPrice;
       const costValue = qty * costBasis;
       const dollarGainLoss = marketValue - costValue;
       const percentGainLoss = costValue > 0 ? (dollarGainLoss / costValue) * 100 : 0;
 
       position = {
-        id: h.id,
+        id: holding.id,
         sleeveId: sleeve.id,
-        ticker: h.ticker,
+        ticker: holding.ticker,
         qty: qty,
         costBasis: costBasis,
         currentPrice: currentPrice,
         marketValue,
         dollarGainLoss,
         percentGainLoss,
-        openedAt: new Date(h.openedAt),
+        openedAt: new Date(holding.openedAt),
       };
+      break; // Use first available holding
     }
 
     sleevesWithMembers.push({
       id: sleeve.id,
       name: sleeve.name,
-      members: members.map((m) => ({
-        id: m.id,
-        ticker: m.ticker,
-        rank: m.rank,
-        isActive: !!m.isActive,
-        isLegacy: !!m.isLegacy || restrictedTickers.has(m.ticker),
-      })),
+      members: sleeve.members,
       position,
       restrictedInfo: restrictedTickers.get(position?.ticker || ''),
     });
@@ -928,9 +1019,7 @@ export const createSleeve = async (
   const securities = await db
     .select({ ticker: schema.security.ticker })
     .from(schema.security)
-    .where(
-      sql`${schema.security.ticker} IN (${sql.raw(memberTickers.map((t) => `'${t}'`).join(','))})`,
-    );
+    .where(inArray(schema.security.ticker, memberTickers));
 
   const securityTickers = new Set(securities.map((s) => s.ticker));
   const invalidTickers = memberTickers.filter((ticker) => !securityTickers.has(ticker));
@@ -1042,9 +1131,7 @@ export const updateSleeve = async (
   const securities = await db
     .select({ ticker: schema.security.ticker })
     .from(schema.security)
-    .where(
-      sql`${schema.security.ticker} IN (${sql.raw(memberTickers.map((t) => `'${t}'`).join(','))})`,
-    );
+    .where(inArray(schema.security.ticker, memberTickers));
 
   const securityTickers = new Set(securities.map((s) => s.ticker));
   const invalidTickers = memberTickers.filter((ticker) => !securityTickers.has(ticker));
@@ -1192,78 +1279,92 @@ export const getModels = async (userId?: string) => {
     return cached;
   }
 
-  // Get models for this user only
-  const models = await db
+  // Single relational query to get all models with their members
+  const modelsWithMembers = await db
     .select({
-      id: schema.model.id,
-      name: schema.model.name,
-      description: schema.model.description,
-      isActive: schema.model.isActive,
-      createdAt: schema.model.createdAt,
-      updatedAt: schema.model.updatedAt,
+      // Model data
+      modelId: schema.model.id,
+      modelName: schema.model.name,
+      modelDescription: schema.model.description,
+      modelIsActive: schema.model.isActive,
+      modelCreatedAt: schema.model.createdAt,
+      modelUpdatedAt: schema.model.updatedAt,
+      // Member data
+      memberId: schema.modelMember.id,
+      memberSleeveId: schema.modelMember.sleeveId,
+      memberTargetWeight: schema.modelMember.targetWeight,
+      memberIsActive: schema.modelMember.isActive,
+      sleeveName: schema.sleeve.name,
     })
     .from(schema.model)
+    .leftJoin(
+      schema.modelMember,
+      and(eq(schema.model.id, schema.modelMember.modelId), eq(schema.modelMember.isActive, true)),
+    )
+    .leftJoin(schema.sleeve, eq(schema.modelMember.sleeveId, schema.sleeve.id))
     .where(and(eq(schema.model.isActive, true), eq(schema.model.userId, userId)))
-    .orderBy(schema.model.name);
+    .orderBy(schema.model.name, schema.modelMember.targetWeight);
 
-  // Get all model members for active models
-  const modelIds = models.map((m) => m.id);
-  const modelMembers =
-    modelIds.length > 0
-      ? await db
-          .select({
-            id: schema.modelMember.id,
-            modelId: schema.modelMember.modelId,
-            sleeveId: schema.modelMember.sleeveId,
-            targetWeight: schema.modelMember.targetWeight,
-            isActive: schema.modelMember.isActive,
-            sleeveName: schema.sleeve.name,
-          })
-          .from(schema.modelMember)
-          .innerJoin(schema.sleeve, eq(schema.modelMember.sleeveId, schema.sleeve.id))
-          .where(
-            and(
-              inArray(schema.modelMember.modelId, modelIds),
-              eq(schema.modelMember.isActive, true),
-            ),
-          )
-      : [];
-
-  // Group members by model ID
-  interface ModelMemberData {
-    id: string;
-    sleeveId: string;
-    targetWeight: number;
-    isActive: boolean;
-    sleeveName?: string;
-  }
-  const membersByModel = new Map<string, ModelMemberData[]>();
-  modelMembers.forEach((member) => {
-    if (!membersByModel.has(member.modelId)) {
-      membersByModel.set(member.modelId, []);
+  // Group data by model
+  const modelsMap = new Map<
+    string,
+    {
+      id: string;
+      name: string;
+      description: string | null;
+      isActive: boolean;
+      createdAt: number;
+      updatedAt: number;
+      members: Array<{
+        id: string;
+        sleeveId: string;
+        targetWeight: number;
+        isActive: boolean;
+        sleeveName?: string;
+      }>;
     }
-    membersByModel.get(member.modelId)?.push({
-      id: member.id,
-      sleeveId: member.sleeveId,
-      sleeveName: member.sleeveName,
-      targetWeight: member.targetWeight,
-      isActive: member.isActive,
-    });
-  });
+  >();
 
-  // Combine models with their members
-  const modelsWithMembers: Model[] = models.map((model) => ({
+  for (const row of modelsWithMembers) {
+    let model = modelsMap.get(row.modelId);
+    if (!model) {
+      model = {
+        id: row.modelId,
+        name: row.modelName,
+        description: row.modelDescription,
+        isActive: row.modelIsActive,
+        createdAt: row.modelCreatedAt,
+        updatedAt: row.modelUpdatedAt,
+        members: [],
+      };
+      modelsMap.set(row.modelId, model);
+    }
+
+    // Add member if exists
+    if (row.memberId && row.memberSleeveId) {
+      model.members.push({
+        id: row.memberId,
+        sleeveId: row.memberSleeveId,
+        sleeveName: row.sleeveName || undefined,
+        targetWeight: row.memberTargetWeight || 0,
+        isActive: !!row.memberIsActive,
+      });
+    }
+  }
+
+  // Convert to final format
+  const finalModels: Model[] = Array.from(modelsMap.values()).map((model) => ({
     id: model.id,
     name: model.name,
     description: model.description || undefined,
     isActive: model.isActive,
-    members: membersByModel.get(model.id) || [],
+    members: model.members,
     createdAt: new Date(model.createdAt),
     updatedAt: new Date(model.updatedAt),
   }));
 
   // Validate data
-  const validatedData = validateData(ModelsSchema, modelsWithMembers, 'models');
+  const validatedData = validateData(ModelsSchema, finalModels, 'models');
   setCache(cacheKey, validatedData);
 
   return validatedData;
@@ -1344,9 +1445,7 @@ export const createModel = async (data: CreateModel, userId: string): Promise<st
     const sleeves = await db
       .select({ id: schema.sleeve.id })
       .from(schema.sleeve)
-      .where(
-        sql`${schema.sleeve.id} IN (${sql.raw(memberSleeveIds.map((id) => `'${id}'`).join(','))})`,
-      );
+      .where(inArray(schema.sleeve.id, memberSleeveIds));
 
     const existingSleeveIds = new Set(sleeves.map((s) => s.id));
     const invalidSleeveIds = memberSleeveIds.filter((id) => !existingSleeveIds.has(id));
@@ -1434,9 +1533,7 @@ export const updateModel = async (modelId: string, data: CreateModel): Promise<v
     const sleeves = await db
       .select({ id: schema.sleeve.id })
       .from(schema.sleeve)
-      .where(
-        sql`${schema.sleeve.id} IN (${sql.raw(memberSleeveIds.map((id) => `'${id}'`).join(','))})`,
-      );
+      .where(inArray(schema.sleeve.id, memberSleeveIds));
 
     const existingSleeveIds = new Set(sleeves.map((s) => s.id));
     const invalidSleeveIds = memberSleeveIds.filter((id) => !existingSleeveIds.has(id));
@@ -1565,9 +1662,7 @@ export async function getOrdersForAccounts(accountIds: string[]): Promise<Order[
   const rows = await db
     .select()
     .from(schema.tradeOrder)
-    .where(
-      sql`${schema.tradeOrder.accountId} IN (${sql.raw(accountIds.map((id) => `'${id}'`).join(','))})`,
-    )
+    .where(inArray(schema.tradeOrder.accountId, accountIds))
     .orderBy(desc(schema.tradeOrder.createdAt));
 
   // Normalize date fields to Date
@@ -1673,6 +1768,111 @@ export async function deleteTradeOrder(id: string): Promise<void> {
   clearCache('orders');
 }
 
+// Get securities data with optional filtering by index and search term
+export const getFilteredSecuritiesData = async (
+  indexId?: string,
+  searchTerm?: string,
+  page?: number,
+  pageSize?: number,
+  sortBy?: string,
+  sortOrder?: 'asc' | 'desc',
+): Promise<{
+  securities: Array<{
+    ticker: string;
+    name: string;
+    price: number;
+    sector?: string;
+    industry?: string;
+    marketCap?: string;
+    peRatio?: number;
+  }>;
+  indices: Array<{
+    id: string;
+    name: string;
+    description?: string;
+  }>;
+  indexMembers: Array<{
+    indexId: string;
+    securityId: string;
+  }>;
+  pagination: {
+    page: number;
+    pageSize: number;
+    total: number;
+    totalPages: number;
+  };
+}> => {
+  // Get base data
+  const [securities, indices, indexMembers] = await Promise.all([
+    getSnP500Data(),
+    getIndices(),
+    getIndexMembers(),
+  ]);
+
+  let filteredSecurities = securities;
+
+  // Filter by index if specified
+  if (indexId) {
+    const membersInIndex = indexMembers
+      .filter((member) => member.indexId === indexId)
+      .map((member) => member.securityId);
+
+    filteredSecurities = securities.filter((security) => membersInIndex.includes(security.ticker));
+  }
+
+  // Filter by search term if specified
+  if (searchTerm?.trim()) {
+    const term = searchTerm.toLowerCase().trim();
+    filteredSecurities = filteredSecurities.filter(
+      (security) =>
+        security.ticker.toLowerCase().includes(term) ||
+        security.name.toLowerCase().includes(term) ||
+        security.sector?.toLowerCase().includes(term) ||
+        security.industry?.toLowerCase().includes(term),
+    );
+  }
+
+  // Apply sorting server-side
+  const sortByField = sortBy || 'ticker';
+  const sortOrderDirection = sortOrder || 'asc';
+
+  filteredSecurities = filteredSecurities.sort((a, b) => {
+    const aValue = a[sortByField as keyof typeof a] || '';
+    const bValue = b[sortByField as keyof typeof b] || '';
+    const comparison = String(aValue).localeCompare(String(bValue));
+    return sortOrderDirection === 'desc' ? -comparison : comparison;
+  });
+
+  // Apply pagination server-side
+  const currentPage = page || 1;
+  const itemsPerPage = pageSize || 100;
+  const totalItems = filteredSecurities.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedSecurities = filteredSecurities.slice(startIndex, endIndex);
+
+  // Ensure all securities have required properties with defaults
+  const securitiesWithDefaults = paginatedSecurities.map((security) => ({
+    ...security,
+    marketCap: security.marketCap || 'N/A',
+    industry: security.industry || 'Unknown',
+    sector: security.sector || 'Unknown',
+  }));
+
+  return {
+    securities: securitiesWithDefaults,
+    indices,
+    indexMembers,
+    pagination: {
+      page: currentPage,
+      pageSize: itemsPerPage,
+      total: totalItems,
+      totalPages,
+    },
+  };
+};
+
 // Get all index members mapping
 export const getIndexMembers = async (): Promise<
   Array<{ indexId: string; securityId: string }>
@@ -1701,143 +1901,148 @@ export const getRebalancingGroups = async (userId: string): Promise<RebalancingG
     // return cached;
   }
 
-  // Get all rebalancing groups for the user
-  const groups = await db
+  // Single relational query to get all groups with their members and assigned models
+  const groupsWithData = await db
     .select({
-      id: schema.rebalancingGroup.id,
-      name: schema.rebalancingGroup.name,
-      isActive: schema.rebalancingGroup.isActive,
-      createdAt: schema.rebalancingGroup.createdAt,
-      updatedAt: schema.rebalancingGroup.updatedAt,
+      // Group data
+      groupId: schema.rebalancingGroup.id,
+      groupName: schema.rebalancingGroup.name,
+      groupIsActive: schema.rebalancingGroup.isActive,
+      groupCreatedAt: schema.rebalancingGroup.createdAt,
+      groupUpdatedAt: schema.rebalancingGroup.updatedAt,
+      // Member data
+      memberId: schema.rebalancingGroupMember.id,
+      memberAccountId: schema.rebalancingGroupMember.accountId,
+      memberIsActive: schema.rebalancingGroupMember.isActive,
+      accountName: schema.account.name,
+      accountType: schema.account.type,
+      // Model assignment data
+      modelId: schema.model.id,
+      modelName: schema.model.name,
+      modelDescription: schema.model.description,
+      modelIsActive: schema.model.isActive,
+      modelCreatedAt: schema.model.createdAt,
+      modelUpdatedAt: schema.model.updatedAt,
     })
     .from(schema.rebalancingGroup)
+    .leftJoin(
+      schema.rebalancingGroupMember,
+      and(
+        eq(schema.rebalancingGroup.id, schema.rebalancingGroupMember.groupId),
+        eq(schema.rebalancingGroupMember.isActive, true),
+      ),
+    )
+    .leftJoin(schema.account, eq(schema.rebalancingGroupMember.accountId, schema.account.id))
+    .leftJoin(
+      schema.modelGroupAssignment,
+      eq(schema.rebalancingGroup.id, schema.modelGroupAssignment.rebalancingGroupId),
+    )
+    .leftJoin(
+      schema.model,
+      and(
+        eq(schema.modelGroupAssignment.modelId, schema.model.id),
+        eq(schema.model.isActive, true),
+      ),
+    )
     .where(
-      sql`${schema.rebalancingGroup.userId} = ${userId} AND ${schema.rebalancingGroup.isActive} = true`,
+      and(eq(schema.rebalancingGroup.userId, userId), eq(schema.rebalancingGroup.isActive, true)),
     )
     .orderBy(schema.rebalancingGroup.name);
 
-  // Get all group members for active groups
-  const groupIds = groups.map((g) => g.id);
-  const groupMembers =
-    groupIds.length > 0
-      ? await db
-          .select({
-            id: schema.rebalancingGroupMember.id,
-            groupId: schema.rebalancingGroupMember.groupId,
-            accountId: schema.rebalancingGroupMember.accountId,
-            isActive: schema.rebalancingGroupMember.isActive,
-            accountName: schema.account.name,
-            accountType: schema.account.type,
-          })
-          .from(schema.rebalancingGroupMember)
-          .innerJoin(schema.account, eq(schema.rebalancingGroupMember.accountId, schema.account.id))
-          .where(
-            sql`${schema.rebalancingGroupMember.groupId} IN (${sql.raw(
-              groupIds.map((id) => `'${id}'`).join(','),
-            )}) AND ${schema.rebalancingGroupMember.isActive} = true`,
-          )
-      : [];
-
-  // Get assigned models for the groups via junction table
-  const modelsWithGroups =
-    groupIds.length > 0
-      ? await db
-          .select({
-            id: schema.model.id,
-            name: schema.model.name,
-            description: schema.model.description,
-            rebalancingGroupId: schema.modelGroupAssignment.rebalancingGroupId,
-            isActive: schema.model.isActive,
-            createdAt: schema.model.createdAt,
-            updatedAt: schema.model.updatedAt,
-          })
-          .from(schema.model)
-          .innerJoin(
-            schema.modelGroupAssignment,
-            eq(schema.model.id, schema.modelGroupAssignment.modelId),
-          )
-          .where(
-            sql`${schema.modelGroupAssignment.rebalancingGroupId} IN (${sql.raw(
-              groupIds.map((id) => `'${id}'`).join(','),
-            )}) AND ${schema.model.isActive} = true`,
-          )
-      : [];
-
-  // Group members by group ID
-  interface GroupMemberData {
-    id: string;
-    accountId: string;
-    isActive: boolean;
-    accountName?: string;
-    accountType?: string;
-    balance?: number;
-  }
-  const membersByGroup = new Map<string, GroupMemberData[]>();
-  groupMembers.forEach((member) => {
-    if (!membersByGroup.has(member.groupId)) {
-      membersByGroup.set(member.groupId, []);
-    }
-    membersByGroup.get(member.groupId)?.push({
-      id: member.id,
-      accountId: member.accountId,
-      accountName: member.accountName,
-      accountType: member.accountType,
-      balance: 0, // Will be calculated from holdings
-      isActive: member.isActive,
-    });
-  });
-
-  // Group models by group ID
-  const modelsByGroup = new Map<
+  // Group data by group ID
+  const groupsMap = new Map<
     string,
     {
       id: string;
       name: string;
       isActive: boolean;
+      createdAt: number;
+      updatedAt: number;
       members: Array<{
         id: string;
-        sleeveId: string;
-        targetWeight: number;
+        accountId: string;
         isActive: boolean;
-        sleeveName?: string;
+        accountName?: string;
+        accountType?: string;
+        balance?: number;
       }>;
-      description?: string;
-      createdAt?: Date;
-      updatedAt?: Date;
-      [key: string]: unknown;
+      assignedModel?: {
+        id: string;
+        name: string;
+        description?: string;
+        isActive: boolean;
+        members: Array<{
+          id: string;
+          sleeveId: string;
+          targetWeight: number;
+          isActive: boolean;
+          sleeveName?: string;
+        }>;
+        createdAt: Date;
+        updatedAt: Date;
+      };
     }
   >();
-  modelsWithGroups.forEach((model) => {
-    if (model.rebalancingGroupId) {
-      modelsByGroup.set(model.rebalancingGroupId, {
-        id: model.id,
-        name: model.name,
-        description: model.description || undefined,
-        isActive: model.isActive,
-        members: [], // We don't need full member details for the group view
-        createdAt: new Date(model.createdAt),
-        updatedAt: new Date(model.updatedAt),
+
+  for (const row of groupsWithData) {
+    let group = groupsMap.get(row.groupId);
+    if (!group) {
+      group = {
+        id: row.groupId,
+        name: row.groupName,
+        isActive: row.groupIsActive,
+        createdAt: row.groupCreatedAt,
+        updatedAt: row.groupUpdatedAt,
+        members: [],
+      };
+      groupsMap.set(row.groupId, group);
+    }
+
+    // Add member if exists and not already added
+    if (row.memberId && row.memberAccountId && !group.members.some((m) => m.id === row.memberId)) {
+      group.members.push({
+        id: row.memberId,
+        accountId: row.memberAccountId,
+        accountName: row.accountName || undefined,
+        accountType: row.accountType || undefined,
+        balance: 0, // Will be calculated from holdings
+        isActive: !!row.memberIsActive,
       });
     }
-  });
 
-  // Combine groups with their members and assigned models
-  const groupsWithMembers: RebalancingGroup[] = groups.map((group) => ({
+    // Add assigned model if exists and not already added
+    if (
+      row.modelId &&
+      row.modelName &&
+      row.modelCreatedAt &&
+      row.modelUpdatedAt &&
+      !group.assignedModel
+    ) {
+      group.assignedModel = {
+        id: row.modelId,
+        name: row.modelName,
+        description: row.modelDescription || undefined,
+        isActive: !!row.modelIsActive,
+        members: [], // We don't need full member details for the group view
+        createdAt: new Date(row.modelCreatedAt),
+        updatedAt: new Date(row.modelUpdatedAt),
+      };
+    }
+  }
+
+  // Convert to final format
+  const finalGroups: RebalancingGroup[] = Array.from(groupsMap.values()).map((group) => ({
     id: group.id,
     name: group.name,
     isActive: group.isActive,
-    members: membersByGroup.get(group.id) || [],
-    assignedModel: modelsByGroup.get(group.id) || undefined,
+    members: group.members,
+    assignedModel: group.assignedModel,
     createdAt: new Date(group.createdAt),
     updatedAt: new Date(group.updatedAt),
   }));
 
   // Validate data
-  const validatedData = validateData(
-    RebalancingGroupsSchema,
-    groupsWithMembers,
-    'rebalancing groups',
-  );
+  const validatedData = validateData(RebalancingGroupsSchema, finalGroups, 'rebalancing groups');
   setCache(cacheKey, validatedData);
 
   return validatedData;
@@ -2123,10 +2328,8 @@ export const getAccountHoldings = async (accountIds: string[]) => {
 export type SP500DataResult = Awaited<ReturnType<typeof getSnP500Data>>;
 export type PositionsResult = Awaited<ReturnType<typeof getPositions>>;
 export type TransactionsResult = Awaited<ReturnType<typeof getTransactions>>;
-// Removed: SleevesResult, PortfolioMetricsResult, ProposedTradesResult, ModelsResult - were unused internal types
 export type AccountHoldingsResult = Awaited<ReturnType<typeof getAccountHoldings>>;
 export type RebalancingGroupsResult = Awaited<ReturnType<typeof getRebalancingGroups>>;
-// Removed: RebalancingGroupByIdResult, SleeveMembersResult - were unused internal types
 
 // Get sleeve members (target securities) for specific sleeves
 export const getSleeveMembers = async (sleeveIds: string[]) => {
@@ -2259,11 +2462,7 @@ export const createRebalancingGroup = async (
     const accounts = await db
       .select({ id: schema.account.id })
       .from(schema.account)
-      .where(
-        sql`${schema.account.id} IN (${sql.raw(
-          memberAccountIds.map((id) => `'${id}'`).join(','),
-        )}) AND ${schema.account.userId} = ${userId}`,
-      );
+      .where(and(inArray(schema.account.id, memberAccountIds), eq(schema.account.userId, userId)));
 
     const existingAccountIds = new Set(accounts.map((a) => a.id));
     const invalidAccountIds = memberAccountIds.filter((id) => !existingAccountIds.has(id));
@@ -2350,11 +2549,7 @@ export const updateRebalancingGroup = async (
     const accounts = await db
       .select({ id: schema.account.id })
       .from(schema.account)
-      .where(
-        sql`${schema.account.id} IN (${sql.raw(
-          memberAccountIds.map((id) => `'${id}'`).join(','),
-        )}) AND ${schema.account.userId} = ${userId}`,
-      );
+      .where(and(inArray(schema.account.id, memberAccountIds), eq(schema.account.userId, userId)));
 
     const existingAccountIds = new Set(accounts.map((a) => a.id));
     const invalidAccountIds = memberAccountIds.filter((id) => !existingAccountIds.has(id));
@@ -2602,9 +2797,7 @@ export const getAccountsForRebalancingGroups = async (
         })
         .from(schema.holding)
         .innerJoin(schema.account, eq(schema.holding.accountId, schema.account.id))
-        .where(
-          sql`${schema.account.id} IN (${sql.raw(accountIds.map((id) => `'${id}'`).join(','))})`,
-        );
+        .where(inArray(schema.account.id, accountIds));
     } catch (error) {
       // If holdings query fails, use empty holdings (balances will be 0)
       console.warn('Failed to fetch holdings, using empty holdings:', error);

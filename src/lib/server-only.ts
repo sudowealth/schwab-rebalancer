@@ -247,5 +247,3 @@ export async function loadDashboardData(
     };
   }
 }
-
-// Removed: DashboardDataResult - was unused internal type

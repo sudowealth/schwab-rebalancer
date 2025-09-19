@@ -159,12 +159,3 @@ export async function recordSuccessfulLogin(userId: string): Promise<void> {
     // Don't fail the login for logging errors
   }
 }
-
-/**
- * Get account lockout status for a user
- */
-// Removed: getAccountLockoutStatus - was unused and never called
-
-// Removed: unlockAccount - was unused and never called
-
-// Removed: cleanupExpiredLockouts - was unused and never called

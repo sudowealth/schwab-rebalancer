@@ -32,5 +32,3 @@ export function useSleeveAllocations(
     sleeveTableData,
   };
 }
-
-// Removed: SleeveAllocationsResult and SleeveTableDataResult - were unused internal types

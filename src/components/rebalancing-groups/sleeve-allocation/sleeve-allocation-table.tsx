@@ -140,6 +140,7 @@ export function SleeveAllocationTable({
   onTradeQtyChange,
   accountHoldings = [],
   renderSummaryCards,
+  groupId,
 }: SleeveAllocationTableProps) {
   // Column management state
   const [columns, setColumns] = useState<ColumnConfig[]>(() =>
@@ -197,10 +198,6 @@ export function SleeveAllocationTable({
         }));
       if (simpleTrades.length === 0) return;
       // Group id is not directly available here; infer from groupMembers props
-      // Pass a synthetic group id via the first group member's id container if present in URL
-      const groupId =
-        (typeof window !== 'undefined' ? window.location.pathname.split('/').pop() : undefined) ||
-        'group';
       await addGroupTradesToBlotterServerFn({
         data: { groupId, trades: simpleTrades },
       });
@@ -666,7 +663,7 @@ export function SleeveAllocationTable({
         const totalCurrentValue =
           groupingMode === 'sleeve'
             ? sleeveTableData.reduce((sum, s) => sum + s.currentValue, 0)
-            : sleeveAllocationData.reduce((sum, a) => sum + a.totalValue, 0);
+            : sleeveAllocationData.reduce((sum, a) => sum + (a.totalValue || 0), 0);
         const { postTradePercent } = calculateTradeMetrics.getPostTradeMetrics(
           item.currentValue || 0,
           trades,
@@ -687,7 +684,7 @@ export function SleeveAllocationTable({
         const totalValue =
           groupingMode === 'sleeve'
             ? sleeveTableData.reduce((sum, s) => sum + s.currentValue, 0)
-            : sleeveAllocationData.reduce((sum, a) => sum + a.totalValue, 0);
+            : sleeveAllocationData.reduce((sum, a) => sum + (a.totalValue || 0), 0);
         const { postTradePercent: postPercent } = calculateTradeMetrics.getPostTradeMetrics(
           item.currentValue || 0,
           trades,

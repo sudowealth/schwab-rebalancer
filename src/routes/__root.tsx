@@ -173,7 +173,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
                     <div className="flex items-center space-x-4">
                       {/* Hide auth nav on mobile since it's in the mobile menu */}
                       <div className="hidden md:block">
-                        <AuthNav />
+                        <AuthNav currentPath={location.pathname} />
                       </div>
                     </div>
                   </div>
@@ -206,6 +206,7 @@ function AdminSettingsLink() {
       <NavigationMenuLink asChild>
         <Link
           to="/admin"
+          search={{ showTruncate: false }}
           className="block text-sm leading-none px-2 py-1.5 rounded-sm hover:bg-accent text-red-600 hover:text-red-700"
         >
           Admin
@@ -215,7 +216,7 @@ function AdminSettingsLink() {
   );
 }
 
-function AuthNav() {
+function AuthNav({ currentPath }: { currentPath: string }) {
   const { user, isAuthenticated, isPending: isLoading } = useAuth();
   const session = { user: isAuthenticated ? user : null };
   const navigate = useNavigate();
@@ -224,11 +225,11 @@ function AuthNav() {
     try {
       await signOut();
       // Navigate to login page after successful sign out
-      navigate({ to: '/login', search: { reset: '', redirect: window.location.pathname } });
+      navigate({ to: '/login', search: { reset: '', redirect: currentPath } });
     } catch (error) {
       console.error('Error signing out:', error);
       // Still navigate to login even if there's an error
-      navigate({ to: '/login', search: { reset: '', redirect: window.location.pathname } });
+      navigate({ to: '/login', search: { reset: '', redirect: currentPath } });
     }
   };
 
@@ -257,7 +258,7 @@ function AuthNav() {
     <div className="flex items-center space-x-4">
       <Link
         to="/login"
-        search={{ reset: '', redirect: window.location.pathname }}
+        search={{ reset: '', redirect: currentPath }}
         className="text-sm text-gray-500 hover:text-gray-700"
       >
         Sign in

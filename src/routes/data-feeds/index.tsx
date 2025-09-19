@@ -4,16 +4,15 @@ import { SchwabIntegration } from '../../components/SchwabIntegration';
 import { SeedDataSection } from '../../components/SeedDataSection';
 import { SyncHistory } from '../../components/SyncHistory';
 import { YahooIntegration } from '../../components/YahooIntegration';
-import { getDashboardDataServerFn } from '../../lib/server-functions';
+import { ensureAuthenticatedServerFn } from '../../lib/server-functions';
 
 export const Route = createFileRoute('/data-feeds/')({
   component: DataFeedsPage,
   loader: async () => {
     try {
-      // Use an existing server function that checks authentication
-      // We only need to verify auth, not actually use the data
-      await getDashboardDataServerFn();
-      return { authenticated: true };
+      // Use consistent authentication pattern
+      const { user } = await ensureAuthenticatedServerFn();
+      return { user };
     } catch (error) {
       // If authentication error, redirect to login
       if (error instanceof Error && error.message.includes('Authentication required')) {

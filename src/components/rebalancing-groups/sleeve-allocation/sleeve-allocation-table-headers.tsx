@@ -447,5 +447,3 @@ export const getDefaultColumnConfigs = (hasTrades: boolean): ColumnConfig[] => {
 
   return hasTrades ? [...baseColumns, ...tradeColumns] : baseColumns;
 };
-
-// Removed: SecurityTableHeaders - was unused and never imported

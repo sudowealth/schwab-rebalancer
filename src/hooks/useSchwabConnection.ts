@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useRouter } from '@tanstack/react-router';
 import { useCallback, useEffect, useState } from 'react';
 import {
   getHeldPositionTickersServerFn,
@@ -18,6 +19,7 @@ export function useSchwabConnection(
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncStep, setSyncStep] = useState<string>('');
   const queryClient = useQueryClient();
+  const router = useRouter();
 
   // Query to check credentials status (environment variables)
   const { data: credentialsStatus, isLoading: statusLoading } = useQuery({
@@ -172,6 +174,8 @@ export function useSchwabConnection(
       // Refresh all dashboard data
       console.log('🔄 [UI] Invalidating queries to refresh data...');
       queryClient.invalidateQueries();
+      // Invalidate the home route loader to refresh onboarding status
+      router.invalidate();
 
       // Clear sync state after a brief delay to show success
       setTimeout(() => {
@@ -194,7 +198,7 @@ export function useSchwabConnection(
         setSyncStep('');
       }, 3000);
     }
-  }, [queryClient, syncAccountsMutation, syncHoldingsMutation, syncPricesMutation]);
+  }, [queryClient, router, syncAccountsMutation, syncHoldingsMutation, syncPricesMutation]);
 
   const handleConnect = async () => {
     if (typeof window === 'undefined') return;

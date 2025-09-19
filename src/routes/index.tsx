@@ -9,10 +9,14 @@ import { SleeveModal } from '../components/dashboard/sleeve-modal';
 import { TransactionsTable } from '../components/dashboard/transactions-table';
 import { OnboardingTracker } from '../components/OnboardingTracker';
 import { ExportButton } from '../components/ui/export-button';
+import { useSchwabConnection } from '../hooks/useSchwabConnection';
 import { exportPositionsToExcel, exportTransactionsToExcel } from '../lib/excel-export';
 import type { Sleeve } from '../lib/schemas';
 // Use server functions for live data so client refetches return real results
 import {
+  checkModelsExistServerFn,
+  checkSchwabCredentialsServerFn,
+  checkSecuritiesExistServerFn,
   getDashboardDataServerFn,
   getGroupAccountHoldingsServerFn,
   getPortfolioMetricsServerFn,
@@ -147,6 +151,48 @@ function DashboardComponent() {
   const hasAccounts =
     loaderData && 'accountsCount' in loaderData ? loaderData.accountsCount > 0 : false;
 
+  // Use Schwab connection hook for OAuth status (same as OnboardingTracker)
+  const { isConnected: schwabOAuthComplete } = useSchwabConnection(
+    loaderData.schwabCredentialsStatus,
+    loaderData.schwabOAuthStatus,
+  );
+
+  // Use reactive queries for onboarding status (same as OnboardingTracker)
+  const { data: reactiveSecuritiesStatus } = useQuery({
+    queryKey: ['securities-status'],
+    queryFn: () => checkSecuritiesExistServerFn(),
+    initialData: loaderData.securitiesStatus,
+    staleTime: 1000 * 60 * 5,
+  });
+
+  const { data: reactiveModelsStatus } = useQuery({
+    queryKey: ['models-status'],
+    queryFn: () => checkModelsExistServerFn(),
+    initialData: loaderData.modelsStatus,
+    staleTime: 1000 * 60 * 5,
+  });
+
+  const { data: reactiveSchwabCredentialsStatus } = useQuery({
+    queryKey: ['schwab-credentials-status'],
+    queryFn: () => checkSchwabCredentialsServerFn(),
+    initialData: loaderData.schwabCredentialsStatus,
+    staleTime: 1000 * 60 * 2,
+    refetchOnMount: false,
+    refetchOnWindowFocus: true,
+  });
+
+  // Use reactive queries for rebalancing groups status
+  const { data: reactiveRebalancingGroupsStatus } = useQuery({
+    queryKey: ['rebalancing-groups-dashboard'],
+    queryFn: loadRebalancingGroupsData,
+    initialData: loaderData.rebalancingGroups,
+    staleTime: 1000 * 60 * 2,
+    select: (groups) => ({
+      hasGroups: groups && groups.length > 0,
+      groupsCount: groups ? groups.length : 0,
+    }),
+  });
+
   // For the dashboard, we also want to show rebalancing groups if we have accounts
   // and the user has completed onboarding (has models, etc.)
   // We'll use a simple approach: show if we have accounts and either have groups or are still loading
@@ -241,14 +287,12 @@ function DashboardComponent() {
         <div className="flex items-center justify-between">
           <div>
             {(() => {
-              // Calculate if onboarding is complete (same logic as OnboardingTracker)
-              const securitiesComplete = loaderData.securitiesStatus?.hasSecurities || false;
+              // Calculate if onboarding is complete using reactive data (same as OnboardingTracker)
+              const securitiesComplete = reactiveSecuritiesStatus?.hasSecurities || false;
               const schwabCredentialsComplete =
-                loaderData.schwabCredentialsStatus?.hasCredentials || false;
-              const schwabOAuthComplete = loaderData.schwabOAuthStatus?.hasCredentials || false;
-              const modelsComplete = loaderData.modelsStatus?.hasModels || false;
-              const rebalancingGroupsComplete =
-                loaderData.rebalancingGroupsStatus?.hasGroups || false;
+                reactiveSchwabCredentialsStatus?.hasCredentials || false;
+              const modelsComplete = reactiveModelsStatus?.hasModels || false;
+              const rebalancingGroupsComplete = reactiveRebalancingGroupsStatus?.hasGroups || false;
 
               const isFullyOnboarded =
                 securitiesComplete &&
@@ -274,11 +318,11 @@ function DashboardComponent() {
 
       {/* Onboarding Tracker - shows progress through setup steps */}
       <OnboardingTracker
-        schwabCredentialsStatusProp={loaderData.schwabCredentialsStatus}
-        schwabOAuthStatusProp={loaderData.schwabOAuthStatus}
-        rebalancingGroupsStatus={loaderData.rebalancingGroupsStatus}
-        securitiesStatusProp={loaderData.securitiesStatus}
-        modelsStatusProp={loaderData.modelsStatus}
+        schwabCredentialsStatusProp={reactiveSchwabCredentialsStatus}
+        schwabOAuthStatusProp={{ hasCredentials: schwabOAuthComplete }}
+        rebalancingGroupsStatus={reactiveRebalancingGroupsStatus}
+        securitiesStatusProp={reactiveSecuritiesStatus}
+        modelsStatusProp={reactiveModelsStatus}
       />
 
       {shouldShowRebalancingSection && <DashboardMetrics metrics={metrics} />}

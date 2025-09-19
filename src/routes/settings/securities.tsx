@@ -1,11 +1,20 @@
 import { useQuery } from '@tanstack/react-query';
 import { createFileRoute, redirect } from '@tanstack/react-router';
-import { useMemo } from 'react';
 import { SecuritiesTable } from '../../components/dashboard/securities-table';
 import { ExportButton } from '../../components/ui/export-button';
-import { getIndices, getSnP500Data } from '../../lib/api';
 import { exportSP500ToExcel } from '../../lib/excel-export';
-import { getDashboardDataServerFn } from '../../lib/server-functions';
+import { getDashboardDataServerFn, getSecuritiesDataServerFn } from '../../lib/server-functions';
+
+// Extended security data type that includes optional properties
+interface ExtendedSecurityData {
+  ticker: string;
+  name: string;
+  price: number;
+  sector?: string;
+  industry?: string;
+  marketCap?: string;
+  peRatio?: number;
+}
 
 export const Route = createFileRoute('/settings/securities')({
   component: SecuritiesComponent,
@@ -25,8 +34,21 @@ export const Route = createFileRoute('/settings/securities')({
   }),
   loader: async ({ context: _context }) => {
     try {
-      // Try to load dashboard data (will fail if not authenticated)
-      return await getDashboardDataServerFn();
+      // Load dashboard data for authentication and base data
+      const dashboardData = await getDashboardDataServerFn();
+
+      // For securities page, we also need filtered securities data
+      // Initially load without filters to get all data
+      const securitiesData = await getSecuritiesDataServerFn({
+        data: {},
+      });
+
+      return {
+        ...dashboardData,
+        securities: securitiesData.securities,
+        indices: securitiesData.indices,
+        indexMembers: securitiesData.indexMembers,
+      };
     } catch (error) {
       // If authentication error, redirect to login
       if (error instanceof Error && error.message.includes('Authentication required')) {
@@ -43,37 +65,54 @@ function SecuritiesComponent() {
   const search = Route.useSearch();
   const navigate = Route.useNavigate();
 
-  const { data: securitiesData, isLoading: securitiesLoading } = useQuery({
-    queryKey: ['securitiesData'],
-    queryFn: getSnP500Data,
-    initialData: loaderData.sp500Data,
-    staleTime: 1000 * 60 * 60, // 1 hour
+  // Use filtered data from server with reactive updates and pagination
+  const { data: filteredData, isLoading } = useQuery({
+    queryKey: [
+      'securitiesData',
+      search.index,
+      search.search,
+      search.page,
+      search.pageSize,
+      search.sortBy,
+      search.sortOrder,
+    ],
+    queryFn: () =>
+      getSecuritiesDataServerFn({
+        data: {
+          indexId: search.index || undefined,
+          search: search.search || undefined,
+          page: search.page,
+          pageSize: search.pageSize,
+          sortBy: search.sortBy,
+          sortOrder: search.sortOrder,
+        },
+      }),
+    initialData: {
+      securities: loaderData.securities || [],
+      indices: loaderData.indices || [],
+      indexMembers: loaderData.indexMembers || [],
+      pagination: {
+        page: 1,
+        pageSize: 100,
+        total: loaderData.securities?.length || 0,
+        totalPages: Math.ceil((loaderData.securities?.length || 0) / 100),
+      },
+    },
+    select: (data) => ({
+      ...data,
+      // Use server-provided pagination data
+      pagination: data.pagination || {
+        page: 1,
+        pageSize: 100,
+        total: data.securities?.length || 0,
+        totalPages: Math.ceil((data.securities?.length || 0) / 100),
+      },
+    }),
+    staleTime: 1000 * 60 * 5, // 5 minutes (reduced from 1 hour for better responsiveness)
   });
 
-  const { data: indices, isLoading: indicesLoading } = useQuery({
-    queryKey: ['indices'],
-    queryFn: getIndices,
-    initialData: loaderData.indices,
-    staleTime: 1000 * 60 * 60, // 1 hour
-  });
-
-  // Client-side filtering of securities data
-  const filteredSecurities = useMemo(() => {
-    if (!securitiesData || securitiesData.length === 0) return [];
-    if (!search.index) return securitiesData;
-
-    // Get index members from loader data
-    const indexMembers = loaderData.indexMembers || [];
-
-    // Filter securities based on index membership
-    const membersInIndex = indexMembers
-      .filter((member) => member.indexId === search.index)
-      .map((member) => member.securityId);
-
-    return securitiesData.filter((security) => membersInIndex.includes(security.ticker));
-  }, [securitiesData, search.index, loaderData.indexMembers]);
-
-  const isLoading = securitiesLoading || indicesLoading;
+  const securitiesData = filteredData?.securities || [];
+  const indices = filteredData?.indices || [];
 
   const handleIndexChange = (indexId: string) => {
     navigate({
@@ -108,9 +147,19 @@ function SecuritiesComponent() {
             <p className="mt-2 text-sm text-gray-600">Browse and filter securities data</p>
           </div>
           <div className="flex space-x-2">
-            {filteredSecurities && filteredSecurities.length > 0 && (
+            {securitiesData && securitiesData.length > 0 && (
               <ExportButton
-                onExport={() => exportSP500ToExcel(filteredSecurities)}
+                onExport={() =>
+                  exportSP500ToExcel(
+                    securitiesData.map((s) => ({
+                      ...(s as ExtendedSecurityData),
+                      marketCap: (s as ExtendedSecurityData).marketCap || 'N/A',
+                      industry: s.industry || 'Unknown',
+                      sector: s.sector || 'Unknown',
+                      peRatio: (s as ExtendedSecurityData).peRatio,
+                    })),
+                  )
+                }
                 label="Export Securities"
               />
             )}
@@ -121,8 +170,14 @@ function SecuritiesComponent() {
       <div className="bg-white shadow rounded-lg">
         <div className="px-4 py-5 sm:p-6">
           <SecuritiesTable
-            sp500Data={filteredSecurities || []}
-            indices={indices || []}
+            sp500Data={securitiesData.map((s) => ({
+              ...(s as ExtendedSecurityData),
+              marketCap: (s as ExtendedSecurityData).marketCap || 'N/A',
+              industry: s.industry || 'Unknown',
+              sector: s.sector || 'Unknown',
+              peRatio: (s as ExtendedSecurityData).peRatio,
+            }))}
+            indices={indices}
             selectedIndex={search.index}
             onIndexChange={handleIndexChange}
             searchParams={search}

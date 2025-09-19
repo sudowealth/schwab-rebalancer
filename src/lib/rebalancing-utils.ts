@@ -258,8 +258,6 @@ export const generateTopHoldingsData = (
   return result;
 };
 
-// Removed: GenerateTopHoldingsDataResult - was unused internal type
-
 // Calculate sleeve allocations for each account
 interface SleeveData {
   sleeveId: string;
@@ -720,10 +718,6 @@ export const calculateSleeveAllocations = (
   return results;
 };
 
-// Removed: CalculateSleeveAllocationsGroup, CalculateSleeveAllocationsAccountHoldings, CalculateSleeveAllocationsSleeveMembers, CalculateSleeveAllocationsTransactions - were unused internal types
-
-// Removed: GenerateAllocationDataAccountHoldings, GenerateTopHoldingsDataAccountHoldings - were unused internal types
-
 // Calculate target securities for a sleeve
 interface ModelMember {
   sleeveId: string;
@@ -849,8 +843,6 @@ const calculateSleeveTargetSecurities = (
 
   return targetSecurities;
 };
-
-// Removed: CalculateSleeveTargetSecuritiesModelMember, CalculateSleeveTargetSecuritiesSleeveMembersMap, CalculateSleeveTargetSecuritiesCurrentSleeveData - were unused internal types
 
 // Generate sleeve table data with aggregation
 interface SleeveAllocationDataWithSleeves {
@@ -989,6 +981,4 @@ export const generateSleeveTableData = (
       })
     : [];
 };
-
-// Removed: CalculateSleeveAllocationsResult - was unused internal type
 export type GenerateSleeveTableDataResult = ReturnType<typeof generateSleeveTableData>;

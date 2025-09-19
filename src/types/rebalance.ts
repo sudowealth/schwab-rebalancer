@@ -1,7 +1,5 @@
 export type RebalanceMethod = 'allocation' | 'tlhSwap' | 'tlhRebalance' | 'investCash';
 
-// Removed: RebalanceRequest interface - was unused internal type
-
 export interface Trade {
   accountId: string;
   securityId: string;

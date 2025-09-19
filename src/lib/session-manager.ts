@@ -219,5 +219,3 @@ export class SessionManager {
     }
   }
 }
-
-// Removed: validateSessionSecurity - was unused and never called

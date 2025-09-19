@@ -129,5 +129,3 @@ export const calculateTradeMetrics = {
     return trades.filter((t) => tickers.includes(t.securityId || t.ticker || ''));
   },
 };
-
-// Removed: formatDistanceColor and getBadgeVariant - were unused and never imported

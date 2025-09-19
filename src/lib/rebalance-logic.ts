@@ -1409,7 +1409,3 @@ function consolidateTrades(trades: Trade[]): Trade[] {
   // Filter out trades with zero quantity (shouldn't happen but good safety check)
   return Array.from(consolidatedMap.values()).filter((trade) => Math.abs(trade.qty) > 0.001);
 }
-
-// Removed: ExecuteRebalancePortfolioId, ExecuteRebalanceMethod, ExecuteRebalanceSleeves, ExecuteRebalanceWashSaleRestrictions, ExecuteRebalanceReplacementCandidates, ExecuteRebalanceResult - were unused internal types
-
-// Removed: CalculateAllocationRebalanceResult, CalculateSleeveBasedAllocationRebalanceResult, CalculateTLHSwapResult, CalculateTLHAndRebalanceResult - were unused internal types

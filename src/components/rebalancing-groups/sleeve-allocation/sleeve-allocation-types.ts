@@ -51,20 +51,25 @@ export interface SleeveTableData extends Record<string, unknown> {
   hasWashSaleRisk?: boolean;
   washSaleInfo?: unknown;
   currentPrice?: number;
+  totalGainLoss?: number;
+  longTermGainLoss?: number;
+  shortTermGainLoss?: number;
+  accountNames?: string[];
 }
 
 export interface SleeveAllocationData extends Record<string, unknown> {
   accountId: string;
   accountName: string;
-  accountType: string;
-  accountNumber: string;
-  totalValue: number;
+  accountType?: string;
+  accountNumber?: string;
+  totalValue?: number;
   sleeves: SleeveTableData[];
 }
 
 import type { RebalancingGroupsResult } from '../../../lib/db-api';
 export type GroupMember = RebalancingGroupsResult[number]['members'][number] & {
   accountName: string; // Ensure accountName is required for UI
+  balance?: number; // Make balance optional
 };
 
 // Import base types from central location
@@ -103,6 +108,5 @@ export interface SleeveAllocationTableProps {
   onTradeQtyChange?: (ticker: string, newQty: number, isPreview?: boolean) => void;
   accountHoldings?: AccountHolding[];
   renderSummaryCards?: () => ReactNode;
+  groupId: string;
 }
-
-// Removed: TradeCalculationResult - was unused internal type

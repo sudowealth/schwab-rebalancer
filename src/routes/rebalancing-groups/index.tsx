@@ -4,10 +4,7 @@ import { useEffect, useState } from 'react';
 import { AddRebalancingGroupModal } from '../../components/rebalancing-groups/add-rebalancing-group-modal';
 import { Badge } from '../../components/ui/badge';
 import type { RebalancingGroup } from '../../lib/schemas';
-import {
-  getGroupAccountHoldingsServerFn,
-  getRebalancingGroupsServerFn,
-} from '../../lib/server-functions';
+import { getHoldingsForMultipleGroupsServerFn } from '../../lib/server-functions';
 
 export const Route = createFileRoute('/rebalancing-groups/')({
   component: RebalancingGroupsComponent,
@@ -20,35 +17,30 @@ export const Route = createFileRoute('/rebalancing-groups/')({
   },
   loader: async () => {
     try {
-      // Server function handles authentication
-      const groups = await getRebalancingGroupsServerFn();
+      // Single server function call gets all groups and holdings efficiently
+      const { groups, holdings } = await getHoldingsForMultipleGroupsServerFn();
 
-      // Get account holdings for all groups to calculate proper balances
-      const updatedGroups = await Promise.all(
-        groups.map(async (group) => {
-          const accountIds = group.members.map((member) => member.accountId);
-          const accountHoldings =
-            accountIds.length > 0
-              ? await getGroupAccountHoldingsServerFn({
-                  data: { accountIds },
-                })
-              : [];
+      // Create a map of account balances for efficient lookup
+      const accountBalanceMap = new Map<string, number>();
+      holdings.forEach((account) => {
+        accountBalanceMap.set(account.accountId, account.accountBalance);
+      });
 
-          // Update group members with calculated balances from holdings
-          const updatedMembers = group.members.map((member) => {
-            const accountData = accountHoldings.find((ah) => ah.accountId === member.accountId);
-            return {
-              ...member,
-              balance: accountData ? accountData.accountBalance : member.balance,
-            };
-          });
-
+      // Update group members with calculated balances from holdings
+      const updatedGroups = groups.map((group) => {
+        const updatedMembers = group.members.map((member) => {
+          const balance = accountBalanceMap.get(member.accountId);
           return {
-            ...group,
-            members: updatedMembers,
+            ...member,
+            balance: balance ?? member.balance ?? 0,
           };
-        }),
-      );
+        });
+
+        return {
+          ...group,
+          members: updatedMembers,
+        };
+      });
 
       return { groups: updatedGroups };
     } catch (error) {

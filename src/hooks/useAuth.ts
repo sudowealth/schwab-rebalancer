@@ -2,8 +2,6 @@ import { useSession } from '~/lib/auth-client';
 
 export type UserRole = 'user' | 'admin';
 
-// Removed: User interface - was unused internal type
-
 export function useAuth() {
   const { data: session, isPending, error } = useSession();
 

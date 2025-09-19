@@ -125,8 +125,6 @@ export interface SchwabCredentials {
   schwabClientId: string;
 }
 
-// Removed: SchwabClientConfig interface - was unused internal type
-
 export class SchwabApiService {
   private db = getDatabaseSync();
   private schwabAuth: AuthClient | null = null;
