@@ -10,6 +10,7 @@ import {
   X,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import type { YahooSyncResult } from '../lib/schemas';
 import {
   getHeldAndSleeveTickersServerFn,
   getHeldPositionTickersServerFn,
@@ -39,12 +40,6 @@ interface ImportResult {
 }
 
 interface SchwabSyncResult {
-  success: boolean;
-  recordsProcessed: number;
-  errorMessage?: string;
-}
-
-interface YahooSyncResult {
   success: boolean;
   recordsProcessed: number;
   errorMessage?: string;
@@ -369,6 +364,8 @@ export function SchwabIntegration() {
                 recordsProcessed: 0,
                 errorMessage:
                   yahooError instanceof Error ? yahooError.message : 'Yahoo sync failed',
+                details: [],
+                logId: '',
               });
             } finally {
               setIsSyncingYahoo(false);
@@ -417,6 +414,8 @@ export function SchwabIntegration() {
         success: false,
         recordsProcessed: 0,
         errorMessage: error instanceof Error ? error.message : 'Unknown error occurred',
+        details: [],
+        logId: '',
       });
     },
   });

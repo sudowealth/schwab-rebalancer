@@ -8,8 +8,6 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-import { createServerRootRoute } from '@tanstack/react-start/server'
-
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SchwabRouteImport } from './routes/schwab'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
@@ -31,10 +29,6 @@ import { Route as ModelsModelIdRouteImport } from './routes/models/$modelId'
 import { Route as AdminUsersRouteImport } from './routes/admin/users'
 import { Route as AdminStatsRouteImport } from './routes/admin/stats'
 import { Route as ApiWorkersYahooSyncRouteImport } from './routes/api/workers/yahoo-sync'
-import { ServerRoute as ApiHealthServerRouteImport } from './routes/api/health'
-import { ServerRoute as ApiAuthSplatServerRouteImport } from './routes/api/auth/$'
-
-const rootServerRouteImport = createServerRootRoute()
 
 const SchwabRoute = SchwabRouteImport.update({
   id: '/schwab',
@@ -136,16 +130,6 @@ const ApiWorkersYahooSyncRoute = ApiWorkersYahooSyncRouteImport.update({
   id: '/api/workers/yahoo-sync',
   path: '/api/workers/yahoo-sync',
   getParentRoute: () => rootRouteImport,
-} as any)
-const ApiHealthServerRoute = ApiHealthServerRouteImport.update({
-  id: '/api/health',
-  path: '/api/health',
-  getParentRoute: () => rootServerRouteImport,
-} as any)
-const ApiAuthSplatServerRoute = ApiAuthSplatServerRouteImport.update({
-  id: '/api/auth/$',
-  path: '/api/auth/$',
-  getParentRoute: () => rootServerRouteImport,
 } as any)
 
 export interface FileRoutesByFullPath {
@@ -297,31 +281,6 @@ export interface RootRouteChildren {
   SleevesIndexRoute: typeof SleevesIndexRoute
   ApiWorkersYahooSyncRoute: typeof ApiWorkersYahooSyncRoute
 }
-export interface FileServerRoutesByFullPath {
-  '/api/health': typeof ApiHealthServerRoute
-  '/api/auth/$': typeof ApiAuthSplatServerRoute
-}
-export interface FileServerRoutesByTo {
-  '/api/health': typeof ApiHealthServerRoute
-  '/api/auth/$': typeof ApiAuthSplatServerRoute
-}
-export interface FileServerRoutesById {
-  __root__: typeof rootServerRouteImport
-  '/api/health': typeof ApiHealthServerRoute
-  '/api/auth/$': typeof ApiAuthSplatServerRoute
-}
-export interface FileServerRouteTypes {
-  fileServerRoutesByFullPath: FileServerRoutesByFullPath
-  fullPaths: '/api/health' | '/api/auth/$'
-  fileServerRoutesByTo: FileServerRoutesByTo
-  to: '/api/health' | '/api/auth/$'
-  id: '__root__' | '/api/health' | '/api/auth/$'
-  fileServerRoutesById: FileServerRoutesById
-}
-export interface RootServerRouteChildren {
-  ApiHealthServerRoute: typeof ApiHealthServerRoute
-  ApiAuthSplatServerRoute: typeof ApiAuthSplatServerRoute
-}
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
@@ -467,24 +426,6 @@ declare module '@tanstack/react-router' {
     }
   }
 }
-declare module '@tanstack/react-start/server' {
-  interface ServerFileRoutesByPath {
-    '/api/health': {
-      id: '/api/health'
-      path: '/api/health'
-      fullPath: '/api/health'
-      preLoaderRoute: typeof ApiHealthServerRouteImport
-      parentRoute: typeof rootServerRouteImport
-    }
-    '/api/auth/$': {
-      id: '/api/auth/$'
-      path: '/api/auth/$'
-      fullPath: '/api/auth/$'
-      preLoaderRoute: typeof ApiAuthSplatServerRouteImport
-      parentRoute: typeof rootServerRouteImport
-    }
-  }
-}
 
 interface AdminRouteChildren {
   AdminStatsRoute: typeof AdminStatsRoute
@@ -543,10 +484,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-const rootServerRouteChildren: RootServerRouteChildren = {
-  ApiHealthServerRoute: ApiHealthServerRoute,
-  ApiAuthSplatServerRoute: ApiAuthSplatServerRoute,
-}
-export const serverRouteTree = rootServerRouteImport
-  ._addFileChildren(rootServerRouteChildren)
-  ._addFileTypes<FileServerRouteTypes>()

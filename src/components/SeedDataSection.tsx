@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { AlertCircle, CheckCircle, Database, Loader2, Package, TrendingUp, X } from 'lucide-react';
 import { useState } from 'react';
+import type { YahooSyncResult } from '../lib/schemas';
 import {
   seedDemoDataServerFn,
   seedGlobalEquityModelServerFn,
@@ -25,13 +26,6 @@ interface SchwabSyncResult {
   success: boolean;
   recordsProcessed: number;
   errorMessage?: string;
-}
-
-interface YahooSyncResult {
-  success: boolean;
-  recordsProcessed: number;
-  errorMessage?: string;
-  logId?: string;
 }
 
 interface SeedSecuritiesResult {

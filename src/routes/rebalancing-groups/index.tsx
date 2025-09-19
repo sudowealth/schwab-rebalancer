@@ -3,7 +3,7 @@ import { FileText } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { AddRebalancingGroupModal } from '../../components/rebalancing-groups/add-rebalancing-group-modal';
 import { Badge } from '../../components/ui/badge';
-import type { RebalancingGroup } from '../../lib/schemas';
+import type { RebalancingGroup, RebalancingGroupMember } from '../../lib/schemas';
 import { getHoldingsForMultipleGroupsServerFn } from '../../lib/server-functions';
 
 export const Route = createFileRoute('/rebalancing-groups/')({
@@ -27,8 +27,8 @@ export const Route = createFileRoute('/rebalancing-groups/')({
       });
 
       // Update group members with calculated balances from holdings
-      const updatedGroups = groups.map((group) => {
-        const updatedMembers = group.members.map((member) => {
+      const updatedGroups = groups.map((group: RebalancingGroup) => {
+        const updatedMembers = group.members.map((member: RebalancingGroupMember) => {
           const balance = accountBalanceMap.get(member.accountId);
           return {
             ...member,
@@ -105,7 +105,7 @@ function RebalancingGroupsComponent() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {groups.map((group) => (
+        {groups.map((group: RebalancingGroup) => (
           <div
             key={group.id}
             className="bg-white shadow rounded-lg hover:shadow-md transition-shadow relative"
@@ -147,7 +147,7 @@ function RebalancingGroupsComponent() {
 
               {/* Account Members */}
               <div className="space-y-3">
-                {group.members.slice(0, 3).map((member) => (
+                {group.members.slice(0, 3).map((member: RebalancingGroupMember) => (
                   <div key={member.id} className="flex items-center justify-between">
                     <span className="text-sm text-gray-700">{member.accountName}</span>
                     <span className="text-sm font-medium text-gray-900">

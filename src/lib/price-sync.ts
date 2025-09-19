@@ -400,7 +400,7 @@ export class PriceSyncService {
       return changes;
     } catch (error) {
       console.error(`❌ [PriceSync] Failed to update security info for ${ticker}:`, error);
-      return {};
+      return {} as Record<string, { old: unknown; new: unknown }>;
     }
   }
 
