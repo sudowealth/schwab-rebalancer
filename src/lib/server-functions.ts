@@ -17,42 +17,6 @@ const requireAdmin = async () => {
   return mod.requireAdmin();
 };
 
-// Consistent authentication helper function for server functions
-export const ensureAuthenticatedServerFn = async () => {
-  try {
-    const { user } = await requireAuth();
-    return { user };
-  } catch (_error) {
-    throw new Error('Authentication required');
-  }
-};
-
-// Dedicated server function for authentication consistency across routes
-export const ensureAuthenticatedRouteServerFn = createServerFn({
-  method: 'GET',
-}).handler(async () => {
-  const { user } = await requireAuth();
-  return {
-    success: true,
-    user: {
-      id: user.id,
-      email: user.email,
-      role: user.role,
-      name: user.name,
-    },
-  };
-});
-
-// Consistent admin authentication helper function
-export const ensureAdminAuthenticatedServerFn = async () => {
-  try {
-    const { user } = await requireAdmin();
-    return { user };
-  } catch (_error) {
-    throw new Error('Admin authentication required');
-  }
-};
-
 import { CASH_TICKER, isAnyCashTicker, isBaseCashTicker, MANUAL_CASH_TICKER } from './constants';
 import type { AccountHoldingsResult } from './db-api';
 import {
@@ -63,7 +27,7 @@ import {
   withRetry,
 } from './error-handler';
 import type { RebalanceSecurityData, RebalanceSleeveDataNew } from './rebalance-logic';
-import type { RebalancingGroup, Trade } from './schemas';
+import type { Trade } from './schemas';
 import type { SyncResult } from './schwab-sync';
 import { SessionManager } from './session-manager';
 
@@ -88,41 +52,6 @@ export const getSleevesServerFn = createServerFn({ method: 'GET' }).handler(asyn
 });
 
 // Server function to get dashboard data - runs ONLY on server
-// Server function to get securities data with optional filtering and pagination - runs ONLY on server
-export const getSecuritiesDataServerFn = createServerFn({
-  method: 'POST',
-})
-  .validator(
-    (data: {
-      indexId?: string;
-      search?: string;
-      page?: number;
-      pageSize?: number;
-      sortBy?: string;
-      sortOrder?: 'asc' | 'desc';
-    }) => data,
-  )
-  .handler(async ({ data }) => {
-    await requireAuth();
-
-    // Import database API only on the server
-    const { getFilteredSecuritiesData } = await import('./db-api');
-
-    // Server-side filtering, pagination, and sorting
-    const securitiesData = await getFilteredSecuritiesData(
-      data.indexId,
-      data.search,
-      data.page,
-      data.pageSize,
-      data.sortBy,
-      data.sortOrder,
-    );
-
-    return {
-      ...securitiesData,
-    };
-  });
-
 export const getDashboardDataServerFn = createServerFn({
   method: 'GET',
 }).handler(async () => {
@@ -132,22 +61,6 @@ export const getDashboardDataServerFn = createServerFn({
   const { loadDashboardData } = await import('./server-only');
   const data = await loadDashboardData(user.id, user);
   return data;
-});
-
-// Server function to verify user access - runs ONLY on server
-export const verifyUserAccessServerFn = createServerFn({
-  method: 'GET',
-}).handler(async () => {
-  const { user } = await requireAuth();
-  return {
-    success: true,
-    user: {
-      id: user.id,
-      email: user.email,
-      role: user.role,
-      name: user.name,
-    },
-  };
 });
 
 // Lightweight server functions for individual dashboard queries
@@ -206,78 +119,6 @@ export const getPortfolioMetricsServerFn = createServerFn({ method: 'GET' }).han
   const { getPortfolioMetrics } = await import('./db-api');
   return getPortfolioMetrics(user.id);
 });
-
-// Server function to generate allocation data for rebalancing groups
-export const generateAllocationDataServerFn = createServerFn({
-  method: 'POST',
-})
-  .validator(
-    (data: {
-      allocationView: 'account' | 'sector' | 'industry' | 'sleeve';
-      groupId: string;
-      totalValue: number;
-    }) => data,
-  )
-  .handler(async ({ data }) => {
-    const { user } = await requireAuth();
-
-    // Import utilities and data access functions
-    const { generateAllocationData } = await import('./rebalancing-utils');
-    const { getAccountHoldings } = await import('./db-api');
-    const { getRebalancingGroupById } = await import('./db-api');
-    const { getSnP500Data } = await import('./db-api');
-
-    // Get the group data to verify ownership
-    const group = await getRebalancingGroupById(user.id, data.groupId);
-    if (!group) {
-      throw new Error('Group not found or access denied');
-    }
-
-    // Get account holdings and S&P 500 data in parallel
-    const [accountHoldings, sp500Data] = await Promise.all([
-      getAccountHoldings(group.members.map((m) => m.accountId)),
-      getSnP500Data(),
-    ]);
-
-    // Generate allocation data on server
-    const allocationData = generateAllocationData(
-      data.allocationView,
-      group,
-      accountHoldings,
-      sp500Data,
-      data.totalValue,
-    );
-
-    return allocationData;
-  });
-
-// Server function to generate top holdings data for rebalancing groups
-export const generateTopHoldingsDataServerFn = createServerFn({
-  method: 'POST',
-})
-  .validator((data: { groupId: string; totalValue: number; limit?: number }) => data)
-  .handler(async ({ data }) => {
-    const { user } = await requireAuth();
-
-    // Import utilities and data access functions
-    const { generateTopHoldingsData } = await import('./rebalancing-utils');
-    const { getAccountHoldings } = await import('./db-api');
-    const { getRebalancingGroupById } = await import('./db-api');
-
-    // Get the group data to verify ownership
-    const group = await getRebalancingGroupById(user.id, data.groupId);
-    if (!group) {
-      throw new Error('Group not found or access denied');
-    }
-
-    // Get account holdings
-    const accountHoldings = await getAccountHoldings(group.members.map((m) => m.accountId));
-
-    // Generate top holdings data on server
-    const holdingsData = generateTopHoldingsData(accountHoldings, data.totalValue, data.limit);
-
-    return holdingsData;
-  });
 
 // Server function to clear cache - runs ONLY on server
 export const clearCacheServerFn = createServerFn({ method: 'POST' }).handler(async () => {
@@ -915,27 +756,6 @@ export const getGroupAccountHoldingsServerFn = createServerFn({
   });
 
 export type GroupAccountHoldingsResult = AccountHoldingsResult;
-
-// Server function to get holdings for multiple rebalancing groups - runs ONLY on server
-export const getHoldingsForMultipleGroupsServerFn = createServerFn({
-  method: 'GET',
-}).handler(async (): Promise<{ groups: RebalancingGroup[]; holdings: AccountHoldingsResult }> => {
-  const { user } = await requireAuth();
-
-  // Import database API only on the server
-  const { getRebalancingGroups, getAccountHoldings } = await import('./db-api');
-
-  // Get all groups for the user
-  const groups = await getRebalancingGroups(user.id);
-
-  // Collect all account IDs from all groups
-  const allAccountIds = groups.flatMap((group) => group.members.map((member) => member.accountId));
-
-  // Get holdings for all accounts in a single query
-  const holdings = allAccountIds.length > 0 ? await getAccountHoldings(allAccountIds) : [];
-
-  return { groups, holdings };
-});
 
 // Server function to get sleeve members (target securities) - runs ONLY on server
 export const getSleeveMembersServerFn = createServerFn({ method: 'POST' })

@@ -6,19 +6,13 @@ import { DeleteSleeveModal } from '../../components/sleeves/delete-sleeve-modal'
 import { EditSleeveModal } from '../../components/sleeves/edit-sleeve-modal';
 import { Button } from '../../components/ui/button';
 import type { Sleeve, Transaction } from '../../lib/schemas';
-import {
-  ensureAuthenticatedRouteServerFn,
-  getDashboardDataServerFn,
-} from '../../lib/server-functions';
+import { getDashboardDataServerFn } from '../../lib/server-functions';
 
 export const Route = createFileRoute('/sleeves/')({
   component: SleevesComponent,
   loader: async () => {
     try {
-      // Dedicated authentication check
-      await ensureAuthenticatedRouteServerFn();
-
-      // Load only the dashboard data needed for this route
+      // Server function handles authentication
       const data = await getDashboardDataServerFn();
       return data;
     } catch (error) {

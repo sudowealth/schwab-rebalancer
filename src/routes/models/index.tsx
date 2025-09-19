@@ -8,8 +8,9 @@ export const Route = createFileRoute('/models/')({
   component: ModelsComponent,
   loader: async () => {
     try {
-      const models = await getModelsServerFn();
-      return { models };
+      // Just handle authentication, data will be fetched via React Query
+      await getModelsServerFn();
+      return { authenticated: true };
     } catch (error) {
       // If authentication error, redirect to login
       if (error instanceof Error && error.message.includes('Authentication required')) {
@@ -22,7 +23,6 @@ export const Route = createFileRoute('/models/')({
 });
 
 function ModelsComponent() {
-  const { models: initialModels } = Route.useLoaderData();
   const {
     data: models = [],
     isLoading,
@@ -30,7 +30,6 @@ function ModelsComponent() {
   } = useQuery({
     queryKey: ['models'],
     queryFn: () => getModelsServerFn(),
-    initialData: initialModels,
   });
 
   return (

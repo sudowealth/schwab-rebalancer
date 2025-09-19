@@ -1,42 +1,90 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { createFileRoute, useNavigate, useSearch } from '@tanstack/react-router';
+import { useQueryClient } from '@tanstack/react-query';
+import { createFileRoute, redirect } from '@tanstack/react-router';
 import { AlertTriangle, Database, Trash2 } from 'lucide-react';
-import { useId, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import { Alert, AlertDescription, AlertTitle } from '~/components/ui/alert';
 import { Button } from '~/components/ui/button';
 import { Input } from '~/components/ui/input';
 import { Label } from '~/components/ui/label';
-import { truncateDataServerFn } from '~/lib/server-functions';
+import { truncateDataServerFn, verifyAdminAccessServerFn } from '~/lib/server-functions';
 
 export const Route = createFileRoute('/admin/')({
   component: AdminDashboardIndex,
-  validateSearch: (search: Record<string, unknown>) => ({
-    showTruncate: (search.showTruncate as boolean) ?? false,
-  }),
+  loader: async () => {
+    try {
+      // Server-side admin verification
+      const result = await verifyAdminAccessServerFn();
+      return result;
+    } catch (error) {
+      // If not admin or not authenticated, redirect
+      if (error instanceof Error) {
+        if (error.message.includes('Admin access required')) {
+          throw redirect({ to: '/' }); // Regular users go to dashboard
+        }
+        if (error.message.includes('Authentication required')) {
+          throw redirect({ to: '/login', search: { reset: '', redirect: '/' } });
+        }
+      }
+      throw error;
+    }
+  },
 });
 
 function AdminDashboardIndex() {
   // Route is already protected by server-side loader
   const queryClient = useQueryClient();
-  const navigate = useNavigate();
-  const { showTruncate } = useSearch({ from: '/admin/' });
   const confirmTextId = useId();
+  const [showTruncateModal, setShowTruncateModal] = useState(false);
   const [confirmText, setConfirmText] = useState('');
+  const [isTruncating, setIsTruncating] = useState(false);
+  const [truncateResult, setTruncateResult] = useState<{
+    success: boolean;
+    message: string;
+    truncatedTables?: number;
+    failedTables?: number;
+    totalTables?: number;
+    failedTableNames?: string[];
+    invalidateAllCaches?: boolean;
+  } | null>(null);
 
-  const truncateMutation = useMutation({
-    mutationFn: truncateDataServerFn,
-    onSuccess: (result) => {
+  // Auto-dismiss the truncate result message after 10 seconds
+  useEffect(() => {
+    if (truncateResult) {
+      const timer = setTimeout(() => {
+        setTruncateResult(null);
+      }, 10000); // 10 seconds
+
+      return () => clearTimeout(timer);
+    }
+  }, [truncateResult]);
+
+  const handleTruncateData = async () => {
+    if (confirmText !== 'TRUNCATE_ALL_DATA') {
+      return;
+    }
+
+    setIsTruncating(true);
+    try {
+      const result = await truncateDataServerFn({ data: { confirmText } });
+      setTruncateResult(result);
+
       // Invalidate all React Query caches if requested by server
       if (result.invalidateAllCaches) {
         console.log('🔄 Invalidating all React Query caches after data truncation');
         queryClient.invalidateQueries();
       }
 
-      // biome-ignore lint/suspicious/noExplicitAny: Complex TanStack Router type requirements
-      navigate({ search: { showTruncate: false } as any });
+      setShowTruncateModal(false);
       setConfirmText('');
-    },
-  });
+    } catch (error) {
+      setTruncateResult({
+        success: false,
+        message: error instanceof Error ? error.message : 'Failed to truncate data',
+      });
+    } finally {
+      setIsTruncating(false);
+    }
+  };
 
   return (
     <div className="px-4 py-8">
@@ -46,47 +94,34 @@ function AdminDashboardIndex() {
       </div>
 
       {/* Show truncate result if any */}
-      {(truncateMutation.data || truncateMutation.error) && (
+      {truncateResult && (
         <Alert
-          className={`mb-6 ${truncateMutation.data?.success ? 'border-green-200 bg-green-50' : 'border-yellow-200 bg-yellow-50'}`}
+          className={`mb-6 ${truncateResult.success ? 'border-green-200 bg-green-50' : 'border-yellow-200 bg-yellow-50'}`}
         >
           <AlertTriangle className="h-4 w-4" />
-          <AlertTitle>
-            {truncateMutation.error
-              ? 'Error'
-              : truncateMutation.data?.success
-                ? 'Success'
-                : 'Partial Success'}
-          </AlertTitle>
+          <AlertTitle>{truncateResult.success ? 'Success' : 'Partial Success'}</AlertTitle>
           <AlertDescription>
             <div className="space-y-2">
-              <p>
-                {truncateMutation.error
-                  ? truncateMutation.error instanceof Error
-                    ? truncateMutation.error.message
-                    : 'Failed to truncate data'
-                  : truncateMutation.data?.message}
-              </p>
-              {truncateMutation.data?.totalTables &&
-                truncateMutation.data?.failedTables !== undefined && (
-                  <div className="text-sm">
-                    <p>
-                      <strong>Results:</strong> {truncateMutation.data.truncatedTables} of{' '}
-                      {truncateMutation.data.totalTables} tables truncated successfully
-                      {truncateMutation.data.failedTables > 0 && (
-                        <>
-                          , {truncateMutation.data.failedTables} failed
-                          {truncateMutation.data.failedTableNames &&
-                            truncateMutation.data.failedTableNames.length > 0 && (
-                              <span className="block mt-1 text-xs text-gray-600">
-                                Failed tables: {truncateMutation.data.failedTableNames.join(', ')}
-                              </span>
-                            )}
-                        </>
-                      )}
-                    </p>
-                  </div>
-                )}
+              <p>{truncateResult.message}</p>
+              {truncateResult.totalTables && truncateResult.failedTables !== undefined && (
+                <div className="text-sm">
+                  <p>
+                    <strong>Results:</strong> {truncateResult.truncatedTables} of{' '}
+                    {truncateResult.totalTables} tables truncated successfully
+                    {truncateResult.failedTables > 0 && (
+                      <>
+                        , {truncateResult.failedTables} failed
+                        {truncateResult.failedTableNames &&
+                          truncateResult.failedTableNames.length > 0 && (
+                            <span className="block mt-1 text-xs text-gray-600">
+                              Failed tables: {truncateResult.failedTableNames.join(', ')}
+                            </span>
+                          )}
+                      </>
+                    )}
+                  </p>
+                </div>
+              )}
             </div>
           </AlertDescription>
         </Alert>
@@ -108,16 +143,13 @@ function AdminDashboardIndex() {
         <AdminCard
           title="Truncate Data"
           description="Reset all financial data for testing"
-          onClick={
-            // biome-ignore lint/suspicious/noExplicitAny: Complex TanStack Router type requirements
-            () => navigate({ search: { showTruncate: true } as any })
-          }
+          onClick={() => setShowTruncateModal(true)}
           destructive
         />
       </div>
 
       {/* Truncate Data Confirmation Modal */}
-      {showTruncate && (
+      {showTruncateModal && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
           <div className="relative top-20 mx-auto p-5 border w-full max-w-md shadow-lg rounded-md bg-white">
             <div className="mt-3">
@@ -163,26 +195,19 @@ function AdminDashboardIndex() {
                 <Button
                   variant="outline"
                   onClick={() => {
-                    navigate({
-                      // biome-ignore lint/suspicious/noExplicitAny: Complex TanStack Router type requirements
-                      search: { showTruncate: false } as any,
-                    });
+                    setShowTruncateModal(false);
                     setConfirmText('');
                   }}
-                  disabled={truncateMutation.isPending}
+                  disabled={isTruncating}
                 >
                   Cancel
                 </Button>
                 <Button
                   variant="destructive"
-                  onClick={() => {
-                    if (confirmText === 'TRUNCATE_ALL_DATA') {
-                      truncateMutation.mutate({ data: { confirmText } });
-                    }
-                  }}
-                  disabled={truncateMutation.isPending || confirmText !== 'TRUNCATE_ALL_DATA'}
+                  onClick={handleTruncateData}
+                  disabled={isTruncating || confirmText !== 'TRUNCATE_ALL_DATA'}
                 >
-                  {truncateMutation.isPending ? (
+                  {isTruncating ? (
                     <>
                       <Database className="h-4 w-4 mr-2 animate-spin" />
                       Truncating...

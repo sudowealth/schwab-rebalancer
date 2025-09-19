@@ -1,24 +1,28 @@
 import { createFileRoute, Link, redirect, useRouter } from '@tanstack/react-router';
-import { ChevronRight, Home } from 'lucide-react';
+import { Edit, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { SecurityModal } from '../../components/dashboard/security-modal';
 import { SleeveModal } from '../../components/dashboard/sleeve-modal';
 import { AccountSummary } from '../../components/rebalancing-groups/account-summary';
-import { AllocationSection } from '../../components/rebalancing-groups/allocation-section';
-import { GroupHeader } from '../../components/rebalancing-groups/group-header';
-import { PortfolioCharts } from '../../components/rebalancing-groups/portfolio-charts';
+import { AllocationChart } from '../../components/rebalancing-groups/allocation-chart';
+import { OrdersBlotter } from '../../components/rebalancing-groups/blotter/orders-blotter';
+import { DeleteRebalancingGroupModal } from '../../components/rebalancing-groups/delete-rebalancing-group-modal';
+import { EditRebalancingGroupModal } from '../../components/rebalancing-groups/edit-rebalancing-group-modal';
+import { RebalanceModal } from '../../components/rebalancing-groups/rebalance-modal';
+import { RebalanceSummaryCards } from '../../components/rebalancing-groups/rebalance-summary-cards';
+import { SleeveAllocationTable } from '../../components/rebalancing-groups/sleeve-allocation/sleeve-allocation-table';
+import type {
+  SortDirection,
+  SortField,
+} from '../../components/rebalancing-groups/sleeve-allocation/sleeve-allocation-table-headers';
 import type { Trade } from '../../components/rebalancing-groups/sleeve-allocation/sleeve-allocation-types';
-import { TradeManagement } from '../../components/rebalancing-groups/trade-management';
-import { useExpansionState } from '../../hooks/use-expansion-state';
-import { useModalState } from '../../hooks/use-modal-state';
-import { useRebalancingState } from '../../hooks/use-rebalancing-state';
+import { TopHoldings } from '../../components/rebalancing-groups/top-holdings';
+import { Badge } from '../../components/ui/badge';
+import { Button } from '../../components/ui/button';
 import { useSleeveAllocations } from '../../hooks/use-sleeve-allocations';
-import { useSortingState } from '../../hooks/use-sorting-state';
-// Removed: generateAllocationData and generateTopHoldingsData - now calculated on server
+import { generateAllocationData, generateTopHoldingsData } from '../../lib/rebalancing-utils';
 import type { Order } from '../../lib/schemas';
 import {
-  generateAllocationDataServerFn,
-  generateTopHoldingsDataServerFn,
   type getDashboardDataServerFn,
   getGroupAccountHoldingsServerFn,
   getGroupOrdersServerFn,
@@ -62,8 +66,6 @@ export const Route = createFileRoute('/rebalancing-groups/$groupId')({
     positions: Awaited<ReturnType<typeof getDashboardDataServerFn>>['positions'];
     transactions: Awaited<ReturnType<typeof getDashboardDataServerFn>>['transactions'];
     proposedTrades: Awaited<ReturnType<typeof getDashboardDataServerFn>>['proposedTrades'];
-    allocationData: Awaited<ReturnType<typeof generateAllocationDataServerFn>>;
-    holdingsData: Awaited<ReturnType<typeof generateTopHoldingsDataServerFn>>;
   }> => {
     try {
       // Server function handles authentication
@@ -105,50 +107,6 @@ export const Route = createFileRoute('/rebalancing-groups/$groupId')({
         };
       });
 
-      // Calculate total portfolio value
-      const totalValue = updatedGroupMembers.reduce(
-        (sum, member) => sum + (member.balance || 0),
-        0,
-      );
-
-      // Perform price sync on the server side before returning data
-      try {
-        await syncGroupPricesIfNeededServerFn({
-          data: { groupId: params.groupId },
-        });
-      } catch (error) {
-        console.warn('⚠️ [Loader] Automatic price sync failed:', error);
-        // Don't fail the loader if price sync fails
-      }
-
-      // Calculate expensive data on the server side for better performance
-      const [allocationData, holdingsData] = await Promise.all([
-        generateAllocationDataServerFn({
-          data: {
-            allocationView: 'sleeve', // Default view
-            groupId: params.groupId,
-            totalValue,
-          },
-        }),
-        generateTopHoldingsDataServerFn({
-          data: {
-            groupId: params.groupId,
-            totalValue,
-            limit: 10, // Top 10 holdings
-          },
-        }),
-      ]);
-
-      // Keep positions and proposedTrades in parallel for now - defer implementation needs type refinement
-      const positionsPromise = getPositionsServerFn();
-      const proposedTradesPromise = getProposedTradesServerFn();
-
-      // Wait for primary data, then resolve secondary data
-      const [positions, proposedTrades] = await Promise.all([
-        positionsPromise,
-        proposedTradesPromise,
-      ]);
-
       return {
         group: {
           ...group,
@@ -158,10 +116,9 @@ export const Route = createFileRoute('/rebalancing-groups/$groupId')({
         sleeveMembers,
         sp500Data,
         transactions,
-        positions,
-        proposedTrades,
-        allocationData,
-        holdingsData,
+        // Defer loading positions and proposedTrades
+        positions: [],
+        proposedTrades: [],
       };
     } catch (error) {
       // If authentication error, redirect to login
@@ -179,47 +136,65 @@ export const Route = createFileRoute('/rebalancing-groups/$groupId')({
 });
 
 function RebalancingGroupDetail() {
-  const {
-    group,
-    accountHoldings,
-    sleeveMembers,
-    sp500Data: _sp500Data,
-    transactions,
-    positions,
-    proposedTrades,
-    allocationData,
-    holdingsData,
-  } = Route.useLoaderData();
-  // Note: positions and proposedTrades are pre-fetched for potential future use in modals
-  // These variables are intentionally unused for now but will be used when modals are restored
-  void positions;
-  void proposedTrades;
+  const { group, accountHoldings, sleeveMembers, sp500Data, transactions } = Route.useLoaderData();
   const router = useRouter();
   const searchParams = Route.useSearch();
 
-  // Custom hooks for state management
-  const expansionState = useExpansionState();
-  const modalState = useModalState();
-  const rebalancingState = useRebalancingState();
-  const _sortingState = useSortingState();
-  const [, setOrdersCountByBucket] = useState({
-    draft: 0,
-    pending: 0,
-    open: 0,
-    done: 0,
-    failed: 0,
-  });
+  const [positions, setPositions] = useState<Awaited<ReturnType<typeof getPositionsServerFn>>>([]);
+  const [proposedTrades, setProposedTrades] = useState<
+    Awaited<ReturnType<typeof getProposedTradesServerFn>>
+  >([]);
 
-  // Additional state
+  // Trigger automatic price sync when component mounts (if user is connected to Schwab)
+  useEffect(() => {
+    const triggerPriceSync = async () => {
+      try {
+        const syncResult = await syncGroupPricesIfNeededServerFn({
+          data: { groupId: group.id },
+        });
+
+        if (syncResult.synced && syncResult.updatedCount && syncResult.updatedCount > 0) {
+          console.log('🔄 [GroupComponent] Prices updated, invalidating router data...');
+          router.invalidate();
+        }
+      } catch (error) {
+        console.warn('⚠️ [GroupComponent] Automatic price sync failed:', error);
+      }
+    };
+
+    triggerPriceSync();
+  }, [group.id, router]);
+
+  const [selectedAccount, setSelectedAccount] = useState<string | null>(null);
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [expandedSleeves, setExpandedSleeves] = useState<Set<string>>(new Set());
+  const [expandedAccounts, setExpandedAccounts] = useState<Set<string>>(new Set());
+  const [isAllExpanded, setIsAllExpanded] = useState(false);
   const [allocationView, setAllocationView] = useState<
     'account' | 'sector' | 'industry' | 'sleeve'
   >('sleeve');
+  const [selectedTicker, setSelectedTicker] = useState<string | null>(null);
+  const [showSecurityModal, setShowSecurityModal] = useState(false);
+  const [selectedSleeve, setSelectedSleeve] = useState<string | null>(null);
+  const [showSleeveModal, setShowSleeveModal] = useState(false);
   const [groupingMode, setGroupingMode] = useState<'sleeve' | 'account'>('sleeve');
-  const [selectedAccount, setSelectedAccount] = useState<string | null>(null);
-
-  // Modal state for edit/delete group
-  const [_showEditModal, setShowEditModal] = useState(false);
-  const [_showDeleteModal, setShowDeleteModal] = useState(false);
+  const [rebalanceModalOpen, setRebalanceModalOpen] = useState(false);
+  const [rebalanceLoading, setRebalanceLoading] = useState(false);
+  const [syncingPrices, setSyncingPrices] = useState(false);
+  const [waitingForSync, setWaitingForSync] = useState(false);
+  const [pendingMethod, setPendingMethod] = useState<RebalanceMethod | null>(null);
+  const [pendingCashAmount, setPendingCashAmount] = useState<number | undefined>(undefined);
+  const [rebalanceTrades, setRebalanceTrades] = useState<Trade[]>([]);
+  const [sortField, setSortField] = useState<SortField | undefined>(undefined);
+  const [sortDirection, setSortDirection] = useState<SortDirection>(null);
+  const [, setOrdersCountByBucket] = useState<{
+    draft: number;
+    pending: number;
+    open: number;
+    done: number;
+    failed: number;
+  } | null>(null);
 
   // Calculate total portfolio value
   const totalValue = group.members.reduce((sum, member) => sum + (member.balance || 0), 0);
@@ -241,81 +216,104 @@ function RebalancingGroupDetail() {
     totalValue,
   );
 
-  // Transform sleeve allocation data to match AllocationSection expected types
-  const transformedSleeveAllocationData = sleeveAllocationData.map((account) => ({
-    ...account,
-    sleeves: account.sleeves.map((sleeve) => ({
-      ...sleeve,
-      targetPercent: sleeve.targetPercent,
-      totalGainLoss: 0, // Individual sleeves don't have aggregated gain/loss
-      longTermGainLoss: 0,
-      shortTermGainLoss: 0,
-      accountNames: [account.accountName], // Individual sleeve belongs to this account
-      securities: sleeve.securities.map((security) => ({
-        ...security,
-        targetPercent: security.targetPercent,
-        accountNames: Array.from(security.accountNames), // Convert Set<string> to string[]
-        currentPercent: security.currentPercent || 0,
-        difference: security.difference || 0,
-        differencePercent: security.differencePercent || 0,
-        qty: security.qty || 0,
-        isHeld: security.isHeld || false,
-      })),
-    })),
-  }));
-
-  // Transform sleeve table data to match AllocationSection expected types
-  const transformedSleeveTableData = sleeveTableData.map((sleeve) => ({
-    ...sleeve,
-    accountNames: Array.from(sleeve.accountNames), // Convert Set<string> to string[]
-    securities:
-      sleeve.securities?.map((security) => ({
-        ...security,
-        targetPercent: security.targetPercent,
-        accountNames: Array.from(security.accountNames), // Convert Set<string> to string[]
-        currentPercent: security.currentPercent || 0,
-        difference: security.difference || 0,
-        differencePercent: security.differencePercent || 0,
-        qty: security.qty || 0,
-        isHeld: security.isHeld || false,
-      })) || [],
-  }));
-
   // Calculate available cash from sleeve allocation data
-  const _availableCash = useMemo(() => {
+  const availableCash = useMemo(() => {
     // Sum cash across all accounts
     const sleeveData = sleeveTableData.find((sleeve) => sleeve.sleeveId === 'cash');
     return sleeveData?.currentValue || 0;
   }, [sleeveTableData]);
 
-  // Use server-calculated allocation data (for 'sleeve' view by default)
-  // Note: For other views, we would need to make additional server calls
-  const _allocationData = (
-    allocationData as Array<{
-      name: string;
-      value: number;
-      percentage: number;
-      color: string;
-    }>
-  ).filter((item) => item.name != null && item.value != null);
+  // Generate allocation data using utility function
+  const allocationData = useMemo(() => {
+    const rawData = generateAllocationData(
+      allocationView,
+      {
+        ...group,
+        members: group.members.map((member) => ({
+          ...member,
+          accountName: member.accountName || '',
+          balance: member.balance || 0,
+        })),
+      },
+      accountHoldings,
+      sp500Data,
+      totalValue,
+    );
 
-  // Use server-calculated holdings data
-  const _holdingsData = holdingsData;
+    // Filter out any items with undefined name or value
+    return rawData.filter(
+      (
+        item,
+      ): item is {
+        name: string;
+        value: number;
+        percentage: number;
+        color: string;
+      } => item.name != null && item.value != null,
+    );
+  }, [allocationView, group, accountHoldings, sp500Data, totalValue]);
 
-  const _handleTickerClick = (ticker: string) => {
-    modalState.setSelectedTicker(ticker);
-    modalState.setShowSecurityModal(true);
+  // Generate holdings data from actual account holdings (all holdings, sorted by value)
+  const holdingsData = useMemo(() => {
+    return generateTopHoldingsData(accountHoldings, totalValue);
+  }, [accountHoldings, totalValue]);
 
-    // positions and proposedTrades are now pre-fetched in the loader
-    // They can be used directly from Route.useLoaderData()
+  // Helper functions
+  const toggleSleeveExpansion = (sleeveKey: string) => {
+    const newExpanded = new Set(expandedSleeves);
+    if (newExpanded.has(sleeveKey)) {
+      newExpanded.delete(sleeveKey);
+    } else {
+      newExpanded.add(sleeveKey);
+    }
+    setExpandedSleeves(newExpanded);
+
+    // Check if we need to update isAllExpanded
+    if (groupingMode === 'sleeve') {
+      const allSleeveKeys = sleeveTableData.map((sleeve) => sleeve.sleeveId);
+      setIsAllExpanded(allSleeveKeys.every((key: string) => newExpanded.has(key)));
+    }
+  };
+
+  const toggleAccountExpansion = (accountKey: string) => {
+    const newExpanded = new Set(expandedAccounts);
+    if (newExpanded.has(accountKey)) {
+      newExpanded.delete(accountKey);
+    } else {
+      newExpanded.add(accountKey);
+    }
+    setExpandedAccounts(newExpanded);
+
+    // Check if we need to update isAllExpanded when in account mode
+    if (groupingMode === 'account') {
+      const allAccountKeys = sleeveAllocationData.map((account) => account.accountId);
+      setIsAllExpanded(allAccountKeys.every((key) => newExpanded.has(key)));
+    }
+  };
+
+  const handleTickerClick = async (ticker: string) => {
+    setSelectedTicker(ticker);
+    setShowSecurityModal(true);
+
+    // Fetch positions and proposed trades on demand
+    try {
+      const [positionsData, proposedTradesData] = await Promise.all([
+        getPositionsServerFn(),
+        getProposedTradesServerFn(),
+      ]);
+      setPositions(positionsData);
+      setProposedTrades(proposedTradesData);
+    } catch (error) {
+      console.error('Failed to fetch modal data:', error);
+    }
   };
 
   const handleSleeveClick = (sleeveId: string) => {
-    modalState.setSelectedSleeve(sleeveId);
-    modalState.setShowSleeveModal(true);
+    setSelectedSleeve(sleeveId);
+    setShowSleeveModal(true);
   };
 
-  const _handleSleeveClickByName = (sleeveName: string) => {
+  const handleSleeveClickByName = (sleeveName: string) => {
     // Find sleeve ID from sleeve name
     const sleeveData = sleeveMembers?.find((s) => s.sleeveName === sleeveName);
     if (sleeveData) {
@@ -323,12 +321,30 @@ function RebalancingGroupDetail() {
     }
   };
 
-  const _handleRebalance = () => {
-    rebalancingState.setRebalanceModalOpen(true);
+  const handleRebalance = () => {
+    setRebalanceModalOpen(true);
   };
 
-  const _handleTradeQtyChange = (ticker: string, newQty: number, _isPreview = false) => {
-    rebalancingState.setRebalanceTrades((prevTrades) => {
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      // Cycle through: asc -> desc -> null
+      if (sortDirection === 'asc') {
+        setSortDirection('desc');
+      } else if (sortDirection === 'desc') {
+        setSortDirection(null);
+        setSortField(undefined);
+      } else {
+        setSortDirection('asc');
+      }
+    } else {
+      // New field, start with ascending
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
+  const handleTradeQtyChange = (ticker: string, newQty: number, _isPreview = false) => {
+    setRebalanceTrades((prevTrades) => {
       // Find existing trade for this ticker
       const existingTradeIndex = prevTrades.findIndex(
         (trade: Trade) => trade.ticker === ticker || trade.securityId === ticker,
@@ -403,18 +419,18 @@ function RebalancingGroupDetail() {
     });
   };
 
-  const _handleToggleExpandAll = () => {
-    if (expansionState.isAllExpanded) {
+  const handleToggleExpandAll = () => {
+    if (isAllExpanded) {
       // Collapse all
-      expansionState.setExpandedSleeves(new Set());
-      expansionState.setExpandedAccounts(new Set());
-      expansionState.setIsAllExpanded(false);
+      setExpandedSleeves(new Set());
+      setExpandedAccounts(new Set());
+      setIsAllExpanded(false);
     } else {
       // Expand all
       if (groupingMode === 'sleeve') {
         // Expand all sleeves and all accounts under each sleeve (for All Accounts view)
         const allSleeveKeys = sleeveTableData.map((sleeve) => sleeve.sleeveId);
-        expansionState.setExpandedSleeves(new Set(allSleeveKeys));
+        setExpandedSleeves(new Set(allSleeveKeys));
 
         // Build composite account keys: `${sleeveId}-${accountId}` used by the table when grouping by sleeve
         const allCompositeAccountKeys: string[] = [];
@@ -426,7 +442,7 @@ function RebalancingGroupDetail() {
             }
           });
         });
-        expansionState.setExpandedAccounts(new Set(allCompositeAccountKeys));
+        setExpandedAccounts(new Set(allCompositeAccountKeys));
       } else {
         // Expand all accounts and their sleeves
         const allAccountKeys = sleeveAllocationData.map((account) => account.accountId);
@@ -436,24 +452,24 @@ function RebalancingGroupDetail() {
             allSleeveKeys.push(`${account.accountId}-${sleeve.sleeveId}`);
           });
         });
-        expansionState.setExpandedAccounts(new Set(allAccountKeys));
-        expansionState.setExpandedSleeves(new Set(allSleeveKeys));
+        setExpandedAccounts(new Set(allAccountKeys));
+        setExpandedSleeves(new Set(allSleeveKeys));
       }
-      expansionState.setIsAllExpanded(true);
+      setIsAllExpanded(true);
     }
   };
 
   const handleGenerateTrades = useCallback(
     async (method: RebalanceMethod, cashAmount?: number, fetchPricesSelected?: boolean) => {
-      if (fetchPricesSelected && rebalancingState.syncingPrices) {
+      if (fetchPricesSelected && syncingPrices) {
         // Queue the rebalance until sync completes
-        rebalancingState.setWaitingForSync(true);
-        rebalancingState.setPendingMethod(method);
-        rebalancingState.setPendingCashAmount(cashAmount);
+        setWaitingForSync(true);
+        setPendingMethod(method);
+        setPendingCashAmount(cashAmount);
         return;
       }
 
-      rebalancingState.setRebalanceLoading(true);
+      setRebalanceLoading(true);
       try {
         const result = await rebalancePortfolioServerFn({
           data: {
@@ -462,20 +478,20 @@ function RebalancingGroupDetail() {
             cashAmount,
           },
         });
-        rebalancingState.setRebalanceTrades(result.trades);
+        setRebalanceTrades(result.trades);
       } catch (error) {
         console.error('Error generating trades:', error);
         // Could add toast notification here
       } finally {
-        rebalancingState.setRebalanceLoading(false);
+        setRebalanceLoading(false);
       }
     },
-    [group.id, rebalancingState],
+    [syncingPrices, group.id],
   );
 
-  const _handleFetchPrices = async () => {
+  const handleFetchPrices = async () => {
     try {
-      rebalancingState.setSyncingPrices(true);
+      setSyncingPrices(true);
       // Collect held tickers and model tickers for this group
       const heldTickers = new Set<string>();
       if (Array.isArray(accountHoldings)) {
@@ -506,7 +522,7 @@ function RebalancingGroupDetail() {
     } catch (error) {
       console.error('Error syncing prices:', error);
     } finally {
-      rebalancingState.setSyncingPrices(false);
+      setSyncingPrices(false);
     }
   };
 
@@ -538,39 +554,28 @@ function RebalancingGroupDetail() {
 
   // If a rebalance was queued and sync finished, run it and close modal
   useEffect(() => {
-    const method = rebalancingState.pendingMethod;
-    const cashAmount = rebalancingState.pendingCashAmount;
-
-    if (!rebalancingState.syncingPrices && rebalancingState.waitingForSync && method) {
+    if (!syncingPrices && waitingForSync && pendingMethod) {
       (async () => {
-        await handleGenerateTrades(method, cashAmount, false);
-        rebalancingState.setWaitingForSync(false);
-        rebalancingState.setPendingMethod(null);
-        rebalancingState.setPendingCashAmount(undefined);
-        rebalancingState.setRebalanceModalOpen(false);
+        await handleGenerateTrades(pendingMethod, pendingCashAmount, false);
+        setWaitingForSync(false);
+        setPendingMethod(null);
+        setPendingCashAmount(undefined);
+        setRebalanceModalOpen(false);
       })();
     }
-  }, [
-    rebalancingState.syncingPrices,
-    rebalancingState.waitingForSync,
-    rebalancingState.pendingMethod,
-    rebalancingState.pendingCashAmount,
-    handleGenerateTrades,
-    rebalancingState,
-  ]);
+  }, [syncingPrices, waitingForSync, pendingMethod, pendingCashAmount, handleGenerateTrades]);
 
   // Handle URL parameter to open rebalance modal
   useEffect(() => {
     if (searchParams.rebalance === 'true') {
-      rebalancingState.setRebalanceModalOpen(true);
-      // Clean up URL parameter using router navigation
-      // biome-ignore lint/suspicious/noExplicitAny: Complex TanStack Router type requirements
-      router.navigate({ search: { rebalance: undefined } } as any);
+      setRebalanceModalOpen(true);
+      // Clean up URL parameter
+      window.history.replaceState({}, document.title, window.location.pathname);
     }
-  }, [searchParams.rebalance, rebalancingState, router.navigate]);
+  }, [searchParams.rebalance]);
 
   // Convert sleeve members data to format expected by SleeveModal
-  const _getSleeveForModal = (sleeveId: string) => {
+  const getSleeveForModal = (sleeveId: string) => {
     const sleeveData = sleeveMembers?.find((s) => s.sleeveId === sleeveId);
     if (!sleeveData) return null;
 
@@ -589,132 +594,264 @@ function RebalancingGroupDetail() {
     };
   };
 
-  return (
-    <div className="container mx-auto p-6 space-y-6">
-      {/* Breadcrumb and Navigation */}
-      <nav className="flex items-center space-x-2 text-sm text-gray-500 mb-4">
-        <Link to="/" className="hover:text-gray-700 flex items-center">
-          <Home className="h-4 w-4 mr-1" />
-          Dashboard
-        </Link>
-        <ChevronRight className="h-4 w-4" />
-        <Link to="/rebalancing-groups" className="hover:text-gray-700">
-          Rebalancing Groups
-        </Link>
-        <ChevronRight className="h-4 w-4" />
-        <span className="text-gray-900 font-medium">{group.name}</span>
-      </nav>
+  try {
+    return (
+      <div className="container mx-auto p-6 space-y-6">
+        {/* Breadcrumb and Navigation */}
+        <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-2">
+            <h1 className="text-2xl font-bold text-gray-900">{group.name}</h1>
+            <div className="flex flex-col items-start gap-1">
+              {group.assignedModel ? (
+                <Link
+                  to="/models/$modelId"
+                  params={{ modelId: group.assignedModel.id }}
+                  className="inline-flex"
+                >
+                  <Badge variant="default" className="cursor-pointer">
+                    {group.assignedModel.name}
+                  </Badge>
+                </Link>
+              ) : (
+                <Badge variant="outline">No Model</Badge>
+              )}
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={() => setEditModalOpen(true)}>
+              <Edit className="mr-1 h-4 w-4" />
+              Edit
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-destructive"
+              onClick={() => setDeleteModalOpen(true)}
+            >
+              <Trash2 className="mr-1 h-4 w-4" />
+              Delete
+            </Button>
+          </div>
+        </div>
 
-      {/* Group Header */}
-      <GroupHeader
-        group={group}
-        onEdit={() => setShowEditModal(true)}
-        onDelete={() => setShowDeleteModal(true)}
-      />
-
-      {/* Account Summary Section */}
-      <AccountSummary
-        members={group.members.map((member) => ({
-          ...member,
-          accountName: member.accountName || '',
-          accountType: member.accountType || '',
-          balance: member.balance || 0,
-        }))}
-        selectedAccount={selectedAccount}
-        totalValue={totalValue}
-        onAccountSelect={setSelectedAccount}
-        onManualCashUpdate={() => {
-          // Invalidate and refetch data when manual cash is updated
-          router.invalidate();
-        }}
-        onAccountUpdate={() => {
-          // Invalidate and refetch data when account is updated
-          router.invalidate();
-        }}
-      />
-
-      {/* Current vs Target Allocation Table */}
-      {group.assignedModel && (
-        <AllocationSection
-          group={group}
-          groupId={group.id}
-          sleeveTableData={transformedSleeveTableData}
-          sleeveAllocationData={transformedSleeveAllocationData}
-          expandedSleeves={expansionState.expandedSleeves}
-          expandedAccounts={expansionState.expandedAccounts}
-          groupingMode={groupingMode}
-          isAllExpanded={expansionState.isAllExpanded}
-          trades={rebalancingState.rebalanceTrades}
-          sortField={_sortingState.sortField}
-          sortDirection={_sortingState.sortDirection}
-          accountHoldings={accountHoldings}
-          onGroupingModeChange={setGroupingMode}
-          onSleeveExpansionToggle={expansionState.toggleSleeveExpansion}
-          onAccountExpansionToggle={expansionState.toggleAccountExpansion}
-          onTickerClick={_handleTickerClick}
-          onSleeveClick={handleSleeveClick}
-          onRebalance={_handleRebalance}
-          onToggleExpandAll={_handleToggleExpandAll}
-          onSort={_sortingState.setSortField}
-          onTradeQtyChange={_handleTradeQtyChange}
+        {/* Account Summary Section */}
+        <AccountSummary
+          members={group.members.map((member) => ({
+            id: member.id,
+            accountId: member.accountId,
+            accountName: member.accountName || '',
+            accountType: member.accountType || '',
+            accountNumber: (member as { accountNumber?: string }).accountNumber,
+            balance: member.balance || 0,
+          }))}
+          selectedAccount={selectedAccount}
+          totalValue={totalValue}
+          onAccountSelect={setSelectedAccount}
+          onManualCashUpdate={() => router.invalidate()}
+          onAccountUpdate={() => router.invalidate()}
         />
-      )}
 
-      {/* Trade Management */}
-      <TradeManagement
-        groupId={group.id}
-        prices={{}} // Empty for now, can be populated from sleeveTableData if needed
-        accounts={group.members.reduce(
-          (acc, member) => {
-            acc[member.accountId] = {
-              name: member.accountName || '',
-              number: null,
-            };
-            return acc;
-          },
-          {} as Record<string, { name: string; number: string | null }>,
+        {/* Current vs Target Allocation Table */}
+        {group.assignedModel && (
+          <SleeveAllocationTable
+            sleeveTableData={sleeveTableData.map((sleeve) => ({
+              ...sleeve,
+              targetPercent:
+                'targetPercent' in sleeve && typeof sleeve.targetPercent === 'number'
+                  ? sleeve.targetPercent
+                  : 0,
+            }))}
+            expandedSleeves={expandedSleeves}
+            expandedAccounts={expandedAccounts}
+            groupMembers={group.members.map((member) => ({
+              ...member,
+              accountName: member.accountName || '',
+              accountType: member.accountType || '',
+            }))}
+            sleeveAllocationData={sleeveAllocationData.map((account) => ({
+              ...account,
+              sleeves: account.sleeves.map((sleeve) => ({
+                ...sleeve,
+                targetPercent:
+                  'targetPercent' in sleeve && typeof sleeve.targetPercent === 'number'
+                    ? sleeve.targetPercent
+                    : 0,
+                securities: (sleeve.securities || []).map((security) => ({
+                  ...security,
+                  targetPercent: security.targetPercent || 0,
+                  accountNames: Array.from(security.accountNames || []),
+                })),
+              })),
+            }))}
+            groupingMode={groupingMode}
+            onGroupingModeChange={setGroupingMode}
+            onSleeveExpansionToggle={toggleSleeveExpansion}
+            onAccountExpansionToggle={toggleAccountExpansion}
+            onTickerClick={handleTickerClick}
+            onSleeveClick={handleSleeveClick}
+            onRebalance={handleRebalance}
+            onToggleExpandAll={handleToggleExpandAll}
+            isAllExpanded={isAllExpanded}
+            trades={rebalanceTrades}
+            sortField={sortField}
+            sortDirection={sortDirection}
+            onSort={handleSort}
+            onTradeQtyChange={handleTradeQtyChange}
+            accountHoldings={
+              Array.isArray(accountHoldings)
+                ? accountHoldings.flatMap((account) =>
+                    Array.isArray(account.holdings)
+                      ? account.holdings.map((holding) => ({
+                          accountId: account.accountId,
+                          ticker: holding.ticker,
+                          qty: holding.qty || 0,
+                          costBasis: holding.costBasisPerShare || 0,
+                          marketValue: holding.marketValue || 0,
+                          unrealizedGain: holding.unrealizedGain || 0,
+                          isTaxable: account.accountType === 'taxable',
+                          purchaseDate: holding.openedAt || new Date(),
+                        }))
+                      : [],
+                  )
+                : []
+            }
+            renderSummaryCards={() => (
+              <RebalanceSummaryCards
+                trades={rebalanceTrades
+                  .filter((trade) => trade.securityId || trade.ticker)
+                  .map((trade) => ({
+                    ...trade,
+                    securityId: trade.securityId || trade.ticker || '',
+                  }))}
+                sleeveTableData={sleeveTableData}
+                group={group}
+                accountHoldings={
+                  Array.isArray(accountHoldings)
+                    ? accountHoldings.flatMap((account) =>
+                        Array.isArray(account.holdings)
+                          ? account.holdings.map((holding) => ({
+                              accountId: account.accountId,
+                              ticker: holding.ticker,
+                              qty: holding.qty || 0,
+                              costBasis: holding.costBasisPerShare || 0,
+                              marketValue: holding.marketValue || 0,
+                              unrealizedGain: holding.unrealizedGain || 0,
+                              isTaxable: account.accountType === 'taxable',
+                              purchaseDate: holding.openedAt || new Date(),
+                            }))
+                          : [],
+                      )
+                    : []
+                }
+              />
+            )}
+            groupId={group.id}
+          />
         )}
-        rebalanceModalOpen={rebalancingState.rebalanceModalOpen}
-        rebalanceLoading={rebalancingState.rebalanceLoading}
-        availableCash={_availableCash}
-        syncingPrices={rebalancingState.syncingPrices}
-        waitingForSync={rebalancingState.waitingForSync}
-        onPricesUpdated={() => router.invalidate()}
-        onRebalanceModalChange={rebalancingState.setRebalanceModalOpen}
-        onGenerateTrades={handleGenerateTrades}
-        onFetchPrices={_handleFetchPrices}
-      />
 
-      {/* Portfolio Charts */}
-      <PortfolioCharts
-        allocationData={_allocationData}
-        allocationView={allocationView}
-        holdingsData={_holdingsData}
-        onAllocationViewChange={setAllocationView}
-        onSleeveClick={_handleSleeveClickByName}
-        onTickerClick={_handleTickerClick}
-      />
+        {/* Trade Blotter */}
+        <OrdersBlotter
+          groupId={group.id}
+          prices={(() => {
+            const holdingsPairs = (Array.isArray(accountHoldings) ? accountHoldings : [])
+              .flatMap((a) => (Array.isArray(a.holdings) ? a.holdings : []))
+              .map((h) => [h.ticker, h.currentPrice || 0] as const);
+            const sp500Pairs = (Array.isArray(sp500Data) ? sp500Data : []).map(
+              (s) => [s.ticker, s.price || 0] as const,
+            );
+            // Prefer holdings price when available, else fallback to sp500 quote
+            const merged = new Map<string, number>([...sp500Pairs, ...holdingsPairs]);
+            return Object.fromEntries(merged);
+          })()}
+          accounts={(() => {
+            const map = new Map<string, { name: string; number?: string | null }>();
+            (Array.isArray(group.members) ? group.members : []).forEach((m) => {
+              map.set(m.accountId, {
+                name: m.accountName || '',
+                number: (m as { accountNumber?: string }).accountNumber || null,
+              });
+            });
+            return Object.fromEntries(map);
+          })()}
+          onPricesUpdated={() => router.invalidate()}
+        />
 
-      {/* Modals */}
-      <SecurityModal
-        ticker={modalState.selectedTicker}
-        isOpen={modalState.showSecurityModal}
-        onClose={() => {
-          modalState.setShowSecurityModal(false);
-          modalState.setSelectedTicker('');
-        }}
-        positions={positions}
-        proposedTrades={proposedTrades}
-      />
+        <div className="grid gap-6 lg:grid-cols-2">
+          {/* Portfolio Allocation Chart */}
+          <AllocationChart
+            allocationData={allocationData}
+            allocationView={allocationView}
+            onAllocationViewChange={setAllocationView}
+            onSleeveClick={handleSleeveClickByName}
+          />
 
-      <SleeveModal
-        sleeve={modalState.selectedSleeve ? _getSleeveForModal(modalState.selectedSleeve) : null}
-        isOpen={modalState.showSleeveModal}
-        onClose={() => {
-          modalState.setShowSleeveModal(false);
-          modalState.setSelectedSleeve('');
-        }}
-      />
-    </div>
-  );
+          {/* Top Holdings */}
+          <TopHoldings holdingsData={holdingsData} onTickerClick={handleTickerClick} />
+        </div>
+
+        {/* Modals */}
+        <EditRebalancingGroupModal
+          group={group}
+          open={editModalOpen}
+          onOpenChange={setEditModalOpen}
+          onClose={() => {
+            setEditModalOpen(false);
+            router.invalidate();
+          }}
+        />
+
+        <DeleteRebalancingGroupModal
+          group={group}
+          open={deleteModalOpen}
+          onOpenChange={setDeleteModalOpen}
+          onClose={() => {
+            setDeleteModalOpen(false);
+            // Navigate back to the list after deletion
+            router.navigate({ to: '/rebalancing-groups' });
+          }}
+        />
+
+        <SecurityModal
+          isOpen={showSecurityModal}
+          onClose={() => setShowSecurityModal(false)}
+          ticker={selectedTicker}
+          sp500Data={sp500Data}
+          positions={positions}
+          transactions={transactions}
+          proposedTrades={proposedTrades}
+        />
+
+        <SleeveModal
+          isOpen={showSleeveModal}
+          onClose={() => setShowSleeveModal(false)}
+          sleeve={selectedSleeve ? getSleeveForModal(selectedSleeve) : null}
+        />
+
+        <RebalanceModal
+          open={rebalanceModalOpen}
+          onOpenChange={setRebalanceModalOpen}
+          onGenerateTrades={handleGenerateTrades}
+          onFetchPrices={handleFetchPrices}
+          isLoading={rebalanceLoading}
+          availableCash={availableCash}
+          isSyncing={syncingPrices}
+          syncMessage={
+            waitingForSync && syncingPrices
+              ? 'Fetching updated security prices. Once completed, the rebalance will begin automatically.'
+              : undefined
+          }
+        />
+      </div>
+    );
+  } catch (error) {
+    console.error('🔄 [GroupComponent] Component error:', error);
+    return (
+      <div className="container mx-auto p-6">
+        <div className="text-red-600">
+          Error loading rebalancing group:{' '}
+          {error instanceof Error ? error.message : 'Unknown error'}
+        </div>
+      </div>
+    );
+  }
 }
