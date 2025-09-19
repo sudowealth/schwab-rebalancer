@@ -3,11 +3,7 @@ import { FileText } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { AddRebalancingGroupModal } from '../../components/rebalancing-groups/add-rebalancing-group-modal';
 import { Badge } from '../../components/ui/badge';
-import type { RebalancingGroup } from '../../lib/schemas';
-import {
-  getGroupAccountHoldingsServerFn,
-  getRebalancingGroupsServerFn,
-} from '../../lib/server-functions';
+import type { RebalancingGroup, RebalancingGroupMember } from '../../lib/schemas';
 
 export const Route = createFileRoute('/rebalancing-groups/')({
   component: RebalancingGroupsComponent,
@@ -19,27 +15,27 @@ export const Route = createFileRoute('/rebalancing-groups/')({
     return result;
   },
   loader: async () => {
-    try {
-      // Server function handles authentication
-      const groups = await getRebalancingGroupsServerFn();
+    // Server-side loader that fetches data on the server
+    if (typeof window === 'undefined') {
+      // Server-side only - import and call server function
+      const { getHoldingsForMultipleGroupsServerFn } = await import('../../lib/server-functions');
 
-      // Get account holdings for all groups to calculate proper balances
-      const updatedGroups = await Promise.all(
-        groups.map(async (group) => {
-          const accountIds = group.members.map((member) => member.accountId);
-          const accountHoldings =
-            accountIds.length > 0
-              ? await getGroupAccountHoldingsServerFn({
-                  data: { accountIds },
-                })
-              : [];
+      try {
+        const { groups, holdings } = await getHoldingsForMultipleGroupsServerFn();
 
-          // Update group members with calculated balances from holdings
-          const updatedMembers = group.members.map((member) => {
-            const accountData = accountHoldings.find((ah) => ah.accountId === member.accountId);
+        // Create a map of account balances for efficient lookup
+        const accountBalanceMap = new Map<string, number>();
+        holdings.forEach((account) => {
+          accountBalanceMap.set(account.accountId, account.accountBalance);
+        });
+
+        // Update group members with calculated balances from holdings
+        const updatedGroups = groups.map((group: RebalancingGroup) => {
+          const updatedMembers = group.members.map((member: RebalancingGroupMember) => {
+            const balance = accountBalanceMap.get(member.accountId);
             return {
               ...member,
-              balance: accountData ? accountData.accountBalance : member.balance,
+              balance: balance ?? member.balance ?? 0,
             };
           });
 
@@ -47,24 +43,32 @@ export const Route = createFileRoute('/rebalancing-groups/')({
             ...group,
             members: updatedMembers,
           };
-        }),
-      );
+        });
 
-      return { groups: updatedGroups };
-    } catch (error) {
-      // If authentication error, redirect to login
-      if (error instanceof Error && error.message.includes('Authentication required')) {
-        throw redirect({ to: '/login', search: { reset: '', redirect: '/rebalancing-groups' } });
+        return { groups: updatedGroups };
+      } catch (error) {
+        // If authentication error, redirect to login
+        if (error instanceof Error && error.message.includes('Authentication required')) {
+          throw redirect({
+            to: '/login',
+            search: { reset: '', redirect: '/rebalancing-groups' },
+          });
+        }
+        // Re-throw other errors
+        throw error;
       }
-      // Re-throw other errors
-      throw error;
     }
+
+    // Client-side fallback - return empty data
+    // This should not happen in SSR but provides a fallback
+    return { groups: [] };
   },
 });
 
 function RebalancingGroupsComponent() {
+  // Use loader data for SSR, but also set up client-side data fetching
   const loaderData = Route.useLoaderData();
-  const groups = loaderData.groups;
+  const groups = loaderData?.groups || [];
   const searchParams = Route.useSearch();
   const [showCreateModal, setShowCreateModal] = useState(false);
 
@@ -113,7 +117,7 @@ function RebalancingGroupsComponent() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {groups.map((group) => (
+        {groups.map((group: RebalancingGroup) => (
           <div
             key={group.id}
             className="bg-white shadow rounded-lg hover:shadow-md transition-shadow relative"
@@ -155,7 +159,7 @@ function RebalancingGroupsComponent() {
 
               {/* Account Members */}
               <div className="space-y-3">
-                {group.members.slice(0, 3).map((member) => (
+                {group.members.slice(0, 3).map((member: RebalancingGroupMember) => (
                   <div key={member.id} className="flex items-center justify-between">
                     <span className="text-sm text-gray-700">{member.accountName}</span>
                     <span className="text-sm font-medium text-gray-900">

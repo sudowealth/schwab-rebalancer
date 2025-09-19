@@ -31,6 +31,9 @@ import type { Trade } from './schemas';
 import type { SyncResult } from './schwab-sync';
 import { SessionManager } from './session-manager';
 
+// Import group server functions
+export { getHoldingsForMultipleGroupsServerFn } from './group-server-fns';
+
 // Server function to get sleeves data - runs ONLY on server
 export const getSleevesServerFn = createServerFn({ method: 'GET' }).handler(async () => {
   try {
