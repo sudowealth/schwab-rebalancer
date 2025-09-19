@@ -154,9 +154,13 @@ export function useSchwabConnection(
           data: { scope: 'missing-fundamentals-holdings' },
         });
         console.log('🟡 [UI] Yahoo fundamentals sync result:', {
-          success: yahooResult?.success,
-          recordsProcessed: yahooResult?.recordsProcessed,
-          errorMessage: 'errorMessage' in yahooResult ? yahooResult.errorMessage : undefined,
+          success: yahooResult && 'success' in yahooResult ? yahooResult.success : undefined,
+          recordsProcessed:
+            yahooResult && 'recordsProcessed' in yahooResult
+              ? yahooResult.recordsProcessed
+              : undefined,
+          errorMessage:
+            yahooResult && 'errorMessage' in yahooResult ? yahooResult.errorMessage : undefined,
           timestamp: new Date().toISOString(),
         });
       } catch (yErr) {
