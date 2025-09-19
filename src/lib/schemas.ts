@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type { SyncYahooFundamentalsResult } from './yahoo-server-fns';
 
 // Core data schemas
 export const PositionSchema = z.object({
@@ -324,17 +325,4 @@ export type Order = z.infer<typeof OrderSchema>;
 export type OrderExecution = z.infer<typeof OrderExecutionSchema>;
 
 // Yahoo sync result type
-export type YahooSyncResult =
-  | {
-      success: boolean;
-      recordsProcessed: number;
-      errorMessage?: string;
-      details?: Array<{
-        ticker: string;
-        success: boolean;
-        error?: string;
-        changes?: Record<string, { old: unknown; new: unknown }>;
-      }>;
-      logId?: string;
-    }
-  | Record<string, never>;
+export type YahooSyncResult = SyncYahooFundamentalsResult;

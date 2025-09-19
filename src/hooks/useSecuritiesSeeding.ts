@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
 import { seedSecuritiesDataServerFn } from '../lib/server-functions';
+import type { SyncYahooFundamentalsResult } from '../lib/yahoo-server-fns';
 
 interface SeedSecuritiesResult {
   success: boolean;
@@ -19,12 +20,7 @@ interface SeedSecuritiesResult {
     recordsProcessed: number;
     errorMessage?: string;
   } | null;
-  yahooSyncResult?: {
-    success: boolean;
-    recordsProcessed: number;
-    errorMessage?: string;
-    logId?: string;
-  } | null;
+  yahooSyncResult?: SyncYahooFundamentalsResult | null;
 }
 
 export function useSecuritiesSeeding(securitiesStatus?: {

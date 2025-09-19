@@ -384,7 +384,7 @@ export async function seedSleeves(db: ReturnType<typeof drizzle>, userId?: strin
   );
 
   // Clear cache for this user to ensure fresh data
-  const { clearCache } = await import('../db-api');
+  const { clearCache } = await import('../../lib/db-api');
   clearCache(`sleeves-${userId || 'demo-user'}`);
 
   return {
@@ -544,7 +544,7 @@ export async function seedModels(db: ReturnType<typeof drizzle>, userId?: string
   console.log(`✅ Seeded ${modelData.length} models, ${modelMembersData.length} model members`);
 
   // Clear cache for this user to ensure fresh data
-  const { clearCache } = await import('../db-api');
+  const { clearCache } = await import('../../lib/db-api');
   clearCache(`models-${userId || 'demo-user'}`);
 
   return {
