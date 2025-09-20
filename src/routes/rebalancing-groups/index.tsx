@@ -18,7 +18,7 @@ export const Route = createFileRoute('/rebalancing-groups/')({
     // Server-side loader that fetches data on the server
     if (typeof window === 'undefined') {
       // Server-side only - import and call server function
-      const { getHoldingsForMultipleGroupsServerFn } = await import('../../lib/server-functions');
+      const { getHoldingsForMultipleGroupsServerFn } = await import('../../lib/group-server-fns');
 
       try {
         const { groups, holdings } = await getHoldingsForMultipleGroupsServerFn();

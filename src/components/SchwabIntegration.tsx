@@ -10,6 +10,7 @@ import {
   X,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { importNasdaqSecuritiesServerFn } from '../lib/import-server-fns';
 import type { YahooSyncResult } from '../lib/schemas';
 import {
   getHeldAndSleeveTickersServerFn,
@@ -17,14 +18,13 @@ import {
   getSchwabCredentialsStatusServerFn,
   getSchwabOAuthUrlServerFn,
   getSleeveTargetTickersServerFn,
-  importNasdaqSecuritiesServerFn,
   revokeSchwabCredentialsServerFn,
   syncSchwabAccountsServerFn,
   syncSchwabHoldingsServerFn,
   syncSchwabPricesServerFn,
   syncSchwabTransactionsServerFn,
-  syncYahooFundamentalsServerFn,
-} from '../lib/server-functions';
+} from '../lib/schwab-server-fns';
+import { syncYahooFundamentalsServerFn } from '../lib/yahoo-server-fns';
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
