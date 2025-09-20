@@ -14,7 +14,7 @@ function getAuth() {
         schema: {
           user: schema.user,
           session: schema.session,
-          account: schema.account,
+          account: schema.authAccount,
           verification: schema.verification,
         },
       }),
