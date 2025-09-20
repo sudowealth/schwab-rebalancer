@@ -2,8 +2,8 @@ import { Link, useNavigate } from '@tanstack/react-router';
 import { ChevronRight, Menu, Shield } from 'lucide-react';
 import { useState } from 'react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '~/components/ui/sheet';
-import { useAuth } from '~/hooks/useAuth';
-import { signOut } from '~/lib/auth-client';
+import { signOut } from '~/features/auth/auth-client';
+import { useAuth } from '~/features/auth/hooks/useAuth';
 import { cn } from '~/lib/utils';
 
 export function MobileNavigation() {

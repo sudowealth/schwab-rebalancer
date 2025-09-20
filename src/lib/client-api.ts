@@ -10,7 +10,7 @@ import type {
   SP500Stock,
   Trade,
   Transaction,
-} from './schemas';
+} from '~/features/auth/schemas';
 
 // Check if we're running on the server
 const isServer = typeof window === 'undefined';

@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { createFileRoute, redirect } from '@tanstack/react-router';
 import { useMemo } from 'react';
-import { SecuritiesTable } from '~/components/dashboard/securities-table';
+import { SecuritiesTable } from '~/features/dashboard/components/securities-table';
 import { ExportButton } from '~/components/ui/export-button';
 import { getIndices, getSnP500Data } from '~/lib/api';
 import { exportSP500ToExcel } from '~/lib/excel-export';

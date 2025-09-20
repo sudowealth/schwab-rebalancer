@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { createFileRoute, Link, redirect } from '@tanstack/react-router';
 import { FileText } from 'lucide-react';
-import { AddModelModal } from '~/components/models/add-model-modal';
+import { AddModelModal } from '~/features/models/components/add-model-modal';
 import { getModelsServerFn } from '~/lib/server-functions';
 
 export const Route = createFileRoute('/models/')({

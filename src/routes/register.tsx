@@ -3,7 +3,7 @@ import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { ArrowRight, Ban, Crown, ShieldCheck } from 'lucide-react';
 import { useId, useState } from 'react';
 import { ClientOnly } from '~/components/ClientOnly';
-import { useAuth } from '~/hooks/useAuth';
+import { useAuth } from '~/features/auth/hooks/useAuth';
 import {
   checkIsFirstUserServerFn,
   checkUserCreationAllowedServerFn,

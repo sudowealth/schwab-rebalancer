@@ -1,9 +1,9 @@
 import { createFileRoute, Link, redirect } from '@tanstack/react-router';
 import { FileText } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { AddRebalancingGroupModal } from '~/components/rebalancing-groups/add-rebalancing-group-modal';
 import { Badge } from '~/components/ui/badge';
-import type { RebalancingGroup, RebalancingGroupMember } from '~/lib/schemas';
+import type { RebalancingGroup, RebalancingGroupMember } from '~/features/auth/schemas';
+import { AddRebalancingGroupModal } from '~/features/rebalancing/components/add-rebalancing-group-modal';
 
 export const Route = createFileRoute('/rebalancing-groups/')({
   component: RebalancingGroupsComponent,
@@ -18,7 +18,9 @@ export const Route = createFileRoute('/rebalancing-groups/')({
     // Server-side loader that fetches data on the server
     if (typeof window === 'undefined') {
       // Server-side only - import and call server function
-      const { getHoldingsForMultipleGroupsServerFn } = await import('~/lib/group.server');
+      const { getHoldingsForMultipleGroupsServerFn } = await import(
+        '~/features/rebalancing/groups.server'
+      );
 
       try {
         const { groups, holdings } = await getHoldingsForMultipleGroupsServerFn();

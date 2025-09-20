@@ -1,9 +1,9 @@
 import { createFileRoute, redirect } from '@tanstack/react-router';
 import { useEffect } from 'react';
-import { SchwabIntegration } from '~/components/SchwabIntegration';
-import { SeedDataSection } from '~/components/SeedDataSection';
-import { SyncHistory } from '~/components/SyncHistory';
-import { YahooIntegration } from '~/components/YahooIntegration';
+import { SeedDataSection } from '~/features/data-feeds/components/SeedDataSection';
+import { SyncHistory } from '~/features/data-feeds/components/SyncHistory';
+import { YahooIntegration } from '~/features/data-feeds/components/YahooIntegration';
+import { SchwabIntegration } from '~/features/schwab/components/SchwabIntegration';
 import { getDashboardDataServerFn } from '~/lib/server-functions';
 
 export const Route = createFileRoute('/data-feeds/')({

@@ -13,17 +13,17 @@ import {
   TrendingUp,
   Users,
 } from 'lucide-react';
-import { useModelCreation } from '~/hooks/useModelCreation';
-import { useSchwabConnection } from '~/hooks/useSchwabConnection';
-import { useSecuritiesSeeding } from '~/hooks/useSecuritiesSeeding';
+import { Button } from '~/components/ui/button';
+import { SimpleTooltip } from '~/components/ui/simple-tooltip';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '~/components/ui/tabs';
+import { useSecuritiesSeeding } from '~/features/data-feeds/hooks/use-securities-seeding';
+import { useModelCreation } from '~/features/models/hooks/use-model-creation';
+import { useSchwabConnection } from '~/features/schwab/hooks/use-schwab-connection';
 import {
   checkModelsExistServerFn,
   checkSchwabCredentialsServerFn,
   checkSecuritiesExistServerFn,
 } from '~/lib/server-functions';
-import { Button } from './ui/button';
-import { SimpleTooltip } from './ui/simple-tooltip';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 
 interface OnboardingTask {
   id: string;

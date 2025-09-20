@@ -22,11 +22,11 @@ import {
   NavigationMenuTrigger,
   navigationMenuTriggerStyle,
 } from '~/components/ui/navigation-menu';
-import { useAuth } from '~/hooks/useAuth';
-import { signOut } from '~/lib/auth-client';
+import { signOut } from '~/features/auth/auth-client';
+import { useAuth } from '~/features/auth/hooks/useAuth';
+import { seo } from '~/lib/seo';
 import { cn } from '~/lib/utils';
 import appCss from '~/styles/app.css?url';
-import { seo } from '~/utils/seo';
 
 export const Route = createRootRoute({
   head: () => ({

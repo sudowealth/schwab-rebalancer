@@ -1,17 +1,17 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute, redirect } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
-import { DashboardMetrics } from '~/components/dashboard/dashboard-metrics';
-import { PositionsTable } from '~/components/dashboard/positions-table';
-import { RebalancingGroupsTab } from '~/components/dashboard/rebalancing-groups-tab';
-import { SecurityModal } from '~/components/dashboard/security-modal';
-import { SleeveModal } from '~/components/dashboard/sleeve-modal';
-import { TransactionsTable } from '~/components/dashboard/transactions-table';
 import { OnboardingTracker } from '~/components/OnboardingTracker';
 import { ExportButton } from '~/components/ui/export-button';
-import { useSchwabConnection } from '~/hooks/useSchwabConnection';
+import type { Sleeve } from '~/features/auth/schemas';
+import { DashboardMetrics } from '~/features/dashboard/components/dashboard-metrics';
+import { PositionsTable } from '~/features/dashboard/components/positions-table';
+import { RebalancingGroupsTab } from '~/features/dashboard/components/rebalancing-groups-tab';
+import { SecurityModal } from '~/features/dashboard/components/security-modal';
+import { SleeveModal } from '~/features/dashboard/components/sleeve-modal';
+import { TransactionsTable } from '~/features/dashboard/components/transactions-table';
+import { useSchwabConnection } from '~/features/schwab/hooks/use-schwab-connection';
 import { exportPositionsToExcel, exportTransactionsToExcel } from '~/lib/excel-export';
-import type { Sleeve } from '~/lib/schemas';
 // Use server functions for live data so client refetches return real results
 import {
   checkModelsExistServerFn,

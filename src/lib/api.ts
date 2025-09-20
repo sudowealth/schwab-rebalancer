@@ -1,4 +1,15 @@
 // Client-side API functions that call server endpoints
+
+// Import types
+export type {
+  PortfolioMetrics,
+  Position,
+  RestrictedSecurity,
+  Sleeve,
+  SP500Stock,
+  Trade,
+  Transaction,
+} from '~/features/auth/schemas';
 export {
   getIndexMembers,
   getIndices,
@@ -12,14 +23,3 @@ export {
   getTransactions,
   seedDemoData,
 } from './client-api';
-
-// Import types
-export type {
-  PortfolioMetrics,
-  Position,
-  RestrictedSecurity,
-  Sleeve,
-  SP500Stock,
-  Trade,
-  Transaction,
-} from './schemas';

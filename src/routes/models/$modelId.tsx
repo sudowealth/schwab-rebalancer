@@ -9,12 +9,12 @@ import {
 } from '@tanstack/react-table';
 import { ArrowRight, ChevronDown, ChevronsUpDown, ChevronUp, Edit, Trash2 } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
-import { SleeveModal } from '~/components/dashboard/sleeve-modal';
-import { DeleteModelModal } from '~/components/models/delete-model-modal';
-import { EditModelModal } from '~/components/models/edit-model-modal';
+import { SleeveModal } from '~/features/dashboard/components/sleeve-modal';
+import { DeleteModelModal } from '~/features/models/components/delete-model-modal';
+import { EditModelModal } from '~/features/models/components/edit-model-modal';
 import { Badge } from '~/components/ui/badge';
 import { Button } from '~/components/ui/button';
-import type { RebalancingGroup, Sleeve } from '~/lib/schemas';
+import type { RebalancingGroup, Sleeve } from '~/features/auth/schemas';
 import {
   getDashboardDataServerFn,
   getModelByIdServerFn,

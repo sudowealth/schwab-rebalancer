@@ -1,27 +1,30 @@
 import { createFileRoute, Link, redirect, useRouter } from '@tanstack/react-router';
 import { Edit, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { SecurityModal } from '~/components/dashboard/security-modal';
-import { SleeveModal } from '~/components/dashboard/sleeve-modal';
-import { AccountSummary } from '~/components/rebalancing-groups/account-summary';
-import { AllocationChart } from '~/components/rebalancing-groups/allocation-chart';
-import { OrdersBlotter } from '~/components/rebalancing-groups/blotter/orders-blotter';
-import { DeleteRebalancingGroupModal } from '~/components/rebalancing-groups/delete-rebalancing-group-modal';
-import { EditRebalancingGroupModal } from '~/components/rebalancing-groups/edit-rebalancing-group-modal';
-import { RebalanceModal } from '~/components/rebalancing-groups/rebalance-modal';
-import { RebalanceSummaryCards } from '~/components/rebalancing-groups/rebalance-summary-cards';
-import { SleeveAllocationTable } from '~/components/rebalancing-groups/sleeve-allocation/sleeve-allocation-table';
+import { Badge } from '~/components/ui/badge';
+import { Button } from '~/components/ui/button';
+import type { Order } from '~/features/auth/schemas';
+import { SecurityModal } from '~/features/dashboard/components/security-modal';
+import { SleeveModal } from '~/features/dashboard/components/sleeve-modal';
+import { AccountSummary } from '~/features/rebalancing/components/account-summary';
+import { AllocationChart } from '~/features/rebalancing/components/allocation-chart';
+import { OrdersBlotter } from '~/features/rebalancing/components/blotter/orders-blotter';
+import { DeleteRebalancingGroupModal } from '~/features/rebalancing/components/delete-rebalancing-group-modal';
+import { EditRebalancingGroupModal } from '~/features/rebalancing/components/edit-rebalancing-group-modal';
+import { RebalanceModal } from '~/features/rebalancing/components/rebalance-modal';
+import { RebalanceSummaryCards } from '~/features/rebalancing/components/rebalance-summary-cards';
+import { SleeveAllocationTable } from '~/features/rebalancing/components/sleeve-allocation/sleeve-allocation-table';
 import type {
   SortDirection,
   SortField,
-} from '~/components/rebalancing-groups/sleeve-allocation/sleeve-allocation-table-headers';
-import type { Trade } from '~/components/rebalancing-groups/sleeve-allocation/sleeve-allocation-types';
-import { TopHoldings } from '~/components/rebalancing-groups/top-holdings';
-import { Badge } from '~/components/ui/badge';
-import { Button } from '~/components/ui/button';
-import { useSleeveAllocations } from '~/hooks/use-sleeve-allocations';
-import { generateAllocationData, generateTopHoldingsData } from '~/lib/rebalancing-utils';
-import type { Order } from '~/lib/schemas';
+} from '~/features/rebalancing/components/sleeve-allocation/sleeve-allocation-table-headers';
+import type { Trade } from '~/features/rebalancing/components/sleeve-allocation/sleeve-allocation-types';
+import { TopHoldings } from '~/features/rebalancing/components/top-holdings';
+import { useSleeveAllocations } from '~/features/rebalancing/hooks/use-sleeve-allocations';
+import {
+  generateAllocationData,
+  generateTopHoldingsData,
+} from '~/features/rebalancing/rebalancing-utils';
 import {
   type getDashboardDataServerFn,
   getGroupAccountHoldingsServerFn,

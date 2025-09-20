@@ -1,8 +1,5 @@
 // Administrative functions
-export {
-  getAuditLogsServerFn,
-  getSystemStatsServerFn,
-} from './admin.server';
+
 // Auth server functions
 export {
   checkIsFirstUserServerFn,
@@ -17,7 +14,12 @@ export {
   signUpWithFirstAdminServerFn,
   updateUserRoleServerFn,
   verifyAdminAccessServerFn,
-} from './auth.server';
+} from '~/features/auth/auth.server';
+export type { RebalancingGroup, Trade } from '~/features/auth/schemas';
+export {
+  getAuditLogsServerFn,
+  getSystemStatsServerFn,
+} from '~/features/dashboard/admin.server';
 // Dashboard and basic data access functions
 export {
   clearCacheServerFn,
@@ -37,23 +39,7 @@ export {
   getTransactionsServerFn,
   truncateSecurityTableServerFn,
   updateAccountServerFn,
-} from './dashboard.server';
-// Legacy type exports for backward compatibility
-export type { AccountHoldingsResult } from './db-api';
-export type { GroupAccountHoldingsResult, SleeveMember } from './group.server';
-// Rebalancing group operations
-export {
-  assignModelToGroupServerFn,
-  createRebalancingGroupServerFn,
-  deleteRebalancingGroupServerFn,
-  getGroupAccountHoldingsServerFn,
-  getHoldingsForMultipleGroupsServerFn,
-  getRebalancingGroupByIdServerFn,
-  getRebalancingGroupsServerFn,
-  getSleeveMembersServerFn,
-  unassignModelFromGroupServerFn,
-  updateRebalancingGroupServerFn,
-} from './group.server';
+} from '~/features/dashboard/dashboard.server';
 // Data import and seeding functions
 export {
   checkModelsExistServerFn,
@@ -66,7 +52,9 @@ export {
   seedModelsDataServerFn,
   seedSecuritiesDataServerFn,
   truncateDataServerFn,
-} from './import.server';
+} from '~/features/data-feeds/import.server';
+// Yahoo Finance integration
+export { syncYahooFundamentalsServerFn } from '~/features/data-feeds/yahoo.server';
 // Model CRUD operations
 export {
   createModelServerFn,
@@ -74,16 +62,35 @@ export {
   getModelByIdServerFn,
   getModelsServerFn,
   updateModelServerFn,
-} from './model.server';
-export type { RebalancePortfolioServerFnResult } from './portfolio.server';
+} from '~/features/models/model.server';
+export type {
+  GroupAccountHoldingsResult,
+  SleeveMember,
+} from '~/features/rebalancing/groups.server';
+// Rebalancing group operations
+export {
+  assignModelToGroupServerFn,
+  createRebalancingGroupServerFn,
+  deleteRebalancingGroupServerFn,
+  getGroupAccountHoldingsServerFn,
+  getHoldingsForMultipleGroupsServerFn,
+  getRebalancingGroupByIdServerFn,
+  getRebalancingGroupsServerFn,
+  getSleeveMembersServerFn,
+  unassignModelFromGroupServerFn,
+  updateRebalancingGroupServerFn,
+} from '~/features/rebalancing/groups.server';
+export type { RebalancePortfolioServerFnResult } from '~/features/rebalancing/portfolio.server';
 // Portfolio management and rebalancing
 export {
   getManualCashServerFn,
   rebalancePortfolioServerFn,
   updateManualCashServerFn,
-} from './portfolio.server';
-export type { RebalanceSecurityData, RebalanceSleeveDataNew } from './rebalance-logic';
-export type { RebalancingGroup, Trade } from './schemas';
+} from '~/features/rebalancing/portfolio.server';
+export type {
+  RebalanceSecurityData,
+  RebalanceSleeveDataNew,
+} from '~/features/rebalancing/rebalance-logic.server';
 // Schwab integration functions
 export {
   addGroupTradesToBlotterServerFn,
@@ -107,8 +114,8 @@ export {
   syncSchwabPricesServerFn,
   syncSchwabTransactionsServerFn,
   updateOrderServerFn,
-} from './schwab.server';
-export type { SyncResult } from './schwab-sync';
+} from '~/features/schwab/schwab.server';
+export type { SyncResult } from '~/features/schwab/schwab-sync.server';
 // Sleeve CRUD operations
 export {
   createSleeveServerFn,
@@ -118,8 +125,8 @@ export {
   getSleeveHoldingsInfoServerFn,
   getSleevesServerFn,
   updateSleeveServerFn,
-} from './sleeve.server';
+} from '../features/sleeves/sleeve.server';
+// Legacy type exports for backward compatibility
+export type { AccountHoldingsResult } from './db-api';
 // Utility functions
 export { healthCheckServerFn } from './utility.server';
-// Yahoo Finance integration
-export { syncYahooFundamentalsServerFn } from './yahoo.server';

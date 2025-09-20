@@ -74,7 +74,9 @@ export async function loadDashboardData(
     // Load Schwab environment variables status (for "Configure" step)
     let schwabCredentialsStatus = { hasCredentials: false };
     try {
-      const { hasSchwabCredentialsConfigured } = await import('./schwab-api');
+      const { hasSchwabCredentialsConfigured } = await import(
+        '../features/schwab/schwab-api.server'
+      );
       const hasCredentials = hasSchwabCredentialsConfigured();
       schwabCredentialsStatus = { hasCredentials };
     } catch (error) {
@@ -100,7 +102,7 @@ export async function loadDashboardData(
           );
           schwabOAuthStatus = { hasCredentials: false };
         } else {
-          const { getSchwabApiService } = await import('./schwab-api');
+          const { getSchwabApiService } = await import('../features/schwab/schwab-api.server');
           const schwabApi = getSchwabApiService();
           const hasOAuthCredentials = await schwabApi.hasValidCredentials(userId);
           schwabOAuthStatus = { hasCredentials: hasOAuthCredentials };

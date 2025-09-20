@@ -1,7 +1,5 @@
 import { and, desc, eq, inArray, sql } from 'drizzle-orm';
 import * as schema from '~/db/schema';
-import { getDatabaseSync } from './db-config';
-import { DatabaseError, logError, ValidationError, withRetry } from './error-handler';
 import {
   type CreateModel,
   type CreateRebalancingGroup,
@@ -25,7 +23,9 @@ import {
   TradesSchema,
   type Transaction,
   validateData,
-} from './schemas';
+} from '~/features/auth/schemas';
+import { getDatabaseSync } from './db-config';
+import { DatabaseError, logError, ValidationError, withRetry } from './error-handler';
 import { generateId } from './utils';
 
 // Database connection - server-side only
