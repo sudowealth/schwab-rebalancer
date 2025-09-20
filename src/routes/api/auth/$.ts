@@ -1,11 +1,14 @@
 import { createServerFileRoute } from '@tanstack/react-start/server';
-import { authHandler } from '../../../lib/auth';
 
 export const ServerRoute = createServerFileRoute('/api/auth/$').methods({
-  GET: ({ request }) => {
+  GET: async ({ request }) => {
+    // Lazy import to avoid database initialization at module load time
+    const { authHandler } = await import('~/lib/auth');
     return authHandler(request);
   },
-  POST: ({ request }) => {
+  POST: async ({ request }) => {
+    // Lazy import to avoid database initialization at module load time
+    const { authHandler } = await import('~/lib/auth');
     return authHandler(request);
   },
 });
