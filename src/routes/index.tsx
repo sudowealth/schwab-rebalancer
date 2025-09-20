@@ -1,6 +1,5 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute, redirect } from '@tanstack/react-router';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { OnboardingTracker } from '~/components/OnboardingTracker';
 import { ExportButton } from '~/components/ui/export-button';
 import type { Sleeve } from '~/features/auth/schemas';
@@ -10,20 +9,12 @@ import { RebalancingGroupsTab } from '~/features/dashboard/components/rebalancin
 import { SecurityModal } from '~/features/dashboard/components/security-modal';
 import { SleeveModal } from '~/features/dashboard/components/sleeve-modal';
 import { TransactionsTable } from '~/features/dashboard/components/transactions-table';
-import { useSchwabConnection } from '~/features/schwab/hooks/use-schwab-connection';
+import { useDashboardData } from '~/features/dashboard/hooks/use-dashboard-data';
 import { exportPositionsToExcel, exportTransactionsToExcel } from '~/lib/excel-export';
-// Use server functions for live data so client refetches return real results
 import {
-  checkModelsExistServerFn,
-  checkSchwabCredentialsServerFn,
-  checkSecuritiesExistServerFn,
   getDashboardDataServerFn,
   getGroupAccountHoldingsServerFn,
-  getPortfolioMetricsServerFn,
-  getPositionsServerFn,
   getRebalancingGroupsServerFn,
-  getSleevesServerFn,
-  getTransactionsServerFn,
 } from '~/lib/server-functions';
 
 // Utility function that replicates the exact loader logic from /rebalancing-groups route
@@ -64,12 +55,51 @@ export const Route = createFileRoute('/')({
   component: DashboardComponent,
   loader: async ({ context: _context }) => {
     try {
-      // Fetch all dashboard data in parallel to eliminate waterfalls
-      const [dashboardData, rebalancingGroups] = await Promise.all([
-        getDashboardDataServerFn(),
+      // Fetch only essential onboarding/status data upfront for fast initial load
+      // Heavy data (positions, transactions, etc.) will be lazy-loaded in the component
+      const results = await Promise.allSettled([
+        // Only fetch onboarding status data from dashboard function
+        (async () => {
+          const dashboardData = await getDashboardDataServerFn();
+          // Return only the status fields needed for onboarding, not heavy data
+          return {
+            schwabCredentialsStatus: dashboardData.schwabCredentialsStatus,
+            schwabOAuthStatus: dashboardData.schwabOAuthStatus,
+            accountsCount: dashboardData.accountsCount,
+            securitiesStatus: dashboardData.securitiesStatus,
+            modelsStatus: dashboardData.modelsStatus,
+            rebalancingGroupsStatus: dashboardData.rebalancingGroupsStatus,
+            user: dashboardData.user,
+          };
+        })(),
+        // Rebalancing groups are needed for onboarding status, so keep this
         loadRebalancingGroupsData(),
       ]);
-      return { ...dashboardData, rebalancingGroups };
+
+      // Extract results, providing fallbacks for failed promises
+      const statusData =
+        results[0].status === 'fulfilled'
+          ? results[0].value
+          : {
+              schwabCredentialsStatus: { hasCredentials: false },
+              schwabOAuthStatus: { hasCredentials: false },
+              accountsCount: 0,
+              securitiesStatus: { hasSecurities: false, securitiesCount: 0 },
+              modelsStatus: { hasModels: false, modelsCount: 0 },
+              rebalancingGroupsStatus: { hasGroups: false, groupsCount: 0 },
+              user: null,
+            };
+      const rebalancingGroups = results[1].status === 'fulfilled' ? results[1].value : [];
+
+      // Log any errors for debugging but don't fail the entire load
+      if (results[0].status === 'rejected') {
+        console.warn('Dashboard status data load failed:', results[0].reason);
+      }
+      if (results[1].status === 'rejected') {
+        console.warn('Rebalancing groups load failed:', results[1].reason);
+      }
+
+      return { ...statusData, rebalancingGroups };
     } catch (error) {
       // If authentication error, redirect to login
       if (error instanceof Error && error.message.includes('Authentication required')) {
@@ -83,163 +113,33 @@ export const Route = createFileRoute('/')({
 
 function DashboardComponent() {
   const loaderData = Route.useLoaderData();
-  const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<'positions' | 'transactions' | 'rebalancing-groups'>(
     'rebalancing-groups',
   );
 
   // Note: loaderData.user is available as fallback for session?.user if needed
-
   // Note: Server-side auth check in loader ensures user is authenticated
-  // No client-side redirect needed
 
   const [selectedSleeve, setSelectedSleeve] = useState<string | null>(null);
   const [showSleeveModal, setShowSleeveModal] = useState(false);
   const [selectedTicker, setSelectedTicker] = useState<string | null>(null);
   const [showSecurityModal, setShowSecurityModal] = useState(false);
 
-  // Detect Schwab OAuth callback and refresh data
-  useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const hasOAuthCallback = urlParams.has('code') && urlParams.has('state');
-
-    if (hasOAuthCallback) {
-      console.log('🔄 [Dashboard] Detected Schwab OAuth callback, refreshing dashboard data...');
-      console.log('🔄 [Dashboard] URL params:', {
-        code: `${urlParams.get('code')?.substring(0, 10)}...`,
-        state: urlParams.get('state'),
-      });
-
-      // Clean up URL parameters
-      const newUrl = window.location.pathname;
-      window.history.replaceState({}, document.title, newUrl);
-
-      // Invalidate all dashboard queries to ensure fresh data after Schwab connection
-      console.log('🔄 [Dashboard] Invalidating all dashboard queries...');
-      queryClient.invalidateQueries({
-        queryKey: ['positions'],
-      });
-      queryClient.invalidateQueries({
-        queryKey: ['metrics'],
-      });
-      queryClient.invalidateQueries({
-        queryKey: ['transactions'],
-      });
-      queryClient.invalidateQueries({
-        queryKey: ['sleeves'],
-      });
-
-      // Force refetch to bypass staleTime
-      console.log('🔄 [Dashboard] Forcing refetch of all dashboard queries...');
-      queryClient.refetchQueries({
-        queryKey: ['positions'],
-      });
-      queryClient.refetchQueries({
-        queryKey: ['metrics'],
-      });
-      queryClient.refetchQueries({
-        queryKey: ['transactions'],
-      });
-      queryClient.refetchQueries({
-        queryKey: ['sleeves'],
-      });
-
-      console.log('✅ [Dashboard] Dashboard data refresh initiated after Schwab OAuth callback');
-    }
-  }, [queryClient]);
-
-  const hasAccounts =
-    loaderData && 'accountsCount' in loaderData ? loaderData.accountsCount > 0 : false;
-
-  // Use Schwab connection hook for OAuth status (same as OnboardingTracker)
-  const { isConnected: schwabOAuthComplete } = useSchwabConnection(
-    loaderData.schwabCredentialsStatus,
-    loaderData.schwabOAuthStatus,
-  );
-
-  // Use reactive queries for onboarding status (same as OnboardingTracker)
-  const { data: reactiveSecuritiesStatus } = useQuery({
-    queryKey: ['securities-status'],
-    queryFn: () => checkSecuritiesExistServerFn(),
-    initialData: loaderData.securitiesStatus,
-    staleTime: 1000 * 60 * 5,
-  });
-
-  const { data: reactiveModelsStatus } = useQuery({
-    queryKey: ['models-status'],
-    queryFn: () => checkModelsExistServerFn(),
-    initialData: loaderData.modelsStatus,
-    staleTime: 1000 * 60 * 5,
-  });
-
-  const { data: reactiveSchwabCredentialsStatus } = useQuery({
-    queryKey: ['schwab-credentials-status'],
-    queryFn: () => checkSchwabCredentialsServerFn(),
-    initialData: loaderData.schwabCredentialsStatus,
-    staleTime: 1000 * 60 * 2,
-    refetchOnMount: false,
-    refetchOnWindowFocus: true,
-  });
-
-  // Use reactive queries for rebalancing groups status
-  const { data: reactiveRebalancingGroupsStatus } = useQuery({
-    queryKey: ['rebalancing-groups-dashboard'],
-    queryFn: loadRebalancingGroupsData,
-    initialData: loaderData.rebalancingGroups,
-    staleTime: 1000 * 60 * 2,
-    select: (groups) => ({
-      hasGroups: groups && groups.length > 0,
-      groupsCount: groups ? groups.length : 0,
-    }),
-  });
-
-  // For the dashboard, we also want to show rebalancing groups if we have accounts
-  // and the user has completed onboarding (has models, etc.)
-  // We'll use a simple approach: show if we have accounts and either have groups or are still loading
-  const shouldShowRebalancingSection = hasAccounts;
-
-  const { data: positions, isLoading: positionsLoading } = useQuery({
-    queryKey: ['positions'],
-    queryFn: getPositionsServerFn,
-    initialData: loaderData.positions,
-    staleTime: 1000 * 60 * 2, // 2 minutes (reduced for faster refresh after Schwab sync)
-  });
-
-  const { data: metrics, isLoading: metricsLoading } = useQuery({
-    queryKey: ['metrics'],
-    queryFn: getPortfolioMetricsServerFn,
-    initialData: loaderData.metrics,
-    staleTime: 1000 * 60 * 2, // 2 minutes (reduced for faster refresh after Schwab sync)
-  });
-
-  const { data: transactions, isLoading: transactionsLoading } = useQuery({
-    queryKey: ['transactions'],
-    queryFn: getTransactionsServerFn,
-    initialData: loaderData.transactions,
-    staleTime: 1000 * 60 * 2, // 2 minutes (reduced for faster refresh after Schwab sync)
-  });
-
-  const { data: sleeves, isLoading: sleevesLoading } = useQuery({
-    queryKey: ['sleeves'],
-    queryFn: getSleevesServerFn,
-    initialData: loaderData.sleeves,
-    staleTime: 1000 * 60 * 2, // 2 minutes (reduced for faster refresh after Schwab sync)
-  });
-
-  // Use the exact same data loading logic as /rebalancing-groups route
-  const { data: rebalancingGroups, isLoading: rebalancingGroupsLoading } = useQuery({
-    queryKey: ['rebalancing-groups-dashboard'],
-    queryFn: loadRebalancingGroupsData,
-    initialData: loaderData.rebalancingGroups,
-    staleTime: 1000 * 60 * 2,
-  });
-
-  const isLoading =
-    positionsLoading ||
-    metricsLoading ||
-    transactionsLoading ||
-    sleevesLoading ||
-    rebalancingGroupsLoading;
+  // Use the custom hook to manage all dashboard data and logic
+  const {
+    isLoading,
+    schwabOAuthComplete,
+    shouldShowRebalancingSection,
+    reactiveSecuritiesStatus,
+    reactiveModelsStatus,
+    reactiveSchwabCredentialsStatus,
+    reactiveRebalancingGroupsStatus,
+    positions,
+    metrics,
+    transactions,
+    sleeves,
+    rebalancingGroups,
+  } = useDashboardData(loaderData);
 
   const handleTickerClick = (ticker: string) => {
     setSelectedTicker(ticker);
