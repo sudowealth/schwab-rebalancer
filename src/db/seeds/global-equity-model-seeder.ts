@@ -274,7 +274,7 @@ export async function seedGlobalEquitySleeves(db: ReturnType<typeof drizzle>, us
   );
 
   // Clear cache for this user to ensure fresh data
-  const { clearCache } = await import('../db-api');
+  const { clearCache } = await import('../../lib/db-api');
   clearCache(`sleeves-${userId || 'demo-user'}`);
 
   return {
@@ -441,7 +441,7 @@ export async function seedGlobalEquityModelData(db: ReturnType<typeof drizzle>, 
   );
 
   // Clear cache for this user to ensure fresh data
-  const { clearCache } = await import('../db-api');
+  const { clearCache } = await import('../../lib/db-api');
   clearCache(`models-${userId || 'demo-user'}`);
 
   return {

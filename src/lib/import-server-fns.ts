@@ -20,7 +20,7 @@ const requireAdmin = async () => {
 export const seedDemoDataServerFn = createServerFn({ method: 'POST' }).handler(async () => {
   const { user } = await requireAuth();
 
-  const { seedDatabase } = await import('./seeds/main');
+  const { seedDatabase } = await import('../db/seeds/main');
   await seedDatabase(user.id);
 
   return {
@@ -40,8 +40,8 @@ export const seedSecuritiesDataServerFn = createServerFn({ method: 'POST' }).han
   await requireAuth();
 
   const db = getDatabaseSync();
-  const { seedSecurities } = await import('./seeds/securities');
-  const { seedSP500Securities } = await import('./seeds/sp500-model-seeder');
+  const { seedSecurities } = await import('../db/seeds/securities');
+  const { seedSP500Securities } = await import('../db/seeds/sp500-model-seeder');
 
   // Seed cash securities first
   await seedSecurities(db);
@@ -165,7 +165,7 @@ export const seedModelsDataServerFn = createServerFn({ method: 'POST' }).handler
   const { user } = await requireAuth();
 
   const db = getDatabaseSync();
-  const { seedSleeves, seedModels } = await import('./seeds/sp500-model-seeder');
+  const { seedSleeves, seedModels } = await import('../db/seeds/sp500-model-seeder');
 
   const sleevesResult = await seedSleeves(db, user.id);
   const modelsResult = await seedModels(db, user.id);
@@ -185,7 +185,7 @@ export const seedGlobalEquityModelServerFn = createServerFn({ method: 'POST' }).
 
     const db = getDatabaseSync();
     const { seedGlobalEquitySleeves, seedGlobalEquityModelData } = await import(
-      './seeds/global-equity-model-seeder'
+      '../db/seeds/global-equity-model-seeder'
     );
 
     const sleevesResult = await seedGlobalEquitySleeves(db, user.id);
