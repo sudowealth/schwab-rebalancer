@@ -1,4 +1,4 @@
-import type { WashSaleRestriction } from '../types/rebalance';
+import type { WashSaleRestriction } from '~/types/rebalance';
 
 export interface RestrictionCheckResult {
   isRestricted: boolean;

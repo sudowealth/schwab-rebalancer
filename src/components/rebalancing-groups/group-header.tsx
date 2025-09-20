@@ -1,8 +1,8 @@
 import { Link } from '@tanstack/react-router';
 import { Edit, Trash2 } from 'lucide-react';
-import type { RebalancingGroup } from '../../lib/schemas';
-import { Badge } from '../ui/badge';
-import { Button } from '../ui/button';
+import { Badge } from '~/components/ui/badge';
+import { Button } from '~/components/ui/button';
+import type { RebalancingGroup } from '~/lib/schemas';
 
 interface GroupHeaderProps {
   group: RebalancingGroup;

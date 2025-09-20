@@ -1,5 +1,5 @@
 import { and, eq } from 'drizzle-orm';
-import * as schema from '../db/schema';
+import * as schema from '~/db/schema';
 import { decrypt, encrypt } from './crypto';
 import { getDatabaseSync } from './db-config';
 

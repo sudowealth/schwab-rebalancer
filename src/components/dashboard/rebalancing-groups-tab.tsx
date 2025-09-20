@@ -9,9 +9,9 @@ import {
 } from '@tanstack/react-table';
 import { ArrowRight, ChevronDown, ChevronsUpDown, ChevronUp } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
-import type { RebalancingGroup } from '../../lib/schemas';
-import { Badge } from '../ui/badge';
-import { Button } from '../ui/button';
+import { Badge } from '~/components/ui/badge';
+import { Button } from '~/components/ui/button';
+import type { RebalancingGroup } from '~/lib/schemas';
 
 interface RebalancingGroupsTabProps {
   groups: RebalancingGroup[];

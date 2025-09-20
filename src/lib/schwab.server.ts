@@ -1,6 +1,6 @@
 import { createServerFn } from '@tanstack/react-start';
 import { and, desc, eq, inArray, lt, or } from 'drizzle-orm';
-import * as schema from '../db/schema';
+import * as schema from '~/db/schema';
 import { isAnyCashTicker } from './constants';
 import { getDatabaseSync } from './db-config';
 import { getErrorMessage } from './error-handler';
@@ -949,7 +949,7 @@ export const getGroupOrdersServerFn = createServerFn({ method: 'POST' })
     const { user } = await requireAuth();
 
     const db = getDatabaseSync();
-    const schema = await import('../db/schema');
+    const schema = await import('~/db/schema');
     const { eq } = await import('drizzle-orm');
 
     // Verify that the rebalancing group belongs to the authenticated user
@@ -997,7 +997,7 @@ export const updateOrderServerFn = createServerFn({ method: 'POST' })
 
     // Verify that the order belongs to the authenticated user
     const db = getDatabaseSync();
-    const schema = await import('../db/schema');
+    const schema = await import('~/db/schema');
     const { eq } = await import('drizzle-orm');
 
     const order = await db
@@ -1028,7 +1028,7 @@ export const deleteOrderServerFn = createServerFn({ method: 'POST' })
 
     // Verify that the order belongs to the authenticated user
     const db = getDatabaseSync();
-    const schema = await import('../db/schema');
+    const schema = await import('~/db/schema');
     const { eq } = await import('drizzle-orm');
 
     const order = await db
@@ -1059,7 +1059,7 @@ export const previewOrderServerFn = createServerFn({ method: 'POST' })
     const { user } = await requireAuth();
 
     const db = getDatabaseSync();
-    const schema = await import('../db/schema');
+    const schema = await import('~/db/schema');
     const { eq } = await import('drizzle-orm');
 
     // Verify that the order belongs to the authenticated user
@@ -1316,7 +1316,7 @@ export const submitOrderServerFn = createServerFn({ method: 'POST' })
     const { user } = await requireAuth();
 
     const db = getDatabaseSync();
-    const schema = await import('../db/schema');
+    const schema = await import('~/db/schema');
     const { eq } = await import('drizzle-orm');
 
     // Verify order belongs to user and load

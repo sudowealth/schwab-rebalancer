@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { calculateSleeveAllocations, generateSleeveTableData } from '../lib/rebalancing-utils';
+import { calculateSleeveAllocations, generateSleeveTableData } from '~/lib/rebalancing-utils';
 
 export function useSleeveAllocations(
   group: Parameters<typeof calculateSleeveAllocations>[0],

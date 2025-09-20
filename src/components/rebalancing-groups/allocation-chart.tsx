@@ -1,8 +1,14 @@
 import { PieChartIcon } from 'lucide-react';
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
-import { formatCurrency } from '../../lib/utils';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '~/components/ui/card';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '~/components/ui/select';
+import { formatCurrency } from '~/lib/utils';
 
 interface AllocationChartProps {
   allocationData: Array<{

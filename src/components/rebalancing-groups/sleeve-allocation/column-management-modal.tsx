@@ -1,8 +1,8 @@
 import { GripVertical, Settings } from 'lucide-react';
 import type React from 'react';
 import { useEffect, useState } from 'react';
-import { Button } from '../../ui/button';
-import { Checkbox } from '../../ui/checkbox';
+import { Button } from '~/components/ui/button';
+import { Checkbox } from '~/components/ui/checkbox';
 import {
   Dialog,
   DialogContent,
@@ -11,7 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from '../../ui/dialog';
+} from '~/components/ui/dialog';
 
 export interface ColumnConfig {
   id: string;

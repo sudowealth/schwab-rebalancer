@@ -1,8 +1,8 @@
 import { useForm } from '@tanstack/react-form';
 import { createFileRoute } from '@tanstack/react-router';
 import { useId, useState } from 'react';
-import { ClientOnly } from '../components/ClientOnly';
-import { authClient } from '../lib/auth-client';
+import { ClientOnly } from '~/components/ClientOnly';
+import { authClient } from '~/lib/auth-client';
 
 export const Route = createFileRoute('/forgot-password')({
   component: ForgotPasswordPage,

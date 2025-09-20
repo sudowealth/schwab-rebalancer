@@ -1,12 +1,12 @@
 import { createFileRoute, redirect } from '@tanstack/react-router';
 import { BarChart3, FileText, Trash2 } from 'lucide-react';
 import { useState } from 'react';
-import { AddSleeveModal } from '../../components/sleeves/add-sleeve-modal';
-import { DeleteSleeveModal } from '../../components/sleeves/delete-sleeve-modal';
-import { EditSleeveModal } from '../../components/sleeves/edit-sleeve-modal';
-import { Button } from '../../components/ui/button';
-import type { Sleeve, Transaction } from '../../lib/schemas';
-import { getDashboardDataServerFn } from '../../lib/server-functions';
+import { AddSleeveModal } from '~/components/sleeves/add-sleeve-modal';
+import { DeleteSleeveModal } from '~/components/sleeves/delete-sleeve-modal';
+import { EditSleeveModal } from '~/components/sleeves/edit-sleeve-modal';
+import { Button } from '~/components/ui/button';
+import type { Sleeve, Transaction } from '~/lib/schemas';
+import { getDashboardDataServerFn } from '~/lib/server-functions';
 
 export const Route = createFileRoute('/sleeves/')({
   component: SleevesComponent,

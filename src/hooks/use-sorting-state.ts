@@ -2,7 +2,7 @@ import { useState } from 'react';
 import type {
   SortDirection,
   SortField,
-} from '../components/rebalancing-groups/sleeve-allocation/sleeve-allocation-table-headers';
+} from '~/components/rebalancing-groups/sleeve-allocation/sleeve-allocation-table-headers';
 
 export function useSortingState() {
   const [sortField, setSortField] = useState<SortField | undefined>(undefined);

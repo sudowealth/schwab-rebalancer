@@ -9,17 +9,17 @@ import {
 } from '@tanstack/react-table';
 import { ArrowRight, ChevronDown, ChevronsUpDown, ChevronUp, Edit, Trash2 } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
-import { SleeveModal } from '../../components/dashboard/sleeve-modal';
-import { DeleteModelModal } from '../../components/models/delete-model-modal';
-import { EditModelModal } from '../../components/models/edit-model-modal';
-import { Badge } from '../../components/ui/badge';
-import { Button } from '../../components/ui/button';
-import type { RebalancingGroup, Sleeve } from '../../lib/schemas';
+import { SleeveModal } from '~/components/dashboard/sleeve-modal';
+import { DeleteModelModal } from '~/components/models/delete-model-modal';
+import { EditModelModal } from '~/components/models/edit-model-modal';
+import { Badge } from '~/components/ui/badge';
+import { Button } from '~/components/ui/button';
+import type { RebalancingGroup, Sleeve } from '~/lib/schemas';
 import {
   getDashboardDataServerFn,
   getModelByIdServerFn,
   getRebalancingGroupsServerFn,
-} from '../../lib/server-functions';
+} from '~/lib/server-functions';
 
 export const Route = createFileRoute('/models/$modelId')({
   component: ModelDetailComponent,

@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { CASH_TICKER } from '../../../lib/constants';
-import { formatCurrency, formatPercent, formatQuantity } from '../../../lib/utils';
-import { Badge } from '../../ui/badge';
+import { Badge } from '~/components/ui/badge';
+import { CASH_TICKER } from '~/lib/constants';
+import { formatCurrency, formatPercent, formatQuantity } from '~/lib/utils';
 import { calculateTradeMetrics } from '../sleeve-allocation/sleeve-allocation-utils';
 import type { Trade } from './sleeve-allocation-types';
 

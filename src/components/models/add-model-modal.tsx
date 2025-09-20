@@ -1,7 +1,7 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { FileDown, Plus, Upload, X } from 'lucide-react';
 import { useEffect, useId, useState } from 'react';
-import { Button } from '../../components/ui/button';
+import { Button } from '~/components/ui/button';
 import {
   Dialog,
   DialogContent,
@@ -10,12 +10,12 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from '../../components/ui/dialog';
-import { Input } from '../../components/ui/input';
-import { createModelServerFn, getAvailableSleevesServerFn } from '../../lib/server-functions';
-import { cn } from '../../lib/utils';
+} from '~/components/ui/dialog';
+import { Input } from '~/components/ui/input';
+import { type Option, VirtualizedSelect } from '~/components/ui/virtualized-select';
+import { createModelServerFn, getAvailableSleevesServerFn } from '~/lib/server-functions';
+import { cn } from '~/lib/utils';
 import { AddSleeveModal } from '../sleeves/add-sleeve-modal';
-import { type Option, VirtualizedSelect } from '../ui/virtualized-select';
 
 interface ModelMember {
   id: string;

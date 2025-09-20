@@ -1,14 +1,7 @@
 import { useRouter } from '@tanstack/react-router';
 import { Plus } from 'lucide-react';
 import { useCallback, useEffect, useId, useState } from 'react';
-import {
-  assignModelToGroupServerFn,
-  createRebalancingGroupServerFn,
-  getAccountsForRebalancingGroupsServerFn,
-  getModelsServerFn,
-} from '../../lib/server-functions';
-import { AddModelModal } from '../models/add-model-modal';
-import { Button } from '../ui/button';
+import { Button } from '~/components/ui/button';
 import {
   Dialog,
   DialogContent,
@@ -17,11 +10,24 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from '../ui/dialog';
-import { Input } from '../ui/input';
-import { Label } from '../ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
-import { VirtualizedSelect } from '../ui/virtualized-select';
+} from '~/components/ui/dialog';
+import { Input } from '~/components/ui/input';
+import { Label } from '~/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '~/components/ui/select';
+import { VirtualizedSelect } from '~/components/ui/virtualized-select';
+import {
+  assignModelToGroupServerFn,
+  createRebalancingGroupServerFn,
+  getAccountsForRebalancingGroupsServerFn,
+  getModelsServerFn,
+} from '~/lib/server-functions';
+import { AddModelModal } from '../models/add-model-modal';
 import { SelectedAccountsDisplay } from './selected-accounts-display';
 
 interface Account {

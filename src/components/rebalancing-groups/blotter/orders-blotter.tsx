@@ -9,19 +9,25 @@ import {
   Upload,
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import type { Order } from '../../../lib/schemas';
+import { Badge } from '~/components/ui/badge';
+import { Button } from '~/components/ui/button';
+import { Card } from '~/components/ui/card';
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '~/components/ui/dialog';
+import { Popover, PopoverContent, PopoverTrigger } from '~/components/ui/popover';
+import type { Order } from '~/lib/schemas';
 import {
   deleteOrderServerFn,
   getGroupOrdersServerFn,
   previewOrderServerFn,
   submitOrderServerFn,
-} from '../../../lib/server-functions';
-import { formatCurrency } from '../../../lib/utils';
-import { Badge } from '../../ui/badge';
-import { Button } from '../../ui/button';
-import { Card } from '../../ui/card';
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '../../ui/dialog';
-import { Popover, PopoverContent, PopoverTrigger } from '../../ui/popover';
+} from '~/lib/server-functions';
+import { formatCurrency } from '~/lib/utils';
 import { EditOrderModal } from './edit-order-modal';
 
 const BUCKETS: Record<string, string[]> = {

@@ -10,9 +10,9 @@ import {
 } from '@tanstack/react-table';
 import { AlertTriangle, ChevronDown, ChevronsUpDown, ChevronUp, Flame } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import { SimpleTooltip } from '../../components/ui/simple-tooltip';
-import type { Position, Trade } from '../../lib/schemas';
-import { formatCurrency, formatQuantity } from '../../lib/utils';
+import { SimpleTooltip } from '~/components/ui/simple-tooltip';
+import type { Position, Trade } from '~/lib/schemas';
+import { formatCurrency, formatQuantity } from '~/lib/utils';
 
 interface PositionsTableProps {
   positions: Position[];

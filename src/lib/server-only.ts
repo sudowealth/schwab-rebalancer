@@ -116,7 +116,7 @@ export async function loadDashboardData(
     try {
       if (userId) {
         const db = getDatabaseSync();
-        const schema = await import('../db/schema');
+        const schema = await import('~/db/schema');
         const { eq, sql } = await import('drizzle-orm');
         const result = await db
           .select({ count: sql<number>`count(*)` })
@@ -134,7 +134,7 @@ export async function loadDashboardData(
     try {
       if (userId) {
         const db = getDatabaseSync();
-        const schema = await import('../db/schema');
+        const schema = await import('~/db/schema');
         const { ne, sql } = await import('drizzle-orm');
         const result = await db
           .select({ count: sql<number>`count(*)` })
@@ -155,7 +155,7 @@ export async function loadDashboardData(
     try {
       if (userId) {
         const db = getDatabaseSync();
-        const schema = await import('../db/schema');
+        const schema = await import('~/db/schema');
         const { eq, sql } = await import('drizzle-orm');
         const result = await db
           .select({ count: sql<number>`count(*)` })
@@ -176,7 +176,7 @@ export async function loadDashboardData(
     try {
       if (userId) {
         const db = getDatabaseSync();
-        const schema = await import('../db/schema');
+        const schema = await import('~/db/schema');
         const { eq, sql } = await import('drizzle-orm');
         const result = await db
           .select({ count: sql<number>`count(*)` })

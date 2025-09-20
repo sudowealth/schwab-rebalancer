@@ -1,6 +1,6 @@
 import { eq } from 'drizzle-orm';
 import type { drizzle } from 'drizzle-orm/neon-http';
-import * as schema from '../../db/schema';
+import * as schema from '~/db/schema';
 
 // Demo rebalancing groups data
 const REBALANCING_GROUPS_DATA = [

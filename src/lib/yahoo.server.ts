@@ -1,6 +1,6 @@
 import { createServerFn } from '@tanstack/react-start';
 import { and, eq, inArray, isNull, or } from 'drizzle-orm';
-import * as schema from '../db/schema';
+import * as schema from '~/db/schema';
 import { isAnyCashTicker } from './constants';
 import { getDatabaseSync } from './db-config';
 import { getErrorMessage } from './error-handler';

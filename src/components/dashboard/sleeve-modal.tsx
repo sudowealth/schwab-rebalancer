@@ -1,5 +1,5 @@
 import { BarChart3 } from 'lucide-react';
-import { formatCurrency } from '../../lib/utils';
+import { formatCurrency } from '~/lib/utils';
 
 interface SleeveMember {
   id: string;

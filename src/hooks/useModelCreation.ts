@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from '@tanstack/react-router';
-import { seedGlobalEquityModelServerFn } from '../lib/server-functions';
+import { seedGlobalEquityModelServerFn } from '~/lib/server-functions';
 
 export function useModelCreation() {
   const queryClient = useQueryClient();

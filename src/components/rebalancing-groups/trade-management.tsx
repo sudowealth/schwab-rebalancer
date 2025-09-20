@@ -1,4 +1,4 @@
-import type { RebalanceMethod } from '../../types/rebalance';
+import type { RebalanceMethod } from '~/types/rebalance';
 import { OrdersBlotter } from './blotter/orders-blotter';
 import { RebalanceModal } from './rebalance-modal';
 

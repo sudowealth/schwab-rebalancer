@@ -1,6 +1,6 @@
 import { BarChart3 } from 'lucide-react';
-import type { Position, SP500Stock, Trade, Transaction } from '../../lib/schemas';
-import { formatCurrency, formatQuantity } from '../../lib/utils';
+import type { Position, SP500Stock, Trade, Transaction } from '~/lib/schemas';
+import { formatCurrency, formatQuantity } from '~/lib/utils';
 
 interface SecurityModalProps {
   isOpen: boolean;

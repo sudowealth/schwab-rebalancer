@@ -13,14 +13,14 @@ import {
   TrendingUp,
   Users,
 } from 'lucide-react';
-import { useModelCreation } from '../hooks/useModelCreation';
-import { useSchwabConnection } from '../hooks/useSchwabConnection';
-import { useSecuritiesSeeding } from '../hooks/useSecuritiesSeeding';
+import { useModelCreation } from '~/hooks/useModelCreation';
+import { useSchwabConnection } from '~/hooks/useSchwabConnection';
+import { useSecuritiesSeeding } from '~/hooks/useSecuritiesSeeding';
 import {
   checkModelsExistServerFn,
   checkSchwabCredentialsServerFn,
   checkSecuritiesExistServerFn,
-} from '../lib/server-functions';
+} from '~/lib/server-functions';
 import { Button } from './ui/button';
 import { SimpleTooltip } from './ui/simple-tooltip';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';

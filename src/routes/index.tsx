@@ -1,17 +1,17 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute, redirect } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
-import { DashboardMetrics } from '../components/dashboard/dashboard-metrics';
-import { PositionsTable } from '../components/dashboard/positions-table';
-import { RebalancingGroupsTab } from '../components/dashboard/rebalancing-groups-tab';
-import { SecurityModal } from '../components/dashboard/security-modal';
-import { SleeveModal } from '../components/dashboard/sleeve-modal';
-import { TransactionsTable } from '../components/dashboard/transactions-table';
-import { OnboardingTracker } from '../components/OnboardingTracker';
-import { ExportButton } from '../components/ui/export-button';
-import { useSchwabConnection } from '../hooks/useSchwabConnection';
-import { exportPositionsToExcel, exportTransactionsToExcel } from '../lib/excel-export';
-import type { Sleeve } from '../lib/schemas';
+import { DashboardMetrics } from '~/components/dashboard/dashboard-metrics';
+import { PositionsTable } from '~/components/dashboard/positions-table';
+import { RebalancingGroupsTab } from '~/components/dashboard/rebalancing-groups-tab';
+import { SecurityModal } from '~/components/dashboard/security-modal';
+import { SleeveModal } from '~/components/dashboard/sleeve-modal';
+import { TransactionsTable } from '~/components/dashboard/transactions-table';
+import { OnboardingTracker } from '~/components/OnboardingTracker';
+import { ExportButton } from '~/components/ui/export-button';
+import { useSchwabConnection } from '~/hooks/useSchwabConnection';
+import { exportPositionsToExcel, exportTransactionsToExcel } from '~/lib/excel-export';
+import type { Sleeve } from '~/lib/schemas';
 // Use server functions for live data so client refetches return real results
 import {
   checkModelsExistServerFn,
@@ -24,7 +24,7 @@ import {
   getRebalancingGroupsServerFn,
   getSleevesServerFn,
   getTransactionsServerFn,
-} from '../lib/server-functions';
+} from '~/lib/server-functions';
 
 // Utility function that replicates the exact loader logic from /rebalancing-groups route
 async function loadRebalancingGroupsData() {

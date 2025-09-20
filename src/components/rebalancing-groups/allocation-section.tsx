@@ -1,5 +1,5 @@
-import type { AccountHoldingsResult } from '../../lib/db-api';
-import type { RebalancingGroup } from '../../lib/schemas';
+import type { AccountHoldingsResult } from '~/lib/db-api';
+import type { RebalancingGroup } from '~/lib/schemas';
 import { RebalanceSummaryCards } from './rebalance-summary-cards';
 import { SleeveAllocationTable } from './sleeve-allocation/sleeve-allocation-table';
 import type { SortDirection, SortField } from './sleeve-allocation/sleeve-allocation-table-headers';

@@ -1,5 +1,5 @@
 import { eq } from 'drizzle-orm';
-import * as schema from '../db/schema';
+import * as schema from '~/db/schema';
 import { getDatabaseSync } from './db-config';
 import { logSecurityEvent } from './log';
 

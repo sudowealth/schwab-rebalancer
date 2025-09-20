@@ -1,6 +1,6 @@
 import { FileDown, Plus, Upload } from 'lucide-react';
 import { useId, useState } from 'react';
-import { Button } from '../../components/ui/button';
+import { Button } from '~/components/ui/button';
 import {
   Dialog,
   DialogContent,
@@ -9,10 +9,10 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from '../../components/ui/dialog';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
-import { useSleeveForm } from '../../hooks/useSleeveForm';
-import { createSleeveServerFn } from '../../lib/server-functions';
+} from '~/components/ui/dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '~/components/ui/tabs';
+import { useSleeveForm } from '~/hooks/useSleeveForm';
+import { createSleeveServerFn } from '~/lib/server-functions';
 import { SleeveForm } from './SleeveForm';
 
 interface AddSleeveModalProps {

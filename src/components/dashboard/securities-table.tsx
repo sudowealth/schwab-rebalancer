@@ -21,10 +21,16 @@ import {
   Search,
 } from 'lucide-react';
 import { useEffect, useMemo } from 'react';
-import type { SP500Stock } from '../../lib/schemas';
-import { Button } from '../ui/button';
-import { Input } from '../ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import { Button } from '~/components/ui/button';
+import { Input } from '~/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '~/components/ui/select';
+import type { SP500Stock } from '~/lib/schemas';
 
 type SearchParams = {
   page?: number;

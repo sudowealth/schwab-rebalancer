@@ -1,6 +1,6 @@
 import { eq, inArray } from 'drizzle-orm';
 import yahooFinance from 'yahoo-finance2';
-import * as schema from '../db/schema';
+import * as schema from '~/db/schema';
 import { CASH_TICKER, MANUAL_CASH_TICKER } from './constants';
 import { getDatabaseSync } from './db-config';
 import { getSchwabApiService } from './schwab-api';

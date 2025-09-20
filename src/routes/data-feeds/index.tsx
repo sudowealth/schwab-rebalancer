@@ -1,10 +1,10 @@
 import { createFileRoute, redirect } from '@tanstack/react-router';
 import { useEffect } from 'react';
-import { SchwabIntegration } from '../../components/SchwabIntegration';
-import { SeedDataSection } from '../../components/SeedDataSection';
-import { SyncHistory } from '../../components/SyncHistory';
-import { YahooIntegration } from '../../components/YahooIntegration';
-import { getDashboardDataServerFn } from '../../lib/server-functions';
+import { SchwabIntegration } from '~/components/SchwabIntegration';
+import { SeedDataSection } from '~/components/SeedDataSection';
+import { SyncHistory } from '~/components/SyncHistory';
+import { YahooIntegration } from '~/components/YahooIntegration';
+import { getDashboardDataServerFn } from '~/lib/server-functions';
 
 export const Route = createFileRoute('/data-feeds/')({
   component: DataFeedsPage,

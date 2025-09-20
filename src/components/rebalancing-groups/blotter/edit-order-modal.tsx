@@ -1,9 +1,7 @@
 import { Calculator } from 'lucide-react';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import type { z } from 'zod';
-import type { Order, OrderTypeSchema } from '../../../lib/schemas';
-import { previewOrderServerFn, updateOrderServerFn } from '../../../lib/server-functions';
-import { Button } from '../../ui/button';
+import { Button } from '~/components/ui/button';
 import {
   Dialog,
   DialogContent,
@@ -11,9 +9,17 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '../../ui/dialog';
-import { Input } from '../../ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../ui/select';
+} from '~/components/ui/dialog';
+import { Input } from '~/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '~/components/ui/select';
+import type { Order, OrderTypeSchema } from '~/lib/schemas';
+import { previewOrderServerFn, updateOrderServerFn } from '~/lib/server-functions';
 import { QuantityCalculatorModal } from './quantity-calculator-modal';
 
 type Props = {

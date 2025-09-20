@@ -1,6 +1,6 @@
 import { and, eq, inArray, like } from 'drizzle-orm';
 import type { drizzle } from 'drizzle-orm/neon-http';
-import * as schema from '../../db/schema';
+import * as schema from '~/db/schema';
 
 // Combined function to seed S&P 500 securities, sleeves, and models
 export async function seedSp500Model(db: ReturnType<typeof drizzle>, userId?: string) {
@@ -384,7 +384,7 @@ export async function seedSleeves(db: ReturnType<typeof drizzle>, userId?: strin
   );
 
   // Clear cache for this user to ensure fresh data
-  const { clearCache } = await import('../../lib/db-api');
+  const { clearCache } = await import('~/lib/db-api');
   clearCache(`sleeves-${userId || 'demo-user'}`);
 
   return {
@@ -544,7 +544,7 @@ export async function seedModels(db: ReturnType<typeof drizzle>, userId?: string
   console.log(`✅ Seeded ${modelData.length} models, ${modelMembersData.length} model members`);
 
   // Clear cache for this user to ensure fresh data
-  const { clearCache } = await import('../../lib/db-api');
+  const { clearCache } = await import('~/lib/db-api');
   clearCache(`models-${userId || 'demo-user'}`);
 
   return {

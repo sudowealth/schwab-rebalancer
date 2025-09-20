@@ -1,6 +1,6 @@
 import { createServerFn } from '@tanstack/react-start';
 import { eq, inArray, sql } from 'drizzle-orm';
-import * as schema from '../db/schema';
+import * as schema from '~/db/schema';
 import { CASH_TICKER, isAnyCashTicker } from './constants';
 import { getDatabaseSync } from './db-config';
 import { getErrorMessage, ValidationError } from './error-handler';
@@ -21,7 +21,7 @@ const requireAdmin = async () => {
 export const seedDemoDataServerFn = createServerFn({ method: 'POST' }).handler(async () => {
   const { user } = await requireAuth();
 
-  const { seedDatabase } = await import('../db/seeds/main');
+  const { seedDatabase } = await import('~/db/seeds/main');
   await seedDatabase(user.id);
 
   return {
@@ -41,8 +41,8 @@ export const seedSecuritiesDataServerFn = createServerFn({ method: 'POST' }).han
   await requireAuth();
 
   const db = getDatabaseSync();
-  const { seedSecurities } = await import('../db/seeds/securities');
-  const { seedSP500Securities } = await import('../db/seeds/sp500-model-seeder');
+  const { seedSecurities } = await import('~/db/seeds/securities');
+  const { seedSP500Securities } = await import('~/db/seeds/sp500-model-seeder');
 
   // Seed cash securities first
   await seedSecurities(db);
@@ -161,7 +161,7 @@ export const seedModelsDataServerFn = createServerFn({ method: 'POST' }).handler
   const { user } = await requireAuth();
 
   const db = getDatabaseSync();
-  const { seedSleeves, seedModels } = await import('../db/seeds/sp500-model-seeder');
+  const { seedSleeves, seedModels } = await import('~/db/seeds/sp500-model-seeder');
 
   const sleevesResult = await seedSleeves(db, user.id);
   const modelsResult = await seedModels(db, user.id);
@@ -181,7 +181,7 @@ export const seedGlobalEquityModelServerFn = createServerFn({ method: 'POST' }).
 
     const db = getDatabaseSync();
     const { seedGlobalEquitySleeves, seedGlobalEquityModelData } = await import(
-      '../db/seeds/global-equity-model-seeder'
+      '~/db/seeds/global-equity-model-seeder'
     );
 
     const sleevesResult = await seedGlobalEquitySleeves(db, user.id);
@@ -432,7 +432,7 @@ export const importNasdaqSecuritiesServerFn = createServerFn({
       }
 
       // Clear cache to refresh data
-      const { clearCache } = await import('../lib/db-api');
+      const { clearCache } = await import('~/lib/db-api');
       clearCache();
 
       return {

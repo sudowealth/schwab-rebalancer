@@ -129,7 +129,7 @@ async function exportSyncToExcel(log: unknown) {
 
 async function deleteSyncLog(logId: string) {
   try {
-    const { deleteSyncLogServerFn } = await import('../lib/server-functions');
+    const { deleteSyncLogServerFn } = await import('~/lib/server-functions');
     await deleteSyncLogServerFn({ data: { logId } });
     // Refresh the sync logs by invalidating the query
     // This will automatically update the UI
@@ -157,7 +157,7 @@ export function SyncHistory() {
   const { data: syncLogs } = useQuery({
     queryKey: ['sync-logs'],
     queryFn: async () => {
-      const { getSyncLogsServerFn } = await import('../lib/server-functions');
+      const { getSyncLogsServerFn } = await import('~/lib/server-functions');
       return getSyncLogsServerFn();
     },
     // Poll every 2s when any sync mutation is pending, else every 15s

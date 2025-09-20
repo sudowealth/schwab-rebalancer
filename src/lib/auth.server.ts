@@ -20,7 +20,7 @@ export const getAllUsersServerFn = createServerFn({ method: 'GET' }).handler(asy
   await requireAdmin();
 
   const db = getDatabaseSync();
-  const schema = await import('../db/schema');
+  const schema = await import('~/db/schema');
 
   const users = await db
     .select({
@@ -47,7 +47,7 @@ export const updateUserRoleServerFn = createServerFn({ method: 'POST' })
     await requireAdmin();
 
     const db = getDatabaseSync();
-    const schema = await import('../db/schema');
+    const schema = await import('~/db/schema');
     const { eq } = await import('drizzle-orm');
 
     // Verify user exists
@@ -91,7 +91,7 @@ export const deleteUserServerFn = createServerFn({ method: 'POST' })
     }
 
     const db = getDatabaseSync();
-    const schema = await import('../db/schema');
+    const schema = await import('~/db/schema');
     const { eq } = await import('drizzle-orm');
 
     // Verify user exists
@@ -123,7 +123,7 @@ export const getUserDataServerFn = createServerFn({ method: 'GET' })
     await requireAdmin();
 
     const db = getDatabaseSync();
-    const schema = await import('../db/schema');
+    const schema = await import('~/db/schema');
     const { eq } = await import('drizzle-orm');
 
     // Get user info
@@ -164,7 +164,7 @@ export const signUpWithFirstAdminServerFn = createServerFn({ method: 'POST' })
     const { email, password, name } = data;
 
     const db = getDatabaseSync();
-    const schema = await import('../db/schema');
+    const schema = await import('~/db/schema');
     const { sql, eq } = await import('drizzle-orm');
 
     try {
@@ -266,7 +266,7 @@ export const checkIsFirstUserServerFn = createServerFn({
   method: 'GET',
 }).handler(async () => {
   const db = getDatabaseSync();
-  const schema = await import('../db/schema');
+  const schema = await import('~/db/schema');
   const { sql } = await import('drizzle-orm');
 
   const userCount = await db.select({ count: sql<number>`count(*)` }).from(schema.user);
@@ -294,7 +294,7 @@ export const checkUserCreationAllowedServerFn = createServerFn({
 
   // If INDIVIDUAL_USE is enabled, check if there are already users
   const db = getDatabaseSync();
-  const schema = await import('../db/schema');
+  const schema = await import('~/db/schema');
   const { sql } = await import('drizzle-orm');
 
   const userCount = await db.select({ count: sql<number>`count(*)` }).from(schema.user);

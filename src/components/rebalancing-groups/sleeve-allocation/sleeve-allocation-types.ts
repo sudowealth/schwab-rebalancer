@@ -66,17 +66,14 @@ export interface SleeveAllocationData extends Record<string, unknown> {
   sleeves: SleeveTableData[];
 }
 
-import type { RebalancingGroupsResult } from '../../../lib/db-api';
+import type { RebalancingGroupsResult } from '~/lib/db-api';
 export type GroupMember = RebalancingGroupsResult[number]['members'][number] & {
   accountName: string; // Ensure accountName is required for UI
   balance?: number; // Make balance optional
 };
 
 // Import base types from central location
-import type {
-  AccountHolding as BaseAccountHolding,
-  Trade as BaseTrade,
-} from '../../../types/rebalance';
+import type { AccountHolding as BaseAccountHolding, Trade as BaseTrade } from '~/types/rebalance';
 
 // Extend Trade to include ticker for UI purposes
 export interface Trade extends BaseTrade {

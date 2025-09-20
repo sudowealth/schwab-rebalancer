@@ -10,8 +10,8 @@ import {
 } from '@tanstack/react-table';
 import { ChevronDown, ChevronsUpDown, ChevronUp } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import type { Transaction } from '../../lib/schemas';
-import { formatQuantity } from '../../lib/utils';
+import type { Transaction } from '~/lib/schemas';
+import { formatQuantity } from '~/lib/utils';
 
 interface TransactionsTableProps {
   transactions: Transaction[];

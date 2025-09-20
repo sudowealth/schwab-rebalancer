@@ -1,27 +1,27 @@
 import { createFileRoute, Link, redirect, useRouter } from '@tanstack/react-router';
 import { Edit, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { SecurityModal } from '../../components/dashboard/security-modal';
-import { SleeveModal } from '../../components/dashboard/sleeve-modal';
-import { AccountSummary } from '../../components/rebalancing-groups/account-summary';
-import { AllocationChart } from '../../components/rebalancing-groups/allocation-chart';
-import { OrdersBlotter } from '../../components/rebalancing-groups/blotter/orders-blotter';
-import { DeleteRebalancingGroupModal } from '../../components/rebalancing-groups/delete-rebalancing-group-modal';
-import { EditRebalancingGroupModal } from '../../components/rebalancing-groups/edit-rebalancing-group-modal';
-import { RebalanceModal } from '../../components/rebalancing-groups/rebalance-modal';
-import { RebalanceSummaryCards } from '../../components/rebalancing-groups/rebalance-summary-cards';
-import { SleeveAllocationTable } from '../../components/rebalancing-groups/sleeve-allocation/sleeve-allocation-table';
+import { SecurityModal } from '~/components/dashboard/security-modal';
+import { SleeveModal } from '~/components/dashboard/sleeve-modal';
+import { AccountSummary } from '~/components/rebalancing-groups/account-summary';
+import { AllocationChart } from '~/components/rebalancing-groups/allocation-chart';
+import { OrdersBlotter } from '~/components/rebalancing-groups/blotter/orders-blotter';
+import { DeleteRebalancingGroupModal } from '~/components/rebalancing-groups/delete-rebalancing-group-modal';
+import { EditRebalancingGroupModal } from '~/components/rebalancing-groups/edit-rebalancing-group-modal';
+import { RebalanceModal } from '~/components/rebalancing-groups/rebalance-modal';
+import { RebalanceSummaryCards } from '~/components/rebalancing-groups/rebalance-summary-cards';
+import { SleeveAllocationTable } from '~/components/rebalancing-groups/sleeve-allocation/sleeve-allocation-table';
 import type {
   SortDirection,
   SortField,
-} from '../../components/rebalancing-groups/sleeve-allocation/sleeve-allocation-table-headers';
-import type { Trade } from '../../components/rebalancing-groups/sleeve-allocation/sleeve-allocation-types';
-import { TopHoldings } from '../../components/rebalancing-groups/top-holdings';
-import { Badge } from '../../components/ui/badge';
-import { Button } from '../../components/ui/button';
-import { useSleeveAllocations } from '../../hooks/use-sleeve-allocations';
-import { generateAllocationData, generateTopHoldingsData } from '../../lib/rebalancing-utils';
-import type { Order } from '../../lib/schemas';
+} from '~/components/rebalancing-groups/sleeve-allocation/sleeve-allocation-table-headers';
+import type { Trade } from '~/components/rebalancing-groups/sleeve-allocation/sleeve-allocation-types';
+import { TopHoldings } from '~/components/rebalancing-groups/top-holdings';
+import { Badge } from '~/components/ui/badge';
+import { Button } from '~/components/ui/button';
+import { useSleeveAllocations } from '~/hooks/use-sleeve-allocations';
+import { generateAllocationData, generateTopHoldingsData } from '~/lib/rebalancing-utils';
+import type { Order } from '~/lib/schemas';
 import {
   type getDashboardDataServerFn,
   getGroupAccountHoldingsServerFn,
@@ -35,8 +35,8 @@ import {
   rebalancePortfolioServerFn,
   syncGroupPricesIfNeededServerFn,
   syncSchwabPricesServerFn,
-} from '../../lib/server-functions';
-import type { RebalanceMethod } from '../../types/rebalance';
+} from '~/lib/server-functions';
+import type { RebalanceMethod } from '~/types/rebalance';
 
 export const Route = createFileRoute('/rebalancing-groups/$groupId')({
   validateSearch: (search: Record<string, unknown>) => {

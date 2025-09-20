@@ -1,7 +1,7 @@
 import { useRouter } from '@tanstack/react-router';
 import { Plus, X } from 'lucide-react';
 import { useEffect, useId, useState } from 'react';
-import { Button } from '../../components/ui/button';
+import { Button } from '~/components/ui/button';
 import {
   Dialog,
   DialogContent,
@@ -9,12 +9,12 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '../../components/ui/dialog';
-import { Input } from '../../components/ui/input';
-import type { Model } from '../../lib/schemas';
-import { getAvailableSleevesServerFn, updateModelServerFn } from '../../lib/server-functions';
-import { cn } from '../../lib/utils';
-import { type Option, VirtualizedSelect } from '../ui/virtualized-select';
+} from '~/components/ui/dialog';
+import { Input } from '~/components/ui/input';
+import { type Option, VirtualizedSelect } from '~/components/ui/virtualized-select';
+import type { Model } from '~/lib/schemas';
+import { getAvailableSleevesServerFn, updateModelServerFn } from '~/lib/server-functions';
+import { cn } from '~/lib/utils';
 
 // Use function return types instead of manual interfaces
 type Sleeve = Awaited<ReturnType<typeof getAvailableSleevesServerFn>>[number];

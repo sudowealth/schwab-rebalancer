@@ -1,6 +1,6 @@
 import { createServerFn } from '@tanstack/react-start';
 import { sql } from 'drizzle-orm';
-import * as schema from '../db/schema';
+import * as schema from '~/db/schema';
 import { getDatabaseSync } from './db-config';
 
 // Health check endpoint for monitoring database and service readiness

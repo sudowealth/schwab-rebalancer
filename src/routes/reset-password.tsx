@@ -1,7 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { useEffect, useId, useMemo, useState } from 'react';
-import { useAuth } from '../hooks/useAuth';
-import { authClient, signIn } from '../lib/auth-client';
+import { useAuth } from '~/hooks/useAuth';
+import { authClient, signIn } from '~/lib/auth-client';
 
 export const Route = createFileRoute('/reset-password')({
   component: ResetPasswordPage,

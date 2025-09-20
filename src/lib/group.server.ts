@@ -1,6 +1,6 @@
 import { createServerFn } from '@tanstack/react-start';
 import { and, eq, inArray } from 'drizzle-orm';
-import * as schema from '../db/schema';
+import * as schema from '~/db/schema';
 import type { AccountHoldingsResult } from './db-api';
 import { getDatabaseSync } from './db-config';
 import type { RebalancingGroup } from './schemas';

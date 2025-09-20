@@ -1,4 +1,4 @@
-import { Button } from '../../components/ui/button';
+import { Button } from '~/components/ui/button';
 import {
   Dialog,
   DialogContent,
@@ -6,10 +6,10 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '../../components/ui/dialog';
-import { useSleeveForm } from '../../hooks/useSleeveForm';
-import type { Sleeve } from '../../lib/schemas';
-import { updateSleeveServerFn } from '../../lib/server-functions';
+} from '~/components/ui/dialog';
+import { useSleeveForm } from '~/hooks/useSleeveForm';
+import type { Sleeve } from '~/lib/schemas';
+import { updateSleeveServerFn } from '~/lib/server-functions';
 import { SleeveForm } from './SleeveForm';
 
 interface EditSleeveModalProps {

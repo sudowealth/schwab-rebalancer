@@ -1,5 +1,5 @@
 import { and, eq } from 'drizzle-orm';
-import * as schema from '../db/schema';
+import * as schema from '~/db/schema';
 import { getDatabaseSync } from './db-config';
 import {
   getSchwabApiService,

@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import type { Trade } from '../components/rebalancing-groups/sleeve-allocation/sleeve-allocation-types';
-import type { RebalanceMethod } from '../types/rebalance';
+import type { Trade } from '~/components/rebalancing-groups/sleeve-allocation/sleeve-allocation-types';
+import type { RebalanceMethod } from '~/types/rebalance';
 
 export function useRebalancingState() {
   const [rebalanceModalOpen, setRebalanceModalOpen] = useState(false);

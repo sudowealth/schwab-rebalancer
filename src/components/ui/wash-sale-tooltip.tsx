@@ -1,5 +1,5 @@
 import { AlertTriangle, Info } from 'lucide-react';
-import { formatCurrency } from '../../lib/utils';
+import { formatCurrency } from '~/lib/utils';
 import { SimpleTooltip } from './simple-tooltip';
 
 export interface UIWashSaleInfo {

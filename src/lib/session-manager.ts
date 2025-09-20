@@ -1,5 +1,5 @@
 import { eq, lt, sql } from 'drizzle-orm';
-import * as schema from '../db/schema';
+import * as schema from '~/db/schema';
 import { getDatabaseSync } from './db-config';
 
 export interface SessionInvalidationOptions {

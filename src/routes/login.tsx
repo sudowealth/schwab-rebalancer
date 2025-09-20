@@ -1,9 +1,9 @@
 import { useForm } from '@tanstack/react-form';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { useEffect, useId, useMemo, useState } from 'react';
-import { ClientOnly } from '../components/ClientOnly';
-import { useAuth } from '../hooks/useAuth';
-import { signIn } from '../lib/auth-client';
+import { ClientOnly } from '~/components/ClientOnly';
+import { useAuth } from '~/hooks/useAuth';
+import { signIn } from '~/lib/auth-client';
 
 export const Route = createFileRoute('/login')({
   component: LoginPage,

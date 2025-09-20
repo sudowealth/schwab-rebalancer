@@ -1,6 +1,6 @@
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
-import * as schema from '../db/schema';
+import * as schema from '~/db/schema';
 import { getDatabaseSync } from './db-config';
 
 // Lazy initialization to avoid database access at module load time

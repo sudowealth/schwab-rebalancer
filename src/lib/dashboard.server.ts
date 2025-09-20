@@ -1,6 +1,6 @@
 import { createServerFn } from '@tanstack/react-start';
 import { and, eq, inArray } from 'drizzle-orm';
-import * as schema from '../db/schema';
+import * as schema from '~/db/schema';
 import { getDatabaseSync } from './db-config';
 
 // Defer server-only auth utilities to runtime to avoid bundling them in the client build

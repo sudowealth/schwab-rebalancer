@@ -1,10 +1,10 @@
 import { Check, Edit, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { getManualCashServerFn, updateManualCashServerFn } from '../../lib/server-functions';
-import { formatCurrency } from '../../lib/utils';
-import { Button } from '../ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
-import { Input } from '../ui/input';
+import { Button } from '~/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card';
+import { Input } from '~/components/ui/input';
+import { getManualCashServerFn, updateManualCashServerFn } from '~/lib/server-functions';
+import { formatCurrency } from '~/lib/utils';
 import { EditAccountModal } from './edit-account-modal';
 
 interface AccountSummaryProps {

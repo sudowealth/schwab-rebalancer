@@ -1,8 +1,8 @@
 import { DollarSign, Target, TrendingDown, TrendingUp } from 'lucide-react';
-import { CASH_TICKER } from '../../lib/constants';
-import { cn, formatCurrency, formatPercent } from '../../lib/utils';
-import type { Trade } from '../../types/rebalance';
-import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card';
+import { CASH_TICKER } from '~/lib/constants';
+import { cn, formatCurrency, formatPercent } from '~/lib/utils';
+import type { Trade } from '~/types/rebalance';
 import type { Security } from './sleeve-allocation/sleeve-allocation-types';
 
 // Extend Trade to include ticker property used in rebalance logic
@@ -45,7 +45,7 @@ interface AccountHolding {
 // Use the centralized Security type instead of local SecurityData
 
 // Use return type from the server function instead of manual interface
-import type { getRebalancingGroupByIdServerFn } from '../../lib/server-functions';
+import type { getRebalancingGroupByIdServerFn } from '~/lib/server-functions';
 
 type GroupMember = {
   balance: number;

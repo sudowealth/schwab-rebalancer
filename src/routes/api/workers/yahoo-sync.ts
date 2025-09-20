@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { syncYahooFundamentalsServerFn } from '../../../lib/server-functions';
+import { syncYahooFundamentalsServerFn } from '~/lib/server-functions';
 
 export const Route = createFileRoute('/api/workers/yahoo-sync')({
   // Use a loader that runs on the server; return JSON response

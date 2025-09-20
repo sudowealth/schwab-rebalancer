@@ -68,7 +68,7 @@ async function initializeDatabase() {
     }
 
     // Dynamic imports to avoid bundling in client
-    const [schemaModule] = await Promise.all([import('../db/schema')]);
+    const [schemaModule] = await Promise.all([import('~/db/schema')]);
 
     const schema = schemaModule;
 
@@ -100,7 +100,7 @@ export async function initDatabaseSync(): Promise<void> {
     }
 
     // Import schema
-    const schema = await import('../db/schema');
+    const schema = await import('~/db/schema');
 
     // Create Neon HTTP client
     const { neon } = await import('@neondatabase/serverless');

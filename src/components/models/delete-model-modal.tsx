@@ -2,7 +2,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { AlertTriangle, Users } from 'lucide-react';
 import { useState } from 'react';
-import { Button } from '../../components/ui/button';
+import { Button } from '~/components/ui/button';
 import {
   Dialog,
   DialogContent,
@@ -10,9 +10,9 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '../../components/ui/dialog';
-import type { Model } from '../../lib/schemas';
-import { deleteModelServerFn } from '../../lib/server-functions';
+} from '~/components/ui/dialog';
+import type { Model } from '~/lib/schemas';
+import { deleteModelServerFn } from '~/lib/server-functions';
 
 interface DeleteModelModalProps {
   model: Model | null;

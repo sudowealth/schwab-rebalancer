@@ -1,9 +1,7 @@
 import { useRouter } from '@tanstack/react-router';
 import { AlertTriangle } from 'lucide-react';
 import { useState } from 'react';
-import type { RebalancingGroup } from '../../lib/schemas';
-import { deleteRebalancingGroupServerFn } from '../../lib/server-functions';
-import { Button } from '../ui/button';
+import { Button } from '~/components/ui/button';
 import {
   Dialog,
   DialogContent,
@@ -11,7 +9,9 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '../ui/dialog';
+} from '~/components/ui/dialog';
+import type { RebalancingGroup } from '~/lib/schemas';
+import { deleteRebalancingGroupServerFn } from '~/lib/server-functions';
 
 interface DeleteRebalancingGroupModalProps {
   group: RebalancingGroup;

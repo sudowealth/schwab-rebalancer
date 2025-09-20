@@ -1,6 +1,6 @@
 import { createServerFn } from '@tanstack/react-start';
 import { eq } from 'drizzle-orm';
-import * as schema from '../db/schema';
+import * as schema from '~/db/schema';
 import { getDatabaseSync } from './db-config';
 
 // Defer server-only auth utilities to runtime to avoid bundling them in the client build
@@ -69,7 +69,7 @@ export const getSystemStatsServerFn = createServerFn({ method: 'GET' }).handler(
   await requireAdmin();
 
   const db = getDatabaseSync();
-  const schema = await import('../db/schema');
+  const schema = await import('~/db/schema');
   const { sql } = await import('drizzle-orm');
 
   // Get various counts
@@ -114,7 +114,7 @@ export const getAuditLogsServerFn = createServerFn({ method: 'GET' })
     const { limit = 100, offset = 0, userId } = data;
 
     const db = getDatabaseSync();
-    const schema = await import('../db/schema');
+    const schema = await import('~/db/schema');
     const { eq, desc } = await import('drizzle-orm');
 
     const baseQuery = db

@@ -1,8 +1,8 @@
 import { Plus, Trash2 } from 'lucide-react';
 import { useId } from 'react';
-import { Button } from '../ui/button';
-import { Input } from '../ui/input';
-import { VirtualizedSelect } from '../ui/virtualized-select';
+import { Button } from '~/components/ui/button';
+import { Input } from '~/components/ui/input';
+import { VirtualizedSelect } from '~/components/ui/virtualized-select';
 
 interface SleeveFormProps {
   sleeveName: string;
