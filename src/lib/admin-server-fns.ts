@@ -1,5 +1,5 @@
 import { createServerFn } from '@tanstack/react-start';
-import { desc, eq, sql } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import * as schema from '../db/schema';
 import { getDatabaseSync } from './db-config';
 

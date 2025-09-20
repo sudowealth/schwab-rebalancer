@@ -292,22 +292,6 @@ export const OrderExecutionSchema = z.object({
 export const OrdersSchema = z.array(OrderSchema);
 export const OrderExecutionsSchema = z.array(OrderExecutionSchema);
 
-// Yahoo sync result type
-export type YahooSyncResult =
-  | {
-      success: boolean;
-      recordsProcessed: number;
-      errorMessage?: string;
-      details?: Array<{
-        ticker: string;
-        success: boolean;
-        error?: string;
-        changes?: Record<string, { old: unknown; new: unknown }>;
-      }>;
-      logId?: string;
-    }
-  | Record<string, never>;
-
 // Helper function to validate data with proper error handling
 export function validateData<T>(schema: z.ZodSchema<T>, data: unknown, context: string): T {
   try {
