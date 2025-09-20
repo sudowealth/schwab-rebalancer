@@ -61,10 +61,21 @@ export const seedSecuritiesDataServerFn = createServerFn({ method: 'POST' }).han
     );
   }
 
-  // Seed S&P 500 securities after equity sync
-  console.log('🔄 Seeding S&P 500 securities...');
-  await seedSP500Securities(db);
-  console.log('✅ S&P 500 securities seeding completed');
+  // Seed S&P 500 securities after equity sync, but only if they don't already exist
+  const { eq } = await import('drizzle-orm');
+  const sp500Index = await db
+    .select({ id: schema.indexTable.id })
+    .from(schema.indexTable)
+    .where(eq(schema.indexTable.id, 'sp500'))
+    .limit(1);
+
+  if (sp500Index.length === 0) {
+    console.log('🔄 S&P 500 index not found, seeding S&P 500 securities...');
+    await seedSP500Securities(db);
+    console.log('✅ S&P 500 securities seeding completed');
+  } else {
+    console.log('⏭️ Skipping S&P 500 seeding - index already exists');
+  }
 
   // Check if Schwab is connected and trigger price sync for newly imported securities that appear in holdings, indices, or sleeves
   let schwabSyncResult = null;
@@ -117,21 +128,31 @@ export const seedSecuritiesDataServerFn = createServerFn({ method: 'POST' }).han
     }
   }
 
-  // Run Yahoo sync for held/sleeve securities missing data
+  // Run Yahoo sync for held/sleeve securities missing data - only if we imported new securities
   let yahooSyncResult: SyncYahooFundamentalsResult | null = null;
-  try {
-    console.log('🔄 Starting Yahoo sync for held/sleeve securities missing data...');
-    const { syncYahooFundamentalsServerFn } = await import('./yahoo.server');
-    yahooSyncResult = (await syncYahooFundamentalsServerFn({
-      data: { scope: 'held-sleeve-securities-missing-data' },
-    })) as SyncYahooFundamentalsResult;
-    console.log('✅ Yahoo sync completed:', yahooSyncResult);
-  } catch (error) {
-    console.error('❌ Yahoo sync failed:', error);
+  if (equitySyncResult.imported > 0) {
+    try {
+      console.log('🔄 Starting Yahoo sync for newly imported securities missing data...');
+      const { syncYahooFundamentalsServerFn } = await import('./yahoo.server');
+      yahooSyncResult = (await syncYahooFundamentalsServerFn({
+        data: { scope: 'held-sleeve-securities-missing-data' },
+      })) as SyncYahooFundamentalsResult;
+      console.log('✅ Yahoo sync completed:', yahooSyncResult);
+    } catch (error) {
+      console.error('❌ Yahoo sync failed:', error);
+      yahooSyncResult = {
+        success: false,
+        recordsProcessed: 0,
+        errorMessage: error instanceof Error ? error.message : 'Unknown error occurred',
+        details: [],
+        logId: crypto.randomUUID(),
+      };
+    }
+  } else {
+    console.log('⏭️ Skipping Yahoo sync - no new securities were imported');
     yahooSyncResult = {
-      success: false,
+      success: true,
       recordsProcessed: 0,
-      errorMessage: error instanceof Error ? error.message : 'Unknown error occurred',
       details: [],
       logId: crypto.randomUUID(),
     };

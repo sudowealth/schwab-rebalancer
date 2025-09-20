@@ -62,10 +62,16 @@ export function OnboardingTracker({
   } = useSchwabConnection(schwabCredentialsStatusProp, schwabOAuthStatusProp);
 
   // Query for reactive securities status
-  const { data: reactiveSecuritiesStatus } = useQuery({
+  const {
+    data: reactiveSecuritiesStatus,
+    status: securitiesQueryStatus,
+    fetchStatus: securitiesFetchStatus,
+    isFetchedAfterMount: securitiesFetchedAfterMount,
+  } = useQuery({
     queryKey: ['securities-status'],
     queryFn: () => checkSecuritiesExistServerFn(),
     initialData: securitiesStatusProp,
+    initialDataUpdatedAt: 0, // mark as stale so it refetches on mount
     staleTime: 1000 * 60 * 5, // 5 minutes
   });
 
@@ -89,8 +95,12 @@ export function OnboardingTracker({
   });
 
   // Use the securities seeding hook for managing securities import state
-  const { isSeeding, hasError, seedResult, showSuccessMessage } =
-    useSecuritiesSeeding(reactiveSecuritiesStatus);
+  const { isSeeding, hasError, seedResult, showSuccessMessage } = useSecuritiesSeeding(
+    reactiveSecuritiesStatus,
+    securitiesQueryStatus,
+    securitiesFetchStatus,
+    securitiesFetchedAfterMount,
+  );
 
   // Use the model creation hook for managing model creation state
   const { handleSeedGlobalEquity, isSeeding: isCreatingModel } = useModelCreation();

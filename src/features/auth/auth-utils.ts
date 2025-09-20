@@ -47,7 +47,7 @@ async function resolveAuth(): Promise<AuthModule['auth']> {
  * Get the current session and user information
  * Returns null if not authenticated
  */
-async function getCurrentUser(): Promise<AuthenticatedUser | null> {
+export async function getCurrentUser(): Promise<AuthenticatedUser | null> {
   try {
     const request = await resolveRequest();
     if (!request) {

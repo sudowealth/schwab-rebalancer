@@ -23,14 +23,22 @@ interface SeedSecuritiesResult {
   yahooSyncResult?: SyncYahooFundamentalsResult | null;
 }
 
-export function useSecuritiesSeeding(securitiesStatus?: {
-  hasSecurities: boolean;
-  securitiesCount: number;
-}) {
+export function useSecuritiesSeeding(
+  securitiesStatus:
+    | {
+        hasSecurities: boolean;
+        securitiesCount: number;
+      }
+    | undefined,
+  queryStatus: 'pending' | 'error' | 'success',
+  fetchStatus: 'fetching' | 'paused' | 'idle',
+  isFetchedAfterMount?: boolean,
+) {
   const queryClient = useQueryClient();
   const router = useRouter();
   const [hasStartedSeeding, setHasStartedSeeding] = useState(false);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
+  const [hasTriggeredSeedingCheck, setHasTriggeredSeedingCheck] = useState(false);
 
   // Seed securities mutation
   const seedSecuritiesMutation = useMutation({
@@ -59,27 +67,35 @@ export function useSecuritiesSeeding(securitiesStatus?: {
     }
   }, [showSuccessMessage]);
 
-  // Automatically start seeding when no securities exist
+  // Automatically start seeding when no securities exist.
+  // This effect waits until the initial query is successful and no longer fetching before making a decision.
   useEffect(() => {
+    // Only run this check once the query has successfully completed, is idle, and has refetched after mount
     if (
-      securitiesStatus &&
-      !securitiesStatus.hasSecurities &&
-      !hasStartedSeeding &&
-      !seedSecuritiesMutation.isPending
+      queryStatus === 'success' &&
+      fetchStatus === 'idle' &&
+      (isFetchedAfterMount ?? true) &&
+      !hasTriggeredSeedingCheck
     ) {
-      console.log('Automatically starting securities seeding...');
-      setHasStartedSeeding(true);
-      // Use mutateAsync to avoid dependency issues
-      seedSecuritiesMutation.mutateAsync(undefined).catch((error) => {
-        console.error('Auto seeding failed:', error);
-        setHasStartedSeeding(false);
-      });
+      setHasTriggeredSeedingCheck(true); // Mark that we've performed the check
+
+      if (
+        securitiesStatus &&
+        !securitiesStatus.hasSecurities &&
+        !seedSecuritiesMutation.isPending
+      ) {
+        console.log('Automatically starting securities seeding...');
+        setHasStartedSeeding(true);
+        seedSecuritiesMutation.mutate(undefined);
+      }
     }
   }, [
+    queryStatus,
+    fetchStatus,
+    isFetchedAfterMount,
     securitiesStatus,
-    hasStartedSeeding,
-    seedSecuritiesMutation.isPending,
-    seedSecuritiesMutation.mutateAsync,
+    hasTriggeredSeedingCheck,
+    seedSecuritiesMutation,
   ]);
 
   const isSeeding = seedSecuritiesMutation.isPending;

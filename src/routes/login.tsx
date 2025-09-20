@@ -1,15 +1,21 @@
 import { useForm } from '@tanstack/react-form';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { useEffect, useId, useMemo, useState } from 'react';
+import { z } from 'zod';
+import { AuthSkeleton } from '~/components/AuthSkeleton';
 import { ClientOnly } from '~/components/ClientOnly';
 import { signIn } from '~/features/auth/auth-client';
 import { useAuth } from '~/features/auth/hooks/useAuth';
 
 export const Route = createFileRoute('/login')({
   component: LoginPage,
-  validateSearch: (search) => ({
-    reset: typeof search.reset === 'string' ? search.reset : '',
-    redirect: typeof search.redirect === 'string' ? search.redirect : '',
+  pendingComponent: AuthSkeleton,
+  validateSearch: z.object({
+    reset: z.string().optional(),
+    redirect: z
+      .string()
+      .regex(/^\/|https?:\/\/.*$/)
+      .optional(),
   }),
 });
 

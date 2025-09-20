@@ -2,6 +2,7 @@ import { useForm } from '@tanstack/react-form';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { ArrowRight, Ban, Crown, ShieldCheck } from 'lucide-react';
 import { useId, useState } from 'react';
+import { AuthSkeleton } from '~/components/AuthSkeleton';
 import { ClientOnly } from '~/components/ClientOnly';
 import { useAuth } from '~/features/auth/hooks/useAuth';
 import {
@@ -23,6 +24,7 @@ export const Route = createFileRoute('/register')({
     };
   },
   component: RegisterPage,
+  pendingComponent: AuthSkeleton,
 });
 
 function RegisterPage() {

@@ -19,36 +19,42 @@ import {
 
 // Utility function that replicates the exact loader logic from /rebalancing-groups route
 async function loadRebalancingGroupsData() {
-  const groups = await getRebalancingGroupsServerFn();
+  try {
+    const groups = await getRebalancingGroupsServerFn();
 
-  // Get account holdings for all groups to calculate proper balances
-  const updatedGroups = await Promise.all(
-    groups.map(async (group) => {
-      const accountIds = group.members.map((member) => member.accountId);
-      const accountHoldings =
-        accountIds.length > 0
-          ? await getGroupAccountHoldingsServerFn({
-              data: { accountIds },
-            })
-          : [];
+    // Get account holdings for all groups to calculate proper balances
+    const updatedGroups = await Promise.all(
+      groups.map(async (group) => {
+        const accountIds = group.members.map((member) => member.accountId);
+        const accountHoldings =
+          accountIds.length > 0
+            ? await getGroupAccountHoldingsServerFn({
+                data: { accountIds },
+              })
+            : [];
 
-      // Update group members with calculated balances from holdings
-      const updatedMembers = group.members.map((member) => {
-        const accountData = accountHoldings.find((ah) => ah.accountId === member.accountId);
+        // Update group members with calculated balances from holdings
+        const updatedMembers = group.members.map((member) => {
+          const accountData = accountHoldings.find((ah) => ah.accountId === member.accountId);
+          return {
+            ...member,
+            balance: accountData ? accountData.accountBalance : member.balance,
+          };
+        });
+
         return {
-          ...member,
-          balance: accountData ? accountData.accountBalance : member.balance,
+          ...group,
+          members: updatedMembers,
         };
-      });
+      }),
+    );
 
-      return {
-        ...group,
-        members: updatedMembers,
-      };
-    }),
-  );
-
-  return updatedGroups;
+    return updatedGroups;
+  } catch (error) {
+    // Handle authentication errors gracefully during SSR
+    console.warn('Rebalancing groups load failed during SSR, returning empty data:', error);
+    return [];
+  }
 }
 
 export const Route = createFileRoute('/')({
@@ -101,12 +107,19 @@ export const Route = createFileRoute('/')({
 
       return { ...statusData, rebalancingGroups };
     } catch (error) {
-      // If authentication error, redirect to login
-      if (error instanceof Error && error.message.includes('Authentication required')) {
-        throw redirect({ to: '/login', search: { reset: '', redirect: '/' } });
-      }
-      // Re-throw other errors
-      throw error;
+      // Log unexpected errors but don't redirect during SSR
+      console.warn('Unexpected error during route loader:', error);
+      // Return empty data for SSR fallback
+      return {
+        schwabCredentialsStatus: { hasCredentials: false },
+        schwabOAuthStatus: { hasCredentials: false },
+        accountsCount: 0,
+        securitiesStatus: { hasSecurities: false, securitiesCount: 0 },
+        modelsStatus: { hasModels: false, modelsCount: 0 },
+        rebalancingGroupsStatus: { hasGroups: false, groupsCount: 0 },
+        user: null,
+        rebalancingGroups: [],
+      };
     }
   },
 });

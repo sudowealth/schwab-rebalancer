@@ -1,12 +1,15 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { useEffect, useId, useMemo, useState } from 'react';
+import { z } from 'zod';
+import { AuthSkeleton } from '~/components/AuthSkeleton';
 import { authClient, signIn } from '~/features/auth/auth-client';
 import { useAuth } from '~/features/auth/hooks/useAuth';
 
 export const Route = createFileRoute('/reset-password')({
   component: ResetPasswordPage,
-  validateSearch: (search) => ({
-    token: typeof search.token === 'string' ? search.token : '',
+  pendingComponent: AuthSkeleton,
+  validateSearch: z.object({
+    token: z.string().min(1, 'Reset token is required'),
   }),
 });
 

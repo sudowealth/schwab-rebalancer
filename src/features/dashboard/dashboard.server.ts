@@ -51,12 +51,53 @@ export const getSecuritiesDataServerFn = createServerFn({
 export const getDashboardDataServerFn = createServerFn({
   method: 'GET',
 }).handler(async () => {
-  const { user } = await requireAuth();
+  // Handle unauthenticated requests gracefully during SSR
+  const { requireAuth } = await import('../auth/auth-utils');
 
-  // Import server-only functions
-  const { loadDashboardData } = await import('../../lib/server-only');
-  const data = await loadDashboardData(user.id, user);
-  return data;
+  try {
+    const { user } = await requireAuth();
+
+    // Import server-only functions
+    const { loadDashboardData } = await import('../../lib/server-only');
+    const data = await loadDashboardData(user.id, user);
+    return data;
+  } catch (error) {
+    // Handle authentication errors gracefully during SSR
+    console.warn('Dashboard data load failed during SSR, returning empty data:', error);
+
+    return {
+      positions: [],
+      metrics: {
+        totalMarketValue: 0,
+        totalCostBasis: 0,
+        unrealizedGain: 0,
+        unrealizedGainPercent: 0,
+        realizedGain: 0,
+        realizedGainPercent: 0,
+        totalGain: 0,
+        totalGainPercent: 0,
+        ytdHarvestedLosses: 0,
+        harvestablelosses: 0,
+        harvestingTarget: {
+          year1Target: 0.03,
+          steadyStateTarget: 0.02,
+          currentProgress: 0,
+        },
+      },
+      transactions: [],
+      sp500Data: [],
+      proposedTrades: [],
+      sleeves: [],
+      indices: [],
+      indexMembers: [],
+      user: null,
+      schwabCredentialsStatus: { hasCredentials: false },
+      accountsCount: 0,
+      securitiesStatus: { hasSecurities: false, securitiesCount: 0 },
+      modelsStatus: { hasModels: false, modelsCount: 0 },
+      rebalancingGroupsStatus: { hasGroups: false, groupsCount: 0 },
+    };
+  }
 });
 
 // Lightweight server functions for individual dashboard queries

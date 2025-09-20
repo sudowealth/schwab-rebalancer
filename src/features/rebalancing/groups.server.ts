@@ -15,11 +15,20 @@ const requireAuth = async () => {
 export const getRebalancingGroupsServerFn = createServerFn({
   method: 'GET',
 }).handler(async () => {
-  const { user } = await requireAuth();
+  // Handle unauthenticated requests gracefully during SSR
+  const { requireAuth } = await import('../auth/auth-utils');
 
-  const { getRebalancingGroups } = await import('~/lib/db-api');
-  const groups = await getRebalancingGroups(user.id);
-  return groups;
+  try {
+    const { user } = await requireAuth();
+
+    const { getRebalancingGroups } = await import('~/lib/db-api');
+    const groups = await getRebalancingGroups(user.id);
+    return groups;
+  } catch (error) {
+    // Handle authentication errors gracefully during SSR
+    console.warn('Rebalancing groups load failed during SSR, returning empty data:', error);
+    return [];
+  }
 });
 
 // Server function to create a new rebalancing group - runs ONLY on server
@@ -118,24 +127,33 @@ export const getGroupAccountHoldingsServerFn = createServerFn({
       throw new Error('Invalid request: accountIds required');
     }
 
-    const { user } = await requireAuth();
+    // Handle unauthenticated requests gracefully during SSR
+    const { requireAuth } = await import('../auth/auth-utils');
 
-    // Verify that all accountIds belong to the authenticated user
-    const db = getDatabaseSync();
+    try {
+      const { user } = await requireAuth();
 
-    const ownedAccounts = await db
-      .select({ id: schema.account.id })
-      .from(schema.account)
-      .where(and(eq(schema.account.userId, user.id), inArray(schema.account.id, accountIds)));
+      // Verify that all accountIds belong to the authenticated user
+      const db = getDatabaseSync();
 
-    if (ownedAccounts.length !== accountIds.length) {
-      throw new Error('Access denied: One or more accounts do not belong to you');
+      const ownedAccounts = await db
+        .select({ id: schema.account.id })
+        .from(schema.account)
+        .where(and(eq(schema.account.userId, user.id), inArray(schema.account.id, accountIds)));
+
+      if (ownedAccounts.length !== accountIds.length) {
+        throw new Error('Access denied: One or more accounts do not belong to you');
+      }
+
+      // Import database API only on the server
+      const { getAccountHoldings } = await import('~/lib/db-api');
+      const result = await getAccountHoldings(accountIds);
+      return result;
+    } catch (error) {
+      // Handle authentication errors gracefully during SSR
+      console.warn('Group account holdings load failed during SSR, returning empty data:', error);
+      return [];
     }
-
-    // Import database API only on the server
-    const { getAccountHoldings } = await import('~/lib/db-api');
-    const result = await getAccountHoldings(accountIds);
-    return result;
   });
 
 export type GroupAccountHoldingsResult = AccountHoldingsResult;

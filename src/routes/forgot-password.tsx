@@ -1,13 +1,19 @@
 import { useForm } from '@tanstack/react-form';
 import { createFileRoute } from '@tanstack/react-router';
 import { useId, useState } from 'react';
+import { z } from 'zod';
+import { AuthSkeleton } from '~/components/AuthSkeleton';
 import { ClientOnly } from '~/components/ClientOnly';
 import { authClient } from '~/features/auth/auth-client';
 
 export const Route = createFileRoute('/forgot-password')({
   component: ForgotPasswordPage,
-  validateSearch: (search) => ({
-    email: typeof search.email === 'string' ? search.email : '',
+  pendingComponent: AuthSkeleton,
+  validateSearch: z.object({
+    email: z
+      .string()
+      .regex(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)
+      .optional(),
   }),
 });
 
@@ -20,7 +26,7 @@ function ForgotPasswordPage() {
 
   const form = useForm({
     defaultValues: {
-      email: emailFromQuery,
+      email: emailFromQuery || '',
     },
     onSubmit: async ({ value }) => {
       setError('');
