@@ -4,7 +4,7 @@ import * as schema from '../db/schema';
 import { CASH_TICKER, isAnyCashTicker } from './constants';
 import { getDatabaseSync } from './db-config';
 import { getErrorMessage, ValidationError } from './error-handler';
-import type { SyncYahooFundamentalsResult } from './yahoo-server-fns';
+import type { SyncYahooFundamentalsResult } from './yahoo.server';
 
 // Defer server-only auth utilities to runtime to avoid bundling them in the client build
 const requireAuth = async () => {
@@ -75,7 +75,7 @@ export const seedSecuritiesDataServerFn = createServerFn({ method: 'POST' }).han
     equitySyncResult.importedTickers.length > 0
   ) {
     try {
-      const { getSchwabCredentialsStatusServerFn } = await import('./schwab-server-fns');
+      const { getSchwabCredentialsStatusServerFn } = await import('./schwab.server');
       const schwabStatus = await getSchwabCredentialsStatusServerFn();
       if (schwabStatus?.hasCredentials) {
         // Filter tickers to only include those that appear in holdings, indices, or sleeves
@@ -89,7 +89,7 @@ export const seedSecuritiesDataServerFn = createServerFn({ method: 'POST' }).han
             '🔄 Starting automatic Schwab price sync for relevant newly imported securities:',
             relevantTickers,
           );
-          const { syncSchwabPricesServerFn } = await import('./schwab-server-fns');
+          const { syncSchwabPricesServerFn } = await import('./schwab.server');
           schwabSyncResult = await syncSchwabPricesServerFn({
             data: { symbols: relevantTickers },
           });
@@ -119,7 +119,7 @@ export const seedSecuritiesDataServerFn = createServerFn({ method: 'POST' }).han
   let yahooSyncResult: SyncYahooFundamentalsResult | null = null;
   try {
     console.log('🔄 Starting Yahoo sync for held/sleeve securities missing data...');
-    const { syncYahooFundamentalsServerFn } = await import('./yahoo-server-fns');
+    const { syncYahooFundamentalsServerFn } = await import('./yahoo.server');
     yahooSyncResult = (await syncYahooFundamentalsServerFn({
       data: { scope: 'held-sleeve-securities-missing-data' },
     })) as SyncYahooFundamentalsResult;

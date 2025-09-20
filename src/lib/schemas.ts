@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { SyncYahooFundamentalsResult } from './yahoo-server-fns';
+import type { SyncYahooFundamentalsResult } from './yahoo.server';
 
 // Core data schemas
 export const PositionSchema = z.object({

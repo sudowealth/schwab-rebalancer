@@ -2,7 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
 import { seedSecuritiesDataServerFn } from '../lib/server-functions';
-import type { SyncYahooFundamentalsResult } from '../lib/yahoo-server-fns';
+import type { SyncYahooFundamentalsResult } from '../lib/yahoo.server';
 
 interface SeedSecuritiesResult {
   success: boolean;

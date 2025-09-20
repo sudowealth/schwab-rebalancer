@@ -6,7 +6,7 @@ import {
   seedGlobalEquityModelServerFn,
   seedModelsDataServerFn,
   seedSecuritiesDataServerFn,
-} from '../lib/import-server-fns';
+} from '../lib/import.server';
 import type { YahooSyncResult } from '../lib/schemas';
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
