@@ -1,4 +1,4 @@
-type AuthModule = typeof import('./auth.server');
+type AuthModule = typeof import('./auth');
 
 // Type definitions for user roles
 export type UserRole = 'user' | 'admin';
@@ -36,7 +36,7 @@ async function resolveAuth(): Promise<AuthModule['auth']> {
   }
 
   if (!authClient) {
-    const mod: AuthModule = await import('./auth.server');
+    const mod: AuthModule = await import('./auth');
     authClient = mod.auth;
   }
 

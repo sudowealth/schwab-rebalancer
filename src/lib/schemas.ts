@@ -323,6 +323,5 @@ export type RebalancingGroup = z.infer<typeof RebalancingGroupSchema>;
 export type CreateRebalancingGroup = z.infer<typeof CreateRebalancingGroupSchema>;
 export type Order = z.infer<typeof OrderSchema>;
 export type OrderExecution = z.infer<typeof OrderExecutionSchema>;
-
 // Yahoo sync result type
 export type YahooSyncResult = SyncYahooFundamentalsResult;

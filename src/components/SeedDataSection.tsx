@@ -1,13 +1,13 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { AlertCircle, CheckCircle, Database, Loader2, Package, TrendingUp, X } from 'lucide-react';
 import { useState } from 'react';
-import type { YahooSyncResult } from '../lib/schemas';
 import {
   seedDemoDataServerFn,
   seedGlobalEquityModelServerFn,
   seedModelsDataServerFn,
   seedSecuritiesDataServerFn,
-} from '../lib/server-functions';
+} from '../lib/import.server';
+import type { YahooSyncResult } from '../lib/schemas';
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { SimpleTooltip } from './ui/simple-tooltip';

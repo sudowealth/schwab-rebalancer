@@ -1,20 +1,14 @@
-// Re-export all server functions from their respective modules
-// This file maintains backward compatibility while organizing code into logical modules
-
 // Administrative functions
 export {
   getAuditLogsServerFn,
   getSystemStatsServerFn,
 } from './admin.server';
-// Authentication and session management functions
+// Auth server functions
 export {
   checkIsFirstUserServerFn,
   checkUserCreationAllowedServerFn,
   cleanupExpiredSessionsServerFn,
   deleteUserServerFn,
-  ensureAdminAuthenticatedServerFn,
-  ensureAuthenticatedRouteServerFn,
-  ensureAuthenticatedServerFn,
   getActiveSessionsServerFn,
   getAllUsersServerFn,
   getUserDataServerFn,
@@ -23,7 +17,6 @@ export {
   signUpWithFirstAdminServerFn,
   updateUserRoleServerFn,
   verifyAdminAccessServerFn,
-  verifyUserAccessServerFn,
 } from './auth.server';
 // Dashboard and basic data access functions
 export {
@@ -116,7 +109,6 @@ export {
   updateOrderServerFn,
 } from './schwab.server';
 export type { SyncResult } from './schwab-sync';
-
 // Sleeve CRUD operations
 export {
   createSleeveServerFn,
@@ -126,10 +118,8 @@ export {
   getSleeveHoldingsInfoServerFn,
   getSleevesServerFn,
   updateSleeveServerFn,
-} from './sleeves.server';
-
+} from './sleeve.server';
 // Utility functions
 export { healthCheckServerFn } from './utility.server';
-
 // Yahoo Finance integration
 export { syncYahooFundamentalsServerFn } from './yahoo.server';

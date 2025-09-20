@@ -16,7 +16,6 @@ import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
 import type { RebalancingGroup, Sleeve } from '../../lib/schemas';
 import {
-  ensureAuthenticatedRouteServerFn,
   getDashboardDataServerFn,
   getModelByIdServerFn,
   getRebalancingGroupsServerFn,
@@ -26,9 +25,6 @@ export const Route = createFileRoute('/models/$modelId')({
   component: ModelDetailComponent,
   loader: async ({ params: { modelId } }) => {
     try {
-      // Dedicated authentication check
-      await ensureAuthenticatedRouteServerFn();
-
       // Try to load the specific model and dashboard data
       const [model, dashboardData] = await Promise.all([
         getModelByIdServerFn({ data: { modelId } }),

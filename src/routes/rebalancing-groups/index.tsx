@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import { AddRebalancingGroupModal } from '../../components/rebalancing-groups/add-rebalancing-group-modal';
 import { Badge } from '../../components/ui/badge';
 import type { RebalancingGroup, RebalancingGroupMember } from '../../lib/schemas';
-import { getHoldingsForMultipleGroupsServerFn } from '../../lib/server-functions';
 
 export const Route = createFileRoute('/rebalancing-groups/')({
   component: RebalancingGroupsComponent,
@@ -16,47 +15,60 @@ export const Route = createFileRoute('/rebalancing-groups/')({
     return result;
   },
   loader: async () => {
-    try {
-      // Single server function call gets all groups and holdings efficiently
-      const { groups, holdings } = await getHoldingsForMultipleGroupsServerFn();
+    // Server-side loader that fetches data on the server
+    if (typeof window === 'undefined') {
+      // Server-side only - import and call server function
+      const { getHoldingsForMultipleGroupsServerFn } = await import('../../lib/group.server');
 
-      // Create a map of account balances for efficient lookup
-      const accountBalanceMap = new Map<string, number>();
-      holdings.forEach((account) => {
-        accountBalanceMap.set(account.accountId, account.accountBalance);
-      });
+      try {
+        const { groups, holdings } = await getHoldingsForMultipleGroupsServerFn();
 
-      // Update group members with calculated balances from holdings
-      const updatedGroups = groups.map((group: RebalancingGroup) => {
-        const updatedMembers = group.members.map((member: RebalancingGroupMember) => {
-          const balance = accountBalanceMap.get(member.accountId);
+        // Create a map of account balances for efficient lookup
+        const accountBalanceMap = new Map<string, number>();
+        holdings.forEach((account) => {
+          accountBalanceMap.set(account.accountId, account.accountBalance);
+        });
+
+        // Update group members with calculated balances from holdings
+        const updatedGroups = groups.map((group: RebalancingGroup) => {
+          const updatedMembers = group.members.map((member: RebalancingGroupMember) => {
+            const balance = accountBalanceMap.get(member.accountId);
+            return {
+              ...member,
+              balance: balance ?? member.balance ?? 0,
+            };
+          });
+
           return {
-            ...member,
-            balance: balance ?? member.balance ?? 0,
+            ...group,
+            members: updatedMembers,
           };
         });
 
-        return {
-          ...group,
-          members: updatedMembers,
-        };
-      });
-
-      return { groups: updatedGroups };
-    } catch (error) {
-      // If authentication error, redirect to login
-      if (error instanceof Error && error.message.includes('Authentication required')) {
-        throw redirect({ to: '/login', search: { reset: '', redirect: '/rebalancing-groups' } });
+        return { groups: updatedGroups };
+      } catch (error) {
+        // If authentication error, redirect to login
+        if (error instanceof Error && error.message.includes('Authentication required')) {
+          throw redirect({
+            to: '/login',
+            search: { reset: '', redirect: '/rebalancing-groups' },
+          });
+        }
+        // Re-throw other errors
+        throw error;
       }
-      // Re-throw other errors
-      throw error;
     }
+
+    // Client-side fallback - return empty data
+    // This should not happen in SSR but provides a fallback
+    return { groups: [] };
   },
 });
 
 function RebalancingGroupsComponent() {
+  // Use loader data for SSR, but also set up client-side data fetching
   const loaderData = Route.useLoaderData();
-  const groups = loaderData.groups;
+  const groups = loaderData?.groups || [];
   const searchParams = Route.useSearch();
   const [showCreateModal, setShowCreateModal] = useState(false);
 
