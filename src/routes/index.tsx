@@ -1,4 +1,4 @@
-import { createFileRoute, redirect } from '@tanstack/react-router';
+import { createFileRoute } from '@tanstack/react-router';
 import { useState } from 'react';
 import { OnboardingTracker } from '~/components/OnboardingTracker';
 import { ExportButton } from '~/components/ui/export-button';

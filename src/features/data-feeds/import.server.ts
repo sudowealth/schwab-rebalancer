@@ -2,7 +2,7 @@ import { createServerFn } from '@tanstack/react-start';
 import { eq, inArray, sql } from 'drizzle-orm';
 import * as schema from '~/db/schema';
 import { CASH_TICKER, isAnyCashTicker } from '~/lib/constants';
-import { getDatabaseSync } from '~/lib/db-config';
+import { createDatabaseInstance } from '~/lib/db-config';
 import { getErrorMessage, ValidationError } from '~/lib/error-handler';
 import type { SyncYahooFundamentalsResult } from './yahoo.server';
 
@@ -40,7 +40,7 @@ export const seedDemoDataServerFn = createServerFn({ method: 'POST' }).handler(a
 export const seedSecuritiesDataServerFn = createServerFn({ method: 'POST' }).handler(async () => {
   await requireAuth();
 
-  const db = getDatabaseSync();
+  const db = await createDatabaseInstance();
   const { seedSecurities } = await import('~/db/seeds/securities');
   const { seedSP500Securities } = await import('~/db/seeds/sp500-model-seeder');
 
@@ -183,7 +183,7 @@ export const seedSecuritiesDataServerFn = createServerFn({ method: 'POST' }).han
 export const seedModelsDataServerFn = createServerFn({ method: 'POST' }).handler(async () => {
   const { user } = await requireAuth();
 
-  const db = getDatabaseSync();
+  const db = await createDatabaseInstance();
   const { seedSleeves, seedModels } = await import('~/db/seeds/sp500-model-seeder');
 
   const sleevesResult = await seedSleeves(db, user.id);
@@ -202,7 +202,7 @@ export const seedGlobalEquityModelServerFn = createServerFn({ method: 'POST' }).
   async () => {
     const { user } = await requireAuth();
 
-    const db = getDatabaseSync();
+    const db = await createDatabaseInstance();
     const { seedGlobalEquitySleeves, seedGlobalEquityModelData } = await import(
       '~/db/seeds/global-equity-model-seeder'
     );
@@ -335,7 +335,7 @@ export const importNasdaqSecuritiesServerFn = createServerFn({
       const securitiesToProcess = limit ? parsedSecurities.slice(0, limit) : parsedSecurities;
 
       // Import to database
-      const db = getDatabaseSync();
+      const db = await createDatabaseInstance();
 
       let importedCount = 0;
       let skippedCount = 0;
@@ -485,7 +485,7 @@ export const truncateDataServerFn = createServerFn({ method: 'POST' })
       throw new Error('Confirmation text required: "TRUNCATE_ALL_DATA"');
     }
 
-    const db = getDatabaseSync();
+    const db = await createDatabaseInstance();
 
     try {
       // Get request info for audit logging
@@ -597,7 +597,7 @@ export const truncateDataServerFn = createServerFn({ method: 'POST' })
 export const getYahooSyncCountsServerFn = createServerFn({ method: 'GET' }).handler(async () => {
   const { user } = await requireAuth();
   const { count, and, or, inArray, isNull, ne } = await import('drizzle-orm');
-  const db = getDatabaseSync();
+  const db = await createDatabaseInstance();
 
   // Get total securities count
   const totalSecurities = await db
@@ -698,7 +698,7 @@ export const getYahooSyncCountsServerFn = createServerFn({ method: 'GET' }).hand
 export const checkSecuritiesExistServerFn = createServerFn({ method: 'GET' }).handler(async () => {
   const { user: _user } = await requireAuth();
   const { count, ne } = await import('drizzle-orm');
-  const db = getDatabaseSync();
+  const db = await createDatabaseInstance();
 
   // Get count of securities (excluding cash)
   const securitiesCount = await db
@@ -716,7 +716,7 @@ export const checkSecuritiesExistServerFn = createServerFn({ method: 'GET' }).ha
 export const checkModelsExistServerFn = createServerFn({ method: 'GET' }).handler(async () => {
   const { user } = await requireAuth();
   const { count, eq } = await import('drizzle-orm');
-  const db = getDatabaseSync();
+  const db = await createDatabaseInstance();
 
   // Get count of models for this user
   const modelsCount = await db
@@ -749,7 +749,7 @@ export const checkSchwabCredentialsServerFn = createServerFn({ method: 'GET' }).
 
 // Helper function to filter imported tickers to only include those in holdings, indices, or sleeves
 async function filterImportedTickersForPriceSync(
-  db: ReturnType<typeof getDatabaseSync>,
+  db: Awaited<ReturnType<typeof createDatabaseInstance>>,
   importedTickers: string[],
 ): Promise<string[]> {
   if (importedTickers.length === 0) {

@@ -24,12 +24,11 @@ import {
   type Transaction,
   validateData,
 } from '~/features/auth/schemas';
-import { getDatabaseSync } from './db-config';
+import { dbProxy } from './db-config';
 import { DatabaseError, logError, ValidationError, withRetry } from './error-handler';
 import { generateId } from './utils';
 
-// Database connection - server-side only
-const db = getDatabaseSync();
+// Database connection - using global dbProxy proxy for lazy initialization
 
 // Format market cap from millions to appropriate display format
 function formatMarketCap(millions: number): string {
@@ -67,7 +66,7 @@ export const getSnP500Data = async () => {
   try {
     return await withRetry(
       async () => {
-        const securities = await db.select().from(schema.security);
+        const securities = await dbProxy.select().from(schema.security);
 
         // Return empty array if no securities found (e.g., after truncation)
         if (!securities || securities.length === 0) {
@@ -110,7 +109,7 @@ export const getIndices = async (): Promise<Array<{ id: string; name: string }>>
     return cached;
   }
 
-  const indices = await db
+  const indices = await dbProxy
     .select({
       id: schema.indexTable.id,
       name: schema.indexTable.name,
@@ -134,7 +133,7 @@ export const getSecuritiesByIndex = async (indexId?: string): Promise<SP500Stock
   }
 
   // Get securities that are members of the specified index
-  const securitiesInIndex = await db
+  const securitiesInIndex = await dbProxy
     .select({
       ticker: schema.security.ticker,
       name: schema.security.name,
@@ -207,7 +206,7 @@ export const getPositions = async (userId?: string) => {
 
         let holdings: HoldingWithAccount[];
         try {
-          holdings = await db
+          holdings = await dbProxy
             .select({
               id: schema.holding.id,
               ticker: schema.holding.ticker,
@@ -224,7 +223,7 @@ export const getPositions = async (userId?: string) => {
             .where(eq(schema.account.userId, userId));
         } catch (_error) {
           // If accountNumber column doesn't exist, query without it
-          holdings = await db
+          holdings = await dbProxy
             .select({
               id: schema.holding.id,
               ticker: schema.holding.ticker,
@@ -241,7 +240,7 @@ export const getPositions = async (userId?: string) => {
         }
 
         // Get sleeve information for each ticker
-        const sleeveMembers = await db
+        const sleeveMembers = await dbProxy
           .select({
             ticker: schema.sleeveMember.ticker,
             sleeveId: schema.sleeve.id,
@@ -330,8 +329,7 @@ export const getPositions = async (userId?: string) => {
 };
 
 export async function getTransactions(userId: string) {
-  const db = getDatabaseSync();
-  const userAccounts = await db
+  const userAccounts = await dbProxy
     .select({ id: schema.account.id })
     .from(schema.account)
     .where(eq(schema.account.userId, userId));
@@ -347,10 +345,9 @@ export async function getGroupTransactions(accountIds: string[]) {
   if (accountIds.length === 0) {
     return [];
   }
-  const db = getDatabaseSync();
 
   // Join transactions with accounts and sleeves to get enriched data
-  const rawTransactions = await db
+  const rawTransactions = await dbProxy
     .select({
       id: schema.transaction.id,
       accountId: schema.transaction.accountId,
@@ -425,7 +422,7 @@ export const getSleeves = async (userId?: string) => {
   );
 
   // Get sleeves and members in one query
-  const sleevesAndMembers = await db
+  const sleevesAndMembers = await dbProxy
     .select({
       // Sleeve data
       sleeveId: schema.sleeve.id,
@@ -466,7 +463,7 @@ export const getSleeves = async (userId?: string) => {
   }> = [];
 
   if (memberTickers.length > 0) {
-    holdingsData = await db
+    holdingsData = await dbProxy
       .select({
         id: schema.holding.id,
         ticker: schema.holding.ticker,
@@ -620,7 +617,7 @@ export const getRestrictedSecurities = async (): Promise<RestrictedSecurity[]> =
     return cached;
   }
 
-  const restrictedSecurities = await db
+  const restrictedSecurities = await dbProxy
     .select({
       ticker: schema.restrictedSecurity.ticker,
       sleeveId: schema.restrictedSecurity.sleeveId,
@@ -997,7 +994,7 @@ export const createSleeve = async (
   const sleeveId = generateId();
 
   // Check if sleeve name already exists
-  const existingSleeves = await db
+  const existingSleeves = await dbProxy
     .select({ name: schema.sleeve.name })
     .from(schema.sleeve)
     .where(sql`${schema.sleeve.name} = ${name} AND ${schema.sleeve.userId} = ${userId}`);
@@ -1016,7 +1013,7 @@ export const createSleeve = async (
   }
 
   // Verify that all tickers exist in securities table
-  const securities = await db
+  const securities = await dbProxy
     .select({ ticker: schema.security.ticker })
     .from(schema.security)
     .where(inArray(schema.security.ticker, memberTickers));
@@ -1033,7 +1030,7 @@ export const createSleeve = async (
   // Start transaction
   try {
     // Create the sleeve
-    await db.insert(schema.sleeve).values({
+    await dbProxy.insert(schema.sleeve).values({
       id: sleeveId,
       userId: userId,
       name: name,
@@ -1054,7 +1051,7 @@ export const createSleeve = async (
       updatedAt: now,
     }));
 
-    await db.insert(schema.sleeveMember).values(memberRecords);
+    await dbProxy.insert(schema.sleeveMember).values(memberRecords);
 
     // Clear cache so that the new sleeve appears (user-scoped)
     clearCache(`sleeves-${userId}`);
@@ -1076,7 +1073,7 @@ export const getAvailableSecurities = async (): Promise<
     return cached;
   }
 
-  const securities = await db
+  const securities = await dbProxy
     .select({
       ticker: schema.security.ticker,
       name: schema.security.name,
@@ -1096,7 +1093,7 @@ export const updateSleeve = async (
   members: Array<{ ticker: string; rank: number; isLegacy?: boolean }>,
 ): Promise<void> => {
   // Check if sleeve exists
-  const existingSleeve = await db
+  const existingSleeve = await dbProxy
     .select({ id: schema.sleeve.id, name: schema.sleeve.name, userId: schema.sleeve.userId })
     .from(schema.sleeve)
     .where(eq(schema.sleeve.id, sleeveId))
@@ -1107,7 +1104,7 @@ export const updateSleeve = async (
   }
 
   // Check if new name conflicts with other sleeves (excluding current sleeve)
-  const conflictingSleeves = await db
+  const conflictingSleeves = await dbProxy
     .select({ name: schema.sleeve.name })
     .from(schema.sleeve)
     .where(
@@ -1128,7 +1125,7 @@ export const updateSleeve = async (
   }
 
   // Verify that all tickers exist in securities table
-  const securities = await db
+  const securities = await dbProxy
     .select({ ticker: schema.security.ticker })
     .from(schema.security)
     .where(inArray(schema.security.ticker, memberTickers));
@@ -1144,7 +1141,7 @@ export const updateSleeve = async (
 
   try {
     // Update sleeve name
-    await db
+    await dbProxy
       .update(schema.sleeve)
       .set({
         name: name,
@@ -1153,7 +1150,7 @@ export const updateSleeve = async (
       .where(eq(schema.sleeve.id, sleeveId));
 
     // Delete existing members
-    await db.delete(schema.sleeveMember).where(eq(schema.sleeveMember.sleeveId, sleeveId));
+    await dbProxy.delete(schema.sleeveMember).where(eq(schema.sleeveMember.sleeveId, sleeveId));
 
     // Create new sleeve members
     const memberRecords = members.map((member) => ({
@@ -1167,7 +1164,7 @@ export const updateSleeve = async (
       updatedAt: now,
     }));
 
-    await db.insert(schema.sleeveMember).values(memberRecords);
+    await dbProxy.insert(schema.sleeveMember).values(memberRecords);
 
     // Clear cache so that the updated sleeve appears (user-scoped)
     clearCache(`sleeves-${existingSleeve[0].userId}`);
@@ -1180,7 +1177,7 @@ export const updateSleeve = async (
 // Delete a sleeve
 export const deleteSleeve = async (sleeveId: string): Promise<void> => {
   // Check if sleeve exists
-  const existingSleeve = await db
+  const existingSleeve = await dbProxy
     .select({ id: schema.sleeve.id, name: schema.sleeve.name, userId: schema.sleeve.userId })
     .from(schema.sleeve)
     .where(eq(schema.sleeve.id, sleeveId))
@@ -1196,10 +1193,10 @@ export const deleteSleeve = async (sleeveId: string): Promise<void> => {
 
   try {
     // Delete sleeve members first (due to foreign key constraints)
-    await db.delete(schema.sleeveMember).where(eq(schema.sleeveMember.sleeveId, sleeveId));
+    await dbProxy.delete(schema.sleeveMember).where(eq(schema.sleeveMember.sleeveId, sleeveId));
 
     // Delete the sleeve
-    await db.delete(schema.sleeve).where(eq(schema.sleeve.id, sleeveId));
+    await dbProxy.delete(schema.sleeve).where(eq(schema.sleeve.id, sleeveId));
 
     // Clear cache so that the deleted sleeve is removed (user-scoped)
     clearCache(`sleeves-${existingSleeve[0].userId}`);
@@ -1224,7 +1221,7 @@ export const getSleeveHoldingsInfo = async (
   holdingValue?: number;
 }> => {
   // First get the sleeve member tickers
-  const members = await db
+  const members = await dbProxy
     .select({
       ticker: schema.sleeveMember.ticker,
     })
@@ -1241,7 +1238,7 @@ export const getSleeveHoldingsInfo = async (
 
   let holdings: SleeveHoldingData[] = [];
   if (memberTickers.length > 0) {
-    holdings = await db
+    holdings = await dbProxy
       .select({
         ticker: schema.holding.ticker,
         qty: schema.holding.qty,
@@ -1280,7 +1277,7 @@ export const getModels = async (userId?: string) => {
   }
 
   // Single relational query to get all models with their members
-  const modelsWithMembers = await db
+  const modelsWithMembers = await dbProxy
     .select({
       // Model data
       modelId: schema.model.id,
@@ -1372,7 +1369,7 @@ export const getModels = async (userId?: string) => {
 
 // Get model by ID
 export const getModelById = async (modelId: string): Promise<Model | null> => {
-  const model = await db
+  const model = await dbProxy
     .select({
       id: schema.model.id,
       name: schema.model.name,
@@ -1390,7 +1387,7 @@ export const getModelById = async (modelId: string): Promise<Model | null> => {
   }
 
   // Get model members
-  const members = await db
+  const members = await dbProxy
     .select({
       id: schema.modelMember.id,
       sleeveId: schema.modelMember.sleeveId,
@@ -1422,7 +1419,7 @@ export const getModelById = async (modelId: string): Promise<Model | null> => {
 // Create a new model with members
 export const createModel = async (data: CreateModel, userId: string): Promise<string> => {
   // Check if model name already exists
-  const existingModels = await db
+  const existingModels = await dbProxy
     .select({ id: schema.model.id, name: schema.model.name })
     .from(schema.model)
     .where(sql`${schema.model.name} = ${data.name} AND ${schema.model.userId} = ${userId}`);
@@ -1442,7 +1439,7 @@ export const createModel = async (data: CreateModel, userId: string): Promise<st
   // Validate that sleeve IDs exist
   const memberSleeveIds = data.members.map((m) => m.sleeveId);
   if (memberSleeveIds.length > 0) {
-    const sleeves = await db
+    const sleeves = await dbProxy
       .select({ id: schema.sleeve.id })
       .from(schema.sleeve)
       .where(inArray(schema.sleeve.id, memberSleeveIds));
@@ -1467,7 +1464,7 @@ export const createModel = async (data: CreateModel, userId: string): Promise<st
 
   try {
     // Create the model
-    await db.insert(schema.model).values({
+    await dbProxy.insert(schema.model).values({
       id: modelId,
       userId: userId,
       name: data.name,
@@ -1489,7 +1486,7 @@ export const createModel = async (data: CreateModel, userId: string): Promise<st
         updatedAt: now,
       }));
 
-      await db.insert(schema.modelMember).values(memberRecords);
+      await dbProxy.insert(schema.modelMember).values(memberRecords);
     }
 
     // Clear cache so that the new model appears (user-scoped)
@@ -1505,7 +1502,7 @@ export const createModel = async (data: CreateModel, userId: string): Promise<st
 // Update an existing model
 export const updateModel = async (modelId: string, data: CreateModel): Promise<void> => {
   // Check if model exists
-  const existingModel = await db
+  const existingModel = await dbProxy
     .select({ id: schema.model.id, name: schema.model.name, userId: schema.model.userId })
     .from(schema.model)
     .where(eq(schema.model.id, modelId))
@@ -1516,7 +1513,7 @@ export const updateModel = async (modelId: string, data: CreateModel): Promise<v
   }
 
   // Check if new name conflicts with other models (excluding current model)
-  const conflictingModels = await db
+  const conflictingModels = await dbProxy
     .select({ name: schema.model.name })
     .from(schema.model)
     .where(
@@ -1530,7 +1527,7 @@ export const updateModel = async (modelId: string, data: CreateModel): Promise<v
   // Validate that sleeve IDs exist
   const memberSleeveIds = data.members.map((m) => m.sleeveId);
   if (memberSleeveIds.length > 0) {
-    const sleeves = await db
+    const sleeves = await dbProxy
       .select({ id: schema.sleeve.id })
       .from(schema.sleeve)
       .where(inArray(schema.sleeve.id, memberSleeveIds));
@@ -1555,7 +1552,7 @@ export const updateModel = async (modelId: string, data: CreateModel): Promise<v
 
   try {
     // Update the model
-    await db
+    await dbProxy
       .update(schema.model)
       .set({
         name: data.name,
@@ -1565,7 +1562,7 @@ export const updateModel = async (modelId: string, data: CreateModel): Promise<v
       .where(eq(schema.model.id, modelId));
 
     // Delete existing members
-    await db.delete(schema.modelMember).where(eq(schema.modelMember.modelId, modelId));
+    await dbProxy.delete(schema.modelMember).where(eq(schema.modelMember.modelId, modelId));
 
     // Create new model members
     if (data.members.length > 0) {
@@ -1579,7 +1576,7 @@ export const updateModel = async (modelId: string, data: CreateModel): Promise<v
         updatedAt: now,
       }));
 
-      await db.insert(schema.modelMember).values(memberRecords);
+      await dbProxy.insert(schema.modelMember).values(memberRecords);
     }
 
     // Clear cache so that updated model appears (user-scoped)
@@ -1593,7 +1590,7 @@ export const updateModel = async (modelId: string, data: CreateModel): Promise<v
 // Delete a model and its members
 export const deleteModel = async (modelId: string): Promise<void> => {
   // Check if model exists
-  const existingModel = await db
+  const existingModel = await dbProxy
     .select({ id: schema.model.id, name: schema.model.name, userId: schema.model.userId })
     .from(schema.model)
     .where(eq(schema.model.id, modelId))
@@ -1605,10 +1602,10 @@ export const deleteModel = async (modelId: string): Promise<void> => {
 
   try {
     // Delete model members first (due to foreign key constraints)
-    await db.delete(schema.modelMember).where(eq(schema.modelMember.modelId, modelId));
+    await dbProxy.delete(schema.modelMember).where(eq(schema.modelMember.modelId, modelId));
 
     // Delete the model
-    await db.delete(schema.model).where(eq(schema.model.id, modelId));
+    await dbProxy.delete(schema.model).where(eq(schema.model.id, modelId));
 
     // Clear cache so that deleted model disappears (user-scoped)
     clearCache(`models-${existingModel[0].userId}`);
@@ -1626,7 +1623,7 @@ export const getAvailableSleeves = async (): Promise<Array<{ id: string; name: s
     return cached;
   }
 
-  const sleeves = await db
+  const sleeves = await dbProxy
     .select({
       id: schema.sleeve.id,
       name: schema.sleeve.name,
@@ -1659,7 +1656,7 @@ const clearCacheByPattern = (pattern: string): void => {
 // --- Orders / Blotter ---
 export async function getOrdersForAccounts(accountIds: string[]): Promise<Order[]> {
   if (!accountIds.length) return [];
-  const rows = await db
+  const rows = await dbProxy
     .select()
     .from(schema.tradeOrder)
     .where(inArray(schema.tradeOrder.accountId, accountIds))
@@ -1723,7 +1720,7 @@ export async function addDraftOrdersFromProposedTrades(params: {
         createdAt: new Date(now),
         updatedAt: new Date(now),
       };
-      await db.insert(schema.tradeOrder).values(row);
+      await dbProxy.insert(schema.tradeOrder).values(row);
       created += 1;
     } catch {
       // Likely unique idempotency violation -> skip
@@ -1759,12 +1756,12 @@ export async function updateTradeOrder(
   if (updates.tif) set.tif = updates.tif;
   if (updates.session) set.session = updates.session;
 
-  await db.update(schema.tradeOrder).set(set).where(eq(schema.tradeOrder.id, id));
+  await dbProxy.update(schema.tradeOrder).set(set).where(eq(schema.tradeOrder.id, id));
   clearCache('orders');
 }
 
 export async function deleteTradeOrder(id: string): Promise<void> {
-  await db.delete(schema.tradeOrder).where(eq(schema.tradeOrder.id, id));
+  await dbProxy.delete(schema.tradeOrder).where(eq(schema.tradeOrder.id, id));
   clearCache('orders');
 }
 
@@ -1882,7 +1879,7 @@ export const getIndexMembers = async (): Promise<
   if (cached) {
     return cached;
   }
-  const indexMembers = await db
+  const indexMembers = await dbProxy
     .select({
       indexId: schema.indexMember.indexId,
       securityId: schema.indexMember.securityId,
@@ -1902,7 +1899,7 @@ export const getRebalancingGroups = async (userId: string): Promise<RebalancingG
   }
 
   // Single relational query to get all groups with their members and assigned models
-  const groupsWithData = await db
+  const groupsWithData = await dbProxy
     .select({
       // Group data
       groupId: schema.rebalancingGroup.id,
@@ -2053,7 +2050,7 @@ export const getRebalancingGroupById = async (
   groupId: string,
   userId: string,
 ): Promise<RebalancingGroup | null> => {
-  const group = await db
+  const group = await dbProxy
     .select({
       id: schema.rebalancingGroup.id,
       name: schema.rebalancingGroup.name,
@@ -2072,7 +2069,7 @@ export const getRebalancingGroupById = async (
   }
 
   // Get group members
-  const members = await db
+  const members = await dbProxy
     .select({
       id: schema.rebalancingGroupMember.id,
       accountId: schema.rebalancingGroupMember.accountId,
@@ -2088,7 +2085,7 @@ export const getRebalancingGroupById = async (
     );
 
   // Get assigned model via junction table
-  const assignedModel = await db
+  const assignedModel = await dbProxy
     .select({
       id: schema.model.id,
       name: schema.model.name,
@@ -2118,7 +2115,7 @@ export const getRebalancingGroupById = async (
   // Get model members if model exists
   let modelMembers: ModelMemberData[] = [];
   if (assignedModel.length > 0) {
-    modelMembers = await db
+    modelMembers = await dbProxy
       .select({
         id: schema.modelMember.id,
         sleeveId: schema.modelMember.sleeveId,
@@ -2179,7 +2176,7 @@ export const getAccountHoldings = async (accountIds: string[]) => {
   );
 
   // Get holdings for the specified accounts
-  const holdings = await db
+  const holdings = await dbProxy
     .select({
       id: schema.holding.id,
       ticker: schema.holding.ticker,
@@ -2199,7 +2196,7 @@ export const getAccountHoldings = async (accountIds: string[]) => {
   try {
     const tickers = Array.from(new Set(holdings.map((h) => h.ticker)));
     if (tickers.length > 0) {
-      const rows = await db
+      const rows = await dbProxy
         .select({ ticker: schema.security.ticker, price: schema.security.price })
         .from(schema.security)
         .where(inArray(schema.security.ticker, tickers));
@@ -2217,7 +2214,7 @@ export const getAccountHoldings = async (accountIds: string[]) => {
   }
 
   // Get sleeve information for each ticker
-  const sleeveMembers = await db
+  const sleeveMembers = await dbProxy
     .select({
       ticker: schema.sleeveMember.ticker,
       sleeveId: schema.sleeve.id,
@@ -2365,7 +2362,7 @@ export const getSleeveMembers = async (sleeveIds: string[]) => {
 
     try {
       // Get sleeve members for this batch
-      const batchMembers = await db
+      const batchMembers = await dbProxy
         .select({
           id: schema.sleeveMember.id,
           sleeveId: schema.sleeveMember.sleeveId,
@@ -2434,7 +2431,7 @@ export const createRebalancingGroup = async (
   userId: string,
 ): Promise<string> => {
   // Check if group name already exists for this user
-  const existingGroups = await db
+  const existingGroups = await dbProxy
     .select({
       id: schema.rebalancingGroup.id,
       name: schema.rebalancingGroup.name,
@@ -2459,7 +2456,7 @@ export const createRebalancingGroup = async (
   // Validate that account IDs exist and belong to the user
   const memberAccountIds = data.members.map((m) => m.accountId);
   if (memberAccountIds.length > 0) {
-    const accounts = await db
+    const accounts = await dbProxy
       .select({ id: schema.account.id })
       .from(schema.account)
       .where(and(inArray(schema.account.id, memberAccountIds), eq(schema.account.userId, userId)));
@@ -2476,7 +2473,7 @@ export const createRebalancingGroup = async (
 
   try {
     // Create the rebalancing group
-    await db.insert(schema.rebalancingGroup).values({
+    await dbProxy.insert(schema.rebalancingGroup).values({
       id: groupId,
       userId: userId,
       name: data.name,
@@ -2496,7 +2493,7 @@ export const createRebalancingGroup = async (
         updatedAt: now,
       }));
 
-      await db.insert(schema.rebalancingGroupMember).values(memberRecords);
+      await dbProxy.insert(schema.rebalancingGroupMember).values(memberRecords);
     }
 
     // Clear cache so that the new group appears
@@ -2516,7 +2513,7 @@ export const updateRebalancingGroup = async (
   userId: string,
 ): Promise<void> => {
   // Check if group exists and belongs to user
-  const existingGroup = await db
+  const existingGroup = await dbProxy
     .select({
       id: schema.rebalancingGroup.id,
       name: schema.rebalancingGroup.name,
@@ -2532,7 +2529,7 @@ export const updateRebalancingGroup = async (
   }
 
   // Check if new name conflicts with other groups (excluding current group)
-  const conflictingGroups = await db
+  const conflictingGroups = await dbProxy
     .select({ name: schema.rebalancingGroup.name })
     .from(schema.rebalancingGroup)
     .where(
@@ -2546,7 +2543,7 @@ export const updateRebalancingGroup = async (
   // Validate that account IDs exist and belong to the user
   const memberAccountIds = data.members.map((m) => m.accountId);
   if (memberAccountIds.length > 0) {
-    const accounts = await db
+    const accounts = await dbProxy
       .select({ id: schema.account.id })
       .from(schema.account)
       .where(and(inArray(schema.account.id, memberAccountIds), eq(schema.account.userId, userId)));
@@ -2563,7 +2560,7 @@ export const updateRebalancingGroup = async (
 
   try {
     // Update the group
-    await db
+    await dbProxy
       .update(schema.rebalancingGroup)
       .set({
         name: data.name,
@@ -2572,7 +2569,7 @@ export const updateRebalancingGroup = async (
       .where(eq(schema.rebalancingGroup.id, groupId));
 
     // Delete existing members and recreate them
-    await db
+    await dbProxy
       .delete(schema.rebalancingGroupMember)
       .where(eq(schema.rebalancingGroupMember.groupId, groupId));
 
@@ -2587,7 +2584,7 @@ export const updateRebalancingGroup = async (
         updatedAt: now,
       }));
 
-      await db.insert(schema.rebalancingGroupMember).values(memberRecords);
+      await dbProxy.insert(schema.rebalancingGroupMember).values(memberRecords);
     }
 
     // Clear cache so that updated group appears
@@ -2603,7 +2600,7 @@ export const updateRebalancingGroup = async (
 // Delete a rebalancing group (soft delete)
 export const deleteRebalancingGroup = async (groupId: string, userId: string): Promise<void> => {
   // Check if group exists and belongs to user
-  const existingGroup = await db
+  const existingGroup = await dbProxy
     .select({
       id: schema.rebalancingGroup.id,
       name: schema.rebalancingGroup.name,
@@ -2620,17 +2617,17 @@ export const deleteRebalancingGroup = async (groupId: string, userId: string): P
 
   try {
     // Delete group members first (due to foreign key constraint)
-    await db
+    await dbProxy
       .delete(schema.rebalancingGroupMember)
       .where(eq(schema.rebalancingGroupMember.groupId, groupId));
 
     // Remove any model assignments for this group
-    await db
+    await dbProxy
       .delete(schema.modelGroupAssignment)
       .where(eq(schema.modelGroupAssignment.rebalancingGroupId, groupId));
 
     // Delete the group itself
-    await db.delete(schema.rebalancingGroup).where(eq(schema.rebalancingGroup.id, groupId));
+    await dbProxy.delete(schema.rebalancingGroup).where(eq(schema.rebalancingGroup.id, groupId));
 
     // Clear cache so that deleted group disappears
     clearCache(`rebalancing-groups-${userId}`);
@@ -2654,7 +2651,7 @@ export const getAvailableAccounts = async (
     return cached;
   }
 
-  const accounts = await db
+  const accounts = await dbProxy
     .select({
       id: schema.account.id,
       name: schema.account.name,
@@ -2719,7 +2716,7 @@ export const getAccountsForRebalancingGroups = async (
     dataSource: string;
   }> = [];
   try {
-    accounts = await db
+    accounts = await dbProxy
       .select({
         id: schema.account.id,
         name: schema.account.name,
@@ -2743,7 +2740,7 @@ export const getAccountsForRebalancingGroups = async (
     groupName: string;
   }> = [];
   try {
-    memberships = await db
+    memberships = await dbProxy
       .select({
         accountId: schema.rebalancingGroupMember.accountId,
         groupId: schema.rebalancingGroupMember.groupId,
@@ -2789,7 +2786,7 @@ export const getAccountsForRebalancingGroups = async (
       priceMap = new Map<string, number>(sp500Data.map((stock) => [stock.ticker, stock.price]));
 
       const accountIds = accounts.map((account) => account.id);
-      holdings = await db
+      holdings = await dbProxy
         .select({
           accountId: schema.holding.accountId,
           ticker: schema.holding.ticker,
@@ -2840,7 +2837,7 @@ export const assignModelToGroup = async (
   userId: string,
 ): Promise<void> => {
   // Verify the model exists
-  const model = await db
+  const model = await dbProxy
     .select({ id: schema.model.id })
     .from(schema.model)
     .where(eq(schema.model.id, modelId))
@@ -2854,7 +2851,7 @@ export const assignModelToGroup = async (
   console.log('DEBUG: assignModelToGroup - Checking group existence:', { groupId, userId });
 
   // First, check if the group exists at all
-  const groupExists = await db
+  const groupExists = await dbProxy
     .select({
       id: schema.rebalancingGroup.id,
       userId: schema.rebalancingGroup.userId,
@@ -2866,7 +2863,7 @@ export const assignModelToGroup = async (
 
   console.log('DEBUG: Group exists check:', groupExists);
 
-  const group = await db
+  const group = await dbProxy
     .select({ id: schema.rebalancingGroup.id })
     .from(schema.rebalancingGroup)
     .where(
@@ -2884,7 +2881,7 @@ export const assignModelToGroup = async (
 
   try {
     // Check if assignment already exists
-    const existingAssignment = await db
+    const existingAssignment = await dbProxy
       .select({ id: schema.modelGroupAssignment.id })
       .from(schema.modelGroupAssignment)
       .where(
@@ -2898,7 +2895,7 @@ export const assignModelToGroup = async (
     if (existingAssignment.length === 0) {
       // Create new assignment in junction table
       const assignmentId = generateId();
-      await db.insert(schema.modelGroupAssignment).values({
+      await dbProxy.insert(schema.modelGroupAssignment).values({
         id: assignmentId,
         modelId: modelId,
         rebalancingGroupId: groupId,
@@ -2920,14 +2917,14 @@ export const assignModelToGroup = async (
 export const unassignModelFromGroup = async (modelId: string, groupId: string): Promise<void> => {
   try {
     // Determine userId from the group
-    const group = await db
+    const group = await dbProxy
       .select({ userId: schema.rebalancingGroup.userId })
       .from(schema.rebalancingGroup)
       .where(eq(schema.rebalancingGroup.id, groupId))
       .limit(1);
 
     // Delete the assignment from junction table
-    await db
+    await dbProxy
       .delete(schema.modelGroupAssignment)
       .where(
         and(
@@ -2956,7 +2953,7 @@ export const updateAccount = async (
 ): Promise<void> => {
   try {
     // Verify the account belongs to the user
-    const existingAccount = await db
+    const existingAccount = await dbProxy
       .select({ id: schema.account.id })
       .from(schema.account)
       .where(and(eq(schema.account.id, accountId), eq(schema.account.userId, userId)))
@@ -2967,7 +2964,7 @@ export const updateAccount = async (
     }
 
     // Update the account
-    await db
+    await dbProxy
       .update(schema.account)
       .set({
         name: updates.name,

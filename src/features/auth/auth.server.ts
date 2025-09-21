@@ -1,7 +1,7 @@
 import { createServerFn } from '@tanstack/react-start';
 import { APIError } from 'better-auth/api';
 import { SessionManager } from '~/features/auth/session.server';
-import { getDatabaseSync } from '~/lib/db-config';
+import { createDatabaseInstance } from '~/lib/db-config';
 
 // Defer server-only auth utilities to runtime to avoid bundling them in the client build
 const requireAuth = async () => {
@@ -19,7 +19,7 @@ const requireAdmin = async () => {
 export const getAllUsersServerFn = createServerFn({ method: 'GET' }).handler(async () => {
   await requireAdmin();
 
-  const db = getDatabaseSync();
+  const db = await createDatabaseInstance();
   const schema = await import('~/db/schema');
 
   const users = await db
@@ -46,7 +46,7 @@ export const updateUserRoleServerFn = createServerFn({ method: 'POST' })
 
     await requireAdmin();
 
-    const db = getDatabaseSync();
+    const db = await createDatabaseInstance();
     const schema = await import('~/db/schema');
     const { eq } = await import('drizzle-orm');
 
@@ -90,7 +90,7 @@ export const deleteUserServerFn = createServerFn({ method: 'POST' })
       throw new Error('Cannot delete your own account');
     }
 
-    const db = getDatabaseSync();
+    const db = await createDatabaseInstance();
     const schema = await import('~/db/schema');
     const { eq } = await import('drizzle-orm');
 
@@ -122,7 +122,7 @@ export const getUserDataServerFn = createServerFn({ method: 'GET' })
 
     await requireAdmin();
 
-    const db = getDatabaseSync();
+    const db = await createDatabaseInstance();
     const schema = await import('~/db/schema');
     const { eq } = await import('drizzle-orm');
 
@@ -163,7 +163,7 @@ export const signUpWithFirstAdminServerFn = createServerFn({ method: 'POST' })
   .handler(async ({ data }) => {
     const { email, password, name } = data;
 
-    const db = getDatabaseSync();
+    const db = await createDatabaseInstance();
     const schema = await import('~/db/schema');
     const { sql, eq } = await import('drizzle-orm');
 
@@ -190,7 +190,8 @@ export const signUpWithFirstAdminServerFn = createServerFn({ method: 'POST' })
       const isFirstUser = totalUsers === 0;
 
       // Create user via Better Auth API to ensure password and related records are handled correctly
-      const { auth } = await import('./auth');
+      const { auth: authProxy } = await import('./auth');
+      const auth = authProxy;
       const signUpResult = await auth.api.signUpEmail({
         body: {
           email,
@@ -265,7 +266,7 @@ export const verifyAdminAccessServerFn = createServerFn({
 export const checkIsFirstUserServerFn = createServerFn({
   method: 'GET',
 }).handler(async () => {
-  const db = getDatabaseSync();
+  const db = await createDatabaseInstance();
   const schema = await import('~/db/schema');
   const { sql } = await import('drizzle-orm');
 
@@ -293,7 +294,7 @@ export const checkUserCreationAllowedServerFn = createServerFn({
   }
 
   // If INDIVIDUAL_USE is enabled, check if there are already users
-  const db = getDatabaseSync();
+  const db = await createDatabaseInstance();
   const schema = await import('~/db/schema');
   const { sql } = await import('drizzle-orm');
 

@@ -4,7 +4,7 @@ import * as schema from '~/db/schema';
 import type { Trade } from '~/features/auth/schemas';
 import type { SyncResult } from '~/features/schwab/schwab-sync.server';
 import { isAnyCashTicker } from '~/lib/constants';
-import { getDatabaseSync } from '~/lib/db-config';
+import { createDatabaseInstance } from '~/lib/db-config';
 import { getErrorMessage } from '~/lib/error-handler';
 
 // Defer server-only auth utilities to runtime to avoid bundling them in the client build
@@ -327,7 +327,7 @@ export const getSleeveTargetTickersServerFn = createServerFn({
   try {
     const { user } = await requireAuth();
 
-    const db = getDatabaseSync();
+    const db = await createDatabaseInstance();
 
     const sleeveRows = await db
       .select({ ticker: schema.sleeveMember.ticker })
@@ -367,7 +367,7 @@ export const getHeldAndSleeveTickersServerFn = createServerFn({
       .map((position) => position.ticker?.trim())
       .filter((ticker): ticker is string => Boolean(ticker) && !isAnyCashTicker(ticker));
 
-    const db = getDatabaseSync();
+    const db = await createDatabaseInstance();
     const sleeveRows = await db
       .select({ ticker: schema.sleeveMember.ticker })
       .from(schema.sleeveMember)
@@ -404,7 +404,7 @@ export const getGroupSecuritiesNeedingPriceUpdatesServerFn = createServerFn({
     const { user } = await requireAuth();
     const { groupId } = data;
 
-    const db = getDatabaseSync();
+    const db = await createDatabaseInstance();
 
     // First, verify the group belongs to the user
     const groupResult = await db
@@ -619,7 +619,7 @@ export const syncSchwabPricesServerFn = createServerFn({ method: 'POST' })
       console.log('👤 [ServerFn] Authenticated user:', user.id);
 
       try {
-        const db = getDatabaseSync();
+        const db = await createDatabaseInstance();
 
         const { getPriceSyncService } = await import('~/features/data-feeds/price-sync');
         const priceSyncService = getPriceSyncService();
@@ -748,7 +748,7 @@ export const syncSchwabPricesServerFn = createServerFn({ method: 'POST' })
         console.error('❌ [ServerFn] Error syncing prices:', error);
         // Attempt to log error in sync log if we started one
         try {
-          const db = getDatabaseSync();
+          const db = await createDatabaseInstance();
           await db.insert(schema.syncLog).values({
             id: crypto.randomUUID(),
             userId: user.id,
@@ -821,7 +821,7 @@ export const deleteSyncLogServerFn = createServerFn({ method: 'POST' })
     try {
       const { user } = await requireAuth();
 
-      const db = getDatabaseSync();
+      const db = await createDatabaseInstance();
 
       // First verify the log belongs to the user
       const log = await db
@@ -854,7 +854,7 @@ export const getSyncLogsServerFn = createServerFn({ method: 'GET' }).handler(asy
   try {
     const { user } = await requireAuth();
 
-    const db = getDatabaseSync();
+    const db = await createDatabaseInstance();
 
     const logs = await db
       .select()
@@ -948,7 +948,7 @@ export const getGroupOrdersServerFn = createServerFn({ method: 'POST' })
 
     const { user } = await requireAuth();
 
-    const db = getDatabaseSync();
+    const db = await createDatabaseInstance();
     const schema = await import('~/db/schema');
     const { eq } = await import('drizzle-orm');
 
@@ -996,7 +996,7 @@ export const updateOrderServerFn = createServerFn({ method: 'POST' })
     const { user } = await requireAuth();
 
     // Verify that the order belongs to the authenticated user
-    const db = getDatabaseSync();
+    const db = await createDatabaseInstance();
     const schema = await import('~/db/schema');
     const { eq } = await import('drizzle-orm');
 
@@ -1027,7 +1027,7 @@ export const deleteOrderServerFn = createServerFn({ method: 'POST' })
     const { user } = await requireAuth();
 
     // Verify that the order belongs to the authenticated user
-    const db = getDatabaseSync();
+    const db = await createDatabaseInstance();
     const schema = await import('~/db/schema');
     const { eq } = await import('drizzle-orm');
 
@@ -1058,7 +1058,7 @@ export const previewOrderServerFn = createServerFn({ method: 'POST' })
 
     const { user } = await requireAuth();
 
-    const db = getDatabaseSync();
+    const db = await createDatabaseInstance();
     const schema = await import('~/db/schema');
     const { eq } = await import('drizzle-orm');
 
@@ -1315,7 +1315,7 @@ export const submitOrderServerFn = createServerFn({ method: 'POST' })
 
     const { user } = await requireAuth();
 
-    const db = getDatabaseSync();
+    const db = await createDatabaseInstance();
     const schema = await import('~/db/schema');
     const { eq } = await import('drizzle-orm');
 

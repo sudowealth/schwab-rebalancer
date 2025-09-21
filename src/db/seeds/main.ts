@@ -1,6 +1,6 @@
 // Import individual seed functions
 
-import { cleanupDatabase, getDatabaseSync, initDatabase } from '~/lib/db-config';
+import { createDatabaseInstance } from '~/lib/db-config';
 import { seedRebalancingGroups } from './rebalancing-groups';
 import { seedSecurities } from './securities';
 import { seedModels, seedSleeves, seedSP500Securities } from './sp500-model-seeder';
@@ -8,9 +8,8 @@ import { seedModels, seedSleeves, seedSP500Securities } from './sp500-model-seed
 export async function seedDatabase(userId?: string) {
   console.log('🌱 Starting database seeding...');
 
-  // Initialize database connection
-  await initDatabase();
-  const db = getDatabaseSync();
+  // Create database connection using lazy initialization
+  const db = await createDatabaseInstance();
 
   try {
     // Tables will be created by Drizzle migrations
@@ -21,10 +20,6 @@ export async function seedDatabase(userId?: string) {
     await seedSleeves(db, userId);
     await seedModels(db, userId);
     await seedRebalancingGroups(db, userId);
-
-    // PostgreSQL handles WAL and checkpoints automatically
-    // Clear the connection pool to ensure fresh connections see the new data
-    cleanupDatabase();
 
     console.log('✅ Database seeding completed successfully!');
   } catch (error) {

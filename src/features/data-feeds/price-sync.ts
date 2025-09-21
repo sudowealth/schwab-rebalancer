@@ -1,9 +1,9 @@
 import { eq, inArray } from 'drizzle-orm';
 import yahooFinance from 'yahoo-finance2';
 import * as schema from '~/db/schema';
-import { CASH_TICKER, MANUAL_CASH_TICKER } from '~/lib/constants';
-import { getDatabaseSync } from '~/lib/db-config';
 import { getSchwabApiService } from '~/features/schwab/schwab-api.server';
+import { CASH_TICKER, MANUAL_CASH_TICKER } from '~/lib/constants';
+import { createDatabaseInstance } from '~/lib/db-config';
 
 export interface PriceUpdateResult {
   ticker: string;
@@ -23,10 +23,13 @@ export interface PriceSyncOptions {
 }
 
 export class PriceSyncService {
-  private db = getDatabaseSync();
   private cache = new Map<string, { price: number; timestamp: number }>();
   private readonly DEFAULT_MAX_AGE = 60; // 60 seconds default cache
   private readonly MAX_QUOTES_PER_REQUEST = 150;
+
+  private async getDb() {
+    return await createDatabaseInstance();
+  }
 
   async syncPrices(options: PriceSyncOptions = {}): Promise<PriceUpdateResult[]> {
     const { userId, symbols, forceRefresh = false, maxAge = this.DEFAULT_MAX_AGE } = options;
@@ -38,9 +41,8 @@ export class PriceSyncService {
       symbolsToUpdate = symbols;
     } else {
       // Get all symbols from securities table, excluding cash tickers
-      const securities = await this.db
-        .select({ ticker: schema.security.ticker })
-        .from(schema.security);
+      const db = await this.getDb();
+      const securities = await db.select({ ticker: schema.security.ticker }).from(schema.security);
 
       symbolsToUpdate = securities
         .map((s) => s.ticker)
@@ -54,7 +56,8 @@ export class PriceSyncService {
     const results: PriceUpdateResult[] = [];
 
     // Get current prices from database
-    const currentSecurities = await this.db
+    const db = await this.getDb();
+    const currentSecurities = await db
       .select({
         ticker: schema.security.ticker,
         price: schema.security.price,
@@ -227,7 +230,7 @@ export class PriceSyncService {
         }
 
         // Ensure the security exists
-        const existingSecurity = await this.db
+        const existingSecurity = await (await this.getDb())
           .select()
           .from(schema.security)
           .where(eq(schema.security.ticker, symbol))
@@ -244,7 +247,8 @@ export class PriceSyncService {
           continue;
         }
 
-        await this.db
+        const db = await this.getDb();
+        await db
           .update(schema.security)
           .set({ price: newPrice, updatedAt: Date.now() })
           .where(eq(schema.security.ticker, symbol));
@@ -310,7 +314,8 @@ export class PriceSyncService {
 
       if (info.name) {
         // Fetch current to compute change
-        const current = await this.db
+        const db = await this.getDb();
+        const current = await db
           .select({ name: schema.security.name })
           .from(schema.security)
           .where(eq(schema.security.ticker, ticker))
@@ -341,7 +346,8 @@ export class PriceSyncService {
             `⚠️ [PriceSync] Invalid asset type for ${ticker}: ${info.assetType}, using default EQUITY`,
           );
         }
-        const current = await this.db
+        const db = await this.getDb();
+        const current = await db
           .select({ assetType: schema.security.assetType })
           .from(schema.security)
           .where(eq(schema.security.ticker, ticker))
@@ -375,7 +381,8 @@ export class PriceSyncService {
             `⚠️ [PriceSync] Invalid assetTypeSub for ${ticker}: ${info.assetTypeSub}, storing NULL`,
           );
         }
-        const currentSub = await this.db
+        const db = await this.getDb();
+        const currentSub = await db
           .select({ assetTypeSub: schema.security.assetTypeSub })
           .from(schema.security)
           .where(eq(schema.security.ticker, ticker))
@@ -390,10 +397,8 @@ export class PriceSyncService {
       if (Object.keys(updateData).length > 0) {
         updateData.updatedAt = Date.now();
 
-        await this.db
-          .update(schema.security)
-          .set(updateData)
-          .where(eq(schema.security.ticker, ticker));
+        const db = await this.getDb();
+        await db.update(schema.security).set(updateData).where(eq(schema.security.ticker, ticker));
 
         console.log(`✅ [PriceSync] Updated security info for ${ticker}:`, updateData);
       }

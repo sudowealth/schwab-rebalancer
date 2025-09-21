@@ -1,7 +1,7 @@
 import { createServerFn } from '@tanstack/react-start';
 import { and, eq, inArray } from 'drizzle-orm';
 import * as schema from '~/db/schema';
-import { getDatabaseSync } from '~/lib/db-config';
+import { createDatabaseInstance } from '~/lib/db-config';
 
 // Defer server-only auth utilities to runtime to avoid bundling them in the client build
 const requireAuth = async () => {
@@ -127,7 +127,7 @@ export const getGroupTransactionsServerFn = createServerFn({
     const { accountIds } = data;
     const { user } = await requireAuth();
     // Verify that all accountIds belong to the authenticated user
-    const db = getDatabaseSync();
+    const db = await createDatabaseInstance();
 
     const ownedAccounts = await db
       .select({ id: schema.account.id })
@@ -242,7 +242,7 @@ export const truncateSecurityTableServerFn = createServerFn({
 }).handler(async () => {
   await requireAdmin();
 
-  const db = getDatabaseSync();
+  const db = await createDatabaseInstance();
   await db.delete(schema.security);
   const { clearCache } = await import('../../lib/db-api');
   clearCache();

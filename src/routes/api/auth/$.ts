@@ -4,11 +4,13 @@ export const ServerRoute = createServerFileRoute('/api/auth/$').methods({
   GET: async ({ request }) => {
     // Lazy import to avoid database initialization at module load time
     const { getAuthHandlerLazy } = await import('~/features/auth/auth');
-    return getAuthHandlerLazy()(request);
+    const handler = getAuthHandlerLazy();
+    return handler(request);
   },
   POST: async ({ request }) => {
     // Lazy import to avoid database initialization at module load time
     const { getAuthHandlerLazy } = await import('~/features/auth/auth');
-    return getAuthHandlerLazy()(request);
+    const handler = getAuthHandlerLazy();
+    return handler(request);
   },
 });

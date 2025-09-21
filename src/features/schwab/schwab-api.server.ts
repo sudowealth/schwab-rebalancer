@@ -1,7 +1,7 @@
 import { and, eq } from 'drizzle-orm';
 import * as schema from '~/db/schema';
 import { decrypt, encrypt } from '~/lib/crypto';
-import { getDatabaseSync } from '~/lib/db-config';
+import { createDatabaseInstance } from '~/lib/db-config';
 
 // Types based on sudowealth/schwab-api structure
 interface SchwabApiClient {
@@ -126,7 +126,6 @@ export interface SchwabCredentials {
 }
 
 export class SchwabApiService {
-  private db = getDatabaseSync();
   private schwabAuth: AuthClient | null = null;
   private apiClient: SchwabApiClient | null = null;
 
@@ -134,6 +133,10 @@ export class SchwabApiService {
     private clientId: string,
     private clientSecret: string,
   ) {}
+
+  private async getDb() {
+    return await createDatabaseInstance();
+  }
 
   private async initializeAuth(redirectUri: string): Promise<AuthClient> {
     if (!this.schwabAuth) {
@@ -423,7 +426,8 @@ export class SchwabApiService {
 
       console.log('🔄 [SchwabApi] Deactivating existing credentials...');
       // Deactivate existing credentials
-      await this.db
+      const db = await this.getDb();
+      await db
         .update(schema.schwabCredentials)
         .set({ isActive: false, updatedAt: now })
         .where(
@@ -437,7 +441,7 @@ export class SchwabApiService {
 
       console.log('💿 [SchwabApi] Inserting new credentials...');
       // Insert new credentials
-      await this.db.insert(schema.schwabCredentials).values({
+      await db.insert(schema.schwabCredentials).values({
         id: crypto.randomUUID(),
         userId,
         encryptedAccessToken,
@@ -459,7 +463,8 @@ export class SchwabApiService {
 
   private async getCredentials(userId: string): Promise<SchwabCredentials | null> {
     try {
-      const result = await this.db
+      const db = await this.getDb();
+      const result = await db
         .select()
         .from(schema.schwabCredentials)
         .where(
@@ -1250,7 +1255,8 @@ export class SchwabApiService {
 
   async revokeCredentials(userId: string): Promise<void> {
     const now = new Date();
-    await this.db
+    const db = await this.getDb();
+    await db
       .update(schema.schwabCredentials)
       .set({ isActive: false, updatedAt: now })
       .where(

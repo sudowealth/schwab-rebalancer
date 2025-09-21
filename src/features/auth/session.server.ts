@@ -1,6 +1,6 @@
 import { eq, lt, sql } from 'drizzle-orm';
 import * as schema from '~/db/schema';
-import { getDatabaseSync } from '~/lib/db-config';
+import { createDatabaseInstance } from '~/lib/db-config';
 
 export interface SessionInvalidationOptions {
   userId?: string;
@@ -18,7 +18,7 @@ async function logSessionAuditEvent(
   details: Record<string, unknown>,
 ): Promise<void> {
   try {
-    const db = getDatabaseSync();
+    const db = await createDatabaseInstance();
     await db.insert(schema.auditLog).values({
       id: crypto.randomUUID(),
       userId,
@@ -46,7 +46,7 @@ export class SessionManager {
   static async invalidateSessions(options: SessionInvalidationOptions): Promise<number> {
     try {
       let invalidatedCount = 0;
-      const db = getDatabaseSync();
+      const db = await createDatabaseInstance();
 
       if (options.sessionId) {
         // Invalidate specific session by updating expiry
@@ -127,7 +127,7 @@ export class SessionManager {
     }>
   > {
     try {
-      const db = getDatabaseSync();
+      const db = await createDatabaseInstance();
       const sessions = await db
         .select()
         .from(schema.session)
@@ -153,7 +153,7 @@ export class SessionManager {
    */
   static async cleanupExpiredSessions(): Promise<number> {
     try {
-      const db = getDatabaseSync();
+      const db = await createDatabaseInstance();
       await db.delete(schema.session).where(lt(schema.session.expiresAt, new Date()));
 
       // PostgreSQL doesn't have rowsAffected, use a separate count query
@@ -180,7 +180,7 @@ export class SessionManager {
     currentUserAgent: string,
   ): Promise<{ valid: boolean; reason?: string }> {
     try {
-      const db = getDatabaseSync();
+      const db = await createDatabaseInstance();
       const sessions = await db
         .select()
         .from(schema.session)

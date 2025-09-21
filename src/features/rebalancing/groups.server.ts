@@ -3,7 +3,7 @@ import { and, eq, inArray } from 'drizzle-orm';
 import * as schema from '~/db/schema';
 import type { RebalancingGroup } from '~/features/auth/schemas';
 import type { AccountHoldingsResult } from '~/lib/db-api';
-import { getDatabaseSync } from '~/lib/db-config';
+import { createDatabaseInstance } from '~/lib/db-config';
 
 // Defer server-only auth utilities to runtime to avoid bundling them in the client build
 const requireAuth = async () => {
@@ -134,7 +134,7 @@ export const getGroupAccountHoldingsServerFn = createServerFn({
       const { user } = await requireAuth();
 
       // Verify that all accountIds belong to the authenticated user
-      const db = getDatabaseSync();
+      const db = await createDatabaseInstance();
 
       const ownedAccounts = await db
         .select({ id: schema.account.id })
@@ -231,7 +231,7 @@ export const unassignModelFromGroupServerFn = createServerFn({ method: 'POST' })
     const { user } = await requireAuth();
 
     // Verify that the rebalancing group belongs to the authenticated user
-    const db = getDatabaseSync();
+    const db = await createDatabaseInstance();
 
     const group = await db
       .select({ userId: schema.rebalancingGroup.userId })

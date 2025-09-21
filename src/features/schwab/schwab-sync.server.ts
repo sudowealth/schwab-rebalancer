@@ -1,6 +1,6 @@
 import { and, eq } from 'drizzle-orm';
 import * as schema from '~/db/schema';
-import { getDatabaseSync } from '~/lib/db-config';
+import { dbProxy } from '~/lib/db-config';
 import {
   getSchwabApiService,
   type SchwabAccount,
@@ -15,8 +15,11 @@ export interface SyncResult {
 }
 
 export class SchwabSyncService {
-  private db = getDatabaseSync();
   private schwabApi = getSchwabApiService();
+
+  private getDb() {
+    return dbProxy;
+  }
 
   async syncAccounts(userId: string): Promise<SyncResult> {
     console.log('🏦 [SchwabSync] Starting account synchronization for user:', userId);
@@ -71,15 +74,17 @@ export class SchwabSyncService {
 
       // Truncate-and-load schwab_account raw import
       try {
-        await this.db.delete(schema.schwabAccount);
+        this.getDb().delete(schema.schwabAccount);
         for (const acct of schwabAccounts) {
-          await this.db.insert(schema.schwabAccount).values({
-            id: crypto.randomUUID(),
-            type: acct.type || 'CASH',
-            accountNumber: acct.accountNumber,
-            importedAt: new Date(),
-            payload: JSON.stringify(acct),
-          });
+          this.getDb()
+            .insert(schema.schwabAccount)
+            .values({
+              id: crypto.randomUUID(),
+              type: acct.type || 'CASH',
+              accountNumber: acct.accountNumber,
+              importedAt: new Date(),
+              payload: JSON.stringify(acct),
+            });
         }
       } catch (rawErr) {
         console.warn('⚠️ [SchwabSync] Failed raw schwab_account import', rawErr);
@@ -146,7 +151,7 @@ export class SchwabSyncService {
       }
 
       console.log('🗄️ [SchwabSync] Querying database for Schwab accounts');
-      const accounts = await this.db.select().from(schema.account).where(whereClause);
+      const accounts = await this.getDb().select().from(schema.account).where(whereClause);
 
       // Filter out demo accounts when using real Schwab credentials
       const realAccounts = accounts.filter((account) => {
@@ -183,7 +188,7 @@ export class SchwabSyncService {
 
       // Fresh discovery set for instruments this run
       try {
-        await this.db.delete(schema.schwabSecurity);
+        this.getDb().delete(schema.schwabSecurity);
       } catch (e) {
         console.warn('⚠️ [SchwabSync] Could not truncate schwab_security before discovery', e);
       }
@@ -215,50 +220,54 @@ export class SchwabSyncService {
           try {
             const acctNumber = account.accountNumber || account.schwabAccountId || '';
             if (acctNumber) {
-              await this.db
+              this.getDb()
                 .delete(schema.schwabHolding)
                 .where(eq(schema.schwabHolding.accountNumber, acctNumber));
               for (const p of positions) {
-                await this.db.insert(schema.schwabHolding).values({
-                  id: crypto.randomUUID(),
-                  accountNumber: acctNumber,
-                  symbol: p.instrument.symbol,
-                  cusip: p.instrument.cusip,
-                  shortQuantity: p.shortQuantity ?? 0,
-                  averagePrice: p.averagePrice ?? 0,
-                  currentDayProfitLoss: p.currentDayProfitLoss ?? 0,
-                  currentDayProfitLossPercentage: p.currentDayProfitLossPercentage ?? 0,
-                  longQuantity: p.longQuantity ?? 0,
-                  settledLongQuantity: p.settledLongQuantity ?? null,
-                  settledShortQuantity: p.settledShortQuantity ?? null,
-                  agedQuantity: p.agedQuantity ?? 0,
-                  marketValue: p.marketValue ?? 0,
-                  maintenanceRequirement: p.maintenanceRequirement ?? null,
-                  averageLongPrice: p.averageLongPrice ?? null,
-                  averageShortPrice: p.averageShortPrice ?? null,
-                  taxLotAverageLongPrice: p.taxLotAverageLongPrice ?? null,
-                  taxLotAverageShortPrice: p.taxLotAverageShortPrice ?? null,
-                  longOpenProfitLoss: p.longOpenProfitLoss ?? null,
-                  shortOpenProfitLoss: p.shortOpenProfitLoss ?? null,
-                  previousSessionLongQuantity: p.previousSessionLongQuantity ?? null,
-                  previousSessionShortQuantity: p.previousSessionShortQuantity ?? null,
-                  currentDayCost: p.currentDayCost ?? null,
-                  importedAt: new Date(),
-                });
+                this.getDb()
+                  .insert(schema.schwabHolding)
+                  .values({
+                    id: crypto.randomUUID(),
+                    accountNumber: acctNumber,
+                    symbol: p.instrument.symbol,
+                    cusip: p.instrument.cusip,
+                    shortQuantity: p.shortQuantity ?? 0,
+                    averagePrice: p.averagePrice ?? 0,
+                    currentDayProfitLoss: p.currentDayProfitLoss ?? 0,
+                    currentDayProfitLossPercentage: p.currentDayProfitLossPercentage ?? 0,
+                    longQuantity: p.longQuantity ?? 0,
+                    settledLongQuantity: p.settledLongQuantity ?? null,
+                    settledShortQuantity: p.settledShortQuantity ?? null,
+                    agedQuantity: p.agedQuantity ?? 0,
+                    marketValue: p.marketValue ?? 0,
+                    maintenanceRequirement: p.maintenanceRequirement ?? null,
+                    averageLongPrice: p.averageLongPrice ?? null,
+                    averageShortPrice: p.averageShortPrice ?? null,
+                    taxLotAverageLongPrice: p.taxLotAverageLongPrice ?? null,
+                    taxLotAverageShortPrice: p.taxLotAverageShortPrice ?? null,
+                    longOpenProfitLoss: p.longOpenProfitLoss ?? null,
+                    shortOpenProfitLoss: p.shortOpenProfitLoss ?? null,
+                    previousSessionLongQuantity: p.previousSessionLongQuantity ?? null,
+                    previousSessionShortQuantity: p.previousSessionShortQuantity ?? null,
+                    currentDayCost: p.currentDayCost ?? null,
+                    importedAt: new Date(),
+                  });
                 // Insert/update schwab_security discovery
                 try {
-                  await this.db.insert(schema.schwabSecurity).values({
-                    id: crypto.randomUUID(),
-                    symbol: p.instrument.symbol,
-                    cusip: p.instrument.cusip ?? null,
-                    description: undefined,
-                    lastPrice: null,
-                    assetMainType: undefined,
-                    assetSubType: undefined,
-                    exchange: undefined,
-                    payload: JSON.stringify(p.instrument),
-                    discoveredAt: new Date(),
-                  });
+                  this.getDb()
+                    .insert(schema.schwabSecurity)
+                    .values({
+                      id: crypto.randomUUID(),
+                      symbol: p.instrument.symbol,
+                      cusip: p.instrument.cusip ?? null,
+                      description: undefined,
+                      lastPrice: null,
+                      assetMainType: undefined,
+                      assetSubType: undefined,
+                      exchange: undefined,
+                      payload: JSON.stringify(p.instrument),
+                      discoveredAt: new Date(),
+                    });
                 } catch {
                   // Best-effort; ignore dup errors in raw table
                 }
@@ -302,7 +311,7 @@ export class SchwabSyncService {
 
           // Update account last sync time
           console.log('⏰ [SchwabSync] Updating last sync time for account:', account.name);
-          await this.db
+          this.getDb()
             .update(schema.account)
             .set({ lastSyncAt: new Date(), updatedAt: Date.now() })
             .where(eq(schema.account.id, account.id));
@@ -360,7 +369,7 @@ export class SchwabSyncService {
       if (options?.accountId) {
         whereClause = and(whereClause, eq(schema.account.id, options.accountId));
       }
-      const accounts = await this.db.select().from(schema.account).where(whereClause);
+      const accounts = await this.getDb().select().from(schema.account).where(whereClause);
 
       let processed = 0;
       for (const account of accounts) {
@@ -415,7 +424,7 @@ export class SchwabSyncService {
             const now = Date.now();
 
             // Upsert transaction by id
-            const existing = await this.db
+            const existing = await this.getDb()
               .select({ id: schema.transaction.id })
               .from(schema.transaction)
               .where(eq(schema.transaction.id, id))
@@ -436,7 +445,7 @@ export class SchwabSyncService {
             };
 
             if (existing.length > 0) {
-              await this.db
+              this.getDb()
                 .update(schema.transaction)
                 .set({
                   ticker: record.ticker,
@@ -448,7 +457,7 @@ export class SchwabSyncService {
                 })
                 .where(eq(schema.transaction.id, id));
             } else {
-              await this.db.insert(schema.transaction).values(record);
+              this.getDb().insert(schema.transaction).values(record);
             }
             processed++;
           }
@@ -488,7 +497,7 @@ export class SchwabSyncService {
       } else {
         // Get all symbols from user's holdings
         console.log('🗄️ [SchwabSync] Querying database for user holdings to get symbols');
-        const holdings = await this.db
+        const holdings = await this.getDb()
           .select({ ticker: schema.holding.ticker })
           .from(schema.holding)
           .innerJoin(schema.account, eq(schema.account.id, schema.holding.accountId))
@@ -543,7 +552,7 @@ export class SchwabSyncService {
               'MMF',
             ];
             const subValue = rawSub && validSubs.includes(rawSub) ? rawSub : null;
-            await this.db
+            this.getDb()
               .update(schema.security)
               .set({ price, assetTypeSub: subValue, updatedAt: Date.now() })
               .where(eq(schema.security.ticker, symbol));
@@ -605,7 +614,7 @@ export class SchwabSyncService {
     // Check if account already exists by (userId, accountNumber) first to avoid duplicates
     console.log('🔍 [SchwabSync] Checking if account exists by (userId, accountNumber)');
     const existingByNumber = schwabAccount.accountNumber
-      ? await this.db
+      ? await this.getDb()
           .select()
           .from(schema.account)
           .where(
@@ -633,7 +642,7 @@ export class SchwabSyncService {
       } as const;
       console.log('📝 [SchwabSync] Update data (by number):', updateData);
 
-      await this.db
+      this.getDb()
         .update(schema.account)
         .set(updateData)
         .where(eq(schema.account.id, existingByNumber[0].id));
@@ -645,17 +654,19 @@ export class SchwabSyncService {
           Object.entries(updateData).forEach(([k, v]) => {
             if (before && before[k] !== v) changes[k] = { old: before[k], new: v };
           });
-          await this.db.insert(schema.syncLogDetail).values({
-            id: crypto.randomUUID(),
-            logId,
-            entityType: 'ACCOUNT',
-            entityId: existingByNumber[0].id,
-            operation: 'UPDATE',
-            changes: JSON.stringify(changes),
-            success: true,
-            message: undefined,
-            createdAt: new Date(),
-          });
+          this.getDb()
+            .insert(schema.syncLogDetail)
+            .values({
+              id: crypto.randomUUID(),
+              logId,
+              entityType: 'ACCOUNT',
+              entityId: existingByNumber[0].id,
+              operation: 'UPDATE',
+              changes: JSON.stringify(changes),
+              success: true,
+              message: undefined,
+              createdAt: new Date(),
+            });
         } catch {
           // Non-fatal: continue without syncLogDetail
         }
@@ -666,7 +677,7 @@ export class SchwabSyncService {
 
     // Otherwise check if account already exists by Schwab accountId (hash)
     console.log('🔍 [SchwabSync] Checking if account exists by Schwab accountId');
-    const existingBySchwabId = await this.db
+    const existingBySchwabId = await this.getDb()
       .select()
       .from(schema.account)
       .where(
@@ -689,7 +700,7 @@ export class SchwabSyncService {
       };
       console.log('📝 [SchwabSync] Update data:', updateData);
 
-      await this.db
+      this.getDb()
         .update(schema.account)
         .set(updateData)
         .where(eq(schema.account.id, existingBySchwabId[0].id));
@@ -700,17 +711,19 @@ export class SchwabSyncService {
           Object.entries(updateData).forEach(([k, v]) => {
             if (before && before[k] !== v) changes[k] = { old: before[k], new: v };
           });
-          await this.db.insert(schema.syncLogDetail).values({
-            id: crypto.randomUUID(),
-            logId,
-            entityType: 'ACCOUNT',
-            entityId: existingBySchwabId[0].id,
-            operation: 'UPDATE',
-            changes: JSON.stringify(changes),
-            success: true,
-            message: undefined,
-            createdAt: new Date(),
-          });
+          this.getDb()
+            .insert(schema.syncLogDetail)
+            .values({
+              id: crypto.randomUUID(),
+              logId,
+              entityType: 'ACCOUNT',
+              entityId: existingBySchwabId[0].id,
+              operation: 'UPDATE',
+              changes: JSON.stringify(changes),
+              success: true,
+              message: undefined,
+              createdAt: new Date(),
+            });
         } catch {
           // Non-fatal: continue without syncLogDetail
         }
@@ -735,25 +748,27 @@ export class SchwabSyncService {
       };
       console.log('📝 [SchwabSync] Insert data:', insertData);
 
-      await this.db.insert(schema.account).values(insertData);
+      this.getDb().insert(schema.account).values(insertData);
       console.log('✅ [SchwabSync] Successfully created new account:', newAccountId);
       if (logId) {
         try {
-          await this.db.insert(schema.syncLogDetail).values({
-            id: crypto.randomUUID(),
-            logId,
-            entityType: 'ACCOUNT',
-            entityId: newAccountId,
-            operation: 'CREATE',
-            changes: JSON.stringify({
-              name: { old: undefined, new: insertData.name },
-              type: { old: undefined, new: insertData.type },
-              accountNumber: { old: undefined, new: insertData.accountNumber },
-            }),
-            success: true,
-            message: undefined,
-            createdAt: new Date(),
-          });
+          this.getDb()
+            .insert(schema.syncLogDetail)
+            .values({
+              id: crypto.randomUUID(),
+              logId,
+              entityType: 'ACCOUNT',
+              entityId: newAccountId,
+              operation: 'CREATE',
+              changes: JSON.stringify({
+                name: { old: undefined, new: insertData.name },
+                type: { old: undefined, new: insertData.type },
+                accountNumber: { old: undefined, new: insertData.accountNumber },
+              }),
+              success: true,
+              message: undefined,
+              createdAt: new Date(),
+            });
         } catch {
           // Non-fatal: continue without syncLogDetail
         }
@@ -803,7 +818,7 @@ export class SchwabSyncService {
       'symbol:',
       symbol,
     );
-    const existingHolding = await this.db
+    const existingHolding = await this.getDb()
       .select()
       .from(schema.holding)
       .where(and(eq(schema.holding.accountId, accountId), eq(schema.holding.ticker, symbol)))
@@ -822,27 +837,29 @@ export class SchwabSyncService {
     if (existingHolding.length > 0) {
       // Update existing holding
       console.log('🔄 [SchwabSync] Updating existing holding:', existingHolding[0].id);
-      await this.db
+      this.getDb()
         .update(schema.holding)
         .set(holdingData)
         .where(eq(schema.holding.id, existingHolding[0].id));
       console.log('✅ [SchwabSync] Successfully updated existing holding for', symbol);
       // Record detail row
       try {
-        await this.db.insert(schema.syncLogDetail).values({
-          id: crypto.randomUUID(),
-          logId: logId ?? '',
-          entityType: 'HOLDING',
-          entityId: `${accountId}:${symbol}`,
-          operation: 'UPDATE',
-          changes: JSON.stringify({
-            qty: { old: undefined, new: quantity },
-            averageCost: { old: undefined, new: position.averagePrice || 0 },
-          }),
-          success: true,
-          message: undefined,
-          createdAt: new Date(),
-        });
+        this.getDb()
+          .insert(schema.syncLogDetail)
+          .values({
+            id: crypto.randomUUID(),
+            logId: logId ?? '',
+            entityType: 'HOLDING',
+            entityId: `${accountId}:${symbol}`,
+            operation: 'UPDATE',
+            changes: JSON.stringify({
+              qty: { old: undefined, new: quantity },
+              averageCost: { old: undefined, new: position.averagePrice || 0 },
+            }),
+            success: true,
+            message: undefined,
+            createdAt: new Date(),
+          });
       } catch {
         // Non-fatal: continue without syncLogDetail
       }
@@ -861,21 +878,23 @@ export class SchwabSyncService {
       };
       console.log('📝 [SchwabSync] Insert data:', insertData);
 
-      await this.db.insert(schema.holding).values(insertData);
+      this.getDb().insert(schema.holding).values(insertData);
       console.log('✅ [SchwabSync] Successfully created new holding:', newHoldingId);
       // Record detail row
       try {
-        await this.db.insert(schema.syncLogDetail).values({
-          id: crypto.randomUUID(),
-          logId: logId ?? '',
-          entityType: 'HOLDING',
-          entityId: `${accountId}:${symbol}`,
-          operation: 'CREATE',
-          changes: JSON.stringify(insertData),
-          success: true,
-          message: undefined,
-          createdAt: new Date(),
-        });
+        this.getDb()
+          .insert(schema.syncLogDetail)
+          .values({
+            id: crypto.randomUUID(),
+            logId: logId ?? '',
+            entityType: 'HOLDING',
+            entityId: `${accountId}:${symbol}`,
+            operation: 'CREATE',
+            changes: JSON.stringify(insertData),
+            success: true,
+            message: undefined,
+            createdAt: new Date(),
+          });
       } catch {
         // Non-fatal: continue without syncLogDetail
       }
@@ -891,13 +910,13 @@ export class SchwabSyncService {
     const now = Date.now();
     const symbol = '$$$';
     // Ensure cash security exists at $1 and asset type CASH/MMF
-    const existingSec = await this.db
+    const existingSec = await this.getDb()
       .select()
       .from(schema.security)
       .where(eq(schema.security.ticker, symbol))
       .limit(1);
     if (existingSec.length === 0) {
-      await this.db.insert(schema.security).values({
+      this.getDb().insert(schema.security).values({
         ticker: symbol,
         name: 'Cash',
         price: 1.0,
@@ -907,7 +926,7 @@ export class SchwabSyncService {
         updatedAt: now,
       });
     } else if (existingSec[0].price !== 1.0) {
-      await this.db
+      this.getDb()
         .update(schema.security)
         .set({ price: 1.0, assetType: 'CASH', assetTypeSub: 'MMF', updatedAt: now })
         .where(eq(schema.security.ticker, symbol));
@@ -916,7 +935,7 @@ export class SchwabSyncService {
     // If no cash, set qty to 0 (we keep the holding to keep balance consistent), else set qty=cash
     const qty = Math.max(0, Number(cashAmount) || 0);
 
-    const existingHolding = await this.db
+    const existingHolding = await this.getDb()
       .select()
       .from(schema.holding)
       .where(and(eq(schema.holding.accountId, accountId), eq(schema.holding.ticker, symbol)))
@@ -930,47 +949,53 @@ export class SchwabSyncService {
     } as const;
 
     if (existingHolding.length > 0) {
-      await this.db
+      this.getDb()
         .update(schema.holding)
         .set(holdingData)
         .where(eq(schema.holding.id, existingHolding[0].id));
       try {
-        await this.db.insert(schema.syncLogDetail).values({
-          id: crypto.randomUUID(),
-          logId: logId ?? '',
-          entityType: 'HOLDING',
-          entityId: `${accountId}:${symbol}`,
-          operation: 'UPDATE',
-          changes: JSON.stringify(holdingData),
-          success: true,
-          message: undefined,
-          createdAt: new Date(),
-        });
+        this.getDb()
+          .insert(schema.syncLogDetail)
+          .values({
+            id: crypto.randomUUID(),
+            logId: logId ?? '',
+            entityType: 'HOLDING',
+            entityId: `${accountId}:${symbol}`,
+            operation: 'UPDATE',
+            changes: JSON.stringify(holdingData),
+            success: true,
+            message: undefined,
+            createdAt: new Date(),
+          });
       } catch {
         // Ignore logging failure - transaction remains valid
       }
     } else {
-      await this.db.insert(schema.holding).values({
-        id: crypto.randomUUID(),
-        accountId,
-        ticker: symbol,
-        ...holdingData,
-        openedAt: now,
-        dataSource: 'SCHWAB',
-        createdAt: now,
-      });
-      try {
-        await this.db.insert(schema.syncLogDetail).values({
+      this.getDb()
+        .insert(schema.holding)
+        .values({
           id: crypto.randomUUID(),
-          logId: logId ?? '',
-          entityType: 'HOLDING',
-          entityId: `${accountId}:${symbol}`,
-          operation: 'CREATE',
-          changes: JSON.stringify({ qty, averageCost: 1.0 }),
-          success: true,
-          message: undefined,
-          createdAt: new Date(),
+          accountId,
+          ticker: symbol,
+          ...holdingData,
+          openedAt: now,
+          dataSource: 'SCHWAB',
+          createdAt: now,
         });
+      try {
+        this.getDb()
+          .insert(schema.syncLogDetail)
+          .values({
+            id: crypto.randomUUID(),
+            logId: logId ?? '',
+            entityType: 'HOLDING',
+            entityId: `${accountId}:${symbol}`,
+            operation: 'CREATE',
+            changes: JSON.stringify({ qty, averageCost: 1.0 }),
+            success: true,
+            message: undefined,
+            createdAt: new Date(),
+          });
       } catch {
         // Ignore logging failure - transaction remains valid
       }
@@ -979,7 +1004,7 @@ export class SchwabSyncService {
 
   private async ensureSecurityExists(ticker: string): Promise<void> {
     console.log('🔍 [SchwabSync] Checking if security exists for ticker:', ticker);
-    const existing = await this.db
+    const existing = await this.getDb()
       .select()
       .from(schema.security)
       .where(eq(schema.security.ticker, ticker))
@@ -1004,7 +1029,7 @@ export class SchwabSyncService {
       };
       console.log('📝 [SchwabSync] Security insert data:', insertData);
 
-      await this.db.insert(schema.security).values(insertData);
+      this.getDb().insert(schema.security).values(insertData);
       console.log('✅ [SchwabSync] Successfully created new security for ticker:', ticker);
     } else {
       console.log('✅ [SchwabSync] Security already exists for ticker:', ticker);
@@ -1073,7 +1098,7 @@ export class SchwabSyncService {
     };
     console.log('📊 [SchwabSync] Sync log data:', log);
 
-    await this.db.insert(schema.syncLog).values(log);
+    this.getDb().insert(schema.syncLog).values(log);
     console.log('✅ [SchwabSync] Successfully created sync log:', log.id);
     return log;
   }
@@ -1098,7 +1123,7 @@ export class SchwabSyncService {
     };
     console.log('📝 [SchwabSync] Sync log update data:', updateData);
 
-    await this.db.update(schema.syncLog).set(updateData).where(eq(schema.syncLog.id, logId));
+    this.getDb().update(schema.syncLog).set(updateData).where(eq(schema.syncLog.id, logId));
 
     console.log('✅ [SchwabSync] Successfully completed sync log:', logId);
   }

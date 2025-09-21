@@ -7,7 +7,7 @@ import {
   isBaseCashTicker,
   MANUAL_CASH_TICKER,
 } from '~/lib/constants';
-import { getDatabaseSync } from '~/lib/db-config';
+import { createDatabaseInstance } from '~/lib/db-config';
 import { getErrorMessage } from '~/lib/error-handler';
 import type { RebalanceSecurityData, RebalanceSleeveDataNew } from './rebalance-logic.server';
 
@@ -49,7 +49,7 @@ export const rebalancePortfolioServerFn = createServerFn({ method: 'POST' })
     const { user } = await requireAuth();
 
     // Verify that the portfolio (rebalancing group) belongs to the authenticated user
-    const db = getDatabaseSync();
+    const db = await createDatabaseInstance();
 
     const portfolio = await db
       .select({ userId: schema.rebalancingGroup.userId })
@@ -394,7 +394,7 @@ export const updateManualCashServerFn = createServerFn({ method: 'POST' })
     const { user } = await requireAuth();
 
     // Verify that the account belongs to the authenticated user
-    const db = getDatabaseSync();
+    const db = await createDatabaseInstance();
 
     const account = await db
       .select({ userId: schema.account.userId })
@@ -474,7 +474,7 @@ export const getManualCashServerFn = createServerFn({ method: 'POST' })
     const { user } = await requireAuth();
 
     // Verify that the account belongs to the authenticated user
-    const db = getDatabaseSync();
+    const db = await createDatabaseInstance();
 
     const account = await db
       .select({ userId: schema.account.userId })

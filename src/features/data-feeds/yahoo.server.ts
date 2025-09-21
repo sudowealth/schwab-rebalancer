@@ -2,7 +2,7 @@ import { createServerFn } from '@tanstack/react-start';
 import { and, eq, inArray, isNull, or } from 'drizzle-orm';
 import * as schema from '~/db/schema';
 import { isAnyCashTicker } from '~/lib/constants';
-import { getDatabaseSync } from '~/lib/db-config';
+import { createDatabaseInstance } from '~/lib/db-config';
 import { getErrorMessage } from '~/lib/error-handler';
 
 // biome-ignore lint/complexity/noBannedTypes: Change tracking needs to accept arbitrary non-null values
@@ -71,7 +71,7 @@ export const syncYahooFundamentalsServerFn = createServerFn({ method: 'POST' })
     const scope = data.scope;
     const explicitSymbols = data.symbols;
 
-    const db = getDatabaseSync();
+    const db = await createDatabaseInstance();
     const yahooFinance = (await import('yahoo-finance2')).default;
 
     // Determine symbols to update
