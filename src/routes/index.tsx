@@ -10,7 +10,7 @@ import { SecurityModal } from '~/features/dashboard/components/security-modal';
 import { SleeveModal } from '~/features/dashboard/components/sleeve-modal';
 import { TransactionsTable } from '~/features/dashboard/components/transactions-table';
 import { useDashboardData } from '~/features/dashboard/hooks/use-dashboard-data';
-import { exportPositionsToExcel, exportTransactionsToExcel } from '~/lib/excel-export';
+import { useExcelExport } from '~/lib/excel-export';
 import {
   getDashboardDataServerFn,
   getGroupAccountHoldingsServerFn,
@@ -154,6 +154,9 @@ function DashboardComponent() {
     rebalancingGroups,
   } = useDashboardData(loaderData);
 
+  // Lazy-loaded Excel export functions
+  const { exportPositionsToExcel, exportTransactionsToExcel } = useExcelExport();
+
   const handleTickerClick = (ticker: string) => {
     setSelectedTicker(ticker);
     setShowSecurityModal(true);
@@ -252,13 +255,13 @@ function DashboardComponent() {
                 <div className="flex space-x-2">
                   {activeTab === 'positions' && positions && positions.length > 0 && (
                     <ExportButton
-                      onExport={() => exportPositionsToExcel(positions)}
+                      onExport={async () => exportPositionsToExcel(positions)}
                       label="Export Positions"
                     />
                   )}
                   {activeTab === 'transactions' && transactions && transactions.length > 0 && (
                     <ExportButton
-                      onExport={() => exportTransactionsToExcel(transactions)}
+                      onExport={async () => exportTransactionsToExcel(transactions)}
                       label="Export Transactions"
                     />
                   )}

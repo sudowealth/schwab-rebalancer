@@ -56,7 +56,7 @@ const GLOBAL_EQUITY_MODEL_DATA = [
 ];
 
 // Combined function to seed Global Equity Model securities, sleeves, and model
-async function seedGlobalEquityModel(userId?: string) {
+async function _seedGlobalEquityModel(userId?: string) {
   console.log('🚀 Starting complete Global Equity Model seeding process...');
 
   // Seed Global Equity securities first (needed for sleeves)

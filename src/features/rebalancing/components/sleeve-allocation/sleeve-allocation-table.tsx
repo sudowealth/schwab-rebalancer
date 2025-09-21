@@ -8,7 +8,7 @@ import { CASH_TICKER } from '~/lib/constants';
 import {
   type ExportSleeveAllocationToExcelSleeveAllocationData,
   type ExportSleeveAllocationToExcelSleeveTableData,
-  exportSleeveAllocationToExcel,
+  useExcelExport,
 } from '~/lib/excel-export';
 import { addGroupTradesToBlotterServerFn } from '~/lib/server-functions';
 import { formatCurrency, formatPercent } from '~/lib/utils';
@@ -146,6 +146,9 @@ export function SleeveAllocationTable({
   const [columns, setColumns] = useState<ColumnConfig[]>(() =>
     getDefaultColumnConfigs(trades.length > 0),
   );
+
+  // Lazy-loaded Excel export function
+  const { exportSleeveAllocationToExcel } = useExcelExport();
 
   // Update columns when trades change
   useMemo(() => {

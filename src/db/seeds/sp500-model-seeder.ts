@@ -3,7 +3,7 @@ import * as schema from '~/db/schema';
 import { dbProxy } from '~/lib/db-config';
 
 // Combined function to seed S&P 500 securities, sleeves, and models
-async function seedSp500Model(userId?: string) {
+async function _seedSp500Model(userId?: string) {
   console.log('🚀 Starting complete S&P 500 model seeding process...');
 
   // Seed S&P 500 securities first (needed for sleeves)

@@ -1,4 +1,3 @@
-import ExcelJS from 'exceljs';
 import type { PositionsResult, SP500DataResult, TransactionsResult } from './db-api';
 
 export interface ExcelExportOptions {
@@ -51,7 +50,8 @@ interface TradeData {
 }
 
 // Helper function to trigger download
-async function downloadExcelFile(workbook: ExcelJS.Workbook, filename: string) {
+// biome-ignore lint/suspicious/noExplicitAny: Workbook type from dynamically imported ExcelJS
+async function downloadExcelFile(workbook: any, filename: string) {
   const buffer = await workbook.xlsx.writeBuffer();
   const blob = new globalThis.Blob([buffer], {
     type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -75,6 +75,7 @@ async function exportTableToExcel<T extends Record<string, unknown>>(
 ) {
   const { filename = 'table-export', sheetName = 'Sheet1', includeHeaders = true } = options;
 
+  const { default: ExcelJS } = await import('exceljs');
   const workbook = new ExcelJS.Workbook();
   const worksheet = workbook.addWorksheet(sheetName);
 
@@ -555,3 +556,13 @@ export type ExportSleeveAllocationToExcelSleeveTableData = Parameters<
 export type ExportSleeveAllocationToExcelSleeveAllocationData = Parameters<
   typeof exportSleeveAllocationToExcel
 >[1];
+
+// Lazy-loaded Excel export hooks for use in React components
+export function useExcelExport() {
+  return {
+    exportPositionsToExcel,
+    exportTransactionsToExcel,
+    exportSP500ToExcel,
+    exportSleeveAllocationToExcel,
+  };
+}

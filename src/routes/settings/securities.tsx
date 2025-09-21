@@ -1,10 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
 import { createFileRoute, redirect } from '@tanstack/react-router';
 import { useMemo } from 'react';
-import { SecuritiesTable } from '~/features/dashboard/components/securities-table';
 import { ExportButton } from '~/components/ui/export-button';
+import { SecuritiesTable } from '~/features/dashboard/components/securities-table';
 import { getIndices, getSnP500Data } from '~/lib/api';
-import { exportSP500ToExcel } from '~/lib/excel-export';
+import { useExcelExport } from '~/lib/excel-export';
 import { getDashboardDataServerFn } from '~/lib/server-functions';
 
 export const Route = createFileRoute('/settings/securities')({
@@ -56,6 +56,9 @@ function SecuritiesComponent() {
     initialData: loaderData.indices,
     staleTime: 1000 * 60 * 60, // 1 hour
   });
+
+  // Lazy-loaded Excel export function
+  const { exportSP500ToExcel } = useExcelExport();
 
   // Client-side filtering of securities data
   const filteredSecurities = useMemo(() => {
@@ -110,7 +113,7 @@ function SecuritiesComponent() {
           <div className="flex space-x-2">
             {filteredSecurities && filteredSecurities.length > 0 && (
               <ExportButton
-                onExport={() => exportSP500ToExcel(filteredSecurities)}
+                onExport={async () => exportSP500ToExcel(filteredSecurities)}
                 label="Export Securities"
               />
             )}
