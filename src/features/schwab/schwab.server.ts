@@ -4,6 +4,14 @@ import * as schema from '~/db/schema';
 import type { Trade } from '~/features/auth/schemas';
 import type { SyncResult } from '~/features/schwab/schwab-sync.server';
 import { isAnyCashTicker } from '~/lib/constants';
+import {
+  addDraftOrdersFromProposedTrades,
+  clearCache,
+  deleteTradeOrder,
+  getOrdersForAccounts,
+  getPositions,
+  updateTradeOrder,
+} from '~/lib/db-api';
 import { dbProxy } from '~/lib/db-config';
 import { getErrorMessage } from '~/lib/error-handler';
 import { requireAuth } from '../auth/auth-utils';
@@ -165,7 +173,7 @@ export const syncSchwabAccountsServerFn = createServerFn({
     // Clear relevant caches after successful sync
     if (result.success && result.recordsProcessed > 0) {
       console.log('🧹 [ServerFn] Clearing caches after successful accounts sync');
-      const { clearCache } = await import('~/lib/db-api');
+
       // Clear user-specific caches that might be affected
       clearCache(`positions-${user.id}`);
       clearCache(`transactions-${user.id}`);
@@ -207,7 +215,7 @@ export const syncSchwabHoldingsServerFn = createServerFn({ method: 'POST' })
       // Clear relevant caches after successful sync
       if (result.success && result.recordsProcessed > 0) {
         console.log('🧹 [ServerFn] Clearing caches after successful holdings sync');
-        const { clearCache } = await import('~/lib/db-api');
+
         // Clear caches that depend on holdings data
         clearCache(`positions-${user.id}`);
         clearCache(`transactions-${user.id}`);
@@ -249,7 +257,7 @@ export const syncSchwabTransactionsServerFn = createServerFn({ method: 'POST' })
       // Clear relevant caches after successful sync
       if (result.success && result.recordsProcessed > 0) {
         console.log('🧹 [ServerFn] Clearing caches after successful transactions sync');
-        const { clearCache } = await import('~/lib/db-api');
+
         // Clear caches that depend on transaction data
         clearCache(`transactions-${user.id}`);
         clearCache(`metrics-${user.id}`); // Transactions can affect metrics
@@ -277,7 +285,6 @@ export const getHeldPositionTickersServerFn = createServerFn({
     console.log('🔍 [ServerFn] Authenticated user:', user.id);
 
     console.log('🔍 [ServerFn] Importing db-api to get positions...');
-    const { getPositions } = await import('~/lib/db-api');
 
     console.log('🔍 [ServerFn] Calling getPositions for user:', user.id);
     const positions = await getPositions(user.id);
@@ -356,7 +363,7 @@ export const getHeldAndSleeveTickersServerFn = createServerFn({
   try {
     const { user } = await requireAuth();
     const _db = dbProxy;
-    const { getPositions } = await import('~/lib/db-api');
+
     const heldPositions = await getPositions(user.id);
     const heldTickers = heldPositions
       .map((position) => position.ticker?.trim())
@@ -665,7 +672,7 @@ export const syncSchwabPricesServerFn = createServerFn({ method: 'POST' })
         const successfulUpdates = results.filter((r) => r.success).length;
         if (successfulUpdates > 0) {
           console.log('🧹 [ServerFn] Clearing caches after successful price updates');
-          const { clearCache } = await import('~/lib/db-api');
+
           // Clear caches that depend on price data
           clearCache('sp500-data'); // Clear S&P 500 data since prices have been updated
           clearCache(`positions-${user.id}`); // Clear positions cache since prices affect position values
@@ -920,7 +927,6 @@ export const addGroupTradesToBlotterServerFn = createServerFn({
       accountNumber: '',
     }));
 
-    const { addDraftOrdersFromProposedTrades } = await import('../../lib/db-api');
     const result = await addDraftOrdersFromProposedTrades({
       userId: user.id,
       groupId,
@@ -955,7 +961,7 @@ export const getGroupOrdersServerFn = createServerFn({ method: 'POST' })
       .from(schema.rebalancingGroupMember)
       .where(eq(schema.rebalancingGroupMember.groupId, groupId));
     const accountIds = members.map((m) => m.accountId);
-    const { getOrdersForAccounts } = await import('../../lib/db-api');
+
     const orders = await getOrdersForAccounts(accountIds);
     return orders;
   });
@@ -997,7 +1003,6 @@ export const updateOrderServerFn = createServerFn({ method: 'POST' })
       throw new Error('Access denied: Order not found or does not belong to you');
     }
 
-    const { updateTradeOrder } = await import('../../lib/db-api');
     await updateTradeOrder(id, updates);
     return { success: true };
   });
@@ -1025,7 +1030,6 @@ export const deleteOrderServerFn = createServerFn({ method: 'POST' })
       throw new Error('Access denied: Order not found or does not belong to you');
     }
 
-    const { deleteTradeOrder } = await import('../../lib/db-api');
     await deleteTradeOrder(id);
     return { success: true };
   });

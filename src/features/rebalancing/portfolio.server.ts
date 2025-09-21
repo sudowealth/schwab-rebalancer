@@ -7,10 +7,12 @@ import {
   isBaseCashTicker,
   MANUAL_CASH_TICKER,
 } from '~/lib/constants';
+import { clearCache } from '~/lib/db-api';
 import { dbProxy } from '~/lib/db-config';
 import { getErrorMessage } from '~/lib/error-handler';
 import { requireAuth } from '../auth/auth-utils';
 import type { RebalanceSecurityData, RebalanceSleeveDataNew } from './rebalance-logic.server';
+import { executeRebalance } from './rebalance-logic.server';
 
 // Server function to rebalance a portfolio - runs ONLY on server
 export const rebalancePortfolioServerFn = createServerFn({ method: 'POST' })
@@ -53,8 +55,6 @@ export const rebalancePortfolioServerFn = createServerFn({ method: 'POST' })
     if (portfolio.length === 0 || portfolio[0].userId !== user.id) {
       throw new Error('Access denied: Portfolio not found or does not belong to you');
     }
-
-    const { executeRebalance } = await import('./rebalance-logic.server');
 
     try {
       // Get rebalancing group and its accounts
@@ -442,7 +442,6 @@ export const updateManualCashServerFn = createServerFn({ method: 'POST' })
       }
 
       // Clear cache to ensure fresh data
-      const { clearCache } = await import('~/lib/db-api');
       clearCache();
 
       return { success: true };

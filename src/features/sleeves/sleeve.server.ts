@@ -1,5 +1,14 @@
 import { createServerFn } from '@tanstack/react-start';
 import { DatabaseError, logError, ValidationError, withRetry } from '~/lib/error-handler';
+import {
+  createSleeve,
+  deleteSleeve,
+  getAvailableSleeves,
+  getSleeveById,
+  getSleeveHoldingsInfo,
+  getSleeves,
+  updateSleeve,
+} from '../../lib/db-api';
 import { requireAuth } from '../auth/auth-utils';
 
 // Server function to get sleeves data - runs ONLY on server
@@ -9,7 +18,6 @@ export const getSleevesServerFn = createServerFn({ method: 'GET' }).handler(asyn
 
     return await withRetry(
       async () => {
-        const { getSleeves } = await import('../../lib/db-api');
         return await getSleeves(user.id);
       },
       2,
@@ -50,7 +58,6 @@ export const createSleeveServerFn = createServerFn({ method: 'POST' })
 
       return await withRetry(
         async () => {
-          const { createSleeve } = await import('../../lib/db-api');
           const sleeveId = await createSleeve(name.trim(), members, user.id);
           return { success: true, sleeveId };
         },
@@ -87,7 +94,7 @@ export const updateSleeveServerFn = createServerFn({ method: 'POST' })
     }
 
     // Import database API only on the server
-    const { updateSleeve } = await import('../../lib/db-api');
+
     await updateSleeve(sleeveId, name, members);
     return { success: true };
   });
@@ -105,7 +112,7 @@ export const deleteSleeveServerFn = createServerFn({ method: 'POST' })
     }
 
     // Import database API only on the server
-    const { deleteSleeve } = await import('../../lib/db-api');
+
     await deleteSleeve(sleeveId);
     return { success: true };
   });
@@ -123,7 +130,7 @@ export const getSleeveByIdServerFn = createServerFn({ method: 'POST' })
     }
 
     // Import database API only on the server
-    const { getSleeveById } = await import('../../lib/db-api');
+
     const sleeve = await getSleeveById(sleeveId, user.id);
     return sleeve;
   });
@@ -141,7 +148,7 @@ export const getSleeveHoldingsInfoServerFn = createServerFn({ method: 'POST' })
     }
 
     // Import database API only on the server
-    const { getSleeveHoldingsInfo } = await import('../../lib/db-api');
+
     const holdingsInfo = await getSleeveHoldingsInfo(sleeveId);
     return holdingsInfo;
   });
@@ -153,7 +160,7 @@ export const getAvailableSleevesServerFn = createServerFn({
   await requireAuth();
 
   // Import database API only on the server
-  const { getAvailableSleeves } = await import('../../lib/db-api');
+
   const sleeves = await getAvailableSleeves();
   return sleeves;
 });

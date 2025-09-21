@@ -1,4 +1,5 @@
 import { createServerFn } from '@tanstack/react-start';
+import { createModel, deleteModel, getModelById, getModels, updateModel } from '../../lib/db-api';
 import { requireAuth } from '../auth/auth-utils';
 
 // Server function to get all models - runs ONLY on server
@@ -6,7 +7,7 @@ export const getModelsServerFn = createServerFn({ method: 'GET' }).handler(async
   const { user } = await requireAuth();
 
   // Import database API only on the server
-  const { getModels } = await import('../../lib/db-api');
+
   const models = await getModels(user.id);
   return models;
 });
@@ -31,7 +32,7 @@ export const createModelServerFn = createServerFn({ method: 'POST' })
     }
 
     // Import database API only on the server
-    const { createModel } = await import('../../lib/db-api');
+
     const modelId = await createModel(
       {
         name,
@@ -64,7 +65,7 @@ export const updateModelServerFn = createServerFn({ method: 'POST' })
     }
 
     // Import database API only on the server
-    const { updateModel } = await import('../../lib/db-api');
+
     await updateModel(modelId, { name, description, members });
     return { success: true };
   });
@@ -82,7 +83,7 @@ export const deleteModelServerFn = createServerFn({ method: 'POST' })
     }
 
     // Import database API only on the server
-    const { deleteModel } = await import('../../lib/db-api');
+
     await deleteModel(modelId);
     return { success: true };
   });
@@ -100,7 +101,7 @@ export const getModelByIdServerFn = createServerFn({ method: 'POST' })
     }
 
     // Import database API only on the server
-    const { getModelById } = await import('../../lib/db-api');
+
     const model = await getModelById(modelId);
     return model;
   });

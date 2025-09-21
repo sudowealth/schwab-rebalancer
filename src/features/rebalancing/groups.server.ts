@@ -3,6 +3,17 @@ import { and, eq, inArray } from 'drizzle-orm';
 import * as schema from '~/db/schema';
 import type { RebalancingGroup } from '~/features/auth/schemas';
 import type { AccountHoldingsResult } from '~/lib/db-api';
+import {
+  assignModelToGroup,
+  createRebalancingGroup,
+  deleteRebalancingGroup,
+  getAccountHoldings,
+  getRebalancingGroupById,
+  getRebalancingGroups,
+  getSleeveMembers,
+  unassignModelFromGroup,
+  updateRebalancingGroup,
+} from '~/lib/db-api';
 import { dbProxy } from '~/lib/db-config';
 import { requireAuth } from '../auth/auth-utils';
 
@@ -15,7 +26,6 @@ export const getRebalancingGroupsServerFn = createServerFn({
   try {
     const { user } = await requireAuth();
     const _db = dbProxy;
-    const { getRebalancingGroups } = await import('~/lib/db-api');
     const groups = await getRebalancingGroups(user.id);
     return groups;
   } catch (error) {
@@ -40,8 +50,6 @@ export const createRebalancingGroupServerFn = createServerFn({ method: 'POST' })
     if (!name || !members || !Array.isArray(members)) {
       throw new Error('Invalid request: name and members array required');
     }
-    // Import database API only on the server
-    const { createRebalancingGroup } = await import('~/lib/db-api');
     const groupId = await createRebalancingGroup({ name, members, updateExisting }, user.id);
     return { success: true, groupId };
   });
@@ -59,8 +67,6 @@ export const updateRebalancingGroupServerFn = createServerFn({ method: 'POST' })
     if (!groupId || !name || !members || !Array.isArray(members)) {
       throw new Error('Invalid request: groupId, name and members array required');
     }
-    // Import database API only on the server
-    const { updateRebalancingGroup } = await import('~/lib/db-api');
     await updateRebalancingGroup(groupId, { name, members }, user.id);
     return { success: true };
   });
@@ -78,8 +84,6 @@ export const deleteRebalancingGroupServerFn = createServerFn({ method: 'POST' })
       throw new Error('Invalid request: groupId required');
     }
 
-    // Import database API only on the server
-    const { deleteRebalancingGroup } = await import('~/lib/db-api');
     await deleteRebalancingGroup(groupId, user.id);
     return { success: true };
   });
@@ -99,8 +103,6 @@ export const getRebalancingGroupByIdServerFn = createServerFn({
       throw new Error('Invalid request: groupId required');
     }
 
-    // Import database API only on the server
-    const { getRebalancingGroupById } = await import('~/lib/db-api');
     const group = await getRebalancingGroupById(groupId, user.id);
     return group;
   });
@@ -133,8 +135,6 @@ export const getGroupAccountHoldingsServerFn = createServerFn({
         throw new Error('Access denied: One or more accounts do not belong to you');
       }
 
-      // Import database API only on the server
-      const { getAccountHoldings } = await import('~/lib/db-api');
       const result = await getAccountHoldings(accountIds);
       return result;
     } catch (error) {
@@ -152,8 +152,6 @@ export const getHoldingsForMultipleGroupsServerFn = createServerFn({
 }).handler(async (): Promise<{ groups: RebalancingGroup[]; holdings: AccountHoldingsResult }> => {
   const { user } = await requireAuth();
   const _db = dbProxy;
-  // Import database API only on the server
-  const { getRebalancingGroups, getAccountHoldings } = await import('~/lib/db-api');
 
   // Get all groups for the user
   const groups = await getRebalancingGroups(user.id);
@@ -179,8 +177,6 @@ export const getSleeveMembersServerFn = createServerFn({ method: 'POST' })
       throw new Error('Invalid request: sleeveIds required');
     }
 
-    // Import database API only on the server
-    const { getSleeveMembers } = await import('~/lib/db-api');
     const sleeveMembers = await getSleeveMembers(sleeveIds);
     return sleeveMembers;
   });
@@ -194,7 +190,6 @@ export const getRebalancingGroupsWithBalancesServerFn = createServerFn({
   try {
     const { user } = await requireAuth();
     const _db = dbProxy;
-    const { getRebalancingGroups, getAccountHoldings } = await import('~/lib/db-api');
 
     // Get all rebalancing groups for the user
     const groups = await getRebalancingGroups(user.id);
@@ -249,8 +244,6 @@ export const assignModelToGroupServerFn = createServerFn({ method: 'POST' })
 
     const { user } = await requireAuth();
     const _db = dbProxy;
-    // Import database API only on the server
-    const { assignModelToGroup } = await import('~/lib/db-api');
     await assignModelToGroup(modelId, groupId, user.id);
     return { success: true };
   });
@@ -279,8 +272,6 @@ export const unassignModelFromGroupServerFn = createServerFn({ method: 'POST' })
       throw new Error('Access denied: Rebalancing group not found or does not belong to you');
     }
 
-    // Import database API only on the server
-    const { unassignModelFromGroup } = await import('~/lib/db-api');
     await unassignModelFromGroup(modelId, groupId);
     return { success: true };
   });

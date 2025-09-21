@@ -3,6 +3,7 @@ import { and, count, eq, inArray, isNull, ne, or, sql } from 'drizzle-orm';
 import * as schema from '~/db/schema';
 import { requireAdmin, requireAuth } from '~/features/auth/auth-utils';
 import { CASH_TICKER, isAnyCashTicker } from '~/lib/constants';
+import { clearCache, getPositions } from '~/lib/db-api';
 import { dbProxy } from '~/lib/db-config';
 import { getErrorMessage, ValidationError } from '~/lib/error-handler';
 import type { SyncYahooFundamentalsResult } from './yahoo.server';
@@ -442,7 +443,7 @@ export const importNasdaqSecuritiesServerFn = createServerFn({
       }
 
       // Clear cache to refresh data
-      const { clearCache } = await import('~/lib/db-api');
+
       clearCache();
 
       return {
@@ -548,7 +549,7 @@ export const truncateDataServerFn = createServerFn({ method: 'POST' })
       const hasPartialFailure = failedTables.length > 0;
 
       // Clear all caches to ensure UI reflects truncated data
-      const { clearCache } = await import('~/lib/db-api');
+
       clearCache();
 
       // Prepare response based on success/failure
@@ -605,7 +606,7 @@ export const getYahooSyncCountsServerFn = createServerFn({ method: 'GET' }).hand
     );
 
   // Get held securities
-  const { getPositions } = await import('~/lib/db-api');
+
   const positions = await getPositions(user.id);
   const heldTickers = [...new Set(positions.map((p) => p.ticker))].filter(
     (t) => !isAnyCashTicker(t),

@@ -3,6 +3,7 @@ import { and, eq, inArray, isNull, or } from 'drizzle-orm';
 import * as schema from '~/db/schema';
 import { requireAuth } from '~/features/auth/auth-utils';
 import { isAnyCashTicker } from '~/lib/constants';
+import { clearCache, getPositions } from '~/lib/db-api';
 import { dbProxy } from '~/lib/db-config';
 import { getErrorMessage } from '~/lib/error-handler';
 
@@ -73,7 +74,7 @@ export const syncYahooFundamentalsServerFn = createServerFn({ method: 'POST' })
       symbols = explicitSymbols;
     } else if (scope === 'held-sleeve-securities') {
       // All securities that are either held or appear in sleeves
-      const { getPositions } = await import('~/lib/db-api');
+
       const positions = await getPositions(user.id);
       const heldTickers = new Set(positions.map((p) => p.ticker));
 
@@ -92,7 +93,7 @@ export const syncYahooFundamentalsServerFn = createServerFn({ method: 'POST' })
       symbols = Array.from(combinedTickers).filter((t) => !isAnyCashTicker(t));
     } else if (scope === 'held-sleeve-securities-missing-data') {
       // All securities that are either held or appear in sleeves AND are missing fundamentals
-      const { getPositions } = await import('~/lib/db-api');
+
       const positions = await getPositions(user.id);
       const heldTickers = new Set(positions.map((p) => p.ticker));
 
@@ -127,7 +128,6 @@ export const syncYahooFundamentalsServerFn = createServerFn({ method: 'POST' })
 
       symbols = missingDataSecurities.map((s) => s.ticker).filter((t) => !isAnyCashTicker(t));
     } else if (scope === 'all-holdings') {
-      const { getPositions } = await import('~/lib/db-api');
       const positions = await getPositions(user.id);
       const tickers = [...new Set(positions.map((p) => p.ticker))];
       symbols = tickers.filter((t) => !isAnyCashTicker(t));
@@ -162,7 +162,7 @@ export const syncYahooFundamentalsServerFn = createServerFn({ method: 'POST' })
         .map((r) => r.ticker);
     } else if (scope === 'missing-fundamentals-holdings') {
       // Held securities that are missing sector, industry, or marketCap
-      const { getPositions } = await import('~/lib/db-api');
+
       const positions = await getPositions(user.id);
       const held = new Set(positions.map((p) => p.ticker));
       const rows = await dbProxy
@@ -429,7 +429,7 @@ export const syncYahooFundamentalsServerFn = createServerFn({ method: 'POST' })
     // Clear caches that depend on security data
     if (successCount > 0) {
       console.log('🧹 [ServerFn] Clearing caches after successful Yahoo fundamentals sync');
-      const { clearCache } = await import('~/lib/db-api');
+
       // Clear caches that depend on security data
       clearCache('sp500-data'); // Clear S&P 500 data since fundamentals have been updated
       clearCache(`positions-${user.id}`); // Clear positions cache since fundamentals affect position values
