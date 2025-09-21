@@ -1,10 +1,13 @@
-import { createFileRoute, Link, redirect } from '@tanstack/react-router';
+import { createFileRoute, Link } from '@tanstack/react-router';
 import { FileText } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { ErrorBoundaryWrapper } from '~/components/ErrorBoundary';
 import { Badge } from '~/components/ui/badge';
 import type { RebalancingGroup, RebalancingGroupMember } from '~/features/auth/schemas';
 import { AddRebalancingGroupModal } from '~/features/rebalancing/components/add-rebalancing-group-modal';
+// Static import for server function
+import { getHoldingsForMultipleGroupsServerFn } from '~/features/rebalancing/groups.server';
+import { authGuard } from '~/lib/route-guards';
 
 export const Route = createFileRoute('/rebalancing-groups/')({
   component: RebalancingGroupsComponent,
@@ -15,67 +18,45 @@ export const Route = createFileRoute('/rebalancing-groups/')({
     }
     return result;
   },
+  beforeLoad: authGuard,
   loader: async () => {
-    // Server-side loader that fetches data on the server
-    if (typeof window === 'undefined') {
-      // Server-side only - import and call server function
-      const { getHoldingsForMultipleGroupsServerFn } = await import(
-        '~/features/rebalancing/groups.server'
-      );
+    // Auth is handled by beforeLoad, loader only fetches data
+    const { groups, holdings } = await getHoldingsForMultipleGroupsServerFn();
 
-      try {
-        const { groups, holdings } = await getHoldingsForMultipleGroupsServerFn();
+    // Create a map of account balances for efficient lookup
+    const accountBalanceMap = new Map<string, number>();
+    holdings.forEach((account) => {
+      accountBalanceMap.set(account.accountId, account.accountBalance);
+    });
 
-        // Create a map of account balances for efficient lookup
-        const accountBalanceMap = new Map<string, number>();
-        holdings.forEach((account) => {
-          accountBalanceMap.set(account.accountId, account.accountBalance);
-        });
+    // Update group members with calculated balances from holdings
+    const updatedGroups = groups.map((group: RebalancingGroup) => {
+      const updatedMembers = group.members.map((member: RebalancingGroupMember) => {
+        const balance = accountBalanceMap.get(member.accountId);
+        return {
+          ...member,
+          balance: balance ?? member.balance ?? 0,
+        };
+      });
 
-        // Update group members with calculated balances from holdings
-        const updatedGroups = groups.map((group: RebalancingGroup) => {
-          const updatedMembers = group.members.map((member: RebalancingGroupMember) => {
-            const balance = accountBalanceMap.get(member.accountId);
-            return {
-              ...member,
-              balance: balance ?? member.balance ?? 0,
-            };
-          });
+      return {
+        ...group,
+        members: updatedMembers,
+      };
+    });
 
-          return {
-            ...group,
-            members: updatedMembers,
-          };
-        });
-
-        return { groups: updatedGroups };
-      } catch (error) {
-        // If authentication error, redirect to login
-        if (error instanceof Error && error.message.includes('Authentication required')) {
-          throw redirect({
-            to: '/login',
-            search: { reset: '', redirect: '/rebalancing-groups' },
-          });
-        }
-        // Re-throw other errors
-        throw error;
-      }
-    }
-
-    // Client-side fallback - return empty data
-    // This should not happen in SSR but provides a fallback
-    return { groups: [] };
+    return { groups: updatedGroups };
   },
 });
 
 function RebalancingGroupsComponent() {
-  // Use loader data for SSR, but also set up client-side data fetching
+  // Use loader data for SSR
   const loaderData = Route.useLoaderData();
   const groups = loaderData?.groups || [];
   const searchParams = Route.useSearch();
   const [showCreateModal, setShowCreateModal] = useState(false);
 
-  // Server-side auth check in loader handles authentication
+  // Auth is handled by beforeLoad
 
   // Handle URL parameter to open create modal
   useEffect(() => {

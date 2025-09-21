@@ -40,7 +40,7 @@ export function useSchwabConnection(
     },
     onSuccess: (data: { authUrl?: string }) => {
       if (data.authUrl && typeof window !== 'undefined') {
-        window.location.href = data.authUrl;
+        router.navigate({ to: data.authUrl, replace: true });
       }
     },
     onError: (error) => {
@@ -173,9 +173,15 @@ export function useSchwabConnection(
       console.log('✅ [UI] Final timestamp:', new Date().toISOString());
       setSyncStep('Sync complete!');
 
-      // Refresh all dashboard data
-      console.log('🔄 [UI] Invalidating queries to refresh data...');
-      queryClient.invalidateQueries();
+      // Refresh targeted data after Schwab sync
+      console.log('🔄 [UI] Invalidating targeted queries to refresh data...');
+      queryClient.invalidateQueries({ queryKey: ['schwab-credentials-status'] });
+      queryClient.invalidateQueries({ queryKey: ['schwab-active-credentials'] });
+      queryClient.invalidateQueries({ queryKey: ['positions'] });
+      queryClient.invalidateQueries({ queryKey: ['portfolio-metrics'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['accounts'] });
+
       // Invalidate the home route loader to refresh onboarding status
       router.invalidate();
 

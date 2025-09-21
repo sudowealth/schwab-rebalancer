@@ -1,11 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { createFileRoute, redirect } from '@tanstack/react-router';
+import { createFileRoute } from '@tanstack/react-router';
 import { ErrorBoundaryWrapper } from '~/components/ErrorBoundary';
 import {
   getAllUsersServerFn,
   getUserDataServerFn,
   updateUserRoleServerFn,
 } from '~/features/dashboard/admin.server';
+import { adminGuard } from '~/lib/route-guards';
 
 type AdminUser = Awaited<ReturnType<typeof getAllUsersServerFn>>[number];
 type UserData = Awaited<ReturnType<typeof getUserDataServerFn>>;
@@ -41,29 +42,14 @@ import {
   TableHeader,
   TableRow,
 } from '~/components/ui/table';
-import { deleteUserServerFn, verifyAdminAccessServerFn } from '~/features/auth/auth.server';
+import { deleteUserServerFn } from '~/features/auth/auth.server';
 
 export const Route = createFileRoute('/admin/users')({
   component: UserManagement,
+  beforeLoad: adminGuard,
   loader: async () => {
-    try {
-      // Server-side admin verification
-      await verifyAdminAccessServerFn();
-      // Pre-load users data
-      const users = await getAllUsersServerFn();
-      return users;
-    } catch (error) {
-      // If not admin or not authenticated, redirect
-      if (error instanceof Error) {
-        if (error.message.includes('Admin access required')) {
-          throw redirect({ to: '/' });
-        }
-        if (error.message.includes('Authentication required')) {
-          throw redirect({ to: '/login', search: { reset: '', redirect: '/' } });
-        }
-      }
-      throw error;
-    }
+    // Admin auth is handled by beforeLoad, loader only fetches data
+    return getAllUsersServerFn();
   },
 });
 

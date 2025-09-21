@@ -1,8 +1,35 @@
 import { createServerFn } from '@tanstack/react-start';
 import { and, eq, inArray } from 'drizzle-orm';
 import * as schema from '~/db/schema';
+// Static imports for rebalancing utilities
+import {
+  generateAllocationData,
+  generateTopHoldingsData,
+} from '~/features/rebalancing/rebalancing-utils';
 import { dbProxy } from '~/lib/db-config';
 import { throwServerError } from '~/lib/error-utils';
+
+// Static imports for database operations
+import {
+  clearCache,
+  getAccountHoldings,
+  getAccountsForRebalancingGroups,
+  getAvailableAccounts,
+  getAvailableSecurities,
+  getFilteredSecuritiesData,
+  getGroupTransactions,
+  getPortfolioMetrics,
+  getPositions,
+  getProposedTrades,
+  getRebalancingGroupById,
+  getRestrictedSecurities,
+  getSnP500Data,
+  getTransactions,
+  updateAccount,
+} from '../../lib/db-api';
+
+// Static imports for server-only utilities
+import { loadDashboardData } from '../../lib/server-only';
 import { requireAdmin, requireAuth } from '../auth/auth-utils';
 
 // Server function to get securities data with optional filtering and pagination - runs ONLY on server
@@ -21,9 +48,6 @@ export const getSecuritiesDataServerFn = createServerFn({
   )
   .handler(async ({ data }) => {
     await requireAuth();
-
-    // Import database API only on the server
-    const { getFilteredSecuritiesData } = await import('../../lib/db-api');
 
     // Server-side filtering, pagination, and sorting
     const securitiesData = await getFilteredSecuritiesData(
@@ -48,8 +72,6 @@ export const getDashboardDataServerFn = createServerFn({
   try {
     const { user } = await requireAuth();
 
-    // Import server-only functions
-    const { loadDashboardData } = await import('../../lib/server-only');
     const data = await loadDashboardData(user.id, user);
     return data;
   } catch (error) {
@@ -95,19 +117,16 @@ export const getDashboardDataServerFn = createServerFn({
 // Lightweight server functions for individual dashboard queries
 export const getPositionsServerFn = createServerFn({ method: 'GET' }).handler(async () => {
   const { user } = await requireAuth();
-  const { getPositions } = await import('../../lib/db-api');
   return getPositions(user.id);
 });
 
 export const getTransactionsServerFn = createServerFn({ method: 'GET' }).handler(async () => {
   const { user } = await requireAuth();
-  const { getTransactions } = await import('../../lib/db-api');
   return getTransactions(user.id);
 });
 
 export const getProposedTradesServerFn = createServerFn({ method: 'GET' }).handler(async () => {
   const { user } = await requireAuth();
-  const { getProposedTrades } = await import('../../lib/db-api');
   return getProposedTrades(user.id);
 });
 
@@ -129,20 +148,17 @@ export const getGroupTransactionsServerFn = createServerFn({
       throwServerError('Access denied: One or more accounts do not belong to you', 403);
     }
 
-    const { getGroupTransactions } = await import('../../lib/db-api');
     return getGroupTransactions(accountIds);
   });
 
 export const getSp500DataServerFn = createServerFn({
   method: 'GET',
 }).handler(async () => {
-  const { getSnP500Data } = await import('../../lib/db-api');
   return getSnP500Data();
 });
 
 export const getPortfolioMetricsServerFn = createServerFn({ method: 'GET' }).handler(async () => {
   const { user } = await requireAuth();
-  const { getPortfolioMetrics } = await import('../../lib/db-api');
   return getPortfolioMetrics(user.id);
 });
 
@@ -159,12 +175,6 @@ export const generateAllocationDataServerFn = createServerFn({
   )
   .handler(async ({ data }) => {
     const { user } = await requireAuth();
-
-    // Import utilities and data access functions
-    const { generateAllocationData } = await import('~/features/rebalancing/rebalancing-utils');
-    const { getAccountHoldings } = await import('../../lib/db-api');
-    const { getRebalancingGroupById } = await import('../../lib/db-api');
-    const { getSnP500Data } = await import('../../lib/db-api');
 
     // Get the group data to verify ownership
     const group = await getRebalancingGroupById(user.id, data.groupId);
@@ -198,11 +208,6 @@ export const generateTopHoldingsDataServerFn = createServerFn({
   .handler(async ({ data }) => {
     const { user } = await requireAuth();
 
-    // Import utilities and data access functions
-    const { generateTopHoldingsData } = await import('~/features/rebalancing/rebalancing-utils');
-    const { getAccountHoldings } = await import('../../lib/db-api');
-    const { getRebalancingGroupById } = await import('../../lib/db-api');
-
     // Get the group data to verify ownership
     const group = await getRebalancingGroupById(user.id, data.groupId);
     if (!group) {
@@ -222,7 +227,6 @@ export const generateTopHoldingsDataServerFn = createServerFn({
 export const clearCacheServerFn = createServerFn({ method: 'POST' }).handler(async () => {
   await requireAdmin();
 
-  const { clearCache } = await import('../../lib/db-api');
   clearCache();
   return { success: true, message: 'Cache cleared successfully' };
 });
@@ -234,7 +238,6 @@ export const truncateSecurityTableServerFn = createServerFn({
   await requireAdmin();
 
   await dbProxy.delete(schema.security);
-  const { clearCache } = await import('../../lib/db-api');
   clearCache();
   return { success: true, message: 'Security table truncated successfully' };
 });
@@ -245,8 +248,6 @@ export const getRestrictedSecuritiesServerFn = createServerFn({
 }).handler(async () => {
   await requireAuth();
 
-  // Import database API only on the server
-  const { getRestrictedSecurities } = await import('../../lib/db-api');
   const restricted = await getRestrictedSecurities();
   return restricted;
 });
@@ -257,8 +258,6 @@ export const getAvailableSecuritiesServerFn = createServerFn({
 }).handler(async () => {
   await requireAuth();
 
-  // Import database API only on the server
-  const { getAvailableSecurities } = await import('../../lib/db-api');
   const securities = await getAvailableSecurities();
   return securities;
 });
@@ -269,7 +268,6 @@ export const getAvailableAccountsServerFn = createServerFn({
 }).handler(async () => {
   const { user } = await requireAuth();
 
-  const { getAvailableAccounts } = await import('../../lib/db-api');
   const accounts = await getAvailableAccounts(user.id);
   return accounts;
 });
@@ -283,7 +281,6 @@ export const getAccountsForRebalancingGroupsServerFn = createServerFn({
   .handler(async ({ data }) => {
     const { user } = await requireAuth();
 
-    const { getAccountsForRebalancingGroups } = await import('../../lib/db-api');
     const accounts = await getAccountsForRebalancingGroups(user.id, data.excludeGroupId);
     return accounts;
   });
@@ -308,8 +305,6 @@ export const updateAccountServerFn = createServerFn({ method: 'POST' })
 
     const { user } = await requireAuth();
 
-    // Import database API only on the server
-    const { updateAccount } = await import('../../lib/db-api');
     await updateAccount(accountId, { name: name.trim(), type }, user.id);
     return { success: true };
   });

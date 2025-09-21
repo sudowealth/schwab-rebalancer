@@ -10,6 +10,9 @@ import {
   X,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { Button } from '~/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '~/components/ui/card';
+import { Popover, PopoverContent, PopoverTrigger } from '~/components/ui/popover';
 import type { YahooSyncResult } from '~/features/auth/schemas';
 import { importNasdaqSecuritiesServerFn } from '~/features/data-feeds/import.server';
 import { syncYahooFundamentalsServerFn } from '~/features/data-feeds/yahoo.server';
@@ -25,9 +28,6 @@ import {
   syncSchwabPricesServerFn,
   syncSchwabTransactionsServerFn,
 } from '~/features/schwab/schwab.server';
-import { Button } from '~/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '~/components/ui/card';
-import { Popover, PopoverContent, PopoverTrigger } from '~/components/ui/popover';
 
 interface ImportResult {
   success: boolean;
@@ -79,7 +79,7 @@ export function SchwabIntegration() {
       if (data.authUrl) {
         console.log('🌐 [UI] Redirecting to Schwab OAuth page');
         // Note: The import will happen after the user returns from OAuth and the connection is established
-        window.location.href = data.authUrl;
+        router.navigate({ to: data.authUrl, replace: true });
       } else {
         console.warn('⚠️ [UI] No auth URL returned from server');
         setIsConnecting(false);

@@ -1,6 +1,9 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { AlertCircle, CheckCircle, Database, Loader2, Package, TrendingUp, X } from 'lucide-react';
 import { useState } from 'react';
+import { Button } from '~/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '~/components/ui/card';
+import { SimpleTooltip } from '~/components/ui/simple-tooltip';
 import type { YahooSyncResult } from '~/features/auth/schemas';
 import {
   seedDemoDataServerFn,
@@ -8,9 +11,6 @@ import {
   seedModelsDataServerFn,
   seedSecuritiesDataServerFn,
 } from '~/features/data-feeds/import.server';
-import { Button } from '~/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '~/components/ui/card';
-import { SimpleTooltip } from '~/components/ui/simple-tooltip';
 
 interface ImportResult {
   success: boolean;
@@ -67,7 +67,10 @@ export function SeedDataSection() {
     mutationFn: seedSecuritiesDataServerFn,
     onSuccess: async (data: SeedSecuritiesResult) => {
       setSecuritiesResult(data);
-      queryClient.invalidateQueries();
+      // Invalidate targeted queries after securities seeding
+      queryClient.invalidateQueries({ queryKey: ['securities'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['onboarding'] });
 
       // Handle Schwab sync if it was triggered
       if (data.schwabSyncResult) {

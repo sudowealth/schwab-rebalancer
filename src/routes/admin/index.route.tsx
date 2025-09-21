@@ -1,37 +1,21 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { createFileRoute, redirect } from '@tanstack/react-router';
+import { createFileRoute } from '@tanstack/react-router';
 import { AlertTriangle, Database, Trash2 } from 'lucide-react';
 import { useEffect, useId, useState } from 'react';
 import { Alert, AlertDescription, AlertTitle } from '~/components/ui/alert';
 import { Button } from '~/components/ui/button';
 import { Input } from '~/components/ui/input';
 import { Label } from '~/components/ui/label';
-import { truncateDataServerFn, verifyAdminAccessServerFn } from '~/lib/server-functions';
+import { adminGuard } from '~/lib/route-guards';
+import { truncateDataServerFn } from '~/lib/server-functions';
 
 export const Route = createFileRoute('/admin/')({
   component: AdminDashboardIndex,
-  loader: async () => {
-    try {
-      // Server-side admin verification
-      const result = await verifyAdminAccessServerFn();
-      return result;
-    } catch (error) {
-      // If not admin or not authenticated, redirect
-      if (error instanceof Error) {
-        if (error.message.includes('Admin access required')) {
-          throw redirect({ to: '/' }); // Regular users go to dashboard
-        }
-        if (error.message.includes('Authentication required')) {
-          throw redirect({ to: '/login', search: { reset: '', redirect: '/' } });
-        }
-      }
-      throw error;
-    }
-  },
+  beforeLoad: adminGuard,
 });
 
 function AdminDashboardIndex() {
-  // Route is already protected by server-side loader
+  // Route is protected by adminGuard in beforeLoad
   const queryClient = useQueryClient();
   const confirmTextId = useId();
   const [showTruncateModal, setShowTruncateModal] = useState(false);

@@ -1,4 +1,4 @@
-import { createFileRoute } from '@tanstack/react-router';
+import { createFileRoute, useRouter } from '@tanstack/react-router';
 import { useEffect, useId, useMemo, useState } from 'react';
 import { z } from 'zod';
 import { AuthSkeleton } from '~/components/AuthSkeleton';
@@ -17,6 +17,7 @@ function ResetPasswordPage() {
   const { token } = Route.useSearch();
   const { user, isAuthenticated } = useAuth();
   const session = useMemo(() => ({ user: isAuthenticated ? user : null }), [user, isAuthenticated]);
+  const router = useRouter();
   const [email] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -41,10 +42,10 @@ function ResetPasswordPage() {
     if (session?.user && success) {
       console.log('✅ User is now logged in after password reset, redirecting to dashboard');
       setTimeout(() => {
-        window.location.href = '/';
+        router.navigate({ to: '/' });
       }, 1000);
     }
-  }, [session, success]);
+  }, [session, success, router]);
 
   const validatePassword = (password: string) => {
     if (!password) return 'Password is required';
@@ -120,7 +121,7 @@ function ResetPasswordPage() {
         });
 
         setTimeout(() => {
-          window.location.href = '/';
+          router.navigate({ to: '/' });
         }, 1000);
         return;
       } catch (loginError) {
@@ -130,7 +131,7 @@ function ResetPasswordPage() {
 
       // Fallback: redirect to login with success message
       setTimeout(() => {
-        window.location.href = '/login?reset=success';
+        router.navigate({ to: '/login', search: { reset: 'success' } });
       }, 1500);
     } catch (error: unknown) {
       console.error('Password reset error:', error);

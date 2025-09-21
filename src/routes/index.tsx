@@ -20,67 +20,51 @@ import {
 export const Route = createFileRoute('/')({
   component: DashboardComponent,
   loader: async ({ context: _context }) => {
-    try {
-      // Fetch only essential onboarding/status data upfront for fast initial load
-      // Heavy data (positions, transactions, etc.) will be lazy-loaded in the component
-      const results = await Promise.allSettled([
-        // Only fetch onboarding status data from dashboard function
-        (async () => {
-          const dashboardData = await getDashboardDataServerFn();
-          // Return only the status fields needed for onboarding, not heavy data
-          return {
-            schwabCredentialsStatus: dashboardData.schwabCredentialsStatus,
-            schwabOAuthStatus: dashboardData.schwabOAuthStatus,
-            accountsCount: dashboardData.accountsCount,
-            securitiesStatus: dashboardData.securitiesStatus,
-            modelsStatus: dashboardData.modelsStatus,
-            rebalancingGroupsStatus: dashboardData.rebalancingGroupsStatus,
-            user: dashboardData.user,
+    // Fetch only essential onboarding/status data upfront for fast initial load
+    // Heavy data (positions, transactions, etc.) will be lazy-loaded in the component
+    const results = await Promise.allSettled([
+      // Only fetch onboarding status data from dashboard function
+      (async () => {
+        const dashboardData = await getDashboardDataServerFn();
+        // Return only the status fields needed for onboarding, not heavy data
+        return {
+          schwabCredentialsStatus: dashboardData.schwabCredentialsStatus,
+          schwabOAuthStatus: dashboardData.schwabOAuthStatus,
+          accountsCount: dashboardData.accountsCount,
+          securitiesStatus: dashboardData.securitiesStatus,
+          modelsStatus: dashboardData.modelsStatus,
+          rebalancingGroupsStatus: dashboardData.rebalancingGroupsStatus,
+          user: dashboardData.user,
+        };
+      })(),
+      // Rebalancing groups are needed for onboarding status, so keep this
+      getRebalancingGroupsWithBalancesServerFn(),
+    ]);
+
+    // Extract results, providing fallbacks for failed promises
+    const statusData =
+      results[0].status === 'fulfilled'
+        ? results[0].value
+        : {
+            schwabCredentialsStatus: { hasCredentials: false },
+            schwabOAuthStatus: { hasCredentials: false },
+            accountsCount: 0,
+            securitiesStatus: { hasSecurities: false, securitiesCount: 0 },
+            modelsStatus: { hasModels: false, modelsCount: 0 },
+            rebalancingGroupsStatus: { hasGroups: false, groupsCount: 0 },
+            user: null,
           };
-        })(),
-        // Rebalancing groups are needed for onboarding status, so keep this
-        getRebalancingGroupsWithBalancesServerFn(),
-      ]);
+    const rebalancingGroups = results[1].status === 'fulfilled' ? results[1].value : [];
 
-      // Extract results, providing fallbacks for failed promises
-      const statusData =
-        results[0].status === 'fulfilled'
-          ? results[0].value
-          : {
-              schwabCredentialsStatus: { hasCredentials: false },
-              schwabOAuthStatus: { hasCredentials: false },
-              accountsCount: 0,
-              securitiesStatus: { hasSecurities: false, securitiesCount: 0 },
-              modelsStatus: { hasModels: false, modelsCount: 0 },
-              rebalancingGroupsStatus: { hasGroups: false, groupsCount: 0 },
-              user: null,
-            };
-      const rebalancingGroups = results[1].status === 'fulfilled' ? results[1].value : [];
-
-      // Log any errors for debugging but don't fail the entire load
-      if (results[0].status === 'rejected') {
-        console.warn('Dashboard status data load failed:', results[0].reason);
-      }
-      if (results[1].status === 'rejected') {
-        console.warn('Rebalancing groups load failed:', results[1].reason);
-      }
-
-      return { ...statusData, rebalancingGroups };
-    } catch (error) {
-      // Log unexpected errors but don't redirect during SSR
-      console.warn('Unexpected error during route loader:', error);
-      // Return empty data for SSR fallback
-      return {
-        schwabCredentialsStatus: { hasCredentials: false },
-        schwabOAuthStatus: { hasCredentials: false },
-        accountsCount: 0,
-        securitiesStatus: { hasSecurities: false, securitiesCount: 0 },
-        modelsStatus: { hasModels: false, modelsCount: 0 },
-        rebalancingGroupsStatus: { hasGroups: false, groupsCount: 0 },
-        user: null,
-        rebalancingGroups: [],
-      };
+    // Log any errors for debugging but don't fail the entire load
+    if (results[0].status === 'rejected') {
+      console.warn('Dashboard status data load failed:', results[0].reason);
     }
+    if (results[1].status === 'rejected') {
+      console.warn('Rebalancing groups load failed:', results[1].reason);
+    }
+
+    return { ...statusData, rebalancingGroups };
   },
 });
 

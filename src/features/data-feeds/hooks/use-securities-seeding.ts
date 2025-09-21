@@ -45,8 +45,10 @@ export function useSecuritiesSeeding(
     mutationFn: seedSecuritiesDataServerFn,
     onSuccess: (_data: SeedSecuritiesResult) => {
       setShowSuccessMessage(true);
-      // Invalidate all queries to refresh the dashboard
-      queryClient.invalidateQueries();
+      // Invalidate targeted queries after securities seeding
+      queryClient.invalidateQueries({ queryKey: ['securities'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['onboarding'] });
       // Invalidate the home route loader to refresh onboarding status
       router.invalidate();
     },

@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { createFileRoute, Link, redirect, useRouter } from '@tanstack/react-router';
+import { createFileRoute, Link, useRouter } from '@tanstack/react-router';
 import { Edit, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Badge } from '~/components/ui/badge';
@@ -22,6 +22,7 @@ import type {
 import type { Trade } from '~/features/rebalancing/components/sleeve-allocation/sleeve-allocation-types';
 import { TopHoldings } from '~/features/rebalancing/components/top-holdings';
 import { useSleeveAllocations } from '~/features/rebalancing/hooks/use-sleeve-allocations';
+import { authGuard } from '~/lib/route-guards';
 import {
   generateAllocationDataServerFn,
   generateTopHoldingsDataServerFn,
@@ -41,6 +42,7 @@ import {
 import type { RebalanceMethod } from '~/types/rebalance';
 
 export const Route = createFileRoute('/rebalancing-groups/$groupId')({
+  beforeLoad: authGuard,
   validateSearch: (search: Record<string, unknown>) => {
     const result: { rebalance?: string } = {};
     if (typeof search.rebalance === 'string') {
@@ -69,70 +71,58 @@ export const Route = createFileRoute('/rebalancing-groups/$groupId')({
     transactions: Awaited<ReturnType<typeof getDashboardDataServerFn>>['transactions'];
     proposedTrades: Awaited<ReturnType<typeof getDashboardDataServerFn>>['proposedTrades'];
   }> => {
-    try {
-      // Server function handles authentication
-      const group = await getRebalancingGroupByIdServerFn({
-        data: { groupId: params.groupId },
-      });
-      if (!group) {
-        throw new Error('Rebalancing group not found');
-      }
+    // Auth is handled by beforeLoad
+    const group = await getRebalancingGroupByIdServerFn({
+      data: { groupId: params.groupId },
+    });
+    if (!group) {
+      throw new Error('Rebalancing group not found');
+    }
 
-      // Get account holdings
-      const accountIds = group.members.map((member) => member.accountId);
-      // Get sleeve members (target securities) if there's an assigned model
-      let sleeveMembers: Awaited<ReturnType<typeof getSleeveMembersServerFn>> = [];
-      if (group.assignedModel?.members && group.assignedModel.members.length > 0) {
-        const sleeveIds = group.assignedModel.members.map((member) => member.sleeveId);
-        if (sleeveIds.length > 0) {
-          sleeveMembers = await getSleeveMembersServerFn({
-            data: { sleeveIds },
-          });
-        }
-      }
-
-      // Run remaining data fetching in parallel
-      const [accountHoldings, transactions, sp500Data] = await Promise.all([
-        getGroupAccountHoldingsServerFn({ data: { accountIds } }),
-        getGroupTransactionsServerFn({ data: { accountIds } }),
-        getSp500DataServerFn(),
-      ]);
-
-      // Update group members with calculated balances from holdings
-      const updatedGroupMembers = group.members.map((member) => {
-        const accountData = Array.isArray(accountHoldings)
-          ? accountHoldings.find((ah) => ah.accountId === member.accountId)
-          : undefined;
-        return {
-          ...member,
-          balance: accountData ? accountData.accountBalance : 0,
-        };
-      });
-
-      return {
-        group: {
-          ...group,
-          members: updatedGroupMembers,
-        },
-        accountHoldings,
-        sleeveMembers,
-        sp500Data,
-        transactions,
-        // Defer loading positions and proposedTrades
-        positions: [],
-        proposedTrades: [],
-      };
-    } catch (error) {
-      // If authentication error, redirect to login
-      if (error instanceof Error && error.message.includes('Authentication required')) {
-        throw redirect({
-          to: '/login',
-          search: { reset: '', redirect: `/rebalancing-groups/${params.groupId}` },
+    // Get account holdings
+    const accountIds = group.members.map((member) => member.accountId);
+    // Get sleeve members (target securities) if there's an assigned model
+    let sleeveMembers: Awaited<ReturnType<typeof getSleeveMembersServerFn>> = [];
+    if (group.assignedModel?.members && group.assignedModel.members.length > 0) {
+      const sleeveIds = group.assignedModel.members.map((member) => member.sleeveId);
+      if (sleeveIds.length > 0) {
+        sleeveMembers = await getSleeveMembersServerFn({
+          data: { sleeveIds },
         });
       }
-      // Re-throw other errors
-      throw error;
     }
+
+    // Run remaining data fetching in parallel
+    const [accountHoldings, transactions, sp500Data] = await Promise.all([
+      getGroupAccountHoldingsServerFn({ data: { accountIds } }),
+      getGroupTransactionsServerFn({ data: { accountIds } }),
+      getSp500DataServerFn(),
+    ]);
+
+    // Update group members with calculated balances from holdings
+    const updatedGroupMembers = group.members.map((member) => {
+      const accountData = Array.isArray(accountHoldings)
+        ? accountHoldings.find((ah) => ah.accountId === member.accountId)
+        : undefined;
+      return {
+        ...member,
+        balance: accountData ? accountData.accountBalance : 0,
+      };
+    });
+
+    return {
+      group: {
+        ...group,
+        members: updatedGroupMembers,
+      },
+      accountHoldings,
+      sleeveMembers,
+      sp500Data,
+      transactions,
+      // Defer loading positions and proposedTrades
+      positions: [],
+      proposedTrades: [],
+    };
   },
   component: RebalancingGroupDetail,
 });

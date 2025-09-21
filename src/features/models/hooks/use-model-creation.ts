@@ -10,8 +10,10 @@ export function useModelCreation() {
   const seedGlobalEquityMutation = useMutation({
     mutationFn: seedGlobalEquityModelServerFn,
     onSuccess: () => {
-      // Invalidate all queries to refresh the models status
-      queryClient.invalidateQueries();
+      // Invalidate targeted queries after model seeding
+      queryClient.invalidateQueries({ queryKey: ['models'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['onboarding'] });
       // Invalidate the home route loader to refresh onboarding status
       router.invalidate();
     },
