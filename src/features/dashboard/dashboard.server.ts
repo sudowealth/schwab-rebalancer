@@ -2,6 +2,7 @@ import { createServerFn } from '@tanstack/react-start';
 import { and, eq, inArray } from 'drizzle-orm';
 import * as schema from '~/db/schema';
 import { dbProxy } from '~/lib/db-config';
+import { throwServerError } from '~/lib/error-utils';
 import { requireAdmin, requireAuth } from '../auth/auth-utils';
 
 // Server function to get securities data with optional filtering and pagination - runs ONLY on server
@@ -54,6 +55,7 @@ export const getDashboardDataServerFn = createServerFn({
   } catch (error) {
     // Handle authentication errors gracefully during SSR
     console.warn('Dashboard data load failed during SSR, returning empty data:', error);
+    // Don't re-throw during SSR - return fallback data instead
 
     return {
       positions: [],
@@ -124,7 +126,7 @@ export const getGroupTransactionsServerFn = createServerFn({
       .where(and(eq(schema.account.userId, user.id), inArray(schema.account.id, accountIds)));
 
     if (ownedAccounts.length !== accountIds.length) {
-      throw new Error('Access denied: One or more accounts do not belong to you');
+      throwServerError('Access denied: One or more accounts do not belong to you', 403);
     }
 
     const { getGroupTransactions } = await import('../../lib/db-api');
@@ -167,19 +169,19 @@ export const generateAllocationDataServerFn = createServerFn({
     // Get the group data to verify ownership
     const group = await getRebalancingGroupById(user.id, data.groupId);
     if (!group) {
-      throw new Error('Group not found or access denied');
+      throwServerError('Group not found or access denied', 404);
     }
 
     // Get account holdings and S&P 500 data in parallel
     const [accountHoldings, sp500Data] = await Promise.all([
-      getAccountHoldings(group.members.map((m) => m.accountId)),
+      getAccountHoldings(group?.members.map((m) => m.accountId) || []),
       getSnP500Data(),
     ]);
 
     // Generate allocation data on server
     const allocationData = generateAllocationData(
       data.allocationView,
-      group,
+      group as NonNullable<typeof group>, // We know group is not null after the check above
       accountHoldings,
       sp500Data,
       data.totalValue,
@@ -204,11 +206,11 @@ export const generateTopHoldingsDataServerFn = createServerFn({
     // Get the group data to verify ownership
     const group = await getRebalancingGroupById(user.id, data.groupId);
     if (!group) {
-      throw new Error('Group not found or access denied');
+      throwServerError('Group not found or access denied', 404);
     }
 
     // Get account holdings
-    const accountHoldings = await getAccountHoldings(group.members.map((m) => m.accountId));
+    const accountHoldings = await getAccountHoldings(group?.members.map((m) => m.accountId) || []);
 
     // Generate top holdings data on server
     const holdingsData = generateTopHoldingsData(accountHoldings, data.totalValue, data.limit);
@@ -294,7 +296,7 @@ export const updateAccountServerFn = createServerFn({ method: 'POST' })
     const { accountId, name, type } = data;
 
     if (!accountId || !name.trim()) {
-      throw new Error('Invalid request: accountId and name are required');
+      throwServerError('Invalid request: accountId and name are required', 400);
     }
 
     // Validate account type if provided

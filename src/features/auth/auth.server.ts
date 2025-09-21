@@ -1,9 +1,9 @@
 import { createServerFn } from '@tanstack/react-start';
-import { APIError } from 'better-auth/api';
 import { eq, sql } from 'drizzle-orm';
 import * as schema from '~/db/schema';
 import { SessionManager } from '~/features/auth/session.server';
 import { dbProxy } from '~/lib/db-config';
+import { handleServerError, throwServerError } from '~/lib/error-utils';
 import { auth } from './auth';
 import { requireAdmin, requireAuth } from './auth-utils';
 
@@ -47,7 +47,7 @@ export const updateUserRoleServerFn = createServerFn({ method: 'POST' })
       .limit(1);
 
     if (existingUser.length === 0) {
-      throw new Error('User not found');
+      throwServerError('User not found', 404);
     }
 
     // Update role
@@ -69,14 +69,14 @@ export const deleteUserServerFn = createServerFn({ method: 'POST' })
     const { userId, confirmation } = data;
 
     if (confirmation !== 'DELETE_USER_DATA') {
-      throw new Error('Invalid confirmation');
+      throwServerError('Invalid confirmation', 400);
     }
 
     const { user: currentUser } = await requireAdmin();
 
     // Prevent admins from deleting themselves
     if (currentUser.id === userId) {
-      throw new Error('Cannot delete your own account');
+      throwServerError('Cannot delete your own account', 400);
     }
 
     const _db = dbProxy;
@@ -89,7 +89,7 @@ export const deleteUserServerFn = createServerFn({ method: 'POST' })
       .limit(1);
 
     if (existingUser.length === 0) {
-      throw new Error('User not found');
+      throwServerError('User not found', 404);
     }
 
     // Delete user (cascading deletes will handle associated data)
@@ -119,7 +119,7 @@ export const getUserDataServerFn = createServerFn({ method: 'GET' })
       .limit(1);
 
     if (user.length === 0) {
-      throw new Error('User not found');
+      throwServerError('User not found', 404);
     }
 
     // Get all user data
@@ -224,14 +224,7 @@ export const signUpWithFirstAdminServerFn = createServerFn({ method: 'POST' })
           : 'Account created successfully!',
       };
     } catch (error) {
-      console.error('❌ Signup error:', error);
-
-      if (error instanceof APIError) {
-        // Surface the message Better Auth provides for easier debugging
-        throw new Error(error.message || 'Registration failed.');
-      }
-
-      throw error;
+      throw handleServerError(error, 'User signup');
     }
   });
 
