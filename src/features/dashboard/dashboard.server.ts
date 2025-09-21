@@ -2,16 +2,7 @@ import { createServerFn } from '@tanstack/react-start';
 import { and, eq, inArray } from 'drizzle-orm';
 import * as schema from '~/db/schema';
 import { dbProxy } from '~/lib/db-config';
-
-// Defer server-only auth utilities to runtime to avoid bundling them in the client build
-const requireAuth = async () => {
-  const mod = await import('../auth/auth-utils');
-  return mod.requireAuth();
-};
-const requireAdmin = async () => {
-  const mod = await import('../auth/auth-utils');
-  return mod.requireAdmin();
-};
+import { requireAdmin, requireAuth } from '../auth/auth-utils';
 
 // Server function to get securities data with optional filtering and pagination - runs ONLY on server
 export const getSecuritiesDataServerFn = createServerFn({
@@ -52,7 +43,6 @@ export const getDashboardDataServerFn = createServerFn({
   method: 'GET',
 }).handler(async () => {
   // Handle unauthenticated requests gracefully during SSR
-  const { requireAuth } = await import('../auth/auth-utils');
 
   try {
     const { user } = await requireAuth();
@@ -127,7 +117,6 @@ export const getGroupTransactionsServerFn = createServerFn({
     const { accountIds } = data;
     const { user } = await requireAuth();
     // Verify that all accountIds belong to the authenticated user
-    
 
     const ownedAccounts = await dbProxy
       .select({ id: schema.account.id })
@@ -242,7 +231,6 @@ export const truncateSecurityTableServerFn = createServerFn({
 }).handler(async () => {
   await requireAdmin();
 
-  
   await dbProxy.delete(schema.security);
   const { clearCache } = await import('../../lib/db-api');
   clearCache();

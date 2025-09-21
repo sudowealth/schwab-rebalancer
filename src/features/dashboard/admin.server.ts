@@ -1,13 +1,8 @@
 import { createServerFn } from '@tanstack/react-start';
-import { eq } from 'drizzle-orm';
+import { desc, eq, sql } from 'drizzle-orm';
 import * as schema from '~/db/schema';
+import { requireAdmin } from '~/features/auth/auth-utils';
 import { dbProxy } from '~/lib/db-config';
-
-// Defer server-only auth utilities to runtime to avoid bundling them in the client build
-const requireAdmin = async () => {
-  const mod = await import('~/features/auth/auth-utils');
-  return mod.requireAdmin();
-};
 
 // Get all users (admin only)
 export const getAllUsersServerFn = createServerFn({ method: 'GET' }).handler(async () => {
@@ -64,9 +59,6 @@ export const updateUserRoleServerFn = createServerFn({ method: 'POST' })
 export const getSystemStatsServerFn = createServerFn({ method: 'GET' }).handler(async () => {
   await requireAdmin();
 
-  const schema = await import('~/db/schema');
-  const { sql } = await import('drizzle-orm');
-
   // Get various counts
   const userCount = await dbProxy.select({ count: sql<number>`count(*)` }).from(schema.user);
 
@@ -106,9 +98,6 @@ export const getAuditLogsServerFn = createServerFn({ method: 'GET' })
   .handler(async ({ data = {} }) => {
     await requireAdmin();
     const { limit = 100, offset = 0, userId } = data;
-
-    const schema = await import('~/db/schema');
-    const { eq, desc } = await import('drizzle-orm');
 
     const baseQuery = dbProxy
       .select({

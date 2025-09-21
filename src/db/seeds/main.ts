@@ -1,6 +1,5 @@
 // Import individual seed functions
 
-import { dbProxy } from '~/lib/db-config';
 import { seedRebalancingGroups } from './rebalancing-groups';
 import { seedSecurities } from './securities';
 import { seedModels, seedSleeves, seedSP500Securities } from './sp500-model-seeder';

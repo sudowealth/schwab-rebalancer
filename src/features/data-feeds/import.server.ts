@@ -1,21 +1,11 @@
 import { createServerFn } from '@tanstack/react-start';
-import { eq, inArray, sql } from 'drizzle-orm';
+import { and, count, eq, inArray, isNull, ne, or, sql } from 'drizzle-orm';
 import * as schema from '~/db/schema';
+import { requireAdmin, requireAuth } from '~/features/auth/auth-utils';
 import { CASH_TICKER, isAnyCashTicker } from '~/lib/constants';
 import { dbProxy } from '~/lib/db-config';
 import { getErrorMessage, ValidationError } from '~/lib/error-handler';
 import type { SyncYahooFundamentalsResult } from './yahoo.server';
-
-// Defer server-only auth utilities to runtime to avoid bundling them in the client build
-const requireAuth = async () => {
-  const mod = await import('~/features/auth/auth-utils');
-  return mod.requireAuth();
-};
-
-const requireAdmin = async () => {
-  const mod = await import('~/features/auth/auth-utils');
-  return mod.requireAdmin();
-};
 
 // Server function to seed demo data - runs ONLY on server
 export const seedDemoDataServerFn = createServerFn({ method: 'POST' }).handler(async () => {
@@ -62,7 +52,6 @@ export const seedSecuritiesDataServerFn = createServerFn({ method: 'POST' }).han
   }
 
   // Seed S&P 500 securities after equity sync, but only if they don't already exist
-  const { eq } = await import('drizzle-orm');
   const sp500Index = await dbProxy
     .select({ id: schema.indexTable.id })
     .from(schema.indexTable)
@@ -93,7 +82,6 @@ export const seedSecuritiesDataServerFn = createServerFn({ method: 'POST' }).han
       if (schwabStatus?.hasCredentials) {
         // Filter tickers to only include those that appear in holdings, indices, or sleeves
         const relevantTickers = await filterImportedTickersForPriceSync(
-          
           equitySyncResult.importedTickers,
         );
 
@@ -201,8 +189,8 @@ export const seedModelsDataServerFn = createServerFn({ method: 'POST' }).handler
 export const seedGlobalEquityModelServerFn = createServerFn({ method: 'POST' }).handler(
   async () => {
     const { user } = await requireAuth();
-  const _db = dbProxy;
-    
+    const _db = dbProxy;
+
     const { seedGlobalEquitySleeves, seedGlobalEquityModelData } = await import(
       '~/db/seeds/global-equity-model-seeder'
     );
@@ -232,7 +220,7 @@ export const importNasdaqSecuritiesServerFn = createServerFn({
   )
   .handler(async ({ data }) => {
     await requireAuth();
-  const _db = dbProxy;
+    const _db = dbProxy;
     const { limit, skipExisting = true, feedType = 'all' } = data;
 
     try {
@@ -335,7 +323,6 @@ export const importNasdaqSecuritiesServerFn = createServerFn({
       const securitiesToProcess = limit ? parsedSecurities.slice(0, limit) : parsedSecurities;
 
       // Import to database
-      
 
       let importedCount = 0;
       let skippedCount = 0;
@@ -485,8 +472,6 @@ export const truncateDataServerFn = createServerFn({ method: 'POST' })
       throw new Error('Confirmation text required: "TRUNCATE_ALL_DATA"');
     }
 
-    
-
     try {
       // Get request info for audit logging
       if (!import.meta.env.SSR) {
@@ -596,8 +581,7 @@ export const truncateDataServerFn = createServerFn({ method: 'POST' })
 // Get counts for Yahoo Finance sync scopes
 export const getYahooSyncCountsServerFn = createServerFn({ method: 'GET' }).handler(async () => {
   const { user } = await requireAuth();
-  const _db = dbProxy;  const { count, and, or, inArray, isNull, ne } = await import('drizzle-orm');
-  
+  const _db = dbProxy;
 
   // Get total securities count
   const totalSecurities = await dbProxy
@@ -697,8 +681,7 @@ export const getYahooSyncCountsServerFn = createServerFn({ method: 'GET' }).hand
 // Check if securities exist in the database
 export const checkSecuritiesExistServerFn = createServerFn({ method: 'GET' }).handler(async () => {
   const { user: _user } = await requireAuth();
-  const _db = dbProxy;  const { count, ne } = await import('drizzle-orm');
-  
+  const _db = dbProxy;
 
   // Get count of securities (excluding cash)
   const securitiesCount = await dbProxy
@@ -715,8 +698,7 @@ export const checkSecuritiesExistServerFn = createServerFn({ method: 'GET' }).ha
 // Check if models exist for the user
 export const checkModelsExistServerFn = createServerFn({ method: 'GET' }).handler(async () => {
   const { user } = await requireAuth();
-  const _db = dbProxy;  const { count, eq } = await import('drizzle-orm');
-  
+  const _db = dbProxy;
 
   // Get count of models for this user
   const modelsCount = await dbProxy
@@ -748,9 +730,7 @@ export const checkSchwabCredentialsServerFn = createServerFn({ method: 'GET' }).
 );
 
 // Helper function to filter imported tickers to only include those in holdings, indices, or sleeves
-async function filterImportedTickersForPriceSync(
-  importedTickers: string[],
-): Promise<string[]> {
+async function filterImportedTickersForPriceSync(importedTickers: string[]): Promise<string[]> {
   if (importedTickers.length === 0) {
     return [];
   }

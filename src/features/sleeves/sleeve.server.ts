@@ -1,11 +1,6 @@
 import { createServerFn } from '@tanstack/react-start';
 import { DatabaseError, logError, ValidationError, withRetry } from '~/lib/error-handler';
-
-// Defer server-only auth utilities to runtime to avoid bundling them in the client build
-const requireAuth = async () => {
-  const mod = await import('../auth/auth-utils');
-  return mod.requireAuth();
-};
+import { requireAuth } from '../auth/auth-utils';
 
 // Server function to get sleeves data - runs ONLY on server
 export const getSleevesServerFn = createServerFn({ method: 'GET' }).handler(async () => {

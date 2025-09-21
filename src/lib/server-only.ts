@@ -1,6 +1,8 @@
 // Server-only wrapper to prevent client-side imports
 // This file uses dynamic imports to ensure database modules are never bundled for client
 
+import { eq, sql } from 'drizzle-orm';
+import * as schema from '~/db/schema';
 import { dbProxy } from './db-config';
 
 export async function loadDashboardData(
@@ -117,8 +119,6 @@ export async function loadDashboardData(
     let accountsCount = 0;
     try {
       if (userId) {
-        const schema = await import('~/db/schema');
-        const { eq, sql } = await import('drizzle-orm');
         const result = await dbProxy
           .select({ count: sql<number>`count(*)` })
           .from(schema.account)
@@ -134,7 +134,6 @@ export async function loadDashboardData(
     let securitiesStatus = { hasSecurities: false, securitiesCount: 0 };
     try {
       if (userId) {
-        const schema = await import('~/db/schema');
         const { ne, sql } = await import('drizzle-orm');
         const result = await dbProxy
           .select({ count: sql<number>`count(*)` })
@@ -154,8 +153,6 @@ export async function loadDashboardData(
     let modelsStatus = { hasModels: false, modelsCount: 0 };
     try {
       if (userId) {
-        const schema = await import('~/db/schema');
-        const { eq, sql } = await import('drizzle-orm');
         const result = await dbProxy
           .select({ count: sql<number>`count(*)` })
           .from(schema.model)
@@ -174,8 +171,6 @@ export async function loadDashboardData(
     let rebalancingGroupsStatus = { hasGroups: false, groupsCount: 0 };
     try {
       if (userId) {
-        const schema = await import('~/db/schema');
-        const { eq, sql } = await import('drizzle-orm');
         const result = await dbProxy
           .select({ count: sql<number>`count(*)` })
           .from(schema.rebalancingGroup)

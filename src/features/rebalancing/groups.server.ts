@@ -4,23 +4,17 @@ import * as schema from '~/db/schema';
 import type { RebalancingGroup } from '~/features/auth/schemas';
 import type { AccountHoldingsResult } from '~/lib/db-api';
 import { dbProxy } from '~/lib/db-config';
-
-// Defer server-only auth utilities to runtime to avoid bundling them in the client build
-const requireAuth = async () => {
-  const mod = await import('../auth/auth-utils');
-  return mod.requireAuth();
-};
+import { requireAuth } from '../auth/auth-utils';
 
 // Server function to get all rebalancing groups - runs ONLY on server
 export const getRebalancingGroupsServerFn = createServerFn({
   method: 'GET',
 }).handler(async () => {
   // Handle unauthenticated requests gracefully during SSR
-  const { requireAuth } = await import('../auth/auth-utils');
 
   try {
     const { user } = await requireAuth();
-  const _db = dbProxy;
+    const _db = dbProxy;
     const { getRebalancingGroups } = await import('~/lib/db-api');
     const groups = await getRebalancingGroups(user.id);
     return groups;
@@ -40,7 +34,7 @@ export const createRebalancingGroupServerFn = createServerFn({ method: 'POST' })
 
   .handler(async ({ data }) => {
     const { user } = await requireAuth();
-  const _db = dbProxy;
+    const _db = dbProxy;
     const { name, members, updateExisting } = data;
 
     if (!name || !members || !Array.isArray(members)) {
@@ -59,7 +53,7 @@ export const updateRebalancingGroupServerFn = createServerFn({ method: 'POST' })
   )
   .handler(async ({ data }) => {
     const { user } = await requireAuth();
-  const _db = dbProxy;
+    const _db = dbProxy;
     const { groupId, name, members } = data;
 
     if (!groupId || !name || !members || !Array.isArray(members)) {
@@ -77,7 +71,7 @@ export const deleteRebalancingGroupServerFn = createServerFn({ method: 'POST' })
 
   .handler(async ({ data }) => {
     const { user } = await requireAuth();
-  const _db = dbProxy;
+    const _db = dbProxy;
     const { groupId } = data;
 
     if (!groupId) {
@@ -98,7 +92,7 @@ export const getRebalancingGroupByIdServerFn = createServerFn({
 
   .handler(async ({ data }) => {
     const { user } = await requireAuth();
-  const _db = dbProxy;
+    const _db = dbProxy;
     const { groupId } = data;
 
     if (!groupId) {
@@ -128,13 +122,11 @@ export const getGroupAccountHoldingsServerFn = createServerFn({
     }
 
     // Handle unauthenticated requests gracefully during SSR
-    const { requireAuth } = await import('../auth/auth-utils');
 
     try {
       const { user } = await requireAuth();
-  const _db = dbProxy;
+      const _db = dbProxy;
       // Verify that all accountIds belong to the authenticated user
-      
 
       const ownedAccounts = await dbProxy
         .select({ id: schema.account.id })
@@ -184,7 +176,7 @@ export const getSleeveMembersServerFn = createServerFn({ method: 'POST' })
   .validator((data: { sleeveIds: string[] }) => data)
   .handler(async ({ data }) => {
     await requireAuth();
-  const _db = dbProxy;
+    const _db = dbProxy;
     const { sleeveIds } = data;
 
     if (!sleeveIds || sleeveIds.length === 0) {
@@ -211,7 +203,7 @@ export const assignModelToGroupServerFn = createServerFn({ method: 'POST' })
     }
 
     const { user } = await requireAuth();
-  const _db = dbProxy;
+    const _db = dbProxy;
     // Import database API only on the server
     const { assignModelToGroup } = await import('~/lib/db-api');
     await assignModelToGroup(modelId, groupId, user.id);
@@ -229,9 +221,8 @@ export const unassignModelFromGroupServerFn = createServerFn({ method: 'POST' })
     }
 
     const { user } = await requireAuth();
-  const _db = dbProxy;
+    const _db = dbProxy;
     // Verify that the rebalancing group belongs to the authenticated user
-    
 
     const group = await dbProxy
       .select({ userId: schema.rebalancingGroup.userId })

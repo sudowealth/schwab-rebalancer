@@ -9,13 +9,8 @@ import {
 } from '~/lib/constants';
 import { dbProxy } from '~/lib/db-config';
 import { getErrorMessage } from '~/lib/error-handler';
+import { requireAuth } from '../auth/auth-utils';
 import type { RebalanceSecurityData, RebalanceSleeveDataNew } from './rebalance-logic.server';
-
-// Defer server-only auth utilities to runtime to avoid bundling them in the client build
-const requireAuth = async () => {
-  const mod = await import('../auth/auth-utils');
-  return mod.requireAuth();
-};
 
 // Server function to rebalance a portfolio - runs ONLY on server
 export const rebalancePortfolioServerFn = createServerFn({ method: 'POST' })
@@ -48,7 +43,6 @@ export const rebalancePortfolioServerFn = createServerFn({ method: 'POST' })
 
     const { user } = await requireAuth();
     // Verify that the portfolio (rebalancing group) belongs to the authenticated user
-    
 
     const portfolio = await dbProxy
       .select({ userId: schema.rebalancingGroup.userId })
@@ -392,7 +386,6 @@ export const updateManualCashServerFn = createServerFn({ method: 'POST' })
 
     const { user } = await requireAuth();
     // Verify that the account belongs to the authenticated user
-    
 
     const account = await dbProxy
       .select({ userId: schema.account.userId })
@@ -471,7 +464,6 @@ export const getManualCashServerFn = createServerFn({ method: 'POST' })
 
     const { user } = await requireAuth();
     // Verify that the account belongs to the authenticated user
-    
 
     const account = await dbProxy
       .select({ userId: schema.account.userId })

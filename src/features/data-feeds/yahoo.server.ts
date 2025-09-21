@@ -1,6 +1,7 @@
 import { createServerFn } from '@tanstack/react-start';
 import { and, eq, inArray, isNull, or } from 'drizzle-orm';
 import * as schema from '~/db/schema';
+import { requireAuth } from '~/features/auth/auth-utils';
 import { isAnyCashTicker } from '~/lib/constants';
 import { dbProxy } from '~/lib/db-config';
 import { getErrorMessage } from '~/lib/error-handler';
@@ -29,12 +30,6 @@ const normalizeChangeValue = (value: unknown): FieldChangeValue => {
   if (value === null) return 'null' as FieldChangeValue;
   if (typeof value === 'undefined') return 'undefined' as FieldChangeValue;
   return value as FieldChangeValue;
-};
-
-// Defer server-only auth utilities to runtime to avoid bundling them in the client build
-const requireAuth = async () => {
-  const mod = await import('~/features/auth/auth-utils');
-  return mod.requireAuth();
 };
 
 // Yahoo Finance Integration - Update security fundamentals and price
@@ -70,7 +65,6 @@ export const syncYahooFundamentalsServerFn = createServerFn({ method: 'POST' })
     const scope = data.scope;
     const explicitSymbols = data.symbols;
 
-    
     const yahooFinance = (await import('yahoo-finance2')).default;
 
     // Determine symbols to update

@@ -1,10 +1,5 @@
 import { createServerFn } from '@tanstack/react-start';
-
-// Defer server-only auth utilities to runtime to avoid bundling them in the client build
-const requireAuth = async () => {
-  const mod = await import('../auth/auth-utils');
-  return mod.requireAuth();
-};
+import { requireAuth } from '../auth/auth-utils';
 
 // Server function to get all models - runs ONLY on server
 export const getModelsServerFn = createServerFn({ method: 'GET' }).handler(async () => {

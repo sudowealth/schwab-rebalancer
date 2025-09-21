@@ -426,7 +426,7 @@ export class SchwabApiService {
 
       console.log('🔄 [SchwabApi] Deactivating existing credentials...');
       // Deactivate existing credentials
-      const db = this.getDb();
+      const _db = this.getDb();
       await dbProxy
         .update(schema.schwabCredentials)
         .set({ isActive: false, updatedAt: now })
@@ -463,7 +463,7 @@ export class SchwabApiService {
 
   private async getCredentials(userId: string): Promise<SchwabCredentials | null> {
     try {
-      const db = this.getDb();
+      const _db = this.getDb();
       const result = await dbProxy
         .select()
         .from(schema.schwabCredentials)
@@ -1255,7 +1255,7 @@ export class SchwabApiService {
 
   async revokeCredentials(userId: string): Promise<void> {
     const now = new Date();
-    const db = await this.getDb();
+    const _db = await this.getDb();
     await dbProxy
       .update(schema.schwabCredentials)
       .set({ isActive: false, updatedAt: now })

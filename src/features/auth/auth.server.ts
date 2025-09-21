@@ -1,17 +1,11 @@
 import { createServerFn } from '@tanstack/react-start';
 import { APIError } from 'better-auth/api';
+import { eq, sql } from 'drizzle-orm';
+import * as schema from '~/db/schema';
 import { SessionManager } from '~/features/auth/session.server';
 import { dbProxy } from '~/lib/db-config';
-
-// Defer server-only auth utilities to runtime to avoid bundling them in the client build
-const requireAuth = async () => {
-  const mod = await import('./auth-utils');
-  return mod.requireAuth();
-};
-const requireAdmin = async () => {
-  const mod = await import('./auth-utils');
-  return mod.requireAdmin();
-};
+import { auth } from './auth';
+import { requireAdmin, requireAuth } from './auth-utils';
 
 // Admin-only functions
 
@@ -19,7 +13,6 @@ const requireAdmin = async () => {
 export const getAllUsersServerFn = createServerFn({ method: 'GET' }).handler(async () => {
   await requireAdmin();
 
-  const schema = await import('~/db/schema');
   const users = await dbProxy
     .select({
       id: schema.user.id,
@@ -44,8 +37,7 @@ export const updateUserRoleServerFn = createServerFn({ method: 'POST' })
 
     await requireAdmin();
 
-    const schema = await import('~/db/schema');
-  const _db = dbProxy;    const { eq } = await import('drizzle-orm');
+    const _db = dbProxy;
 
     // Verify user exists
     const existingUser = await dbProxy
@@ -87,8 +79,7 @@ export const deleteUserServerFn = createServerFn({ method: 'POST' })
       throw new Error('Cannot delete your own account');
     }
 
-    const schema = await import('~/db/schema');
-  const _db = dbProxy;    const { eq } = await import('drizzle-orm');
+    const _db = dbProxy;
 
     // Verify user exists
     const existingUser = await dbProxy
@@ -118,11 +109,14 @@ export const getUserDataServerFn = createServerFn({ method: 'GET' })
 
     await requireAdmin();
 
-    const schema = await import('~/db/schema');
-  const _db = dbProxy;    const { eq } = await import('drizzle-orm');
+    const _db = dbProxy;
 
     // Get user info
-    const user = await dbProxy.select().from(schema.user).where(eq(schema.user.id, userId)).limit(1);
+    const user = await dbProxy
+      .select()
+      .from(schema.user)
+      .where(eq(schema.user.id, userId))
+      .limit(1);
 
     if (user.length === 0) {
       throw new Error('User not found');
@@ -134,7 +128,10 @@ export const getUserDataServerFn = createServerFn({ method: 'GET' })
       .from(schema.account)
       .where(eq(schema.account.userId, userId));
 
-    const sleeves = await dbProxy.select().from(schema.sleeve).where(eq(schema.sleeve.userId, userId));
+    const sleeves = await dbProxy
+      .select()
+      .from(schema.sleeve)
+      .where(eq(schema.sleeve.userId, userId));
 
     const models = await dbProxy.select().from(schema.model).where(eq(schema.model.userId, userId));
 
@@ -158,8 +155,7 @@ export const signUpWithFirstAdminServerFn = createServerFn({ method: 'POST' })
   .handler(async ({ data }) => {
     const { email, password, name } = data;
 
-    const schema = await import('~/db/schema');
-  const _db = dbProxy;    const { sql, eq } = await import('drizzle-orm');
+    const _db = dbProxy;
 
     try {
       // Check if user creation is allowed
@@ -184,8 +180,6 @@ export const signUpWithFirstAdminServerFn = createServerFn({ method: 'POST' })
       const isFirstUser = totalUsers === 0;
 
       // Create user via Better Auth API to ensure password and related records are handled correctly
-      const { auth: authProxy } = await import('./auth');
-      const auth = authProxy;
       const signUpResult = await auth.api.signUpEmail({
         body: {
           email,
@@ -260,8 +254,7 @@ export const verifyAdminAccessServerFn = createServerFn({
 export const checkIsFirstUserServerFn = createServerFn({
   method: 'GET',
 }).handler(async () => {
-  const schema = await import('~/db/schema');
-  const _db = dbProxy;  const { sql } = await import('drizzle-orm');
+  const _db = dbProxy;
 
   const userCount = await dbProxy.select({ count: sql<number>`count(*)` }).from(schema.user);
 
@@ -287,8 +280,7 @@ export const checkUserCreationAllowedServerFn = createServerFn({
   }
 
   // If INDIVIDUAL_USE is enabled, check if there are already users
-  const schema = await import('~/db/schema');
-  const _db = dbProxy;  const { sql } = await import('drizzle-orm');
+  const _db = dbProxy;
 
   const userCount = await dbProxy.select({ count: sql<number>`count(*)` }).from(schema.user);
 
