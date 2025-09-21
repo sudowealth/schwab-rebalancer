@@ -1,7 +1,9 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import { ErrorBoundaryWrapper } from '~/components/ErrorBoundary';
 import { ToastProvider } from '~/components/ui/toast';
+import { queryKeys } from '~/lib/query-keys';
+import { getEnvironmentInfoServerFn } from '~/lib/server-functions';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -20,16 +22,35 @@ const queryClient = new QueryClient({
   },
 });
 
-export function Providers({ children }: { children: ReactNode }) {
+function AppProviders({ children }: { children: ReactNode }) {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <ToastProvider>{children}</ToastProvider>
+    </QueryClientProvider>
+  );
+}
+
+function EnvironmentAwareErrorBoundary({ children }: { children: ReactNode }) {
+  const { data: envInfo } = useQuery({
+    queryKey: queryKeys.system.environment(),
+    queryFn: () => getEnvironmentInfoServerFn(),
+    staleTime: Infinity, // Environment info doesn't change during runtime
+    gcTime: Infinity,
+  });
+
+  const isDevelopment = envInfo?.isDevelopment ?? false;
+
   return (
     <ErrorBoundaryWrapper
       title="Application Error"
       description="An unexpected error occurred in the application. Please refresh the page to try again."
-      showDetails={process.env.NODE_ENV === 'development'}
+      showDetails={isDevelopment}
     >
-      <QueryClientProvider client={queryClient}>
-        <ToastProvider>{children}</ToastProvider>
-      </QueryClientProvider>
+      <AppProviders>{children}</AppProviders>
     </ErrorBoundaryWrapper>
   );
+}
+
+export function Providers({ children }: { children: ReactNode }) {
+  return <EnvironmentAwareErrorBoundary>{children}</EnvironmentAwareErrorBoundary>;
 }

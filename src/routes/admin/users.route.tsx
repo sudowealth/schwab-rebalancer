@@ -6,6 +6,7 @@ import {
   getUserDataServerFn,
   updateUserRoleServerFn,
 } from '~/features/dashboard/admin.server';
+import { queryKeys } from '~/lib/query-keys';
 import { adminGuard } from '~/lib/route-guards';
 
 type AdminUser = Awaited<ReturnType<typeof getAllUsersServerFn>>[number];
@@ -64,13 +65,13 @@ function UserManagement() {
   const queryClient = useQueryClient();
 
   const { data: users, isPending: usersPending } = useQuery({
-    queryKey: ['admin', 'users'],
+    queryKey: queryKeys.admin.users(),
     queryFn: () => getAllUsersServerFn(),
     initialData: loaderData, // Use loader data as initial data
   });
 
   const { data: userData, isPending: userDataPending } = useQuery({
-    queryKey: ['admin', 'userData', selectedUserId],
+    queryKey: selectedUserId ? queryKeys.admin.userData(selectedUserId) : [],
     queryFn: () =>
       selectedUserId ? getUserDataServerFn({ data: { userId: selectedUserId } }) : null,
     enabled: !!selectedUserId && showUserDataDialog,

@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from '@tanstack/react-router';
 import { useCallback, useEffect, useState } from 'react';
 import type { SyncYahooFundamentalsResult } from '~/features/data-feeds/yahoo.server';
+import { queryKeys } from '~/lib/query-keys';
 import {
   getHeldPositionTickersServerFn,
   getSchwabCredentialsStatusServerFn,
@@ -24,7 +25,7 @@ export function useSchwabConnection(
 
   // Query to check credentials status (environment variables)
   const { data: credentialsStatus, isLoading: statusLoading } = useQuery({
-    queryKey: ['schwab-credentials-status'],
+    queryKey: queryKeys.schwab.credentials(),
     queryFn: () => getSchwabCredentialsStatusServerFn(),
     initialData: initialCredentialsStatus,
     staleTime: 1000 * 60 * 5, // 5 minutes - environment vars don't change often
@@ -175,12 +176,12 @@ export function useSchwabConnection(
 
       // Refresh targeted data after Schwab sync
       console.log('🔄 [UI] Invalidating targeted queries to refresh data...');
-      queryClient.invalidateQueries({ queryKey: ['schwab-credentials-status'] });
-      queryClient.invalidateQueries({ queryKey: ['schwab-active-credentials'] });
-      queryClient.invalidateQueries({ queryKey: ['positions'] });
-      queryClient.invalidateQueries({ queryKey: ['portfolio-metrics'] });
-      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
-      queryClient.invalidateQueries({ queryKey: ['accounts'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.schwab.credentials() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.schwab.activeCredentials() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.positions() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.metrics() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.all() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.schwab.accounts() });
 
       // Invalidate the home route loader to refresh onboarding status
       router.invalidate();
@@ -227,7 +228,7 @@ export function useSchwabConnection(
 
   // Query to check if user has active Schwab credentials (actual OAuth connection)
   const { data: activeCredentialsStatus } = useQuery({
-    queryKey: ['schwab-active-credentials'],
+    queryKey: queryKeys.schwab.activeCredentials(),
     queryFn: async () => {
       try {
         const result = await getSchwabCredentialsStatusServerFn();

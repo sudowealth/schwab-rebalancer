@@ -19,6 +19,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '~/components/ui/tabs';
 import { useSecuritiesSeeding } from '~/features/data-feeds/hooks/use-securities-seeding';
 import { useModelCreation } from '~/features/models/hooks/use-model-creation';
 import { useSchwabConnection } from '~/features/schwab/hooks/use-schwab-connection';
+import { queryKeys } from '~/lib/query-keys';
 import {
   checkModelsExistServerFn,
   checkSchwabCredentialsServerFn,
@@ -68,7 +69,7 @@ export function OnboardingTracker({
     fetchStatus: securitiesFetchStatus,
     isFetchedAfterMount: securitiesFetchedAfterMount,
   } = useQuery({
-    queryKey: ['securities-status'],
+    queryKey: queryKeys.onboarding.securities(),
     queryFn: () => checkSecuritiesExistServerFn(),
     initialData: securitiesStatusProp,
     initialDataUpdatedAt: 0, // mark as stale so it refetches on mount
@@ -77,7 +78,7 @@ export function OnboardingTracker({
 
   // Query for reactive models status
   const { data: reactiveModelsStatus } = useQuery({
-    queryKey: ['models-status'],
+    queryKey: queryKeys.onboarding.models(),
     queryFn: () => checkModelsExistServerFn(),
     initialData: modelsStatusProp,
     staleTime: 1000 * 60 * 5, // 5 minutes
@@ -85,7 +86,7 @@ export function OnboardingTracker({
 
   // Query for reactive Schwab credentials status
   const { data: schwabCredentialsStatus } = useQuery({
-    queryKey: ['schwab-credentials-status'],
+    queryKey: queryKeys.onboarding.schwab(),
     queryFn: () => checkSchwabCredentialsServerFn(),
     initialData: schwabCredentialsStatusProp,
     staleTime: 1000 * 60 * 2, // 2 minutes - still reactive but prevents immediate refetch

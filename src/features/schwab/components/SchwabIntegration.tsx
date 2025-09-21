@@ -28,6 +28,7 @@ import {
   syncSchwabPricesServerFn,
   syncSchwabTransactionsServerFn,
 } from '~/features/schwab/schwab.server';
+import { queryKeys } from '~/lib/query-keys';
 
 interface ImportResult {
   success: boolean;
@@ -59,7 +60,7 @@ export function SchwabIntegration() {
 
   // Query to check credentials status
   const { data: credentialsStatus, isLoading: statusLoading } = useQuery({
-    queryKey: ['schwab-credentials-status'],
+    queryKey: queryKeys.schwab.credentials(),
     queryFn: () => {
       console.log('🔍 [UI] Fetching Schwab credentials status');
       return getSchwabCredentialsStatusServerFn();
@@ -100,7 +101,7 @@ export function SchwabIntegration() {
     onSuccess: (data) => {
       console.log('✅ [UI] Accounts sync completed successfully:', data);
       queryClient.invalidateQueries({
-        queryKey: ['schwab-credentials-status'],
+        queryKey: queryKeys.schwab.credentials(),
       });
       // Re-run route loaders so dashboard status updates without manual refresh
       router.invalidate();
@@ -154,7 +155,7 @@ export function SchwabIntegration() {
       }
 
       queryClient.invalidateQueries({
-        queryKey: ['schwab-credentials-status'],
+        queryKey: queryKeys.schwab.credentials(),
       });
       router.invalidate();
     },
@@ -175,17 +176,17 @@ export function SchwabIntegration() {
       console.log('✅ [UI] Prices sync completed successfully:', data);
       // Invalidate all dashboard queries to refresh price data
       queryClient.invalidateQueries({
-        queryKey: ['schwab-credentials-status'],
+        queryKey: queryKeys.schwab.credentials(),
       });
       queryClient.invalidateQueries({
-        queryKey: ['positions'],
+        queryKey: queryKeys.dashboard.positions(),
       });
       queryClient.invalidateQueries({
-        queryKey: ['metrics'],
+        queryKey: queryKeys.dashboard.metrics(),
       });
       // Force refetch of positions since staleTime might prevent immediate refresh
       queryClient.refetchQueries({
-        queryKey: ['positions'],
+        queryKey: queryKeys.dashboard.positions(),
       });
       router.invalidate();
     },
@@ -203,10 +204,10 @@ export function SchwabIntegration() {
     onSuccess: () => {
       console.log('✅ [UI] Transactions sync completed successfully');
       queryClient.invalidateQueries({
-        queryKey: ['schwab-credentials-status'],
+        queryKey: queryKeys.schwab.credentials(),
       });
       queryClient.invalidateQueries({
-        queryKey: ['transactions'],
+        queryKey: queryKeys.dashboard.transactions(),
       });
       router.invalidate();
     },
@@ -262,23 +263,23 @@ export function SchwabIntegration() {
       console.log('✅ [UI] Full Schwab sync completed successfully:', data);
       // Invalidate all dashboard queries to refresh data after full sync
       queryClient.invalidateQueries({
-        queryKey: ['schwab-credentials-status'],
+        queryKey: queryKeys.schwab.credentials(),
       });
       queryClient.invalidateQueries({
-        queryKey: ['positions'],
+        queryKey: queryKeys.dashboard.positions(),
       });
       queryClient.invalidateQueries({
-        queryKey: ['metrics'],
+        queryKey: queryKeys.dashboard.metrics(),
       });
       queryClient.invalidateQueries({
-        queryKey: ['transactions'],
+        queryKey: queryKeys.dashboard.transactions(),
       });
       // Force refetch of positions since staleTime might prevent immediate refresh
       queryClient.refetchQueries({
-        queryKey: ['positions'],
+        queryKey: queryKeys.dashboard.positions(),
       });
       queryClient.refetchQueries({
-        queryKey: ['metrics'],
+        queryKey: queryKeys.dashboard.metrics(),
       });
       router.invalidate();
     },
@@ -296,7 +297,7 @@ export function SchwabIntegration() {
     onSuccess: () => {
       console.log('✅ [UI] Credentials revoked successfully');
       queryClient.invalidateQueries({
-        queryKey: ['schwab-credentials-status'],
+        queryKey: queryKeys.schwab.credentials(),
       });
       router.invalidate();
     },

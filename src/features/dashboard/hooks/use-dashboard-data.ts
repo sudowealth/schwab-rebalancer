@@ -2,6 +2,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import type { RebalancingGroup } from '~/features/auth/schemas';
 import { useSchwabConnection } from '~/features/schwab/hooks/use-schwab-connection';
+import { queryKeys } from '~/lib/query-keys';
 import {
   checkModelsExistServerFn,
   checkSchwabCredentialsServerFn,
@@ -46,31 +47,31 @@ export function useDashboardData(loaderData: LoaderData) {
       // Invalidate all dashboard queries to ensure fresh data after Schwab connection
       console.log('🔄 [Dashboard] Invalidating all dashboard queries...');
       queryClient.invalidateQueries({
-        queryKey: ['positions'],
+        queryKey: queryKeys.dashboard.positions(),
       });
       queryClient.invalidateQueries({
-        queryKey: ['metrics'],
+        queryKey: queryKeys.dashboard.metrics(),
       });
       queryClient.invalidateQueries({
-        queryKey: ['transactions'],
+        queryKey: queryKeys.dashboard.transactions(),
       });
       queryClient.invalidateQueries({
-        queryKey: ['sleeves'],
+        queryKey: queryKeys.dashboard.sleeves(),
       });
 
       // Force refetch to bypass staleTime
       console.log('🔄 [Dashboard] Forcing refetch of all dashboard queries...');
       queryClient.refetchQueries({
-        queryKey: ['positions'],
+        queryKey: queryKeys.dashboard.positions(),
       });
       queryClient.refetchQueries({
-        queryKey: ['metrics'],
+        queryKey: queryKeys.dashboard.metrics(),
       });
       queryClient.refetchQueries({
-        queryKey: ['transactions'],
+        queryKey: queryKeys.dashboard.transactions(),
       });
       queryClient.refetchQueries({
-        queryKey: ['sleeves'],
+        queryKey: queryKeys.dashboard.sleeves(),
       });
 
       console.log('✅ [Dashboard] Dashboard data refresh initiated after Schwab OAuth callback');
@@ -89,21 +90,21 @@ export function useDashboardData(loaderData: LoaderData) {
 
   // Use reactive queries for onboarding status (same as OnboardingTracker)
   const { data: reactiveSecuritiesStatus } = useQuery({
-    queryKey: ['securities-status'],
+    queryKey: queryKeys.onboarding.securities(),
     queryFn: () => checkSecuritiesExistServerFn(),
     initialData: loaderData.securitiesStatus,
     staleTime: 1000 * 60 * 5,
   });
 
   const { data: reactiveModelsStatus } = useQuery({
-    queryKey: ['models-status'],
+    queryKey: queryKeys.onboarding.models(),
     queryFn: () => checkModelsExistServerFn(),
     initialData: loaderData.modelsStatus,
     staleTime: 1000 * 60 * 5,
   });
 
   const { data: reactiveSchwabCredentialsStatus } = useQuery({
-    queryKey: ['schwab-credentials-status'],
+    queryKey: queryKeys.onboarding.schwab(),
     queryFn: () => checkSchwabCredentialsServerFn(),
     initialData: loaderData.schwabCredentialsStatus,
     staleTime: 1000 * 60 * 2,
@@ -113,7 +114,7 @@ export function useDashboardData(loaderData: LoaderData) {
 
   // Use reactive queries for rebalancing groups status
   const { data: reactiveRebalancingGroupsStatus } = useQuery({
-    queryKey: ['rebalancing-groups-dashboard'],
+    queryKey: queryKeys.dashboard.groups(),
     queryFn: getRebalancingGroupsWithBalancesServerFn,
     initialData: loaderData.rebalancingGroups,
     staleTime: 1000 * 60 * 2,
@@ -179,7 +180,7 @@ export function useDashboardData(loaderData: LoaderData) {
 
   // Use the exact same data loading logic as /rebalancing-groups route
   const { data: rebalancingGroups, isLoading: rebalancingGroupsLoading } = useQuery({
-    queryKey: ['rebalancing-groups-dashboard'],
+    queryKey: queryKeys.dashboard.groups(),
     queryFn: getRebalancingGroupsWithBalancesServerFn,
     initialData: loaderData.rebalancingGroups,
     staleTime: 1000 * 60 * 2,
@@ -218,16 +219,16 @@ export function useDashboardData(loaderData: LoaderData) {
     // Utility functions
     invalidateDashboardQueries: () => {
       queryClient.invalidateQueries({
-        queryKey: ['positions'],
+        queryKey: queryKeys.dashboard.positions(),
       });
       queryClient.invalidateQueries({
-        queryKey: ['metrics'],
+        queryKey: queryKeys.dashboard.metrics(),
       });
       queryClient.invalidateQueries({
-        queryKey: ['transactions'],
+        queryKey: queryKeys.dashboard.transactions(),
       });
       queryClient.invalidateQueries({
-        queryKey: ['sleeves'],
+        queryKey: queryKeys.dashboard.sleeves(),
       });
     },
   };

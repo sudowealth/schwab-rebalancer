@@ -16,6 +16,107 @@ import { dbProxy } from '~/lib/db-config';
 import { getErrorMessage } from '~/lib/error-handler';
 import { requireAuth } from '../auth/auth-utils';
 
+// Utility function to validate Schwab environment variables
+function validateSchwabEnvironment() {
+  const clientId = process.env.SCHWAB_CLIENT_ID;
+  const clientSecret = process.env.SCHWAB_CLIENT_SECRET;
+
+  if (!clientId) {
+    throw new Error('SCHWAB_CLIENT_ID is not set in environment variables');
+  }
+
+  if (!clientSecret) {
+    throw new Error('SCHWAB_CLIENT_SECRET is not set in environment variables');
+  }
+
+  return { clientId, clientSecret };
+}
+
+// Utility functions for cache management
+
+function clearHoldingsCache(userId: string) {
+  clearCache(`positions-${userId}`);
+  clearCache(`transactions-${userId}`);
+  clearCache(`metrics-${userId}`);
+  clearCache('sp500-data'); // Clear S&P 500 data since holdings may have new securities
+}
+
+function clearPricesCache(userId?: string) {
+  clearCache('sp500-data'); // Clear S&P 500 data since prices have been updated
+  if (userId) {
+    clearCache(`positions-${userId}`); // Clear positions cache since prices affect position values
+    clearCache(`metrics-${userId}`); // Clear metrics cache since prices affect portfolio metrics
+  }
+}
+
+function clearTransactionsCache(userId: string) {
+  clearCache(`transactions-${userId}`);
+  clearCache(`metrics-${userId}`); // Transactions can affect metrics
+}
+
+// Utility functions for sync logging
+async function createSyncLog(userId: string, syncType: string, logId: string) {
+  const startLog = {
+    id: logId,
+    userId,
+    syncType,
+    status: 'RUNNING' as const,
+    recordsProcessed: 0,
+    startedAt: new Date(),
+    createdAt: new Date(),
+  };
+  await dbProxy.insert(schema.syncLog).values(startLog);
+  return startLog;
+}
+
+async function updateSyncLog(
+  logId: string,
+  status: 'COMPLETED' | 'FAILED',
+  recordsProcessed: number,
+  errorMessage?: string,
+) {
+  await dbProxy
+    .update(schema.syncLog)
+    .set({
+      status,
+      recordsProcessed,
+      completedAt: new Date(),
+      errorMessage,
+    })
+    .where(eq(schema.syncLog.id, logId));
+}
+
+async function createSyncLogDetails(
+  logId: string,
+  results: Array<{
+    ticker: string;
+    success: boolean;
+    oldPrice: number;
+    newPrice: number;
+    source: string;
+    error?: string;
+    changes?: Record<string, { old: unknown; new: unknown }>;
+  }>,
+) {
+  for (const r of results) {
+    const changes = r.changes ?? {
+      price: { old: r.oldPrice, new: r.newPrice },
+      source: { old: undefined, new: r.source },
+    };
+    await dbProxy.insert(schema.syncLogDetail).values({
+      id: crypto.randomUUID(),
+      logId,
+      entityType: 'SECURITY',
+      entityId: r.ticker,
+      operation: r.success ? 'UPDATE' : 'NOOP',
+      changes: JSON.stringify(changes),
+      success: r.success,
+      message: r.error,
+      createdAt: new Date(),
+    });
+  }
+}
+
 // Server function to get Schwab OAuth URL
 export const getSchwabOAuthUrlServerFn = createServerFn({ method: 'POST' })
   .validator((data: { redirectUri: string }) => data)
@@ -24,19 +125,8 @@ export const getSchwabOAuthUrlServerFn = createServerFn({ method: 'POST' })
     console.log('📋 [ServerFn] Request data:', data);
 
     try {
-      // Check for required Schwab environment variables
-      const clientId = process.env.SCHWAB_CLIENT_ID;
-      const clientSecret = process.env.SCHWAB_CLIENT_SECRET;
-
-      if (!clientId) {
-        console.error('❌ [ServerFn] SCHWAB_CLIENT_ID is not set in environment variables');
-        throw new Error('SCHWAB_CLIENT_ID is not set in environment variables');
-      }
-
-      if (!clientSecret) {
-        console.error('❌ [ServerFn] SCHWAB_CLIENT_SECRET is not set in environment variables');
-        throw new Error('SCHWAB_CLIENT_SECRET is not set in environment variables');
-      }
+      // Validate environment variables (separated concern)
+      validateSchwabEnvironment();
 
       console.log('📦 [ServerFn] Importing Schwab API service...');
       const { getSchwabApiService } = await import('~/features/schwab/schwab-api.server');
@@ -215,12 +305,7 @@ export const syncSchwabHoldingsServerFn = createServerFn({ method: 'POST' })
       // Clear relevant caches after successful sync
       if (result.success && result.recordsProcessed > 0) {
         console.log('🧹 [ServerFn] Clearing caches after successful holdings sync');
-
-        // Clear caches that depend on holdings data
-        clearCache(`positions-${user.id}`);
-        clearCache(`transactions-${user.id}`);
-        clearCache(`metrics-${user.id}`);
-        clearCache('sp500-data'); // Clear S&P 500 data cache since holdings may have new securities
+        clearHoldingsCache(user.id);
       }
 
       return result;
@@ -257,10 +342,7 @@ export const syncSchwabTransactionsServerFn = createServerFn({ method: 'POST' })
       // Clear relevant caches after successful sync
       if (result.success && result.recordsProcessed > 0) {
         console.log('🧹 [ServerFn] Clearing caches after successful transactions sync');
-
-        // Clear caches that depend on transaction data
-        clearCache(`transactions-${user.id}`);
-        clearCache(`metrics-${user.id}`); // Transactions can affect metrics
+        clearTransactionsCache(user.id);
       }
 
       return result;
@@ -617,27 +699,17 @@ export const syncSchwabPricesServerFn = createServerFn({ method: 'POST' })
       });
 
       const { user } = await requireAuth();
-      const _db = dbProxy;
       console.log('👤 [ServerFn] Authenticated user:', user.id);
+
+      // Create sync log entry
+      const logId = crypto.randomUUID();
+      await createSyncLog(user.id, 'SECURITIES', logId);
+      console.log('📝 [ServerFn] Created sync log for prices:', logId);
 
       try {
         const { getPriceSyncService } = await import('~/features/data-feeds/price-sync');
         const priceSyncService = getPriceSyncService();
         console.log('🔧 [ServerFn] Price sync service initialized');
-
-        // Create sync log entry (RUNNING)
-        const logId = crypto.randomUUID();
-        const startLog = {
-          id: logId,
-          userId: user.id,
-          syncType: 'SECURITIES',
-          status: 'RUNNING' as const,
-          recordsProcessed: 0,
-          startedAt: new Date(),
-          createdAt: new Date(),
-        };
-        await dbProxy.insert(schema.syncLog).values(startLog);
-        console.log('📝 [ServerFn] Created sync log for prices:', logId);
 
         console.log('💰 [ServerFn] Calling priceSyncService.syncPrices with params:', {
           userId: user.id,
@@ -668,39 +740,15 @@ export const syncSchwabPricesServerFn = createServerFn({ method: 'POST' })
           timestamp: new Date().toISOString(),
         });
 
-        // Clear caches that depend on security prices
+        // Clear caches and create log details
         const successfulUpdates = results.filter((r) => r.success).length;
         if (successfulUpdates > 0) {
           console.log('🧹 [ServerFn] Clearing caches after successful price updates');
-
-          // Clear caches that depend on price data
-          clearCache('sp500-data'); // Clear S&P 500 data since prices have been updated
-          clearCache(`positions-${user.id}`); // Clear positions cache since prices affect position values
-          clearCache(`metrics-${user.id}`); // Clear metrics cache since prices affect portfolio metrics
+          clearPricesCache(user.id);
         }
 
-        // Persist per-ticker as generic change entries
-        try {
-          for (const r of results) {
-            const changes = r.changes ?? {
-              price: { old: r.oldPrice, new: r.newPrice },
-              source: { old: undefined, new: r.source },
-            };
-            await dbProxy.insert(schema.syncLogDetail).values({
-              id: crypto.randomUUID(),
-              logId,
-              entityType: 'SECURITY',
-              entityId: r.ticker,
-              operation: r.success ? 'UPDATE' : 'NOOP',
-              changes: JSON.stringify(changes),
-              success: r.success,
-              message: r.error,
-              createdAt: new Date(),
-            });
-          }
-        } catch (persistErr) {
-          console.warn('⚠️ [ServerFn] Failed to persist sync details:', persistErr);
-        }
+        // Create detailed log entries
+        await createSyncLogDetails(logId, results);
 
         // Log individual price updates for verification
         console.log('💲 [ServerFn] Individual price updates:');
@@ -724,15 +772,13 @@ export const syncSchwabPricesServerFn = createServerFn({ method: 'POST' })
         );
 
         // Complete sync log
-        await dbProxy
-          .update(schema.syncLog)
-          .set({
-            status: errorCount > 0 ? 'PARTIAL' : 'SUCCESS',
-            recordsProcessed: successCount,
-            errorMessage: errorCount > 0 ? `${errorCount} securities failed to update` : undefined,
-            completedAt: new Date(),
-          })
-          .where(eq(schema.syncLog.id, logId));
+        const finalStatus = errorCount > 0 ? 'COMPLETED' : 'COMPLETED'; // All completed, some may have failed
+        await updateSyncLog(
+          logId,
+          finalStatus,
+          successCount,
+          errorCount > 0 ? `${errorCount} securities failed to update` : undefined,
+        );
         console.log('🏁 [ServerFn] Completed sync log for prices:', logId);
 
         const finalResult = {

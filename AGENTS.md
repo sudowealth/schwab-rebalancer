@@ -80,6 +80,7 @@
 ### 🔧 Server Functions
 - **Database Imports**: Use static imports for database connections at the top of server functions (e.g., `import { dbProxy } from '~/lib/db-config'`). Avoid dynamic imports for performance.
 - **Database Configuration**: Use lazy-loaded database proxies to ensure environment variables are available at runtime (not import time).
+- **Single Responsibility Principle**: Each server function should do ONE thing. Avoid mixing data operations, external API calls, OAuth flows, and email sending in single functions.
 - **Authentication**: Better Auth sessions don't include custom user fields like roles. Fetch them from the database using the session user ID when needed.
 - **Client-side Auth Hook**: Use `useAuth()` hook that shows user data immediately from session, fetching role data in background only when needed for optimal UX.
 - **Validation**: Use Zod validators on all server functions for type safety
@@ -135,5 +136,149 @@
 - **Breaking Changes**: Plan migrations carefully with feature flags
 - **Deprecation**: Gradually deprecate old patterns before removal
 - **Documentation**: Keep internal docs updated with new patterns
+
+## 🚨 TanStack Start Antipatterns to Avoid
+
+Based on our codebase review and fixes, avoid these common antipatterns that violate TanStack Start best practices:
+
+### ❌ Critical Antipatterns (Performance Impact)
+
+#### 1. Dynamic Imports in Server Functions
+```typescript
+// ❌ AVOID: Dynamic imports add unnecessary async overhead
+export const someServerFn = createServerFn().handler(async () => {
+  const { getData } = await import('~/lib/db-api'); // SLOW!
+  return getData();
+});
+
+// ✅ DO: Static imports at the top
+import { getData } from '~/lib/db-api';
+
+export const someServerFn = createServerFn().handler(async () => {
+  return getData(); // FAST - synchronous
+});
+```
+
+#### 2. Server Functions with Multiple Responsibilities
+```typescript
+// ❌ AVOID: Single function doing too many things
+export const complexServerFn = createServerFn().handler(async () => {
+  // 1. Authenticate user
+  // 2. Fetch data from database
+  // 3. Call external API
+  // 4. Send email
+  // 5. Update multiple tables
+  // VIOLATES: Single Responsibility Principle
+});
+
+// ✅ DO: One function, one purpose
+export const authenticateUserServerFn = createServerFn()...
+export const fetchUserDataServerFn = createServerFn()...
+export const callExternalAPIServerFn = createServerFn()...
+export const sendEmailServerFn = createServerFn()...
+```
+
+#### 3. Client-Side Navigation with window.location
+```typescript
+// ❌ AVOID: Bypasses router, causes hydration issues
+const handleRedirect = () => {
+  window.location.href = '/new-page'; // BAD!
+};
+
+// ✅ DO: Use TanStack Router
+import { useRouter } from '@tanstack/react-router';
+
+const handleRedirect = () => {
+  const router = useRouter();
+  router.navigate({ to: '/new-page' }); // GOOD!
+};
+```
+
+#### 4. Broad Query Invalidation
+```typescript
+// ❌ AVOID: Invalidates everything, defeats caching
+queryClient.invalidateQueries(); // SLOWS DOWN APP!
+
+// ✅ DO: Targeted invalidation
+queryClient.invalidateQueries({
+  queryKey: ['specific-data', userId]
+});
+```
+
+### ❌ Architecture Antipatterns
+
+#### 5. Auth Logic in Components
+```typescript
+// ❌ AVOID: Auth logic scattered in UI components
+function MyComponent() {
+  const { user, isAuthenticated } = useAuth();
+  if (!isAuthenticated) return <LoginPrompt />;
+  // Component logic mixed with auth...
+}
+
+// ✅ DO: Route-level auth guards
+export const Route = createFileRoute('/protected')({
+  beforeLoad: authGuard, // Auth handled here
+  component: MyComponent, // Pure UI component
+});
+```
+
+#### 6. Mixed Data Fetching Strategies
+```typescript
+// ❌ AVOID: Route loader + React Query waterfall
+loader: async () => {
+  const data1 = await fetchData1(); // Loader gets some data
+},
+// Component also fetches more data - creates waterfall!
+
+// ✅ DO: Consistent strategy
+// Either: Full loader + initialData in React Query
+// Or: Pure React Query with proper loading states
+```
+
+#### 7. Over-Engineering Database Connections
+```typescript
+// ❌ AVOID: Unnecessarily complex proxy patterns
+export const dbProxy = new Proxy({} as Database, { /* complex logic */ });
+
+// ✅ DO: Simple lazy initialization
+let dbInstance: Database | null = null;
+export function getDb() {
+  if (!dbInstance) {
+    dbInstance = createDatabaseClient();
+  }
+  return dbInstance;
+}
+```
+
+### ✅ When Dynamic Imports ARE Acceptable
+
+- **Heavy libraries**: `await import('exceljs')` for large optional dependencies
+- **Conditional features**: Loading features only when needed (e.g., admin panels)
+- **Client-side code splitting**: `lazy(() => import('./HeavyComponent'))`
+- **Server-only utilities**: Intentionally preventing client bundling
+
+### 📋 Server Function Complexity Guidelines
+
+When creating server functions, ask: "Does this function do ONE thing well?"
+
+**Good Server Function Examples:**
+- `getUserProfileServerFn` - Only fetches user data
+- `updateUserEmailServerFn` - Only updates email
+- `validatePasswordServerFn` - Only validates password
+- `sendWelcomeEmailServerFn` - Only sends email
+
+**Red Flags for Refactoring:**
+- Function name contains "and" (e.g., `createUserAndSendEmail`)
+- Function has multiple external API calls
+- Function updates multiple database tables
+- Function handles both data and side effects
+- Function is longer than 50 lines
+
+**Refactoring Strategy:**
+1. Extract pure data operations into separate functions
+2. Move side effects (emails, external APIs) to dedicated functions
+3. Use composition: `createUserServerFn` calls `sendWelcomeEmailServerFn`
+4. Keep database operations synchronous within each function
 
 Remember: TanStack Start is about **developer experience first**. Focus on making development joyful and performant by default, while building applications that scale both in code and performance.
