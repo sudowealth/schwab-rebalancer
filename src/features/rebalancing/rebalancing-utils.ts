@@ -1,6 +1,11 @@
 // Utility functions for rebalancing group calculations
 
-import { CASH_TICKER, isAnyCashTicker, isBaseCashTicker, MANUAL_CASH_TICKER } from '~/lib/constants';
+import {
+  CASH_TICKER,
+  isAnyCashTicker,
+  isBaseCashTicker,
+  MANUAL_CASH_TICKER,
+} from '~/lib/constants';
 import type { AccountHoldingsResult, SP500DataResult } from '~/lib/db-api';
 import {
   type Transaction as BaseTransaction,
@@ -981,4 +986,3 @@ export const generateSleeveTableData = (
       })
     : [];
 };
-export type GenerateSleeveTableDataResult = ReturnType<typeof generateSleeveTableData>;

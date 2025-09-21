@@ -56,7 +56,7 @@ const GLOBAL_EQUITY_MODEL_DATA = [
 ];
 
 // Combined function to seed Global Equity Model securities, sleeves, and model
-export async function seedGlobalEquityModel(userId?: string) {
+async function seedGlobalEquityModel(userId?: string) {
   console.log('🚀 Starting complete Global Equity Model seeding process...');
 
   // Seed Global Equity securities first (needed for sleeves)
@@ -72,7 +72,7 @@ export async function seedGlobalEquityModel(userId?: string) {
 }
 
 // Seed Global Equity securities and index data
-export async function seedGlobalEquitySecurities() {
+async function seedGlobalEquitySecurities() {
   console.log('📊 Seeding Global Equity securities and index...');
 
   const now = Math.floor(Date.now() / 1000);
@@ -283,7 +283,7 @@ export async function seedGlobalEquitySleeves(userId?: string) {
   };
 }
 
-export const getGlobalEquityModelData = async (userId?: string) => {
+const getGlobalEquityModelData = async (userId?: string) => {
   // Determine the correct user ID to use
   let actualUserId = userId || 'demo-user';
 
@@ -316,7 +316,7 @@ export const getGlobalEquityModelData = async (userId?: string) => {
 };
 
 // Function to generate model members based on Global Equity data
-export async function generateGlobalEquityModelMembers(modelId: string, userId?: string) {
+async function generateGlobalEquityModelMembers(modelId: string, userId?: string) {
   console.log('📊 Generating Global Equity model members...');
 
   const targetUserId = userId || 'demo-user';

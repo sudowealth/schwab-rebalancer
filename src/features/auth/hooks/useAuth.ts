@@ -7,11 +7,8 @@ export function useAuth() {
 
   const user = session?.user
     ? {
-        id: session.user.id,
-        email: session.user.email,
-        name: session.user.name,
-        role: ((session.user as { role?: string }).role as UserRole) || 'user',
-        emailVerified: session.user.emailVerified,
+        ...session.user,
+        role: (session.user as { role?: UserRole }).role || 'user',
       }
     : null;
 

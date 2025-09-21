@@ -1,9 +1,9 @@
 import { and, eq, inArray, like } from 'drizzle-orm';
-import { dbProxy } from "~/lib/db-config";
 import * as schema from '~/db/schema';
+import { dbProxy } from '~/lib/db-config';
 
 // Combined function to seed S&P 500 securities, sleeves, and models
-export async function seedSp500Model(userId?: string) {
+async function seedSp500Model(userId?: string) {
   console.log('🚀 Starting complete S&P 500 model seeding process...');
 
   // Seed S&P 500 securities first (needed for sleeves)
@@ -211,7 +211,7 @@ export async function seedSP500Securities() {
 const createdAt = Math.floor(Date.now() / 1000);
 
 // Function to generate sleeves dynamically from S&P 500 data
-export async function generateDynamicSleeves() {
+async function generateDynamicSleeves() {
   console.log('📊 Generating sleeves from S&P 500 data...');
 
   // Get all S&P 500 securities with industry and market cap data
@@ -324,8 +324,7 @@ export async function seedSleeves(userId?: string) {
   console.log(`✅ Using user ID for sleeves: ${targetUserId}`);
 
   // Generate dynamic sleeves from S&P 500 data
-  const { sleeves: dynamicSleeves, sleeveMembers: dynamicMembers } =
-    await generateDynamicSleeves();
+  const { sleeves: dynamicSleeves, sleeveMembers: dynamicMembers } = await generateDynamicSleeves();
 
   // Clear existing dynamic S&P 500 sleeves for this user (only sleeves created by this seeder)
   const existingDynamicSleeves = await dbProxy
@@ -393,7 +392,7 @@ export async function seedSleeves(userId?: string) {
   };
 }
 
-export const getModelData = async (userId?: string) => {
+const getModelData = async (userId?: string) => {
   // Determine the correct user ID to use
   let actualUserId = userId || 'demo-user';
 
@@ -424,10 +423,7 @@ export const getModelData = async (userId?: string) => {
 };
 
 // Function to generate model members dynamically based on existing sleeves
-export async function generateDynamicModelMembers(
-  modelId: string,
-  userId?: string,
-) {
+async function generateDynamicModelMembers(modelId: string, userId?: string) {
   console.log('📊 Generating model members from existing sleeves...');
 
   // Get all sleeves from the database for the specified user
@@ -531,7 +527,6 @@ export async function seedModels(userId?: string) {
 
   // Generate and insert model members dynamically
   const modelMembersData = await generateDynamicModelMembers(
-    
     'model_sp500_index_replication',
     userId,
   );

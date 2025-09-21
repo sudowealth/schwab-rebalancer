@@ -239,15 +239,22 @@ export function useSchwabConnection(
 
   const isConnected = activeCredentialsStatus?.hasCredentials || false;
 
-  // State for OAuth callback detection
+  // State for OAuth callback detection - reset on HMR
   const [hasOAuthCallback, setHasOAuthCallback] = useState(false);
   const [hasRunInitialSync, setHasRunInitialSync] = useState(false);
 
   // Check if we just returned from OAuth callback (client-side only)
+  // Reset state on component mount/remount (HMR safe)
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const urlParams = new URLSearchParams(window.location.search);
-      setHasOAuthCallback(urlParams.has('code') || urlParams.has('state'));
+      const hasCallback = urlParams.has('code') || urlParams.has('state');
+      setHasOAuthCallback(hasCallback);
+
+      // Reset sync state on fresh mount (HMR safety)
+      if (!hasCallback) {
+        setHasRunInitialSync(false);
+      }
     }
   }, []);
 
@@ -267,6 +274,16 @@ export function useSchwabConnection(
       }
     }
   }, [isConnected, hasOAuthCallback, hasRunInitialSync, isSyncing, runFullSync]);
+
+  // Cleanup sessionStorage on unmount (HMR safety)
+  useEffect(() => {
+    return () => {
+      // Only cleanup if we're navigating away completely, not on HMR
+      if (typeof window !== 'undefined' && !import.meta.hot) {
+        sessionStorage.removeItem('schwabReturnUrl');
+      }
+    };
+  }, []);
 
   return {
     credentialsStatus,

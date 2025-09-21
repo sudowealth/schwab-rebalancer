@@ -19,6 +19,16 @@ const authInstance = betterAuth({
   },
   baseURL: process.env.BETTER_AUTH_URL || 'http://localhost:3000',
   secret: process.env.BETTER_AUTH_SECRET || 'fallback-secret',
+  user: {
+    // Include role field in user data that gets stored in session
+    additionalFields: {
+      role: {
+        type: 'string',
+        required: false,
+        defaultValue: 'user',
+      },
+    },
+  },
 });
 
 // Create a proxy that wraps the auth instance

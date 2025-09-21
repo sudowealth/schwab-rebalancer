@@ -1,3 +1,7 @@
+import { eq } from 'drizzle-orm';
+import * as schema from '~/db/schema';
+import { dbProxy } from '~/lib/db-config';
+
 type AuthModule = typeof import('./auth');
 
 // Type definitions for user roles
@@ -47,7 +51,7 @@ async function resolveAuth(): Promise<AuthModule['auth']> {
  * Get the current session and user information
  * Returns null if not authenticated
  */
-export async function getCurrentUser(): Promise<AuthenticatedUser | null> {
+async function getCurrentUser(): Promise<AuthenticatedUser | null> {
   try {
     const request = await resolveRequest();
     if (!request) {
@@ -62,10 +66,21 @@ export async function getCurrentUser(): Promise<AuthenticatedUser | null> {
       return null;
     }
 
+    // Fetch the user role from the database since it's not included in the session
+    const userRecord = await dbProxy
+      .select({ role: schema.user.role })
+      .from(schema.user)
+      .where(eq(schema.user.id, session.user.id))
+      .limit(1);
+
+    if (userRecord.length === 0) {
+      return null;
+    }
+
     return {
       id: session.user.id,
       email: session.user.email,
-      role: ((session.user as { role?: string }).role as UserRole) || 'user',
+      role: userRecord[0].role as UserRole,
       name: session.user.name,
     };
   } catch {

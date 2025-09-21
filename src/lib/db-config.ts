@@ -9,7 +9,7 @@ import * as schema from '~/db/schema';
  * Create database client - unified instance for all database operations
  * Drizzle handles connection pooling and lazy connections automatically
  */
-export function createDatabaseClient() {
+function createDatabaseClient() {
   const connectionString = process.env.DATABASE_URL || process.env.NETLIFY_DATABASE_URL;
   if (!connectionString) {
     throw new Error('DATABASE_URL or NETLIFY_DATABASE_URL environment variable is required');
@@ -23,5 +23,16 @@ export function createDatabaseClient() {
 /**
  * Unified database instance for all application database operations
  * Used by both auth and application code
+ * Lazy-loaded to ensure environment variables are available
  */
-export const dbProxy = createDatabaseClient();
+let dbInstance: ReturnType<typeof createDatabaseClient> | null = null;
+
+export const dbProxy = new Proxy({} as ReturnType<typeof createDatabaseClient>, {
+  get(_target, prop) {
+    if (!dbInstance) {
+      dbInstance = createDatabaseClient();
+    }
+    const value = dbInstance[prop as keyof typeof dbInstance];
+    return typeof value === 'function' ? value.bind(dbInstance) : value;
+  },
+});

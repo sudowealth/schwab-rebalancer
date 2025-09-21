@@ -22,7 +22,8 @@
     "src/lib/schemas.ts",
     "src/lib/seeds/**/*",
     "src/lib/auth-client.ts",
-    "src/lib/auth-utils.ts"
+    "src/lib/auth-utils.ts",
+    "src/features/auth/schemas.ts"
   ],
   "rules": {
     "files": "error",

@@ -1,7 +1,7 @@
-declare module 'better-auth/types' {
-  interface User {
-    role?: string;
+import type { User as DefaultUser } from 'better-auth';
+
+declare module 'better-auth' {
+  interface User extends DefaultUser {
+    role?: 'user' | 'admin';
   }
 }
-
-export {};

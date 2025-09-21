@@ -1,12 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute, redirect } from '@tanstack/react-router';
 import {
-  deleteUserServerFn,
   getAllUsersServerFn,
   getUserDataServerFn,
   updateUserRoleServerFn,
-  verifyAdminAccessServerFn,
-} from '~/lib/server-functions';
+} from '~/features/dashboard/admin.server';
 
 type AdminUser = Awaited<ReturnType<typeof getAllUsersServerFn>>[number];
 type UserData = Awaited<ReturnType<typeof getUserDataServerFn>>;
@@ -42,6 +40,7 @@ import {
   TableHeader,
   TableRow,
 } from '~/components/ui/table';
+import { deleteUserServerFn, verifyAdminAccessServerFn } from '~/features/auth/auth.server';
 
 export const Route = createFileRoute('/admin/users')({
   component: UserManagement,

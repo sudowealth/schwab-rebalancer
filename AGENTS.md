@@ -7,7 +7,7 @@
 - `src/db/` and `drizzle/`: ORM schema and migration files.
 - `public/`: Static assets served by Vite.
 - `scripts/`: Local utilities and development tools.
-- Key files: server functions `src/lib/server-functions.ts`, DB schema `src/db/schema.ts`, DB ops `src/lib/db-api.ts`, rebalancing engine `src/lib/rebalance-logic.ts`.
+- Key files: server functions `src/lib/server-functions.ts`, DB schema `src/db/schema.ts`, DB ops `src/lib/db-api.ts`, DB config `src/lib/db-config.ts` (lazy-loaded), rebalancing engine `src/lib/rebalance-logic.ts`.
 
 ## Architecture Overview
 
@@ -78,11 +78,15 @@
 - **Error Handling**: Implement comprehensive error boundaries and fallbacks
 
 ### 🔧 Server Functions
+- **Database Imports**: Use static imports for database connections at the top of server functions (e.g., `import { dbProxy } from '~/lib/db-config'`). Avoid dynamic imports for performance.
+- **Database Configuration**: Use lazy-loaded database proxies to ensure environment variables are available at runtime (not import time).
+- **Authentication**: Better Auth sessions don't include custom user fields like roles. Fetch them from the database using the session user ID when needed.
+- **Client-side Auth Hook**: Use `useAuth()` hook that shows user data immediately from session, fetching role data in background only when needed for optimal UX.
 - **Validation**: Use Zod validators on all server functions for type safety
 - **Error Handling**: Standardize error responses with consistent error codes
 - **Security**: Implement rate limiting and input sanitization
-- **Performance**: Use database connection pooling and optimize queries with `select()`
-- **Auth**: Use `requireAuth()` and `requireAdmin()` guards consistently
+- **Performance**: Use database connection pooling and optimize queries with `select()` instead of selecting all columns
+- **Auth Guards**: Use `requireAuth()` and `requireAdmin()` consistently for protecting server functions
 
 ### ⚛️ Component Architecture
 - **Feature-based**: Organize by feature with `components/`, `hooks/`, `server.ts` structure

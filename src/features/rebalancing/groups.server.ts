@@ -105,10 +105,6 @@ export const getRebalancingGroupByIdServerFn = createServerFn({
     return group;
   });
 
-export type RebalancingGroupByIdResult = Awaited<
-  ReturnType<typeof getRebalancingGroupByIdServerFn>
->;
-
 // Server function to get account holdings for rebalancing group - runs ONLY on server
 export const getGroupAccountHoldingsServerFn = createServerFn({
   method: 'POST',
