@@ -185,6 +185,55 @@ export const getSleeveMembersServerFn = createServerFn({ method: 'POST' })
     return sleeveMembers;
   });
 
+// Server function to get rebalancing groups with calculated balances - runs ONLY on server
+export const getRebalancingGroupsWithBalancesServerFn = createServerFn({
+  method: 'GET',
+}).handler(async (): Promise<RebalancingGroup[]> => {
+  // Handle unauthenticated requests gracefully during SSR
+
+  try {
+    const { user } = await requireAuth();
+    const _db = dbProxy;
+    const { getRebalancingGroups, getAccountHoldings } = await import('~/lib/db-api');
+
+    // Get all rebalancing groups for the user
+    const groups = await getRebalancingGroups(user.id);
+
+    // Collect all account IDs from all groups
+    const allAccountIds = groups.flatMap((group) =>
+      group.members.map((member) => member.accountId),
+    );
+
+    // Get account holdings for all accounts in a single query
+    const accountHoldings = allAccountIds.length > 0 ? await getAccountHoldings(allAccountIds) : [];
+
+    // Update group members with calculated balances from holdings
+    const updatedGroups = groups.map((group) => {
+      const updatedMembers = group.members.map((member) => {
+        const accountData = accountHoldings.find((ah) => ah.accountId === member.accountId);
+        return {
+          ...member,
+          balance: accountData ? accountData.accountBalance : member.balance,
+        };
+      });
+
+      return {
+        ...group,
+        members: updatedMembers,
+      };
+    });
+
+    return updatedGroups;
+  } catch (error) {
+    // Handle authentication errors gracefully during SSR
+    console.warn(
+      'Rebalancing groups with balances load failed during SSR, returning empty data:',
+      error,
+    );
+    return [];
+  }
+});
+
 export type SleeveMember = Awaited<ReturnType<typeof getSleeveMembersServerFn>>[number];
 
 // Server function to assign a model to a rebalancing group - runs ONLY on server

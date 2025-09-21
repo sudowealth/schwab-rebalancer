@@ -13,49 +13,8 @@ import { useDashboardData } from '~/features/dashboard/hooks/use-dashboard-data'
 import { useExcelExport } from '~/lib/excel-export';
 import {
   getDashboardDataServerFn,
-  getGroupAccountHoldingsServerFn,
-  getRebalancingGroupsServerFn,
+  getRebalancingGroupsWithBalancesServerFn,
 } from '~/lib/server-functions';
-
-// Utility function that replicates the exact loader logic from /rebalancing-groups route
-async function loadRebalancingGroupsData() {
-  try {
-    const groups = await getRebalancingGroupsServerFn();
-
-    // Get account holdings for all groups to calculate proper balances
-    const updatedGroups = await Promise.all(
-      groups.map(async (group) => {
-        const accountIds = group.members.map((member) => member.accountId);
-        const accountHoldings =
-          accountIds.length > 0
-            ? await getGroupAccountHoldingsServerFn({
-                data: { accountIds },
-              })
-            : [];
-
-        // Update group members with calculated balances from holdings
-        const updatedMembers = group.members.map((member) => {
-          const accountData = accountHoldings.find((ah) => ah.accountId === member.accountId);
-          return {
-            ...member,
-            balance: accountData ? accountData.accountBalance : member.balance,
-          };
-        });
-
-        return {
-          ...group,
-          members: updatedMembers,
-        };
-      }),
-    );
-
-    return updatedGroups;
-  } catch (error) {
-    // Handle authentication errors gracefully during SSR
-    console.warn('Rebalancing groups load failed during SSR, returning empty data:', error);
-    return [];
-  }
-}
 
 export const Route = createFileRoute('/')({
   component: DashboardComponent,
@@ -79,7 +38,7 @@ export const Route = createFileRoute('/')({
           };
         })(),
         // Rebalancing groups are needed for onboarding status, so keep this
-        loadRebalancingGroupsData(),
+        getRebalancingGroupsWithBalancesServerFn(),
       ]);
 
       // Extract results, providing fallbacks for failed promises

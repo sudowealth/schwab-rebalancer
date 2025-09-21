@@ -76,6 +76,7 @@ export {
   getHoldingsForMultipleGroupsServerFn,
   getRebalancingGroupByIdServerFn,
   getRebalancingGroupsServerFn,
+  getRebalancingGroupsWithBalancesServerFn,
   getSleeveMembersServerFn,
   unassignModelFromGroupServerFn,
   updateRebalancingGroupServerFn,
