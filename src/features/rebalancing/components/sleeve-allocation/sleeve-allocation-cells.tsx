@@ -1,8 +1,9 @@
+import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Badge } from '~/components/ui/badge';
 import { CASH_TICKER } from '~/lib/constants';
+import { calculateTradeMetricsServerFn } from '~/lib/server-functions';
 import { formatCurrency, formatPercent, formatQuantity } from '~/lib/utils';
-import { calculateTradeMetrics } from '../sleeve-allocation/sleeve-allocation-utils';
 import type { Trade } from './sleeve-allocation-types';
 
 interface CellProps {
@@ -630,17 +631,36 @@ export const PostTradeDiffCell: React.FC<PostTradeValueCellProps & { totalCashVa
   isCashSleeve,
   totalCashValue,
 }) => {
+  const { data: postTradeDiffResult } = useQuery({
+    queryKey: [
+      'postTradeDiff',
+      currentValue,
+      targetValue,
+      trades,
+      tickers,
+      isCashSleeve,
+      totalCashValue,
+    ],
+    queryFn: () =>
+      calculateTradeMetricsServerFn({
+        data: {
+          currentValue,
+          targetValue,
+          trades,
+          tickers,
+          totalCurrentValue: 0, // Not needed for this calculation
+          calculationType: 'postTradeDiff',
+          isCashSleeve,
+          totalCashValue,
+        },
+      }),
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    enabled: trades.length > 0,
+  });
+
   if (trades.length === 0) return null;
 
-  const postTradeDiff = calculateTradeMetrics.getPostTradeDiff(
-    currentValue,
-    targetValue,
-    trades,
-    tickers,
-    isCashSleeve,
-    totalCashValue,
-  );
-
+  const postTradeDiff = postTradeDiffResult?.result ?? 0;
   const colorClass = postTradeDiff >= 0 ? 'text-green-600' : 'text-red-600';
 
   return (
@@ -672,19 +692,40 @@ export const PostTradePercentCell: React.FC<
   isCashSleeve,
   totalCashValue,
 }) => {
-  if (trades.length === 0) return null;
-
   // Calculate total trade value to get final portfolio value
   const totalTradeValue = trades.reduce((sum, t) => sum + t.estValue, 0);
-  const { postTradePercent } = calculateTradeMetrics.getPostTradeMetrics(
-    currentValue,
-    trades,
-    tickers,
-    totalCurrentValue,
-    totalTradeValue,
-    isCashSleeve,
-    totalCashValue,
-  );
+
+  const { data: postTradePercentResult } = useQuery({
+    queryKey: [
+      'postTradePercent',
+      currentValue,
+      trades,
+      tickers,
+      totalCurrentValue,
+      totalTradeValue,
+      isCashSleeve,
+      totalCashValue,
+    ],
+    queryFn: () =>
+      calculateTradeMetricsServerFn({
+        data: {
+          currentValue,
+          trades,
+          tickers,
+          totalCurrentValue,
+          totalTradeValue,
+          calculationType: 'postTradePercent',
+          isCashSleeve,
+          totalCashValue,
+        },
+      }),
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    enabled: trades.length > 0,
+  });
+
+  if (trades.length === 0) return null;
+
+  const postTradePercent = postTradePercentResult?.result ?? 0;
 
   return (
     <td className={`p-2 text-right ${className}`}>
@@ -716,26 +757,42 @@ export const PostTradeDiffPercentCell: React.FC<
   isCashSleeve,
   totalCashValue,
 }) => {
-  if (trades.length === 0) return null;
-
   // Calculate total trade value to get final portfolio value
   const totalTradeValue = trades.reduce((sum, t) => sum + t.estValue, 0);
-  const { postTradePercent } = calculateTradeMetrics.getPostTradeMetrics(
-    currentValue,
-    trades,
-    tickers,
-    totalCurrentValue,
-    totalTradeValue,
-    isCashSleeve,
-    totalCashValue,
-  );
 
-  // For cash, show the remaining percentage (since target is 0%)
-  const percentDistanceFromTarget = isCashSleeve
-    ? postTradePercent
-    : targetPercent > 0
-      ? ((postTradePercent - targetPercent) / targetPercent) * 100
-      : postTradePercent;
+  const { data: postTradeDiffPercentResult } = useQuery({
+    queryKey: [
+      'postTradeDiffPercent',
+      currentValue,
+      targetPercent,
+      trades,
+      tickers,
+      totalCurrentValue,
+      totalTradeValue,
+      isCashSleeve,
+      totalCashValue,
+    ],
+    queryFn: () =>
+      calculateTradeMetricsServerFn({
+        data: {
+          currentValue,
+          targetPercent,
+          trades,
+          tickers,
+          totalCurrentValue,
+          totalTradeValue,
+          calculationType: 'postTradeDiffPercent',
+          isCashSleeve,
+          totalCashValue,
+        },
+      }),
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    enabled: trades.length > 0,
+  });
+
+  if (trades.length === 0) return null;
+
+  const percentDistanceFromTarget = postTradeDiffPercentResult?.result ?? 0;
 
   const colorClass = isCashSleeve
     ? '' // No color for cash since it's just showing remaining amount

@@ -6,6 +6,9 @@ interface TradeData {
   estValue: number;
 }
 
+// NOTE: Heavy trade calculations have been moved to server-side functions.
+// This client-side version is kept primarily for synchronous sorting operations.
+// For display calculations, use calculateTradeMetricsServerFn instead.
 export const calculateTradeMetrics = {
   // Calculate net quantity for a security/sleeve
   getNetQty: (trades: TradeData[], tickers: string[]): number => {

@@ -84,6 +84,7 @@ export {
 export type { RebalancePortfolioServerFnResult } from '~/features/rebalancing/portfolio.server';
 // Portfolio management and rebalancing
 export {
+  calculateTradeMetricsServerFn,
   getManualCashServerFn,
   rebalancePortfolioServerFn,
   updateManualCashServerFn,
