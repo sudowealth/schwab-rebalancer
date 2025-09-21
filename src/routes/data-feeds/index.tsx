@@ -1,28 +1,14 @@
-import { createFileRoute, redirect } from '@tanstack/react-router';
+import { createFileRoute } from '@tanstack/react-router';
 import { useEffect } from 'react';
 import { SeedDataSection } from '~/features/data-feeds/components/SeedDataSection';
 import { SyncHistory } from '~/features/data-feeds/components/SyncHistory';
 import { YahooIntegration } from '~/features/data-feeds/components/YahooIntegration';
 import { SchwabIntegration } from '~/features/schwab/components/SchwabIntegration';
-import { getDashboardDataServerFn } from '~/lib/server-functions';
+import { authGuard } from '~/lib/route-guards';
 
 export const Route = createFileRoute('/data-feeds/')({
   component: DataFeedsPage,
-  loader: async () => {
-    try {
-      // Use an existing server function that checks authentication
-      // We only need to verify auth, not actually use the data
-      await getDashboardDataServerFn();
-      return { authenticated: true };
-    } catch (error) {
-      // If authentication error, redirect to login
-      if (error instanceof Error && error.message.includes('Authentication required')) {
-        throw redirect({ to: '/login', search: { reset: '', redirect: '/data-feeds' } });
-      }
-      // Re-throw other errors
-      throw error;
-    }
-  },
+  beforeLoad: authGuard,
 });
 
 function DataFeedsPage() {

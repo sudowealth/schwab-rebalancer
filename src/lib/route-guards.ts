@@ -1,6 +1,5 @@
 import { redirect } from '@tanstack/react-router';
-import { verifyAdminAccessServerFn } from '~/features/auth/auth.server';
-import { getDashboardDataServerFn } from '~/lib/server-functions';
+import { checkAdminServerFn, checkAuthServerFn } from '~/lib/server-functions';
 
 /**
  * Auth guard for routes that require authentication
@@ -8,8 +7,8 @@ import { getDashboardDataServerFn } from '~/lib/server-functions';
  */
 export const authGuard = async ({ location }: { location: { href: string } }) => {
   try {
-    // Use existing server function that does auth checking internally
-    await getDashboardDataServerFn();
+    // Use lightweight server function auth check
+    await checkAuthServerFn();
     return { authenticated: true };
   } catch (error) {
     if (error instanceof Error && error.message.includes('Authentication required')) {
@@ -28,8 +27,8 @@ export const authGuard = async ({ location }: { location: { href: string } }) =>
  */
 export const adminGuard = async ({ location }: { location: { href: string } }) => {
   try {
-    // Use existing server function that does admin auth checking
-    await verifyAdminAccessServerFn();
+    // Use lightweight server function admin check
+    await checkAdminServerFn();
     return { authenticated: true, isAdmin: true };
   } catch (error) {
     if (

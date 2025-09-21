@@ -1,4 +1,4 @@
-import { createFileRoute, redirect } from '@tanstack/react-router';
+import { createFileRoute } from '@tanstack/react-router';
 import { BarChart3, FileText, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '~/components/ui/button';
@@ -6,23 +6,15 @@ import type { Sleeve, Transaction } from '~/features/auth/schemas';
 import { AddSleeveModal } from '~/features/sleeves/components/add-sleeve-modal';
 import { DeleteSleeveModal } from '~/features/sleeves/components/delete-sleeve-modal';
 import { EditSleeveModal } from '~/features/sleeves/components/edit-sleeve-modal';
+import { authGuard } from '~/lib/route-guards';
 import { getDashboardDataServerFn } from '~/lib/server-functions';
 
 export const Route = createFileRoute('/sleeves/')({
   component: SleevesComponent,
+  beforeLoad: authGuard,
   loader: async () => {
-    try {
-      // Server function handles authentication
-      const data = await getDashboardDataServerFn();
-      return data;
-    } catch (error) {
-      // If authentication error, redirect to login
-      if (error instanceof Error && error.message.includes('Authentication required')) {
-        throw redirect({ to: '/login', search: { reset: '', redirect: '/sleeves' } });
-      }
-      // Re-throw other errors
-      throw error;
-    }
+    const data = await getDashboardDataServerFn();
+    return data;
   },
 });
 

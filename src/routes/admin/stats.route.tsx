@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { createFileRoute, redirect } from '@tanstack/react-router';
+import { createFileRoute } from '@tanstack/react-router';
 import {
   Activity,
   BarChart3,
@@ -12,29 +12,16 @@ import {
 } from 'lucide-react';
 import { Button } from '~/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card';
-import { getSystemStatsServerFn, verifyAdminAccessServerFn } from '~/lib/server-functions';
+import { adminGuard } from '~/lib/route-guards';
+import { getSystemStatsServerFn } from '~/lib/server-functions';
 
 export const Route = createFileRoute('/admin/stats')({
   component: SystemStats,
+  beforeLoad: adminGuard,
   loader: async () => {
-    try {
-      // Server-side admin verification
-      await verifyAdminAccessServerFn();
-      // Pre-load stats data
-      const stats = await getSystemStatsServerFn();
-      return stats;
-    } catch (error) {
-      // If not admin or not authenticated, redirect
-      if (error instanceof Error) {
-        if (error.message.includes('Admin access required')) {
-          throw redirect({ to: '/' });
-        }
-        if (error.message.includes('Authentication required')) {
-          throw redirect({ to: '/login', search: { reset: '', redirect: '/' } });
-        }
-      }
-      throw error;
-    }
+    // Pre-load stats data
+    const stats = await getSystemStatsServerFn();
+    return stats;
   },
 });
 

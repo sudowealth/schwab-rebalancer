@@ -15,6 +15,7 @@ import type { RebalancingGroup, Sleeve } from '~/features/auth/schemas';
 import { SleeveModal } from '~/features/dashboard/components/sleeve-modal';
 import { DeleteModelModal } from '~/features/models/components/delete-model-modal';
 import { EditModelModal } from '~/features/models/components/edit-model-modal';
+import { authGuard } from '~/lib/route-guards';
 import {
   getDashboardDataServerFn,
   getModelByIdServerFn,
@@ -23,6 +24,7 @@ import {
 
 export const Route = createFileRoute('/models/$modelId')({
   component: ModelDetailComponent,
+  beforeLoad: authGuard,
   loader: async ({ params: { modelId } }) => {
     try {
       // Parallelize all server calls for better performance
@@ -38,11 +40,7 @@ export const Route = createFileRoute('/models/$modelId')({
       );
 
       return { model, dashboardData, rebalancingGroups };
-    } catch (error) {
-      // If authentication error, redirect to login
-      if (error instanceof Error && error.message.includes('Authentication required')) {
-        throw redirect({ to: '/login', search: { reset: '', redirect: `/models/${modelId}` } });
-      }
+    } catch (_error) {
       // If model not found or other error, redirect to models list
       throw redirect({ to: '/models', search: { reset: '' } });
     }

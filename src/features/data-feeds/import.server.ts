@@ -6,13 +6,18 @@ import { CASH_TICKER, isAnyCashTicker } from '~/lib/constants';
 import { clearCache, getPositions } from '~/lib/db-api';
 import { dbProxy } from '~/lib/db-config';
 import { getErrorMessage, ValidationError } from '~/lib/error-handler';
+import {
+  getSchwabCredentialsStatusServerFn,
+  syncSchwabPricesServerFn,
+} from '../schwab/schwab.server';
 import type { SyncYahooFundamentalsResult } from './yahoo.server';
+import { syncYahooFundamentalsServerFn } from './yahoo.server';
 
 // Server function to seed demo data - runs ONLY on server
 export const seedDemoDataServerFn = createServerFn({ method: 'POST' }).handler(async () => {
   const { user } = await requireAuth();
   const _db = dbProxy;
-  const { seedDatabase } = await import('~/db/seeds/main');
+  const { seedDatabase } = await import('~/db/seeds/main'); // Keep dynamic for seed data
   await seedDatabase(user.id);
 
   return {
@@ -76,9 +81,6 @@ export const seedSecuritiesDataServerFn = createServerFn({ method: 'POST' }).han
     equitySyncResult.importedTickers.length > 0
   ) {
     try {
-      const { getSchwabCredentialsStatusServerFn } = await import(
-        '~/features/schwab/schwab.server'
-      );
       const schwabStatus = await getSchwabCredentialsStatusServerFn();
       if (schwabStatus?.hasCredentials) {
         // Filter tickers to only include those that appear in holdings, indices, or sleeves
@@ -91,7 +93,6 @@ export const seedSecuritiesDataServerFn = createServerFn({ method: 'POST' }).han
             '🔄 Starting automatic Schwab price sync for relevant newly imported securities:',
             relevantTickers,
           );
-          const { syncSchwabPricesServerFn } = await import('~/features/schwab/schwab.server');
           schwabSyncResult = await syncSchwabPricesServerFn({
             data: { symbols: relevantTickers },
           });
@@ -122,7 +123,6 @@ export const seedSecuritiesDataServerFn = createServerFn({ method: 'POST' }).han
   if (equitySyncResult.imported > 0) {
     try {
       console.log('🔄 Starting Yahoo sync for newly imported securities missing data...');
-      const { syncYahooFundamentalsServerFn } = await import('./yahoo.server');
       yahooSyncResult = (await syncYahooFundamentalsServerFn({
         data: { scope: 'held-sleeve-securities-missing-data' },
       })) as SyncYahooFundamentalsResult;

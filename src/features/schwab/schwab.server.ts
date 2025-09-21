@@ -15,6 +15,9 @@ import {
 import { dbProxy } from '~/lib/db-config';
 import { getErrorMessage } from '~/lib/error-handler';
 import { requireAuth } from '../auth/auth-utils';
+import { getPriceSyncService } from '../data-feeds/price-sync';
+import { getSchwabApiService } from './schwab-api.server';
+import { getSchwabSyncService } from './schwab-sync.server';
 
 // Utility function to validate Schwab environment variables
 function validateSchwabEnvironment() {
@@ -128,8 +131,7 @@ export const getSchwabOAuthUrlServerFn = createServerFn({ method: 'POST' })
       // Validate environment variables (separated concern)
       validateSchwabEnvironment();
 
-      console.log('📦 [ServerFn] Importing Schwab API service...');
-      const { getSchwabApiService } = await import('~/features/schwab/schwab-api.server');
+      console.log('📦 [ServerFn] Getting Schwab API service...');
       const schwabApi = getSchwabApiService();
 
       console.log('🔗 [ServerFn] Getting OAuth URL...');
@@ -181,8 +183,7 @@ export const handleSchwabOAuthCallbackServerFn = createServerFn({
         throw new Error('SCHWAB_CLIENT_SECRET is not set in environment variables');
       }
 
-      console.log('📦 [ServerFn] Importing Schwab API service...');
-      const { getSchwabApiService } = await import('~/features/schwab/schwab-api.server');
+      console.log('📦 [ServerFn] Getting Schwab API service...');
       const schwabApi = getSchwabApiService();
 
       console.log('🔄 [ServerFn] Handling OAuth callback...');
@@ -226,7 +227,6 @@ export const getSchwabCredentialsStatusServerFn = createServerFn({
     }
 
     console.log('📦 [ServerFn] Importing Schwab API service...');
-    const { getSchwabApiService } = await import('~/features/schwab/schwab-api.server');
     const schwabApi = getSchwabApiService();
 
     console.log('✅ [ServerFn] Checking credentials validity...');
@@ -253,7 +253,6 @@ export const syncSchwabAccountsServerFn = createServerFn({
     const _db = dbProxy;
     console.log('👤 [ServerFn] Using user ID:', user.id);
 
-    const { getSchwabSyncService } = await import('~/features/schwab/schwab-sync.server');
     const syncService = getSchwabSyncService();
     console.log('🔧 [ServerFn] Schwab sync service initialized');
 
@@ -295,7 +294,6 @@ export const syncSchwabHoldingsServerFn = createServerFn({ method: 'POST' })
       const _db = dbProxy;
       console.log('👤 [ServerFn] Using user ID:', user.id);
 
-      const { getSchwabSyncService } = await import('~/features/schwab/schwab-sync.server');
       const syncService = getSchwabSyncService();
       console.log('🔧 [ServerFn] Schwab sync service initialized');
 
@@ -329,7 +327,6 @@ export const syncSchwabTransactionsServerFn = createServerFn({ method: 'POST' })
     try {
       const { user } = await requireAuth();
       const _db = dbProxy;
-      const { getSchwabSyncService } = await import('~/features/schwab/schwab-sync.server');
       const syncService = getSchwabSyncService();
       const startDate = data.startDate ? new Date(data.startDate) : undefined;
       const endDate = data.endDate ? new Date(data.endDate) : undefined;
@@ -619,7 +616,6 @@ export const syncGroupPricesIfNeededServerFn = createServerFn({
       const { groupId } = data;
 
       // Check if user is connected to Schwab
-      const { getSchwabApiService } = await import('~/features/schwab/schwab-api.server');
       const schwabApi = getSchwabApiService();
 
       let isConnectedToSchwab = false;
@@ -707,7 +703,6 @@ export const syncSchwabPricesServerFn = createServerFn({ method: 'POST' })
       console.log('📝 [ServerFn] Created sync log for prices:', logId);
 
       try {
-        const { getPriceSyncService } = await import('~/features/data-feeds/price-sync');
         const priceSyncService = getPriceSyncService();
         console.log('🔧 [ServerFn] Price sync service initialized');
 
@@ -844,7 +839,6 @@ export const revokeSchwabCredentialsServerFn = createServerFn({
       throw new Error('SCHWAB_CLIENT_SECRET is not set in environment variables');
     }
 
-    const { getSchwabApiService } = await import('~/features/schwab/schwab-api.server');
     const schwabApi = getSchwabApiService();
     console.log('🔧 [ServerFn] Schwab API service initialized');
 

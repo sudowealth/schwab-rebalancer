@@ -11,6 +11,20 @@ export const getEnvironmentInfoServerFn = createServerFn().handler(async () => {
   };
 });
 
+// Lightweight auth check server function for route guards
+export const checkAuthServerFn = createServerFn().handler(async () => {
+  const { requireAuth } = await import('~/features/auth/auth-utils');
+  const { user } = await requireAuth();
+  return { authenticated: true, user };
+});
+
+// Lightweight admin check server function for route guards
+export const checkAdminServerFn = createServerFn().handler(async () => {
+  const { verifyAdminAccessServerFn } = await import('~/features/auth/auth.server');
+  await verifyAdminAccessServerFn();
+  return { authenticated: true, isAdmin: true };
+});
+
 // Auth server functions
 export {
   checkIsFirstUserServerFn,

@@ -1,14 +1,16 @@
 import { useQuery } from '@tanstack/react-query';
-import { createFileRoute, redirect } from '@tanstack/react-router';
+import { createFileRoute } from '@tanstack/react-router';
 import { useMemo } from 'react';
 import { ExportButton } from '~/components/ui/export-button';
 import { SecuritiesTable } from '~/features/dashboard/components/securities-table';
 import { getIndices, getSnP500Data } from '~/lib/api';
 import { useExcelExport } from '~/lib/excel-export';
+import { authGuard } from '~/lib/route-guards';
 import { getDashboardDataServerFn } from '~/lib/server-functions';
 
 export const Route = createFileRoute('/settings/securities')({
   component: SecuritiesComponent,
+  beforeLoad: authGuard,
   validateSearch: (search) => ({
     page:
       typeof search.page === 'string'
@@ -24,17 +26,7 @@ export const Route = createFileRoute('/settings/securities')({
     index: typeof search.index === 'string' ? search.index : '',
   }),
   loader: async ({ context: _context }) => {
-    try {
-      // Try to load dashboard data (will fail if not authenticated)
-      return await getDashboardDataServerFn();
-    } catch (error) {
-      // If authentication error, redirect to login
-      if (error instanceof Error && error.message.includes('Authentication required')) {
-        throw redirect({ to: '/login', search: { reset: '', redirect: '/settings/securities' } });
-      }
-      // Re-throw other errors
-      throw error;
-    }
+    return await getDashboardDataServerFn();
   },
 });
 
