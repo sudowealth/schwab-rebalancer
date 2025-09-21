@@ -1,4 +1,5 @@
 import { createServerFn } from '@tanstack/react-start';
+import { throwServerError } from '~/lib/error-utils';
 import { createModel, deleteModel, getModelById, getModels, updateModel } from '../../lib/db-api';
 import { requireAuth } from '../auth/auth-utils';
 
@@ -28,7 +29,7 @@ export const createModelServerFn = createServerFn({ method: 'POST' })
     const { name, description, members, updateExisting } = data;
 
     if (!name || !members || !Array.isArray(members)) {
-      throw new Error('Invalid request: name and members array required');
+      throwServerError('Invalid request: name and members array required', 400);
     }
 
     // Import database API only on the server
@@ -61,7 +62,7 @@ export const updateModelServerFn = createServerFn({ method: 'POST' })
     const { modelId, name, description, members } = data;
 
     if (!modelId || !name || !members || !Array.isArray(members)) {
-      throw new Error('Invalid request: modelId, name and members array required');
+      throwServerError('Invalid request: modelId, name and members array required', 400);
     }
 
     // Import database API only on the server
@@ -79,7 +80,7 @@ export const deleteModelServerFn = createServerFn({ method: 'POST' })
     const { modelId } = data;
 
     if (!modelId) {
-      throw new Error('Invalid request: modelId required');
+      throwServerError('Invalid request: modelId required', 400);
     }
 
     // Import database API only on the server
@@ -97,7 +98,7 @@ export const getModelByIdServerFn = createServerFn({ method: 'POST' })
     const { modelId } = data;
 
     if (!modelId) {
-      throw new Error('Invalid request: modelId required');
+      throwServerError('Invalid request: modelId required', 400);
     }
 
     // Import database API only on the server

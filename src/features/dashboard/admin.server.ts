@@ -3,6 +3,7 @@ import { desc, eq, sql } from 'drizzle-orm';
 import * as schema from '~/db/schema';
 import { requireAdmin } from '~/features/auth/auth-utils';
 import { dbProxy } from '~/lib/db-config';
+import { throwServerError } from '~/lib/error-utils';
 
 // Get all users (admin only)
 export const getAllUsersServerFn = createServerFn({ method: 'GET' }).handler(async () => {
@@ -40,7 +41,7 @@ export const updateUserRoleServerFn = createServerFn({ method: 'POST' })
       .limit(1);
 
     if (existingUser.length === 0) {
-      throw new Error('User not found');
+      throwServerError('User not found', 404);
     }
 
     // Update role
@@ -140,7 +141,7 @@ export const getUserDataServerFn = createServerFn({ method: 'GET' })
       .limit(1);
 
     if (user.length === 0) {
-      throw new Error('User not found');
+      throwServerError('User not found', 404);
     }
 
     // Get all user data

@@ -298,8 +298,9 @@ export const updateAccountServerFn = createServerFn({ method: 'POST' })
 
     // Validate account type if provided
     if (type && !['TAXABLE', 'TAX_DEFERRED', 'TAX_EXEMPT', ''].includes(type)) {
-      throw new Error(
+      throwServerError(
         'Invalid account type. Must be TAXABLE, TAX_DEFERRED, TAX_EXEMPT, or empty string',
+        400,
       );
     }
 

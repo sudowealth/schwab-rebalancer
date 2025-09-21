@@ -1,5 +1,6 @@
 import { createServerFn } from '@tanstack/react-start';
 import { DatabaseError, logError, ValidationError, withRetry } from '~/lib/error-handler';
+import { throwServerError } from '~/lib/error-utils';
 import {
   createSleeve,
   deleteSleeve,
@@ -90,7 +91,7 @@ export const updateSleeveServerFn = createServerFn({ method: 'POST' })
     const { sleeveId, name, members } = data;
 
     if (!sleeveId || !name || !members || !Array.isArray(members)) {
-      throw new Error('Invalid request: sleeveId, name and members array required');
+      throwServerError('Invalid request: sleeveId, name and members array required', 400);
     }
 
     // Import database API only on the server
@@ -108,7 +109,7 @@ export const deleteSleeveServerFn = createServerFn({ method: 'POST' })
     const { sleeveId } = data;
 
     if (!sleeveId) {
-      throw new Error('Invalid request: sleeveId required');
+      throwServerError('Invalid request: sleeveId required', 400);
     }
 
     // Import database API only on the server
@@ -126,7 +127,7 @@ export const getSleeveByIdServerFn = createServerFn({ method: 'POST' })
     const { sleeveId } = data;
 
     if (!sleeveId) {
-      throw new Error('Invalid request: sleeveId required');
+      throwServerError('Invalid request: sleeveId required', 400);
     }
 
     // Import database API only on the server
@@ -144,7 +145,7 @@ export const getSleeveHoldingsInfoServerFn = createServerFn({ method: 'POST' })
     const { sleeveId } = data;
 
     if (!sleeveId) {
-      throw new Error('Invalid request: sleeveId required');
+      throwServerError('Invalid request: sleeveId required', 400);
     }
 
     // Import database API only on the server

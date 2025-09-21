@@ -15,6 +15,7 @@ import {
   updateRebalancingGroup,
 } from '~/lib/db-api';
 import { dbProxy } from '~/lib/db-config';
+import { throwServerError } from '~/lib/error-utils';
 import { requireAuth } from '../auth/auth-utils';
 
 // Server function to get all rebalancing groups - runs ONLY on server
@@ -48,7 +49,7 @@ export const createRebalancingGroupServerFn = createServerFn({ method: 'POST' })
     const { name, members, updateExisting } = data;
 
     if (!name || !members || !Array.isArray(members)) {
-      throw new Error('Invalid request: name and members array required');
+      throwServerError('Invalid request: name and members array required', 400);
     }
     const groupId = await createRebalancingGroup({ name, members, updateExisting }, user.id);
     return { success: true, groupId };
@@ -65,7 +66,7 @@ export const updateRebalancingGroupServerFn = createServerFn({ method: 'POST' })
     const { groupId, name, members } = data;
 
     if (!groupId || !name || !members || !Array.isArray(members)) {
-      throw new Error('Invalid request: groupId, name and members array required');
+      throwServerError('Invalid request: groupId, name and members array required', 400);
     }
     await updateRebalancingGroup(groupId, { name, members }, user.id);
     return { success: true };
@@ -81,7 +82,7 @@ export const deleteRebalancingGroupServerFn = createServerFn({ method: 'POST' })
     const { groupId } = data;
 
     if (!groupId) {
-      throw new Error('Invalid request: groupId required');
+      throwServerError('Invalid request: groupId required', 400);
     }
 
     await deleteRebalancingGroup(groupId, user.id);
@@ -100,7 +101,7 @@ export const getRebalancingGroupByIdServerFn = createServerFn({
     const { groupId } = data;
 
     if (!groupId) {
-      throw new Error('Invalid request: groupId required');
+      throwServerError('Invalid request: groupId required', 400);
     }
 
     const group = await getRebalancingGroupById(groupId, user.id);
@@ -116,7 +117,7 @@ export const getGroupAccountHoldingsServerFn = createServerFn({
     const { accountIds } = data;
 
     if (!accountIds || accountIds.length === 0) {
-      throw new Error('Invalid request: accountIds required');
+      throwServerError('Invalid request: accountIds required', 400);
     }
 
     // Handle unauthenticated requests gracefully during SSR
@@ -132,7 +133,7 @@ export const getGroupAccountHoldingsServerFn = createServerFn({
         .where(and(eq(schema.account.userId, user.id), inArray(schema.account.id, accountIds)));
 
       if (ownedAccounts.length !== accountIds.length) {
-        throw new Error('Access denied: One or more accounts do not belong to you');
+        throwServerError('Access denied: One or more accounts do not belong to you', 403);
       }
 
       const result = await getAccountHoldings(accountIds);
@@ -174,7 +175,7 @@ export const getSleeveMembersServerFn = createServerFn({ method: 'POST' })
     const { sleeveIds } = data;
 
     if (!sleeveIds || sleeveIds.length === 0) {
-      throw new Error('Invalid request: sleeveIds required');
+      throwServerError('Invalid request: sleeveIds required', 400);
     }
 
     const sleeveMembers = await getSleeveMembers(sleeveIds);
@@ -239,7 +240,7 @@ export const assignModelToGroupServerFn = createServerFn({ method: 'POST' })
     const { modelId, groupId } = data;
 
     if (!modelId || !groupId) {
-      throw new Error('Invalid request: modelId and groupId required');
+      throwServerError('Invalid request: modelId and groupId required', 400);
     }
 
     const { user } = await requireAuth();
@@ -255,7 +256,7 @@ export const unassignModelFromGroupServerFn = createServerFn({ method: 'POST' })
     const { modelId, groupId } = data;
 
     if (!modelId || !groupId) {
-      throw new Error('Invalid request: modelId and groupId required');
+      throwServerError('Invalid request: modelId and groupId required', 400);
     }
 
     const { user } = await requireAuth();
@@ -269,7 +270,7 @@ export const unassignModelFromGroupServerFn = createServerFn({ method: 'POST' })
       .limit(1);
 
     if (group.length === 0 || group[0].userId !== user.id) {
-      throw new Error('Access denied: Rebalancing group not found or does not belong to you');
+      throwServerError('Access denied: Rebalancing group not found or does not belong to you', 403);
     }
 
     await unassignModelFromGroup(modelId, groupId);

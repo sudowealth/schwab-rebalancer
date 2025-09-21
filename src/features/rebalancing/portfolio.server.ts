@@ -10,6 +10,7 @@ import {
 import { clearCache } from '~/lib/db-api';
 import { dbProxy } from '~/lib/db-config';
 import { getErrorMessage } from '~/lib/error-handler';
+import { throwServerError } from '~/lib/error-utils';
 import { requireAuth } from '../auth/auth-utils';
 import type { RebalanceSecurityData, RebalanceSleeveDataNew } from './rebalance-logic.server';
 import { executeRebalance } from './rebalance-logic.server';
@@ -40,7 +41,7 @@ export const rebalancePortfolioServerFn = createServerFn({ method: 'POST' })
     console.log(`🎯 SERVER DEBUG: Received method: ${method}, cashAmount: ${cashLogValue}`);
 
     if (!portfolioId || !method) {
-      throw new Error('Invalid request: portfolioId and method required');
+      throwServerError('Invalid request: portfolioId and method required', 400);
     }
 
     const { user } = await requireAuth();
@@ -53,7 +54,7 @@ export const rebalancePortfolioServerFn = createServerFn({ method: 'POST' })
       .limit(1);
 
     if (portfolio.length === 0 || portfolio[0].userId !== user.id) {
-      throw new Error('Access denied: Portfolio not found or does not belong to you');
+      throwServerError('Access denied: Portfolio not found or does not belong to you', 403);
     }
 
     try {
@@ -65,7 +66,7 @@ export const rebalancePortfolioServerFn = createServerFn({ method: 'POST' })
         .limit(1);
 
       if (!group.length) {
-        throw new Error('Rebalancing group not found');
+        throwServerError('Rebalancing group not found', 404);
       }
 
       // Get group members (accounts)
@@ -84,7 +85,7 @@ export const rebalancePortfolioServerFn = createServerFn({ method: 'POST' })
         .limit(1);
 
       if (!modelAssignment.length) {
-        throw new Error('No model assigned to this rebalancing group');
+        throwServerError('No model assigned to this rebalancing group', 400);
       }
 
       // Get model sleeves

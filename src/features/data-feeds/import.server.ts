@@ -6,6 +6,7 @@ import { CASH_TICKER, isAnyCashTicker } from '~/lib/constants';
 import { clearCache, getPositions } from '~/lib/db-api';
 import { dbProxy } from '~/lib/db-config';
 import { getErrorMessage, ValidationError } from '~/lib/error-handler';
+import { throwServerError } from '~/lib/error-utils';
 import {
   getSchwabCredentialsStatusServerFn,
   syncSchwabPricesServerFn,
@@ -470,13 +471,13 @@ export const truncateDataServerFn = createServerFn({ method: 'POST' })
 
     // Safety check - require confirmation text
     if (data.confirmText !== 'TRUNCATE_ALL_DATA') {
-      throw new Error('Confirmation text required: "TRUNCATE_ALL_DATA"');
+      throwServerError('Confirmation text required: "TRUNCATE_ALL_DATA"', 400);
     }
 
     try {
       // Get request info for audit logging
       if (!import.meta.env.SSR) {
-        throw new Error('truncateDataServerFn is only available on the server');
+        throwServerError('truncateDataServerFn is only available on the server', 500);
       }
       const { getWebRequest } = await import('@tanstack/react-start/server');
       const request = getWebRequest();

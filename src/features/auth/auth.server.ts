@@ -307,12 +307,15 @@ export const invalidateSessionServerFn = createServerFn({
   const data = ctx.data as { sessionId: string; reason: string } | undefined;
 
   if (!data || !data.sessionId || !data.reason) {
-    throw new Error('Invalid request data');
+    throwServerError('Invalid request data', 400);
   }
 
+  // At this point, data is guaranteed to be defined due to the check above
+  const validatedData = data as { sessionId: string; reason: string };
+
   const count = await SessionManager.invalidateSessions({
-    sessionId: data.sessionId,
-    reason: data.reason as
+    sessionId: validatedData.sessionId,
+    reason: validatedData.reason as
       | 'password_change'
       | 'suspicious_activity'
       | 'admin_action'

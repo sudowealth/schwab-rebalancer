@@ -14,6 +14,7 @@ import {
 } from '~/lib/db-api';
 import { dbProxy } from '~/lib/db-config';
 import { getErrorMessage } from '~/lib/error-handler';
+import { throwServerError } from '~/lib/error-utils';
 import { requireAuth } from '../auth/auth-utils';
 import { getPriceSyncService } from '../data-feeds/price-sync';
 import { getSchwabApiService } from './schwab-api.server';
@@ -25,11 +26,11 @@ function validateSchwabEnvironment() {
   const clientSecret = process.env.SCHWAB_CLIENT_SECRET;
 
   if (!clientId) {
-    throw new Error('SCHWAB_CLIENT_ID is not set in environment variables');
+    throwServerError('SCHWAB_CLIENT_ID is not set in environment variables', 500);
   }
 
   if (!clientSecret) {
-    throw new Error('SCHWAB_CLIENT_SECRET is not set in environment variables');
+    throwServerError('SCHWAB_CLIENT_SECRET is not set in environment variables', 500);
   }
 
   return { clientId, clientSecret };
@@ -175,12 +176,12 @@ export const handleSchwabOAuthCallbackServerFn = createServerFn({
 
       if (!clientId) {
         console.error('❌ [ServerFn] SCHWAB_CLIENT_ID is not set in environment variables');
-        throw new Error('SCHWAB_CLIENT_ID is not set in environment variables');
+        throwServerError('SCHWAB_CLIENT_ID is not set in environment variables', 500);
       }
 
       if (!clientSecret) {
         console.error('❌ [ServerFn] SCHWAB_CLIENT_SECRET is not set in environment variables');
-        throw new Error('SCHWAB_CLIENT_SECRET is not set in environment variables');
+        throwServerError('SCHWAB_CLIENT_SECRET is not set in environment variables', 500);
       }
 
       console.log('📦 [ServerFn] Getting Schwab API service...');
@@ -495,7 +496,7 @@ export const getGroupSecuritiesNeedingPriceUpdatesServerFn = createServerFn({
       .limit(1);
 
     if (groupResult.length === 0) {
-      throw new Error('Rebalancing group not found or access denied');
+      throwServerError('Rebalancing group not found or access denied', 403);
     }
 
     // Get account IDs for this group
@@ -872,11 +873,11 @@ export const deleteSyncLogServerFn = createServerFn({ method: 'POST' })
         .limit(1);
 
       if (!log || log.length === 0) {
-        throw new Error('Sync log not found');
+        throwServerError('Sync log not found', 404);
       }
 
       if (log[0].userId !== user.id) {
-        throw new Error('Unauthorized to delete this sync log');
+        throwServerError('Unauthorized to delete this sync log', 403);
       }
 
       // Delete the log (syncLogDetail will be deleted automatically due to CASCADE)
@@ -946,7 +947,7 @@ export const addGroupTradesToBlotterServerFn = createServerFn({
   .handler(async ({ data }) => {
     const { groupId, trades, batchLabel } = data;
     if (!groupId || !Array.isArray(trades)) {
-      throw new Error('Invalid request: groupId and trades required');
+      throwServerError('Invalid request: groupId and trades required', 400);
     }
 
     const { user } = await requireAuth();
@@ -996,7 +997,7 @@ export const getGroupOrdersServerFn = createServerFn({ method: 'POST' })
       .limit(1);
 
     if (group.length === 0 || group[0].userId !== user.id) {
-      throw new Error('Access denied: Rebalancing group not found or does not belong to you');
+      throwServerError('Access denied: Rebalancing group not found or does not belong to you', 403);
     }
     // Find group members (accounts)
     const members = await dbProxy
@@ -1027,7 +1028,7 @@ export const updateOrderServerFn = createServerFn({ method: 'POST' })
   )
   .handler(async ({ data }) => {
     const { id, updates } = data;
-    if (!id) throw new Error('id required');
+    if (!id) throwServerError('id required', 400);
 
     const { user } = await requireAuth();
     const _db = dbProxy;
@@ -1043,7 +1044,7 @@ export const updateOrderServerFn = createServerFn({ method: 'POST' })
       .limit(1);
 
     if (order.length === 0 || order[0].userId !== user.id) {
-      throw new Error('Access denied: Order not found or does not belong to you');
+      throwServerError('Access denied: Order not found or does not belong to you', 403);
     }
 
     await updateTradeOrder(id, updates);
@@ -1054,7 +1055,7 @@ export const deleteOrderServerFn = createServerFn({ method: 'POST' })
   .validator((data: { id: string }) => data)
   .handler(async ({ data }) => {
     const { id } = data;
-    if (!id) throw new Error('id required');
+    if (!id) throwServerError('id required', 400);
 
     const { user } = await requireAuth();
     const _db = dbProxy;
@@ -1070,7 +1071,7 @@ export const deleteOrderServerFn = createServerFn({ method: 'POST' })
       .limit(1);
 
     if (order.length === 0 || order[0].userId !== user.id) {
-      throw new Error('Access denied: Order not found or does not belong to you');
+      throwServerError('Access denied: Order not found or does not belong to you', 403);
     }
 
     await deleteTradeOrder(id);
@@ -1082,7 +1083,7 @@ export const previewOrderServerFn = createServerFn({ method: 'POST' })
   .validator((data: { id: string }) => data)
   .handler(async ({ data }) => {
     const { id } = data;
-    if (!id) throw new Error('id required');
+    if (!id) throwServerError('id required', 400);
 
     const { user } = await requireAuth();
     const _db = dbProxy;
@@ -1098,7 +1099,7 @@ export const previewOrderServerFn = createServerFn({ method: 'POST' })
       .limit(1);
 
     if (order.length === 0 || order[0].userId !== user.id) {
-      throw new Error('Access denied: Order not found or does not belong to you');
+      throwServerError('Access denied: Order not found or does not belong to you', 403);
     }
 
     const { getSchwabApiService } = await import('~/features/schwab/schwab-api.server');
@@ -1336,7 +1337,7 @@ export const submitOrderServerFn = createServerFn({ method: 'POST' })
   .validator((data: { id: string }) => data)
   .handler(async ({ data }) => {
     const { id } = data;
-    if (!id) throw new Error('id required');
+    if (!id) throwServerError('id required', 400);
 
     const { user } = await requireAuth();
     const _db = dbProxy;
@@ -1352,13 +1353,13 @@ export const submitOrderServerFn = createServerFn({ method: 'POST' })
       .where(eq(schema.tradeOrder.id, id))
       .limit(1);
     if (!rows.length || rows[0].orderUserId !== user.id) {
-      throw new Error('Access denied: Order not found or does not belong to you');
+      throwServerError('Access denied: Order not found or does not belong to you', 403);
     }
     const o = rows[0].all as typeof schema.tradeOrder.$inferSelect;
 
     // Require a preview step without errors before submit
     if (o.status !== 'PREVIEW_OK' && o.status !== 'PREVIEW_WARN') {
-      throw new Error('Order must be previewed successfully (OK or WARN) before submission');
+      throwServerError('Order must be previewed successfully (OK or WARN) before submission', 400);
     }
 
     // Map to Schwab order payload
