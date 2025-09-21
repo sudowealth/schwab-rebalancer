@@ -59,7 +59,7 @@ export const rebalancePortfolioServerFn = createServerFn({ method: 'POST' })
     try {
       // Get rebalancing group and its accounts
       const group = await dbProxy
-        .select()
+        .select({ id: schema.rebalancingGroup.id })
         .from(schema.rebalancingGroup)
         .where(eq(schema.rebalancingGroup.id, portfolioId))
         .limit(1);
@@ -70,7 +70,7 @@ export const rebalancePortfolioServerFn = createServerFn({ method: 'POST' })
 
       // Get group members (accounts)
       const groupMembers = await dbProxy
-        .select()
+        .select({ accountId: schema.rebalancingGroupMember.accountId })
         .from(schema.rebalancingGroupMember)
         .where(eq(schema.rebalancingGroupMember.groupId, portfolioId));
 
@@ -78,7 +78,7 @@ export const rebalancePortfolioServerFn = createServerFn({ method: 'POST' })
 
       // Get model assignment
       const modelAssignment = await dbProxy
-        .select()
+        .select({ modelId: schema.modelGroupAssignment.modelId })
         .from(schema.modelGroupAssignment)
         .where(eq(schema.modelGroupAssignment.rebalancingGroupId, portfolioId))
         .limit(1);
@@ -89,7 +89,11 @@ export const rebalancePortfolioServerFn = createServerFn({ method: 'POST' })
 
       // Get model sleeves
       const modelSleeves = await dbProxy
-        .select()
+        .select({
+          sleeveId: schema.modelMember.sleeveId,
+          targetWeight: schema.modelMember.targetWeight,
+          isActive: schema.modelMember.isActive,
+        })
         .from(schema.modelMember)
         .where(eq(schema.modelMember.modelId, modelAssignment[0].modelId));
 

@@ -66,7 +66,17 @@ export const getSnP500Data = async () => {
   try {
     return await withRetry(
       async () => {
-        const securities = await dbProxy.select().from(schema.security);
+        const securities = await dbProxy
+          .select({
+            ticker: schema.security.ticker,
+            name: schema.security.name,
+            price: schema.security.price,
+            marketCap: schema.security.marketCap,
+            peRatio: schema.security.peRatio,
+            industry: schema.security.industry,
+            sector: schema.security.sector,
+          })
+          .from(schema.security);
 
         // Return empty array if no securities found (e.g., after truncation)
         if (!securities || securities.length === 0) {

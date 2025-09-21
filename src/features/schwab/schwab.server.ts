@@ -487,7 +487,7 @@ export const getGroupSecuritiesNeedingPriceUpdatesServerFn = createServerFn({
 
     // First, verify the group belongs to the user
     const groupResult = await dbProxy
-      .select()
+      .select({ id: schema.rebalancingGroup.id })
       .from(schema.rebalancingGroup)
       .where(
         and(eq(schema.rebalancingGroup.id, groupId), eq(schema.rebalancingGroup.userId, user.id)),
@@ -863,7 +863,10 @@ export const deleteSyncLogServerFn = createServerFn({ method: 'POST' })
 
       // First verify the log belongs to the user
       const log = await dbProxy
-        .select()
+        .select({
+          id: schema.syncLog.id,
+          userId: schema.syncLog.userId,
+        })
         .from(schema.syncLog)
         .where(eq(schema.syncLog.id, logId))
         .limit(1);
