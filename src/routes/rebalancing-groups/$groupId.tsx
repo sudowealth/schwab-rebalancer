@@ -7,10 +7,10 @@ import type { Order } from '~/features/auth/schemas';
 import { SecurityModal } from '~/features/dashboard/components/security-modal';
 import { SleeveModal } from '~/features/dashboard/components/sleeve-modal';
 import { AccountSummary } from '~/features/rebalancing/components/account-summary';
-import { AllocationChart } from '~/features/rebalancing/components/allocation-chart';
 import { OrdersBlotter } from '~/features/rebalancing/components/blotter/orders-blotter';
 import { DeleteRebalancingGroupModal } from '~/features/rebalancing/components/delete-rebalancing-group-modal';
 import { EditRebalancingGroupModal } from '~/features/rebalancing/components/edit-rebalancing-group-modal';
+import { LazyAllocationChart } from '~/features/rebalancing/components/lazy-allocation-chart';
 import { RebalanceModal } from '~/features/rebalancing/components/rebalance-modal';
 import { RebalanceSummaryCards } from '~/features/rebalancing/components/rebalance-summary-cards';
 import { SleeveAllocationTable } from '~/features/rebalancing/components/sleeve-allocation/sleeve-allocation-table';
@@ -781,7 +781,7 @@ function RebalancingGroupDetail() {
 
         <div className="grid gap-6 lg:grid-cols-2">
           {/* Portfolio Allocation Chart */}
-          <AllocationChart
+          <LazyAllocationChart
             allocationData={allocationData}
             allocationView={allocationView}
             onAllocationViewChange={setAllocationView}

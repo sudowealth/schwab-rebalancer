@@ -1,4 +1,4 @@
-import { AllocationChart } from './allocation-chart';
+import { LazyAllocationChart } from './lazy-allocation-chart';
 import { TopHoldings } from './top-holdings';
 
 interface PortfolioChartsProps {
@@ -36,7 +36,7 @@ export function PortfolioCharts({
   return (
     <div className="grid gap-6 lg:grid-cols-2">
       {/* Portfolio Allocation Chart */}
-      <AllocationChart
+      <LazyAllocationChart
         allocationData={processedAllocationData}
         allocationView={allocationView}
         onAllocationViewChange={onAllocationViewChange}

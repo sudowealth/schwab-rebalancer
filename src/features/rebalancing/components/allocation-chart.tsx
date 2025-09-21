@@ -10,7 +10,7 @@ import {
 } from '~/components/ui/select';
 import { formatCurrency } from '~/lib/utils';
 
-interface AllocationChartProps {
+export interface AllocationChartProps {
   allocationData: Array<{
     name: string;
     value: number;
