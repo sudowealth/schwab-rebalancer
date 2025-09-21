@@ -1,9 +1,28 @@
 import { createServerFn } from '@tanstack/react-start';
 import { desc, eq, sql } from 'drizzle-orm';
+import { z } from 'zod';
 import * as schema from '~/db/schema';
 import { requireAdmin } from '~/features/auth/auth-utils';
 import { dbProxy } from '~/lib/db-config';
 import { throwServerError } from '~/lib/error-utils';
+
+// Zod schemas for type safety
+const updateUserRoleSchema = z.object({
+  userId: z.string().min(1, 'User ID is required'),
+  role: z.enum(['user', 'admin']),
+});
+
+const getUserActivitySchema = z
+  .object({
+    limit: z.number().min(1).max(100).optional(),
+    offset: z.number().min(0).optional(),
+    userId: z.string().optional(),
+  })
+  .optional();
+
+const deleteUserByIdSchema = z.object({
+  userId: z.string().min(1, 'User ID is required'),
+});
 
 // Get all users (admin only)
 export const getAllUsersServerFn = createServerFn({ method: 'GET' }).handler(async () => {
@@ -27,7 +46,7 @@ export const getAllUsersServerFn = createServerFn({ method: 'GET' }).handler(asy
 
 // Update user role (admin only)
 export const updateUserRoleServerFn = createServerFn({ method: 'POST' })
-  .validator((data: { userId: string; role: 'user' | 'admin' }) => data)
+  .validator(updateUserRoleSchema)
   .handler(async ({ data }) => {
     const { userId, role } = data;
 
@@ -95,7 +114,7 @@ export const getSystemStatsServerFn = createServerFn({ method: 'GET' }).handler(
 
 // Get audit logs (admin only)
 export const getAuditLogsServerFn = createServerFn({ method: 'GET' })
-  .validator((data?: { limit?: number; offset?: number; userId?: string }) => data || {})
+  .validator(getUserActivitySchema)
   .handler(async ({ data = {} }) => {
     await requireAdmin();
     const { limit = 100, offset = 0, userId } = data;
@@ -127,7 +146,7 @@ export const getAuditLogsServerFn = createServerFn({ method: 'GET' })
 
 // Get all data for a specific user (admin only)
 export const getUserDataServerFn = createServerFn({ method: 'GET' })
-  .validator((data: { userId: string }) => data)
+  .validator(deleteUserByIdSchema)
   .handler(async ({ data }) => {
     const { userId } = data;
 

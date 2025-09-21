@@ -1,4 +1,5 @@
 import { createServerFn } from '@tanstack/react-start';
+import { z } from 'zod';
 import { DatabaseError, logError, ValidationError, withRetry } from '~/lib/error-handler';
 import { throwServerError } from '~/lib/error-utils';
 import {
@@ -11,6 +12,38 @@ import {
   updateSleeve,
 } from '../../lib/db-api';
 import { requireAuth } from '../auth/auth-utils';
+
+// Zod schemas for type safety
+const createSleeveSchema = z.object({
+  name: z.string().min(1, 'Sleeve name is required'),
+  members: z
+    .array(
+      z.object({
+        ticker: z.string().min(1, 'Ticker is required'),
+        rank: z.number().min(0, 'Rank must be non-negative'),
+        isLegacy: z.boolean().optional(),
+      }),
+    )
+    .min(1, 'At least one member is required'),
+});
+
+const updateSleeveSchema = z.object({
+  sleeveId: z.string().min(1, 'Sleeve ID is required'),
+  name: z.string().min(1, 'Sleeve name is required'),
+  members: z
+    .array(
+      z.object({
+        ticker: z.string().min(1, 'Ticker is required'),
+        rank: z.number().min(0, 'Rank must be non-negative'),
+        isLegacy: z.boolean().optional(),
+      }),
+    )
+    .min(1, 'At least one member is required'),
+});
+
+const sleeveIdOnlySchema = z.object({
+  sleeveId: z.string().min(1, 'Sleeve ID is required'),
+});
 
 // Server function to get sleeves data - runs ONLY on server
 export const getSleevesServerFn = createServerFn({ method: 'GET' }).handler(async () => {
@@ -33,12 +66,7 @@ export const getSleevesServerFn = createServerFn({ method: 'GET' }).handler(asyn
 
 // Server function to create a new sleeve - runs ONLY on server
 export const createSleeveServerFn = createServerFn({ method: 'POST' })
-  .validator(
-    (data: {
-      name: string;
-      members: Array<{ ticker: string; rank: number; isLegacy?: boolean }>;
-    }) => data,
-  )
+  .validator(createSleeveSchema)
   .handler(async ({ data }) => {
     try {
       const { user } = await requireAuth();
@@ -78,13 +106,7 @@ export const createSleeveServerFn = createServerFn({ method: 'POST' })
 
 // Server function to update a sleeve - runs ONLY on server
 export const updateSleeveServerFn = createServerFn({ method: 'POST' })
-  .validator(
-    (data: {
-      sleeveId: string;
-      name: string;
-      members: Array<{ ticker: string; rank: number; isLegacy?: boolean }>;
-    }) => data,
-  )
+  .validator(updateSleeveSchema)
   .handler(async ({ data }) => {
     await requireAuth();
 
@@ -102,7 +124,7 @@ export const updateSleeveServerFn = createServerFn({ method: 'POST' })
 
 // Server function to delete a sleeve - runs ONLY on server
 export const deleteSleeveServerFn = createServerFn({ method: 'POST' })
-  .validator((data: { sleeveId: string }) => data)
+  .validator(sleeveIdOnlySchema)
   .handler(async ({ data }) => {
     await requireAuth();
 
@@ -120,7 +142,7 @@ export const deleteSleeveServerFn = createServerFn({ method: 'POST' })
 
 // Server function to get sleeve by ID - runs ONLY on server
 export const getSleeveByIdServerFn = createServerFn({ method: 'POST' })
-  .validator((data: { sleeveId: string }) => data)
+  .validator(sleeveIdOnlySchema)
   .handler(async ({ data }) => {
     const { user } = await requireAuth();
 
@@ -138,7 +160,7 @@ export const getSleeveByIdServerFn = createServerFn({ method: 'POST' })
 
 // Server function to get sleeve holdings info - runs ONLY on server
 export const getSleeveHoldingsInfoServerFn = createServerFn({ method: 'POST' })
-  .validator((data: { sleeveId: string }) => data)
+  .validator(sleeveIdOnlySchema)
   .handler(async ({ data }) => {
     await requireAuth();
 

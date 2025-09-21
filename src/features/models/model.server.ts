@@ -1,7 +1,41 @@
 import { createServerFn } from '@tanstack/react-start';
+import { z } from 'zod';
 import { throwServerError } from '~/lib/error-utils';
 import { createModel, deleteModel, getModelById, getModels, updateModel } from '../../lib/db-api';
 import { requireAuth } from '../auth/auth-utils';
+
+// Zod schemas for type safety
+const createModelSchema = z.object({
+  name: z.string().min(1, 'Model name is required'),
+  description: z.string().optional(),
+  members: z
+    .array(
+      z.object({
+        sleeveId: z.string().min(1, 'Sleeve ID is required'),
+        targetWeight: z.number().min(0).max(100, 'Weight must be between 0 and 100'),
+      }),
+    )
+    .min(1, 'At least one member is required'),
+  updateExisting: z.boolean().optional().default(false),
+});
+
+const updateModelSchema = z.object({
+  modelId: z.string().min(1, 'Model ID is required'),
+  name: z.string().min(1, 'Model name is required'),
+  description: z.string().optional(),
+  members: z
+    .array(
+      z.object({
+        sleeveId: z.string().min(1, 'Sleeve ID is required'),
+        targetWeight: z.number().min(0).max(100, 'Weight must be between 0 and 100'),
+      }),
+    )
+    .min(1, 'At least one member is required'),
+});
+
+const modelIdOnlySchema = z.object({
+  modelId: z.string().min(1, 'Model ID is required'),
+});
 
 // Server function to get all models - runs ONLY on server
 export const getModelsServerFn = createServerFn({ method: 'GET' }).handler(async () => {
@@ -15,14 +49,7 @@ export const getModelsServerFn = createServerFn({ method: 'GET' }).handler(async
 
 // Server function to create a new model - runs ONLY on server
 export const createModelServerFn = createServerFn({ method: 'POST' })
-  .validator(
-    (data: {
-      name: string;
-      description?: string;
-      members: Array<{ sleeveId: string; targetWeight: number }>;
-      updateExisting?: boolean;
-    }) => data,
-  )
+  .validator(createModelSchema)
   .handler(async ({ data }) => {
     const { user } = await requireAuth();
 
@@ -48,14 +75,7 @@ export const createModelServerFn = createServerFn({ method: 'POST' })
 
 // Server function to update a model - runs ONLY on server
 export const updateModelServerFn = createServerFn({ method: 'POST' })
-  .validator(
-    (data: {
-      modelId: string;
-      name: string;
-      description?: string;
-      members: Array<{ sleeveId: string; targetWeight: number }>;
-    }) => data,
-  )
+  .validator(updateModelSchema)
   .handler(async ({ data }) => {
     await requireAuth();
 
@@ -73,7 +93,7 @@ export const updateModelServerFn = createServerFn({ method: 'POST' })
 
 // Server function to delete a model - runs ONLY on server
 export const deleteModelServerFn = createServerFn({ method: 'POST' })
-  .validator((data: { modelId: string }) => data)
+  .validator(modelIdOnlySchema)
   .handler(async ({ data }) => {
     await requireAuth();
 
@@ -91,7 +111,7 @@ export const deleteModelServerFn = createServerFn({ method: 'POST' })
 
 // Server function to get model by ID - runs ONLY on server
 export const getModelByIdServerFn = createServerFn({ method: 'POST' })
-  .validator((data: { modelId: string }) => data)
+  .validator(modelIdOnlySchema)
   .handler(async ({ data }) => {
     await requireAuth();
 

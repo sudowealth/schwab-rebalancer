@@ -1,11 +1,33 @@
 import { createServerFn } from '@tanstack/react-start';
 import { eq, sql } from 'drizzle-orm';
+import { z } from 'zod';
 import * as schema from '~/db/schema';
 import { SessionManager } from '~/features/auth/session.server';
 import { dbProxy } from '~/lib/db-config';
 import { handleServerError, throwServerError } from '~/lib/error-utils';
 import { auth } from './auth';
 import { requireAdmin, requireAuth } from './auth-utils';
+
+// Zod schemas for type safety
+const setUserRoleSchema = z.object({
+  userId: z.string().min(1, 'User ID is required'),
+  role: z.enum(['user', 'admin']),
+});
+
+const deleteUserSchema = z.object({
+  userId: z.string().min(1, 'User ID is required'),
+  confirmation: z.string().min(1, 'Confirmation text is required'),
+});
+
+const userIdOnlySchema = z.object({
+  userId: z.string().min(1, 'User ID is required'),
+});
+
+const signUpWithFirstAdminSchema = z.object({
+  email: z.string().email('Invalid email address'),
+  password: z.string().min(8, 'Password must be at least 8 characters'),
+  name: z.string().min(1, 'Name is required'),
+});
 
 // Admin-only functions
 
@@ -31,7 +53,7 @@ export const getAllUsersServerFn = createServerFn({ method: 'GET' }).handler(asy
 
 // Update user role (admin only)
 export const updateUserRoleServerFn = createServerFn({ method: 'POST' })
-  .validator((data: { userId: string; role: 'user' | 'admin' }) => data)
+  .validator(setUserRoleSchema)
   .handler(async ({ data }) => {
     const { userId, role } = data;
 
@@ -64,7 +86,7 @@ export const updateUserRoleServerFn = createServerFn({ method: 'POST' })
 
 // Delete user and all associated data (admin only)
 export const deleteUserServerFn = createServerFn({ method: 'POST' })
-  .validator((data: { userId: string; confirmation: string }) => data)
+  .validator(deleteUserSchema)
   .handler(async ({ data }) => {
     const { userId, confirmation } = data;
 
@@ -103,7 +125,7 @@ export const deleteUserServerFn = createServerFn({ method: 'POST' })
 
 // Get all data for a specific user (admin only)
 export const getUserDataServerFn = createServerFn({ method: 'GET' })
-  .validator((data: { userId: string }) => data)
+  .validator(userIdOnlySchema)
   .handler(async ({ data }) => {
     const { userId } = data;
 
@@ -151,7 +173,7 @@ export const getUserDataServerFn = createServerFn({ method: 'GET' })
 
 // Custom signup server function that assigns admin role to first user
 export const signUpWithFirstAdminServerFn = createServerFn({ method: 'POST' })
-  .validator((data: { email: string; password: string; name: string }) => data)
+  .validator(signUpWithFirstAdminSchema)
   .handler(async ({ data }) => {
     const { email, password, name } = data;
 
