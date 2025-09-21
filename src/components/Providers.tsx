@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
+import { ClientOnly } from '~/components/ClientOnly';
 import { ErrorBoundaryWrapper } from '~/components/ErrorBoundary';
 import { ToastProvider } from '~/components/ui/toast';
 import { queryKeys } from '~/lib/query-keys';
@@ -22,15 +23,25 @@ const queryClient = new QueryClient({
   },
 });
 
-function AppProviders({ children }: { children: ReactNode }) {
+function EnvironmentAwareProviders({ children }: { children: ReactNode }) {
   return (
-    <QueryClientProvider client={queryClient}>
-      <ToastProvider>{children}</ToastProvider>
-    </QueryClientProvider>
+    <ClientOnly
+      fallback={
+        <ErrorBoundaryWrapper
+          title="Application Error"
+          description="An unexpected error occurred in the application. Please refresh the page to try again."
+          showDetails={false}
+        >
+          {children}
+        </ErrorBoundaryWrapper>
+      }
+    >
+      <EnvironmentQueryWrapper>{children}</EnvironmentQueryWrapper>
+    </ClientOnly>
   );
 }
 
-function EnvironmentAwareErrorBoundary({ children }: { children: ReactNode }) {
+function EnvironmentQueryWrapper({ children }: { children: ReactNode }) {
   const { data: envInfo } = useQuery({
     queryKey: queryKeys.system.environment(),
     queryFn: () => getEnvironmentInfoServerFn(),
@@ -46,9 +57,23 @@ function EnvironmentAwareErrorBoundary({ children }: { children: ReactNode }) {
       description="An unexpected error occurred in the application. Please refresh the page to try again."
       showDetails={isDevelopment}
     >
-      <AppProviders>{children}</AppProviders>
+      {children}
     </ErrorBoundaryWrapper>
   );
+}
+
+function AppProviders({ children }: { children: ReactNode }) {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <ToastProvider>
+        <EnvironmentAwareProviders>{children}</EnvironmentAwareProviders>
+      </ToastProvider>
+    </QueryClientProvider>
+  );
+}
+
+function EnvironmentAwareErrorBoundary({ children }: { children: ReactNode }) {
+  return <AppProviders>{children}</AppProviders>;
 }
 
 export function Providers({ children }: { children: ReactNode }) {

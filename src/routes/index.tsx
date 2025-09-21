@@ -20,51 +20,64 @@ import {
 export const Route = createFileRoute('/')({
   component: DashboardComponent,
   loader: async ({ context: _context }) => {
-    // Fetch only essential onboarding/status data upfront for fast initial load
-    // Heavy data (positions, transactions, etc.) will be lazy-loaded in the component
+    // Load all dashboard data upfront to prevent waterfalls
+    // This includes positions, metrics, transactions, and all status data
     const results = await Promise.allSettled([
-      // Only fetch onboarding status data from dashboard function
-      (async () => {
-        const dashboardData = await getDashboardDataServerFn();
-        // Return only the status fields needed for onboarding, not heavy data
-        return {
-          schwabCredentialsStatus: dashboardData.schwabCredentialsStatus,
-          schwabOAuthStatus: dashboardData.schwabOAuthStatus,
-          accountsCount: dashboardData.accountsCount,
-          securitiesStatus: dashboardData.securitiesStatus,
-          modelsStatus: dashboardData.modelsStatus,
-          rebalancingGroupsStatus: dashboardData.rebalancingGroupsStatus,
-          user: dashboardData.user,
-        };
-      })(),
-      // Rebalancing groups are needed for onboarding status, so keep this
+      // Fetch all dashboard data including heavy data (positions, transactions, etc.)
+      getDashboardDataServerFn(),
+      // Rebalancing groups with balances
       getRebalancingGroupsWithBalancesServerFn(),
     ]);
 
     // Extract results, providing fallbacks for failed promises
-    const statusData =
+    const dashboardData =
       results[0].status === 'fulfilled'
         ? results[0].value
         : {
+            positions: [],
+            metrics: {
+              totalMarketValue: 0,
+              totalCostBasis: 0,
+              unrealizedGain: 0,
+              unrealizedGainPercent: 0,
+              realizedGain: 0,
+              realizedGainPercent: 0,
+              totalGain: 0,
+              totalGainPercent: 0,
+              ytdHarvestedLosses: 0,
+              harvestablelosses: 0,
+              harvestingTarget: {
+                year1Target: 0.03,
+                steadyStateTarget: 0.02,
+                currentProgress: 0,
+              },
+            },
+            transactions: [],
+            sp500Data: [],
+            proposedTrades: [],
+            sleeves: [],
+            indices: [],
+            indexMembers: [],
+            user: null,
             schwabCredentialsStatus: { hasCredentials: false },
             schwabOAuthStatus: { hasCredentials: false },
             accountsCount: 0,
             securitiesStatus: { hasSecurities: false, securitiesCount: 0 },
             modelsStatus: { hasModels: false, modelsCount: 0 },
             rebalancingGroupsStatus: { hasGroups: false, groupsCount: 0 },
-            user: null,
           };
+
     const rebalancingGroups = results[1].status === 'fulfilled' ? results[1].value : [];
 
     // Log any errors for debugging but don't fail the entire load
     if (results[0].status === 'rejected') {
-      console.warn('Dashboard status data load failed:', results[0].reason);
+      console.warn('Dashboard data load failed:', results[0].reason);
     }
     if (results[1].status === 'rejected') {
       console.warn('Rebalancing groups load failed:', results[1].reason);
     }
 
-    return { ...statusData, rebalancingGroups };
+    return { ...dashboardData, rebalancingGroups };
   },
 });
 

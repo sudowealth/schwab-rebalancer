@@ -1,6 +1,14 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
-import type { RebalancingGroup } from '~/features/auth/schemas';
+import type {
+  PortfolioMetrics,
+  Position,
+  RebalancingGroup,
+  Sleeve,
+  SP500Stock,
+  Trade,
+  Transaction,
+} from '~/features/auth/schemas';
 import { useSchwabConnection } from '~/features/schwab/hooks/use-schwab-connection';
 import { queryKeys } from '~/lib/query-keys';
 import {
@@ -15,6 +23,15 @@ import {
 } from '~/lib/server-functions';
 
 interface LoaderData {
+  // Full dashboard data from loader
+  positions: Position[];
+  metrics: PortfolioMetrics;
+  transactions: Transaction[];
+  sp500Data: SP500Stock[];
+  proposedTrades: Trade[];
+  sleeves: Sleeve[];
+  indices: Array<{ id: string; name: string }>;
+  indexMembers: Array<{ indexId: string; securityId: string }>;
   schwabCredentialsStatus: { hasCredentials: boolean };
   schwabOAuthStatus?: { hasCredentials: boolean };
   accountsCount: number;
@@ -106,11 +123,11 @@ export function useDashboardData(loaderData: LoaderData) {
   // We'll use a simple approach: show if we have accounts and either have groups or are still loading
   const shouldShowRebalancingSection = hasAccounts;
 
-  // Execute queries with consistent configuration
+  // Execute queries with loader data as initialData to prevent waterfalls
   const positionsResult = useQuery({
     queryKey: queryKeys.dashboard.positions(),
     queryFn: getPositionsServerFn,
-    initialData: [],
+    initialData: loaderData.positions,
     enabled: shouldShowRebalancingSection,
     staleTime: 1000 * 60 * 2, // 2 minutes (reduced for faster refresh after Schwab sync)
   });
@@ -118,23 +135,7 @@ export function useDashboardData(loaderData: LoaderData) {
   const metricsResult = useQuery({
     queryKey: queryKeys.dashboard.metrics(),
     queryFn: getPortfolioMetricsServerFn,
-    initialData: {
-      totalMarketValue: 0,
-      totalCostBasis: 0,
-      unrealizedGain: 0,
-      unrealizedGainPercent: 0,
-      realizedGain: 0,
-      realizedGainPercent: 0,
-      totalGain: 0,
-      totalGainPercent: 0,
-      ytdHarvestedLosses: 0,
-      harvestablelosses: 0,
-      harvestingTarget: {
-        year1Target: 0.03,
-        steadyStateTarget: 0.02,
-        currentProgress: 0,
-      },
-    },
+    initialData: loaderData.metrics,
     enabled: shouldShowRebalancingSection,
     staleTime: 1000 * 60 * 2,
   });
@@ -142,7 +143,7 @@ export function useDashboardData(loaderData: LoaderData) {
   const transactionsResult = useQuery({
     queryKey: queryKeys.dashboard.transactions(),
     queryFn: getTransactionsServerFn,
-    initialData: [],
+    initialData: loaderData.transactions,
     enabled: shouldShowRebalancingSection,
     staleTime: 1000 * 60 * 2,
   });
@@ -150,7 +151,7 @@ export function useDashboardData(loaderData: LoaderData) {
   const sleevesResult = useQuery({
     queryKey: queryKeys.dashboard.sleeves(),
     queryFn: getSleevesServerFn,
-    initialData: [],
+    initialData: loaderData.sleeves,
     enabled: shouldShowRebalancingSection,
     staleTime: 1000 * 60 * 2,
   });
