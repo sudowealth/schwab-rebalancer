@@ -47,31 +47,8 @@ export function useDashboardData(loaderData: LoaderData) {
       // Invalidate all dashboard queries to ensure fresh data after Schwab connection
       console.log('🔄 [Dashboard] Invalidating all dashboard queries...');
       queryClient.invalidateQueries({
-        queryKey: queryKeys.dashboard.positions(),
-      });
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.dashboard.metrics(),
-      });
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.dashboard.transactions(),
-      });
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.dashboard.sleeves(),
-      });
-
-      // Force refetch to bypass staleTime
-      console.log('🔄 [Dashboard] Forcing refetch of all dashboard queries...');
-      queryClient.refetchQueries({
-        queryKey: queryKeys.dashboard.positions(),
-      });
-      queryClient.refetchQueries({
-        queryKey: queryKeys.dashboard.metrics(),
-      });
-      queryClient.refetchQueries({
-        queryKey: queryKeys.dashboard.transactions(),
-      });
-      queryClient.refetchQueries({
-        queryKey: queryKeys.dashboard.sleeves(),
+        queryKey: queryKeys.dashboard.all(),
+        refetchType: 'active', // Only refetch active queries
       });
 
       console.log('✅ [Dashboard] Dashboard data refresh initiated after Schwab OAuth callback');
@@ -129,17 +106,17 @@ export function useDashboardData(loaderData: LoaderData) {
   // We'll use a simple approach: show if we have accounts and either have groups or are still loading
   const shouldShowRebalancingSection = hasAccounts;
 
-  // Lazy-loaded queries for secondary data (initialData removed since loader no longer fetches this data)
-  const { data: positions, isLoading: positionsLoading } = useQuery({
-    queryKey: ['positions'],
+  // Execute queries with consistent configuration
+  const positionsResult = useQuery({
+    queryKey: queryKeys.dashboard.positions(),
     queryFn: getPositionsServerFn,
-    initialData: [], // Start with empty array since loader no longer provides this
+    initialData: [],
+    enabled: shouldShowRebalancingSection,
     staleTime: 1000 * 60 * 2, // 2 minutes (reduced for faster refresh after Schwab sync)
-    enabled: shouldShowRebalancingSection, // Only load if we should show the section
   });
 
-  const { data: metrics, isLoading: metricsLoading } = useQuery({
-    queryKey: ['metrics'],
+  const metricsResult = useQuery({
+    queryKey: queryKeys.dashboard.metrics(),
     queryFn: getPortfolioMetricsServerFn,
     initialData: {
       totalMarketValue: 0,
@@ -157,46 +134,76 @@ export function useDashboardData(loaderData: LoaderData) {
         steadyStateTarget: 0.02,
         currentProgress: 0,
       },
-    }, // Default metrics since loader no longer provides this
-    staleTime: 1000 * 60 * 2, // 2 minutes (reduced for faster refresh after Schwab sync)
-    enabled: shouldShowRebalancingSection, // Only load if we should show the section
+    },
+    enabled: shouldShowRebalancingSection,
+    staleTime: 1000 * 60 * 2,
   });
 
-  const { data: transactions, isLoading: transactionsLoading } = useQuery({
-    queryKey: ['transactions'],
+  const transactionsResult = useQuery({
+    queryKey: queryKeys.dashboard.transactions(),
     queryFn: getTransactionsServerFn,
-    initialData: [], // Start with empty array since loader no longer provides this
-    staleTime: 1000 * 60 * 2, // 2 minutes (reduced for faster refresh after Schwab sync)
-    enabled: shouldShowRebalancingSection, // Only load if we should show the section
+    initialData: [],
+    enabled: shouldShowRebalancingSection,
+    staleTime: 1000 * 60 * 2,
   });
 
-  const { data: sleeves, isLoading: sleevesLoading } = useQuery({
-    queryKey: ['sleeves'],
+  const sleevesResult = useQuery({
+    queryKey: queryKeys.dashboard.sleeves(),
     queryFn: getSleevesServerFn,
-    initialData: [], // Start with empty array since loader no longer provides this
-    staleTime: 1000 * 60 * 2, // 2 minutes (reduced for faster refresh after Schwab sync)
-    enabled: shouldShowRebalancingSection, // Only load if we should show the section
+    initialData: [],
+    enabled: shouldShowRebalancingSection,
+    staleTime: 1000 * 60 * 2,
   });
 
-  // Use the exact same data loading logic as /rebalancing-groups route
-  const { data: rebalancingGroups, isLoading: rebalancingGroupsLoading } = useQuery({
+  const rebalancingGroupsResult = useQuery({
     queryKey: queryKeys.dashboard.groups(),
     queryFn: getRebalancingGroupsWithBalancesServerFn,
     initialData: loaderData.rebalancingGroups,
+    enabled: shouldShowRebalancingSection,
     staleTime: 1000 * 60 * 2,
-    enabled: shouldShowRebalancingSection, // Only load if we should show the section
   });
 
+  // Extract data
+  const positions = positionsResult.data;
+  const metrics = metricsResult.data;
+  const transactions = transactionsResult.data;
+  const sleeves = sleevesResult.data;
+  const rebalancingGroups = rebalancingGroupsResult.data;
+
+  // Enhanced loading state management
   const isLoading =
-    positionsLoading ||
-    metricsLoading ||
-    transactionsLoading ||
-    sleevesLoading ||
-    rebalancingGroupsLoading;
+    positionsResult.isPending ||
+    metricsResult.isPending ||
+    transactionsResult.isPending ||
+    sleevesResult.isPending ||
+    rebalancingGroupsResult.isPending;
+
+  // Individual loading states for more granular control
+  const isLoadingPositions = positionsResult.isPending;
+  const isLoadingMetrics = metricsResult.isPending;
+  const isLoadingTransactions = transactionsResult.isPending;
+  const isLoadingSleeves = sleevesResult.isPending;
+  const isLoadingRebalancingGroups = rebalancingGroupsResult.isPending;
+
+  // Background refetch states (useful for showing subtle loading indicators)
+  const isRefetching =
+    (positionsResult.isFetching && !positionsResult.isPending) ||
+    (metricsResult.isFetching && !metricsResult.isPending) ||
+    (transactionsResult.isFetching && !transactionsResult.isPending) ||
+    (sleevesResult.isFetching && !sleevesResult.isPending) ||
+    (rebalancingGroupsResult.isFetching && !rebalancingGroupsResult.isPending);
 
   return {
-    // Loading state
+    // Loading states
     isLoading,
+    isRefetching,
+    loadingStates: {
+      positions: isLoadingPositions,
+      metrics: isLoadingMetrics,
+      transactions: isLoadingTransactions,
+      sleeves: isLoadingSleeves,
+      rebalancingGroups: isLoadingRebalancingGroups,
+    },
 
     // Status data
     hasAccounts,
@@ -219,16 +226,7 @@ export function useDashboardData(loaderData: LoaderData) {
     // Utility functions
     invalidateDashboardQueries: () => {
       queryClient.invalidateQueries({
-        queryKey: queryKeys.dashboard.positions(),
-      });
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.dashboard.metrics(),
-      });
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.dashboard.transactions(),
-      });
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.dashboard.sleeves(),
+        queryKey: queryKeys.dashboard.all(),
       });
     },
   };
