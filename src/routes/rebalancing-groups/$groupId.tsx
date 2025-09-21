@@ -1,3 +1,4 @@
+import { useQuery } from '@tanstack/react-query';
 import { createFileRoute, Link, redirect, useRouter } from '@tanstack/react-router';
 import { Edit, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -22,10 +23,8 @@ import type { Trade } from '~/features/rebalancing/components/sleeve-allocation/
 import { TopHoldings } from '~/features/rebalancing/components/top-holdings';
 import { useSleeveAllocations } from '~/features/rebalancing/hooks/use-sleeve-allocations';
 import {
-  generateAllocationData,
-  generateTopHoldingsData,
-} from '~/features/rebalancing/rebalancing-utils';
-import {
+  generateAllocationDataServerFn,
+  generateTopHoldingsDataServerFn,
   type getDashboardDataServerFn,
   getGroupAccountHoldingsServerFn,
   getGroupOrdersServerFn,
@@ -226,40 +225,44 @@ function RebalancingGroupDetail() {
     return sleeveData?.currentValue || 0;
   }, [sleeveTableData]);
 
-  // Generate allocation data using utility function
-  const allocationData = useMemo(() => {
-    const rawData = generateAllocationData(
-      allocationView,
-      {
-        ...group,
-        members: group.members.map((member) => ({
-          ...member,
-          accountName: member.accountName || '',
-          balance: member.balance || 0,
-        })),
-      },
-      accountHoldings,
-      sp500Data,
-      totalValue,
-    );
+  // Generate allocation data using server function
+  const { data: rawAllocationData = [] } = useQuery({
+    queryKey: ['allocation-data', group.id, allocationView, totalValue],
+    queryFn: () =>
+      generateAllocationDataServerFn({
+        data: {
+          allocationView,
+          groupId: group.id,
+          totalValue,
+        },
+      }),
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
 
-    // Filter out any items with undefined name or value
-    return rawData.filter(
-      (
-        item,
-      ): item is {
-        name: string;
-        value: number;
-        percentage: number;
-        color: string;
-      } => item.name != null && item.value != null,
-    );
-  }, [allocationView, group, accountHoldings, sp500Data, totalValue]);
+  // Filter out any items with undefined name or value (maintain type safety)
+  const allocationData = rawAllocationData.filter(
+    (
+      item,
+    ): item is {
+      name: string;
+      value: number;
+      percentage: number;
+      color: string;
+    } => item.name != null && item.value != null,
+  );
 
-  // Generate holdings data from actual account holdings (all holdings, sorted by value)
-  const holdingsData = useMemo(() => {
-    return generateTopHoldingsData(accountHoldings, totalValue);
-  }, [accountHoldings, totalValue]);
+  // Generate holdings data using server function
+  const { data: holdingsData = [] } = useQuery({
+    queryKey: ['top-holdings', group.id, totalValue],
+    queryFn: () =>
+      generateTopHoldingsDataServerFn({
+        data: {
+          groupId: group.id,
+          totalValue,
+        },
+      }),
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
 
   // Helper functions
   const toggleSleeveExpansion = (sleeveKey: string) => {

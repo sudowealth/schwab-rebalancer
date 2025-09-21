@@ -1,6 +1,7 @@
 import { createFileRoute, Link, redirect } from '@tanstack/react-router';
 import { FileText } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { ErrorBoundaryWrapper } from '~/components/ErrorBoundary';
 import { Badge } from '~/components/ui/badge';
 import type { RebalancingGroup, RebalancingGroupMember } from '~/features/auth/schemas';
 import { AddRebalancingGroupModal } from '~/features/rebalancing/components/add-rebalancing-group-modal';
@@ -118,72 +119,77 @@ function RebalancingGroupsComponent() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {groups.map((group: RebalancingGroup) => (
-          <div
-            key={group.id}
-            className="bg-white shadow rounded-lg hover:shadow-md transition-shadow relative"
-          >
-            <div className="p-6">
-              <div className="mb-6">
-                <Link
-                  to="/rebalancing-groups/$groupId"
-                  params={{ groupId: group.id }}
-                  className="text-xl font-semibold text-gray-900 cursor-pointer hover:text-blue-600 transition-colors"
-                >
-                  {group.name}
-                </Link>
-              </div>
-
-              {/* Model */}
-              <div className="flex items-center justify-between text-sm mb-3">
-                <span className="text-gray-500 font-medium">Model:</span>
-                {group.assignedModel ? (
-                  <Badge variant="secondary" className="text-xs">
-                    {group.assignedModel.name}
-                  </Badge>
-                ) : (
-                  <Badge variant="outline" className="text-xs text-gray-400">
-                    No model assigned
-                  </Badge>
-                )}
-              </div>
-
-              {/* Group Statistics */}
-              <div className="border-t border-b border-gray-100 py-4 mb-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-500 font-medium">Total Value:</span>
-                  <span className="text-lg font-semibold text-gray-900">
-                    {formatBalance(calculateGroupValue(group))}
-                  </span>
-                </div>
-              </div>
-
-              {/* Account Members */}
-              <div className="space-y-3">
-                {group.members.slice(0, 3).map((member: RebalancingGroupMember) => (
-                  <div key={member.id} className="flex items-center justify-between">
-                    <span className="text-sm text-gray-700">{member.accountName}</span>
-                    <span className="text-sm font-medium text-gray-900">
-                      {formatBalance(member.balance || 0)}
-                    </span>
-                  </div>
-                ))}
-                {group.members.length > 3 && (
+      <ErrorBoundaryWrapper
+        title="Rebalancing Groups Error"
+        description="Failed to load rebalancing groups. This might be due to a temporary data issue."
+      >
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {groups.map((group: RebalancingGroup) => (
+            <div
+              key={group.id}
+              className="bg-white shadow rounded-lg hover:shadow-md transition-shadow relative"
+            >
+              <div className="p-6">
+                <div className="mb-6">
                   <Link
                     to="/rebalancing-groups/$groupId"
                     params={{ groupId: group.id }}
-                    className="text-xs text-gray-500 cursor-pointer hover:text-blue-600 transition-colors block pt-2"
+                    className="text-xl font-semibold text-gray-900 cursor-pointer hover:text-blue-600 transition-colors"
                   >
-                    +{group.members.length - 3} more account
-                    {group.members.length - 3 > 1 ? 's' : ''}
+                    {group.name}
                   </Link>
-                )}
+                </div>
+
+                {/* Model */}
+                <div className="flex items-center justify-between text-sm mb-3">
+                  <span className="text-gray-500 font-medium">Model:</span>
+                  {group.assignedModel ? (
+                    <Badge variant="secondary" className="text-xs">
+                      {group.assignedModel.name}
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline" className="text-xs text-gray-400">
+                      No model assigned
+                    </Badge>
+                  )}
+                </div>
+
+                {/* Group Statistics */}
+                <div className="border-t border-b border-gray-100 py-4 mb-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-500 font-medium">Total Value:</span>
+                    <span className="text-lg font-semibold text-gray-900">
+                      {formatBalance(calculateGroupValue(group))}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Account Members */}
+                <div className="space-y-3">
+                  {group.members.slice(0, 3).map((member: RebalancingGroupMember) => (
+                    <div key={member.id} className="flex items-center justify-between">
+                      <span className="text-sm text-gray-700">{member.accountName}</span>
+                      <span className="text-sm font-medium text-gray-900">
+                        {formatBalance(member.balance || 0)}
+                      </span>
+                    </div>
+                  ))}
+                  {group.members.length > 3 && (
+                    <Link
+                      to="/rebalancing-groups/$groupId"
+                      params={{ groupId: group.id }}
+                      className="text-xs text-gray-500 cursor-pointer hover:text-blue-600 transition-colors block pt-2"
+                    >
+                      +{group.members.length - 3} more account
+                      {group.members.length - 3 > 1 ? 's' : ''}
+                    </Link>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      </ErrorBoundaryWrapper>
       {groups.length === 0 && (
         <div className="text-center py-12">
           <FileText className="mx-auto h-12 w-12 text-gray-400" />

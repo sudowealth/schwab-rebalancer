@@ -9,12 +9,12 @@ import {
 } from '@tanstack/react-table';
 import { ArrowRight, ChevronDown, ChevronsUpDown, ChevronUp, Edit, Trash2 } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
-import { SleeveModal } from '~/features/dashboard/components/sleeve-modal';
-import { DeleteModelModal } from '~/features/models/components/delete-model-modal';
-import { EditModelModal } from '~/features/models/components/edit-model-modal';
 import { Badge } from '~/components/ui/badge';
 import { Button } from '~/components/ui/button';
 import type { RebalancingGroup, Sleeve } from '~/features/auth/schemas';
+import { SleeveModal } from '~/features/dashboard/components/sleeve-modal';
+import { DeleteModelModal } from '~/features/models/components/delete-model-modal';
+import { EditModelModal } from '~/features/models/components/edit-model-modal';
 import {
   getDashboardDataServerFn,
   getModelByIdServerFn,
@@ -25,14 +25,14 @@ export const Route = createFileRoute('/models/$modelId')({
   component: ModelDetailComponent,
   loader: async ({ params: { modelId } }) => {
     try {
-      // Try to load the specific model and dashboard data
-      const [model, dashboardData] = await Promise.all([
+      // Parallelize all server calls for better performance
+      const [model, dashboardData, allRebalancingGroups] = await Promise.all([
         getModelByIdServerFn({ data: { modelId } }),
         getDashboardDataServerFn(),
+        getRebalancingGroupsServerFn(),
       ]);
 
-      // Get all rebalancing groups and filter to those assigned to this model
-      const allRebalancingGroups = await getRebalancingGroupsServerFn();
+      // Filter rebalancing groups client-side (minimal processing)
       const rebalancingGroups = allRebalancingGroups.filter(
         (group) => group.assignedModel?.id === modelId,
       );
