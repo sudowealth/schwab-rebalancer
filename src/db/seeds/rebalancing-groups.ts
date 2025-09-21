@@ -1,5 +1,5 @@
 import { eq } from 'drizzle-orm';
-import type { drizzle } from 'drizzle-orm/neon-http';
+import { dbProxy } from "~/lib/db-config";
 import * as schema from '~/db/schema';
 
 // Demo rebalancing groups data
@@ -16,7 +16,7 @@ const REBALANCING_GROUPS_DATA = [
   },
 ];
 
-export async function seedRebalancingGroups(db: ReturnType<typeof drizzle>, userId?: string) {
+export async function seedRebalancingGroups(userId?: string) {
   console.log('👥 Seeding rebalancing groups...');
 
   const now = Math.floor(Date.now() / 1000);
@@ -25,7 +25,7 @@ export async function seedRebalancingGroups(db: ReturnType<typeof drizzle>, user
   let targetUserId = userId;
 
   if (!targetUserId) {
-    const existingUser = await db
+    const existingUser = await dbProxy
       .select()
       .from(schema.user)
       .where(eq(schema.user.role, 'admin'))
@@ -36,15 +36,15 @@ export async function seedRebalancingGroups(db: ReturnType<typeof drizzle>, user
   console.log(`✅ Using user ID for rebalancing groups: ${targetUserId}`);
 
   // Clear existing rebalancing groups
-  await db.delete(schema.rebalancingGroupMember);
-  await db.delete(schema.modelGroupAssignment);
-  await db.delete(schema.rebalancingGroup);
+  await dbProxy.delete(schema.rebalancingGroupMember);
+  await dbProxy.delete(schema.modelGroupAssignment);
+  await dbProxy.delete(schema.rebalancingGroup);
 
   // Insert rebalancing groups
   for (const group of REBALANCING_GROUPS_DATA) {
     try {
       // Create the group
-      await db.insert(schema.rebalancingGroup).values({
+      await dbProxy.insert(schema.rebalancingGroup).values({
         id: group.id,
         userId: targetUserId,
         name: group.name,
@@ -55,7 +55,7 @@ export async function seedRebalancingGroups(db: ReturnType<typeof drizzle>, user
 
       // Create group members
       for (const accountId of group.memberAccountIds) {
-        await db.insert(schema.rebalancingGroupMember).values({
+        await dbProxy.insert(schema.rebalancingGroupMember).values({
           id: `${group.id}_member_${accountId}`,
           groupId: group.id,
           accountId: accountId,
@@ -76,7 +76,7 @@ export async function seedRebalancingGroups(db: ReturnType<typeof drizzle>, user
 
   for (const group of REBALANCING_GROUPS_DATA) {
     try {
-      await db.insert(schema.modelGroupAssignment).values({
+      await dbProxy.insert(schema.modelGroupAssignment).values({
         id: `${modelId}_${group.id}`,
         modelId: modelId,
         rebalancingGroupId: group.id,

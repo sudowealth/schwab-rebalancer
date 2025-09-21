@@ -1,6 +1,6 @@
 import { inArray } from 'drizzle-orm';
-import type { drizzle } from 'drizzle-orm/neon-http';
 import * as schema from '~/db/schema';
+import { dbProxy } from '~/lib/db-config';
 
 const CASH_DATA = [
   {
@@ -20,13 +20,13 @@ const CASH_DATA = [
 ];
 
 // Seed cash securities (ETFs and stocks will be populated automatically via equity securities sync)
-export async function seedSecurities(db: ReturnType<typeof drizzle>) {
+export async function seedSecurities() {
   console.log('📊 Seeding cash securities...');
 
   const now = Math.floor(Date.now() / 1000);
 
   // Only seed cash securities, ETFs and stocks will be populated via equity securities sync
-  const existingCash = await db
+  const existingCash = await dbProxy
     .select({ ticker: schema.security.ticker })
     .from(schema.security)
     .where(
@@ -44,7 +44,7 @@ export async function seedSecurities(db: ReturnType<typeof drizzle>) {
   let insertedCount = 0;
 
   if (securitiesToInsert.length > 0) {
-    const inserted = await db
+    const inserted = await dbProxy
       .insert(schema.security)
       .values(
         securitiesToInsert.map((security) => ({

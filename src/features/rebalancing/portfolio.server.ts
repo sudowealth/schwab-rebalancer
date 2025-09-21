@@ -7,7 +7,7 @@ import {
   isBaseCashTicker,
   MANUAL_CASH_TICKER,
 } from '~/lib/constants';
-import { createDatabaseInstance } from '~/lib/db-config';
+import { dbProxy } from '~/lib/db-config';
 import { getErrorMessage } from '~/lib/error-handler';
 import type { RebalanceSecurityData, RebalanceSleeveDataNew } from './rebalance-logic.server';
 
@@ -47,11 +47,10 @@ export const rebalancePortfolioServerFn = createServerFn({ method: 'POST' })
     }
 
     const { user } = await requireAuth();
-
     // Verify that the portfolio (rebalancing group) belongs to the authenticated user
-    const db = await createDatabaseInstance();
+    
 
-    const portfolio = await db
+    const portfolio = await dbProxy
       .select({ userId: schema.rebalancingGroup.userId })
       .from(schema.rebalancingGroup)
       .where(eq(schema.rebalancingGroup.id, portfolioId))
@@ -65,7 +64,7 @@ export const rebalancePortfolioServerFn = createServerFn({ method: 'POST' })
 
     try {
       // Get rebalancing group and its accounts
-      const group = await db
+      const group = await dbProxy
         .select()
         .from(schema.rebalancingGroup)
         .where(eq(schema.rebalancingGroup.id, portfolioId))
@@ -76,7 +75,7 @@ export const rebalancePortfolioServerFn = createServerFn({ method: 'POST' })
       }
 
       // Get group members (accounts)
-      const groupMembers = await db
+      const groupMembers = await dbProxy
         .select()
         .from(schema.rebalancingGroupMember)
         .where(eq(schema.rebalancingGroupMember.groupId, portfolioId));
@@ -84,7 +83,7 @@ export const rebalancePortfolioServerFn = createServerFn({ method: 'POST' })
       const accountIds = groupMembers.map((m) => m.accountId);
 
       // Get model assignment
-      const modelAssignment = await db
+      const modelAssignment = await dbProxy
         .select()
         .from(schema.modelGroupAssignment)
         .where(eq(schema.modelGroupAssignment.rebalancingGroupId, portfolioId))
@@ -95,13 +94,13 @@ export const rebalancePortfolioServerFn = createServerFn({ method: 'POST' })
       }
 
       // Get model sleeves
-      const modelSleeves = await db
+      const modelSleeves = await dbProxy
         .select()
         .from(schema.modelMember)
         .where(eq(schema.modelMember.modelId, modelAssignment[0].modelId));
 
       // Get current holdings
-      const holdings = await db
+      const holdings = await dbProxy
         .select({
           accountId: schema.holding.accountId,
           ticker: schema.holding.ticker,
@@ -117,7 +116,7 @@ export const rebalancePortfolioServerFn = createServerFn({ method: 'POST' })
         .where(inArray(schema.holding.accountId, accountIds));
 
       // Get wash sale restrictions from database
-      const restrictions = await db
+      const restrictions = await dbProxy
         .select()
         .from(schema.restrictedSecurity)
         .where(
@@ -137,7 +136,7 @@ export const rebalancePortfolioServerFn = createServerFn({ method: 'POST' })
       }));
 
       // Get transaction history to check for wash sale restrictions
-      const transactionData = await db
+      const transactionData = await dbProxy
         .select({
           ticker: schema.transaction.ticker,
           type: schema.transaction.type,
@@ -242,7 +241,7 @@ export const rebalancePortfolioServerFn = createServerFn({ method: 'POST' })
 
       // Build sleeve-based data structure with rank information
       for (const modelSleeve of modelSleeves) {
-        const sleeveMembers = await db
+        const sleeveMembers = await dbProxy
           .select({
             ticker: schema.sleeveMember.ticker,
             rank: schema.sleeveMember.rank,
@@ -270,7 +269,7 @@ export const rebalancePortfolioServerFn = createServerFn({ method: 'POST' })
             price = securityHolding.price;
           } else {
             // Get price from security table if not held
-            const securityPrice = await db
+            const securityPrice = await dbProxy
               .select({ price: schema.security.price })
               .from(schema.security)
               .where(eq(schema.security.ticker, member.ticker))
@@ -392,11 +391,10 @@ export const updateManualCashServerFn = createServerFn({ method: 'POST' })
     }
 
     const { user } = await requireAuth();
-
     // Verify that the account belongs to the authenticated user
-    const db = await createDatabaseInstance();
+    
 
-    const account = await db
+    const account = await dbProxy
       .select({ userId: schema.account.userId })
       .from(schema.account)
       .where(eq(schema.account.id, accountId))
@@ -410,7 +408,7 @@ export const updateManualCashServerFn = createServerFn({ method: 'POST' })
 
     try {
       // Check if MCASH holding already exists for this account
-      const existingHolding = await db
+      const existingHolding = await dbProxy
         .select()
         .from(schema.holding)
         .where(and(eq(schema.holding.accountId, accountId), eq(schema.holding.ticker, 'MCASH')))
@@ -419,7 +417,7 @@ export const updateManualCashServerFn = createServerFn({ method: 'POST' })
       if (amount === 0) {
         // Delete the holding if amount is 0
         if (existingHolding.length > 0) {
-          await db.delete(schema.holding).where(eq(schema.holding.id, existingHolding[0].id));
+          await dbProxy.delete(schema.holding).where(eq(schema.holding.id, existingHolding[0].id));
         }
       } else {
         // Store amount as quantity (MCASH price is $1.00 per share)
@@ -427,7 +425,7 @@ export const updateManualCashServerFn = createServerFn({ method: 'POST' })
 
         if (existingHolding.length > 0) {
           // Update existing holding
-          await db
+          await dbProxy
             .update(schema.holding)
             .set({
               qty: qtyInDollars,
@@ -437,7 +435,7 @@ export const updateManualCashServerFn = createServerFn({ method: 'POST' })
         } else {
           // Create new holding
           const holdingId = `manual-cash-${accountId}-${Date.now()}`;
-          await db.insert(schema.holding).values({
+          await dbProxy.insert(schema.holding).values({
             id: holdingId,
             accountId,
             ticker: 'MCASH',
@@ -472,11 +470,10 @@ export const getManualCashServerFn = createServerFn({ method: 'POST' })
     }
 
     const { user } = await requireAuth();
-
     // Verify that the account belongs to the authenticated user
-    const db = await createDatabaseInstance();
+    
 
-    const account = await db
+    const account = await dbProxy
       .select({ userId: schema.account.userId })
       .from(schema.account)
       .where(eq(schema.account.id, accountId))
@@ -488,7 +485,7 @@ export const getManualCashServerFn = createServerFn({ method: 'POST' })
 
     try {
       // Get MCASH holding for this account
-      const manualCashHolding = await db
+      const manualCashHolding = await dbProxy
         .select({
           qty: schema.holding.qty,
         })

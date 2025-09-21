@@ -2,7 +2,7 @@ import { createServerFn } from '@tanstack/react-start';
 import { eq, inArray, sql } from 'drizzle-orm';
 import * as schema from '~/db/schema';
 import { CASH_TICKER, isAnyCashTicker } from '~/lib/constants';
-import { createDatabaseInstance } from '~/lib/db-config';
+import { dbProxy } from '~/lib/db-config';
 import { getErrorMessage, ValidationError } from '~/lib/error-handler';
 import type { SyncYahooFundamentalsResult } from './yahoo.server';
 
@@ -20,7 +20,7 @@ const requireAdmin = async () => {
 // Server function to seed demo data - runs ONLY on server
 export const seedDemoDataServerFn = createServerFn({ method: 'POST' }).handler(async () => {
   const { user } = await requireAuth();
-
+  const _db = dbProxy;
   const { seedDatabase } = await import('~/db/seeds/main');
   await seedDatabase(user.id);
 
@@ -39,13 +39,13 @@ export const seedDemoDataServerFn = createServerFn({ method: 'POST' }).handler(a
 // Server function to seed securities data - runs ONLY on server
 export const seedSecuritiesDataServerFn = createServerFn({ method: 'POST' }).handler(async () => {
   await requireAuth();
+  const _db = dbProxy;
 
-  const db = await createDatabaseInstance();
   const { seedSecurities } = await import('~/db/seeds/securities');
   const { seedSP500Securities } = await import('~/db/seeds/sp500-model-seeder');
 
   // Seed cash securities first
-  await seedSecurities(db);
+  await seedSecurities();
 
   // Then run the equity securities sync to populate ETFs and stocks
   console.log('🔄 Running equity securities sync...');
@@ -63,7 +63,7 @@ export const seedSecuritiesDataServerFn = createServerFn({ method: 'POST' }).han
 
   // Seed S&P 500 securities after equity sync, but only if they don't already exist
   const { eq } = await import('drizzle-orm');
-  const sp500Index = await db
+  const sp500Index = await dbProxy
     .select({ id: schema.indexTable.id })
     .from(schema.indexTable)
     .where(eq(schema.indexTable.id, 'sp500'))
@@ -71,7 +71,7 @@ export const seedSecuritiesDataServerFn = createServerFn({ method: 'POST' }).han
 
   if (sp500Index.length === 0) {
     console.log('🔄 S&P 500 index not found, seeding S&P 500 securities...');
-    await seedSP500Securities(db);
+    await seedSP500Securities();
     console.log('✅ S&P 500 securities seeding completed');
   } else {
     console.log('⏭️ Skipping S&P 500 seeding - index already exists');
@@ -93,7 +93,7 @@ export const seedSecuritiesDataServerFn = createServerFn({ method: 'POST' }).han
       if (schwabStatus?.hasCredentials) {
         // Filter tickers to only include those that appear in holdings, indices, or sleeves
         const relevantTickers = await filterImportedTickersForPriceSync(
-          db,
+          
           equitySyncResult.importedTickers,
         );
 
@@ -182,12 +182,12 @@ export const seedSecuritiesDataServerFn = createServerFn({ method: 'POST' }).han
 // Server function to seed models data - runs ONLY on server
 export const seedModelsDataServerFn = createServerFn({ method: 'POST' }).handler(async () => {
   const { user } = await requireAuth();
+  const _db = dbProxy;
 
-  const db = await createDatabaseInstance();
   const { seedSleeves, seedModels } = await import('~/db/seeds/sp500-model-seeder');
 
-  const sleevesResult = await seedSleeves(db, user.id);
-  const modelsResult = await seedModels(db, user.id);
+  const sleevesResult = await seedSleeves(user.id);
+  const modelsResult = await seedModels(user.id);
 
   return {
     success: true,
@@ -201,14 +201,14 @@ export const seedModelsDataServerFn = createServerFn({ method: 'POST' }).handler
 export const seedGlobalEquityModelServerFn = createServerFn({ method: 'POST' }).handler(
   async () => {
     const { user } = await requireAuth();
-
-    const db = await createDatabaseInstance();
+  const _db = dbProxy;
+    
     const { seedGlobalEquitySleeves, seedGlobalEquityModelData } = await import(
       '~/db/seeds/global-equity-model-seeder'
     );
 
-    const sleevesResult = await seedGlobalEquitySleeves(db, user.id);
-    const modelsResult = await seedGlobalEquityModelData(db, user.id);
+    const sleevesResult = await seedGlobalEquitySleeves(user.id);
+    const modelsResult = await seedGlobalEquityModelData(user.id);
 
     return {
       success: true,
@@ -232,7 +232,7 @@ export const importNasdaqSecuritiesServerFn = createServerFn({
   )
   .handler(async ({ data }) => {
     await requireAuth();
-
+  const _db = dbProxy;
     const { limit, skipExisting = true, feedType = 'all' } = data;
 
     try {
@@ -335,7 +335,7 @@ export const importNasdaqSecuritiesServerFn = createServerFn({
       const securitiesToProcess = limit ? parsedSecurities.slice(0, limit) : parsedSecurities;
 
       // Import to database
-      const db = await createDatabaseInstance();
+      
 
       let importedCount = 0;
       let skippedCount = 0;
@@ -416,7 +416,7 @@ export const importNasdaqSecuritiesServerFn = createServerFn({
         const chunkSize = 500;
         for (let i = 0; i < tickers.length; i += chunkSize) {
           const chunk = tickers.slice(i, i + chunkSize);
-          const existing = await db
+          const existing = await dbProxy
             .select({ ticker: schema.security.ticker })
             .from(schema.security)
             .where(inArray(schema.security.ticker, chunk));
@@ -442,7 +442,7 @@ export const importNasdaqSecuritiesServerFn = createServerFn({
         const chunkSize = 500;
         for (let i = 0; i < recordsToInsert.length; i += chunkSize) {
           const chunk = recordsToInsert.slice(i, i + chunkSize);
-          const inserted = await db
+          const inserted = await dbProxy
             .insert(schema.security)
             .values(chunk)
             .onConflictDoNothing({ target: schema.security.ticker })
@@ -485,7 +485,7 @@ export const truncateDataServerFn = createServerFn({ method: 'POST' })
       throw new Error('Confirmation text required: "TRUNCATE_ALL_DATA"');
     }
 
-    const db = await createDatabaseInstance();
+    
 
     try {
       // Get request info for audit logging
@@ -532,7 +532,7 @@ export const truncateDataServerFn = createServerFn({ method: 'POST' })
       // Truncate each table individually (no transaction support in Neon HTTP)
       for (const tableName of tablesToTruncate) {
         try {
-          await db.execute(sql`DELETE FROM ${sql.identifier(tableName)}`);
+          await dbProxy.execute(sql`DELETE FROM ${sql.identifier(tableName)}`);
           truncatedTables.push(tableName);
         } catch (tableError) {
           failedTables.push(tableName);
@@ -541,7 +541,7 @@ export const truncateDataServerFn = createServerFn({ method: 'POST' })
       }
 
       // Log the truncation in audit log
-      await db.insert(schema.auditLog).values({
+      await dbProxy.insert(schema.auditLog).values({
         id: crypto.randomUUID(),
         userId: user.id,
         action: 'TRUNCATE_ALL_DATA',
@@ -596,17 +596,17 @@ export const truncateDataServerFn = createServerFn({ method: 'POST' })
 // Get counts for Yahoo Finance sync scopes
 export const getYahooSyncCountsServerFn = createServerFn({ method: 'GET' }).handler(async () => {
   const { user } = await requireAuth();
-  const { count, and, or, inArray, isNull, ne } = await import('drizzle-orm');
-  const db = await createDatabaseInstance();
+  const _db = dbProxy;  const { count, and, or, inArray, isNull, ne } = await import('drizzle-orm');
+  
 
   // Get total securities count
-  const totalSecurities = await db
+  const totalSecurities = await dbProxy
     .select({ count: count() })
     .from(schema.security)
     .where(ne(schema.security.ticker, CASH_TICKER));
 
   // Get securities missing fundamentals
-  const missingFundamentals = await db
+  const missingFundamentals = await dbProxy
     .select({ count: count() })
     .from(schema.security)
     .where(
@@ -628,7 +628,7 @@ export const getYahooSyncCountsServerFn = createServerFn({ method: 'GET' }).hand
   );
 
   // Get held securities missing fundamentals
-  const heldMissingFundamentals = await db
+  const heldMissingFundamentals = await dbProxy
     .select({ count: count() })
     .from(schema.security)
     .where(
@@ -643,7 +643,7 @@ export const getYahooSyncCountsServerFn = createServerFn({ method: 'GET' }).hand
     );
 
   // Get sleeve securities missing fundamentals
-  const sleeveSecurities = await db
+  const sleeveSecurities = await dbProxy
     .select({
       ticker: schema.sleeveMember.ticker,
     })
@@ -653,7 +653,7 @@ export const getYahooSyncCountsServerFn = createServerFn({ method: 'GET' }).hand
 
   const sleeveTickers = new Set(sleeveSecurities.map((s) => s.ticker));
 
-  const sleeveMissingFundamentals = await db
+  const sleeveMissingFundamentals = await dbProxy
     .select({ count: count() })
     .from(schema.security)
     .where(
@@ -668,7 +668,7 @@ export const getYahooSyncCountsServerFn = createServerFn({ method: 'GET' }).hand
     );
 
   // Get held and sleeve securities missing fundamentals
-  const heldSleeveMissingFundamentals = await db
+  const heldSleeveMissingFundamentals = await dbProxy
     .select({ count: count() })
     .from(schema.security)
     .where(
@@ -697,11 +697,11 @@ export const getYahooSyncCountsServerFn = createServerFn({ method: 'GET' }).hand
 // Check if securities exist in the database
 export const checkSecuritiesExistServerFn = createServerFn({ method: 'GET' }).handler(async () => {
   const { user: _user } = await requireAuth();
-  const { count, ne } = await import('drizzle-orm');
-  const db = await createDatabaseInstance();
+  const _db = dbProxy;  const { count, ne } = await import('drizzle-orm');
+  
 
   // Get count of securities (excluding cash)
-  const securitiesCount = await db
+  const securitiesCount = await dbProxy
     .select({ count: count() })
     .from(schema.security)
     .where(ne(schema.security.ticker, CASH_TICKER));
@@ -715,11 +715,11 @@ export const checkSecuritiesExistServerFn = createServerFn({ method: 'GET' }).ha
 // Check if models exist for the user
 export const checkModelsExistServerFn = createServerFn({ method: 'GET' }).handler(async () => {
   const { user } = await requireAuth();
-  const { count, eq } = await import('drizzle-orm');
-  const db = await createDatabaseInstance();
+  const _db = dbProxy;  const { count, eq } = await import('drizzle-orm');
+  
 
   // Get count of models for this user
-  const modelsCount = await db
+  const modelsCount = await dbProxy
     .select({ count: count() })
     .from(schema.model)
     .where(eq(schema.model.userId, user.id));
@@ -749,7 +749,6 @@ export const checkSchwabCredentialsServerFn = createServerFn({ method: 'GET' }).
 
 // Helper function to filter imported tickers to only include those in holdings, indices, or sleeves
 async function filterImportedTickersForPriceSync(
-  db: Awaited<ReturnType<typeof createDatabaseInstance>>,
   importedTickers: string[],
 ): Promise<string[]> {
   if (importedTickers.length === 0) {
@@ -757,19 +756,19 @@ async function filterImportedTickersForPriceSync(
   }
 
   // Get all tickers from holdings
-  const holdingsTickers = await db
+  const holdingsTickers = await dbProxy
     .select({ ticker: schema.holding.ticker })
     .from(schema.holding)
     .where(inArray(schema.holding.ticker, importedTickers));
 
   // Get all tickers from sleeve members
-  const sleeveTickers = await db
+  const sleeveTickers = await dbProxy
     .select({ ticker: schema.sleeveMember.ticker })
     .from(schema.sleeveMember)
     .where(inArray(schema.sleeveMember.ticker, importedTickers));
 
   // Get all tickers from index members
-  const indexTickers = await db
+  const indexTickers = await dbProxy
     .select({ ticker: schema.indexMember.securityId })
     .from(schema.indexMember)
     .where(inArray(schema.indexMember.securityId, importedTickers));

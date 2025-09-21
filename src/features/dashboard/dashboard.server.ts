@@ -1,7 +1,7 @@
 import { createServerFn } from '@tanstack/react-start';
 import { and, eq, inArray } from 'drizzle-orm';
 import * as schema from '~/db/schema';
-import { createDatabaseInstance } from '~/lib/db-config';
+import { dbProxy } from '~/lib/db-config';
 
 // Defer server-only auth utilities to runtime to avoid bundling them in the client build
 const requireAuth = async () => {
@@ -127,9 +127,9 @@ export const getGroupTransactionsServerFn = createServerFn({
     const { accountIds } = data;
     const { user } = await requireAuth();
     // Verify that all accountIds belong to the authenticated user
-    const db = await createDatabaseInstance();
+    
 
-    const ownedAccounts = await db
+    const ownedAccounts = await dbProxy
       .select({ id: schema.account.id })
       .from(schema.account)
       .where(and(eq(schema.account.userId, user.id), inArray(schema.account.id, accountIds)));
@@ -242,8 +242,8 @@ export const truncateSecurityTableServerFn = createServerFn({
 }).handler(async () => {
   await requireAdmin();
 
-  const db = await createDatabaseInstance();
-  await db.delete(schema.security);
+  
+  await dbProxy.delete(schema.security);
   const { clearCache } = await import('../../lib/db-api');
   clearCache();
   return { success: true, message: 'Security table truncated successfully' };

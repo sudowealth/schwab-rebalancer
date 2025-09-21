@@ -1,19 +1,19 @@
 import { and, eq, inArray, like } from 'drizzle-orm';
-import type { drizzle } from 'drizzle-orm/neon-http';
+import { dbProxy } from "~/lib/db-config";
 import * as schema from '~/db/schema';
 
 // Combined function to seed S&P 500 securities, sleeves, and models
-export async function seedSp500Model(db: ReturnType<typeof drizzle>, userId?: string) {
+export async function seedSp500Model(userId?: string) {
   console.log('🚀 Starting complete S&P 500 model seeding process...');
 
   // Seed S&P 500 securities first (needed for sleeves)
-  await seedSP500Securities(db);
+  await seedSP500Securities();
 
   // Seed sleeves (they're needed by models)
-  await seedSleeves(db, userId);
+  await seedSleeves(userId);
 
   // Then seed models (which depend on sleeves)
-  await seedModels(db, userId);
+  await seedModels(userId);
 
   console.log('🎉 Complete S&P 500 model seeding completed successfully!');
 }
@@ -123,7 +123,7 @@ async function generateSP500SecuritiesData(): Promise<
 }
 
 // Seed S&P 500 securities and index data
-export async function seedSP500Securities(db: ReturnType<typeof drizzle>) {
+export async function seedSP500Securities() {
   console.log('📊 Seeding S&P 500 securities and index...');
 
   const now = Math.floor(Date.now() / 1000);
@@ -147,7 +147,7 @@ export async function seedSP500Securities(db: ReturnType<typeof drizzle>) {
         updatedAt: now,
       }));
 
-      const inserted = await db
+      const inserted = await dbProxy
         .insert(schema.security)
         .values(chunk)
         .onConflictDoNothing({ target: schema.security.ticker })
@@ -161,7 +161,7 @@ export async function seedSP500Securities(db: ReturnType<typeof drizzle>) {
   console.log(`✅ Seeded ${insertedCount} S&P 500 securities (${skippedCount} already existed)`);
 
   // Seed S&P 500 index and members
-  const indexInsert = await db
+  const indexInsert = await dbProxy
     .insert(schema.indexTable)
     .values({
       id: 'sp500',
@@ -192,7 +192,7 @@ export async function seedSP500Securities(db: ReturnType<typeof drizzle>) {
         updatedAt: now,
       }));
 
-      const inserted = await db
+      const inserted = await dbProxy
         .insert(schema.indexMember)
         .values(chunk)
         .onConflictDoNothing({ target: schema.indexMember.id })
@@ -211,11 +211,11 @@ export async function seedSP500Securities(db: ReturnType<typeof drizzle>) {
 const createdAt = Math.floor(Date.now() / 1000);
 
 // Function to generate sleeves dynamically from S&P 500 data
-export async function generateDynamicSleeves(db: ReturnType<typeof drizzle>) {
+export async function generateDynamicSleeves() {
   console.log('📊 Generating sleeves from S&P 500 data...');
 
   // Get all S&P 500 securities with industry and market cap data
-  const sp500Securities = await db
+  const sp500Securities = await dbProxy
     .select({
       ticker: schema.security.ticker,
       industry: schema.security.industry,
@@ -315,7 +315,7 @@ export async function generateDynamicSleeves(db: ReturnType<typeof drizzle>) {
   return { sleeves, sleeveMembers };
 }
 
-export async function seedSleeves(db: ReturnType<typeof drizzle>, userId?: string) {
+export async function seedSleeves(userId?: string) {
   console.log('📂 Seeding sleeves...');
 
   const now = Math.floor(Date.now() / 1000);
@@ -325,10 +325,10 @@ export async function seedSleeves(db: ReturnType<typeof drizzle>, userId?: strin
 
   // Generate dynamic sleeves from S&P 500 data
   const { sleeves: dynamicSleeves, sleeveMembers: dynamicMembers } =
-    await generateDynamicSleeves(db);
+    await generateDynamicSleeves();
 
   // Clear existing dynamic S&P 500 sleeves for this user (only sleeves created by this seeder)
-  const existingDynamicSleeves = await db
+  const existingDynamicSleeves = await dbProxy
     .select({ id: schema.sleeve.id })
     .from(schema.sleeve)
     .where(and(eq(schema.sleeve.userId, targetUserId), like(schema.sleeve.id, 'sleeve_dynamic_%')));
@@ -337,20 +337,20 @@ export async function seedSleeves(db: ReturnType<typeof drizzle>, userId?: strin
 
   if (sleeveIdsToDelete.length > 0) {
     // Delete related data first (foreign key constraints)
-    await db
+    await dbProxy
       .delete(schema.restrictedSecurity)
       .where(inArray(schema.restrictedSecurity.sleeveId, sleeveIdsToDelete));
-    await db
+    await dbProxy
       .delete(schema.sleeveMember)
       .where(inArray(schema.sleeveMember.sleeveId, sleeveIdsToDelete));
-    await db.delete(schema.sleeve).where(inArray(schema.sleeve.id, sleeveIdsToDelete));
+    await dbProxy.delete(schema.sleeve).where(inArray(schema.sleeve.id, sleeveIdsToDelete));
   }
 
   console.log('✅ Cleared existing sleeve data');
 
   // Insert sleeves
   for (const sleeve of dynamicSleeves) {
-    await db.insert(schema.sleeve).values({
+    await dbProxy.insert(schema.sleeve).values({
       id: sleeve.id,
       userId: targetUserId, // Use target user ID
       name: sleeve.name,
@@ -364,7 +364,7 @@ export async function seedSleeves(db: ReturnType<typeof drizzle>, userId?: strin
   // Insert sleeve members
   for (const member of dynamicMembers) {
     try {
-      await db.insert(schema.sleeveMember).values({
+      await dbProxy.insert(schema.sleeveMember).values({
         id: member.id,
         sleeveId: member.sleeveId,
         ticker: member.ticker,
@@ -393,12 +393,12 @@ export async function seedSleeves(db: ReturnType<typeof drizzle>, userId?: strin
   };
 }
 
-export const getModelData = async (db: ReturnType<typeof drizzle>, userId?: string) => {
+export const getModelData = async (userId?: string) => {
   // Determine the correct user ID to use
   let actualUserId = userId || 'demo-user';
 
   if (actualUserId === 'demo-user') {
-    const users = await db
+    const users = await dbProxy
       .select({ id: schema.user.id })
       .from(schema.user)
       .where(eq(schema.user.role, 'admin'))
@@ -425,7 +425,6 @@ export const getModelData = async (db: ReturnType<typeof drizzle>, userId?: stri
 
 // Function to generate model members dynamically based on existing sleeves
 export async function generateDynamicModelMembers(
-  db: ReturnType<typeof drizzle>,
   modelId: string,
   userId?: string,
 ) {
@@ -437,7 +436,7 @@ export async function generateDynamicModelMembers(
   // If no userId provided, check if there's a real user in the database
   let actualUserId = targetUserId;
   if (targetUserId === 'demo-user') {
-    const users = await db
+    const users = await dbProxy
       .select({ id: schema.user.id })
       .from(schema.user)
       .where(eq(schema.user.role, 'admin'))
@@ -449,7 +448,7 @@ export async function generateDynamicModelMembers(
     }
   }
 
-  const sleeves = await db
+  const sleeves = await dbProxy
     .select({
       id: schema.sleeve.id,
       name: schema.sleeve.name,
@@ -491,15 +490,15 @@ export async function generateDynamicModelMembers(
   return modelMembers;
 }
 
-export async function seedModels(db: ReturnType<typeof drizzle>, userId?: string) {
+export async function seedModels(userId?: string) {
   console.log('🌱 Starting model seeding...');
 
   // Get model data to insert
-  const modelData = await getModelData(db, userId);
+  const modelData = await getModelData(userId);
   const modelIdsToInsert = modelData.map((m) => m.id);
 
   // Only delete models that have the same ID as the S&P 500 model we're creating
-  const modelsToDelete = await db
+  const modelsToDelete = await dbProxy
     .select({ id: schema.model.id })
     .from(schema.model)
     .where(inArray(schema.model.id, modelIdsToInsert));
@@ -510,35 +509,35 @@ export async function seedModels(db: ReturnType<typeof drizzle>, userId?: string
     const modelIdsToDelete = modelsToDelete.map((m) => m.id);
 
     // Delete model assignments first
-    await db
+    await dbProxy
       .delete(schema.modelGroupAssignment)
       .where(inArray(schema.modelGroupAssignment.modelId, modelIdsToDelete));
 
     // Delete existing model members (due to foreign key constraints)
-    await db
+    await dbProxy
       .delete(schema.modelMember)
       .where(inArray(schema.modelMember.modelId, modelIdsToDelete));
 
     // Then delete models
-    await db.delete(schema.model).where(inArray(schema.model.id, modelIdsToDelete));
+    await dbProxy.delete(schema.model).where(inArray(schema.model.id, modelIdsToDelete));
 
     console.log('✅ Cleared existing model data');
   }
 
   // Insert models
   for (const model of modelData) {
-    await db.insert(schema.model).values(model);
+    await dbProxy.insert(schema.model).values(model);
   }
 
   // Generate and insert model members dynamically
   const modelMembersData = await generateDynamicModelMembers(
-    db,
+    
     'model_sp500_index_replication',
     userId,
   );
 
   for (const member of modelMembersData) {
-    await db.insert(schema.modelMember).values(member);
+    await dbProxy.insert(schema.modelMember).values(member);
   }
 
   console.log(`✅ Seeded ${modelData.length} models, ${modelMembersData.length} model members`);

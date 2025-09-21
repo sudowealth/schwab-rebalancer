@@ -1,6 +1,6 @@
 import { and, eq, inArray } from 'drizzle-orm';
-import type { drizzle } from 'drizzle-orm/neon-http';
 import * as schema from '~/db/schema';
+import { dbProxy } from '~/lib/db-config';
 
 // Global Equity Model data structure
 const GLOBAL_EQUITY_MODEL_DATA = [
@@ -56,23 +56,23 @@ const GLOBAL_EQUITY_MODEL_DATA = [
 ];
 
 // Combined function to seed Global Equity Model securities, sleeves, and model
-export async function seedGlobalEquityModel(db: ReturnType<typeof drizzle>, userId?: string) {
+export async function seedGlobalEquityModel(userId?: string) {
   console.log('🚀 Starting complete Global Equity Model seeding process...');
 
   // Seed Global Equity securities first (needed for sleeves)
-  await seedGlobalEquitySecurities(db);
+  await seedGlobalEquitySecurities();
 
   // Seed sleeves (they're needed by models)
-  await seedGlobalEquitySleeves(db, userId);
+  await seedGlobalEquitySleeves(userId);
 
   // Then seed the model (which depends on sleeves)
-  await seedGlobalEquityModelData(db, userId);
+  await seedGlobalEquityModelData(userId);
 
   console.log('🎉 Complete Global Equity Model seeding completed successfully!');
 }
 
 // Seed Global Equity securities and index data
-export async function seedGlobalEquitySecurities(db: ReturnType<typeof drizzle>) {
+export async function seedGlobalEquitySecurities() {
   console.log('📊 Seeding Global Equity securities and index...');
 
   const now = Math.floor(Date.now() / 1000);
@@ -111,7 +111,7 @@ export async function seedGlobalEquitySecurities(db: ReturnType<typeof drizzle>)
   // Insert Global Equity securities
   const securities = Array.from(securityData.values());
   for (const security of securities) {
-    await db.insert(schema.security).values({
+    await dbProxy.insert(schema.security).values({
       ticker: security.ticker,
       name: security.name,
       price: security.price,
@@ -124,7 +124,7 @@ export async function seedGlobalEquitySecurities(db: ReturnType<typeof drizzle>)
   console.log(`✅ Seeded ${securities.length} Global Equity securities`);
 
   // Seed Global Equity index and members
-  await db.insert(schema.indexTable).values({
+  await dbProxy.insert(schema.indexTable).values({
     id: 'global-equity',
     name: 'Global Equity Model',
     createdAt: now,
@@ -133,7 +133,7 @@ export async function seedGlobalEquitySecurities(db: ReturnType<typeof drizzle>)
 
   // Insert all securities as index members
   for (const security of securities) {
-    await db.insert(schema.indexMember).values({
+    await dbProxy.insert(schema.indexMember).values({
       id: `global-equity-${security.ticker}`,
       indexId: 'global-equity',
       securityId: security.ticker,
@@ -145,7 +145,7 @@ export async function seedGlobalEquitySecurities(db: ReturnType<typeof drizzle>)
   console.log(`✅ Seeded Global Equity index with ${securities.length} members`);
 }
 
-export async function seedGlobalEquitySleeves(db: ReturnType<typeof drizzle>, userId?: string) {
+export async function seedGlobalEquitySleeves(userId?: string) {
   console.log('📂 Seeding Global Equity sleeves...');
 
   const now = Math.floor(Date.now() / 1000);
@@ -175,7 +175,7 @@ export async function seedGlobalEquitySleeves(db: ReturnType<typeof drizzle>, us
     'Global Equity Model', // Also clear any existing model with this name
   ];
 
-  const existingGlobalEquitySleeves = await db
+  const existingGlobalEquitySleeves = await dbProxy
     .select({ id: schema.sleeve.id })
     .from(schema.sleeve)
     .where(
@@ -189,13 +189,13 @@ export async function seedGlobalEquitySleeves(db: ReturnType<typeof drizzle>, us
 
   if (sleeveIdsToDelete.length > 0) {
     // Delete related data first (foreign key constraints)
-    await db
+    await dbProxy
       .delete(schema.restrictedSecurity)
       .where(inArray(schema.restrictedSecurity.sleeveId, sleeveIdsToDelete));
-    await db
+    await dbProxy
       .delete(schema.sleeveMember)
       .where(inArray(schema.sleeveMember.sleeveId, sleeveIdsToDelete));
-    await db.delete(schema.sleeve).where(inArray(schema.sleeve.id, sleeveIdsToDelete));
+    await dbProxy.delete(schema.sleeve).where(inArray(schema.sleeve.id, sleeveIdsToDelete));
   }
 
   console.log('✅ Cleared existing sleeve data');
@@ -240,7 +240,7 @@ export async function seedGlobalEquitySleeves(db: ReturnType<typeof drizzle>, us
 
   // Insert sleeves
   for (const sleeve of sleeves) {
-    await db.insert(schema.sleeve).values({
+    await dbProxy.insert(schema.sleeve).values({
       id: sleeve.id,
       userId: targetUserId,
       name: sleeve.name,
@@ -254,7 +254,7 @@ export async function seedGlobalEquitySleeves(db: ReturnType<typeof drizzle>, us
   // Insert sleeve members
   for (const member of sleeveMembers) {
     try {
-      await db.insert(schema.sleeveMember).values({
+      await dbProxy.insert(schema.sleeveMember).values({
         id: member.id,
         sleeveId: member.sleeveId,
         ticker: member.ticker,
@@ -283,12 +283,12 @@ export async function seedGlobalEquitySleeves(db: ReturnType<typeof drizzle>, us
   };
 }
 
-export const getGlobalEquityModelData = async (db: ReturnType<typeof drizzle>, userId?: string) => {
+export const getGlobalEquityModelData = async (userId?: string) => {
   // Determine the correct user ID to use
   let actualUserId = userId || 'demo-user';
 
   if (actualUserId === 'demo-user') {
-    const users = await db
+    const users = await dbProxy
       .select({ id: schema.user.id })
       .from(schema.user)
       .where(eq(schema.user.role, 'admin'))
@@ -316,11 +316,7 @@ export const getGlobalEquityModelData = async (db: ReturnType<typeof drizzle>, u
 };
 
 // Function to generate model members based on Global Equity data
-export async function generateGlobalEquityModelMembers(
-  db: ReturnType<typeof drizzle>,
-  modelId: string,
-  userId?: string,
-) {
+export async function generateGlobalEquityModelMembers(modelId: string, userId?: string) {
   console.log('📊 Generating Global Equity model members...');
 
   const targetUserId = userId || 'demo-user';
@@ -328,7 +324,7 @@ export async function generateGlobalEquityModelMembers(
   // If no userId provided, check if there's a real user in the database
   let actualUserId = targetUserId;
   if (targetUserId === 'demo-user') {
-    const users = await db
+    const users = await dbProxy
       .select({ id: schema.user.id })
       .from(schema.user)
       .where(eq(schema.user.role, 'admin'))
@@ -341,7 +337,7 @@ export async function generateGlobalEquityModelMembers(
   }
 
   // Get all sleeves for this user
-  const sleeves = await db
+  const sleeves = await dbProxy
     .select({
       id: schema.sleeve.id,
       name: schema.sleeve.name,
@@ -386,15 +382,15 @@ export async function generateGlobalEquityModelMembers(
   return modelMembers;
 }
 
-export async function seedGlobalEquityModelData(db: ReturnType<typeof drizzle>, userId?: string) {
+export async function seedGlobalEquityModelData(userId?: string) {
   console.log('🌱 Starting Global Equity model seeding...');
 
   // Get model data to insert
-  const modelData = await getGlobalEquityModelData(db, userId);
+  const modelData = await getGlobalEquityModelData(userId);
   const modelIdsToInsert = modelData.map((m) => m.id);
 
   // Only delete models that have the same ID as the Global Equity model we're creating
-  const modelsToDelete = await db
+  const modelsToDelete = await dbProxy
     .select({ id: schema.model.id })
     .from(schema.model)
     .where(inArray(schema.model.id, modelIdsToInsert));
@@ -405,35 +401,31 @@ export async function seedGlobalEquityModelData(db: ReturnType<typeof drizzle>, 
     const modelIdsToDelete = modelsToDelete.map((m) => m.id);
 
     // Delete model assignments first
-    await db
+    await dbProxy
       .delete(schema.modelGroupAssignment)
       .where(inArray(schema.modelGroupAssignment.modelId, modelIdsToDelete));
 
     // Delete existing model members (due to foreign key constraints)
-    await db
+    await dbProxy
       .delete(schema.modelMember)
       .where(inArray(schema.modelMember.modelId, modelIdsToDelete));
 
     // Then delete models
-    await db.delete(schema.model).where(inArray(schema.model.id, modelIdsToDelete));
+    await dbProxy.delete(schema.model).where(inArray(schema.model.id, modelIdsToDelete));
 
     console.log('✅ Cleared existing model data');
   }
 
   // Insert models
   for (const model of modelData) {
-    await db.insert(schema.model).values(model);
+    await dbProxy.insert(schema.model).values(model);
   }
 
   // Generate and insert model members
-  const modelMembersData = await generateGlobalEquityModelMembers(
-    db,
-    'model_global_equity',
-    userId,
-  );
+  const modelMembersData = await generateGlobalEquityModelMembers('model_global_equity', userId);
 
   for (const member of modelMembersData) {
-    await db.insert(schema.modelMember).values(member);
+    await dbProxy.insert(schema.modelMember).values(member);
   }
 
   console.log(

@@ -4,7 +4,7 @@ import * as schema from '~/db/schema';
 import type { Trade } from '~/features/auth/schemas';
 import type { SyncResult } from '~/features/schwab/schwab-sync.server';
 import { isAnyCashTicker } from '~/lib/constants';
-import { createDatabaseInstance } from '~/lib/db-config';
+import { dbProxy } from '~/lib/db-config';
 import { getErrorMessage } from '~/lib/error-handler';
 
 // Defer server-only auth utilities to runtime to avoid bundling them in the client build
@@ -71,7 +71,7 @@ export const handleSchwabOAuthCallbackServerFn = createServerFn({
 
     try {
       const { user } = await requireAuth();
-
+  const _db = dbProxy;
       console.log(`👤 [ServerFn] Using authenticated user ID: ${user.id.substring(0, 10)}...`);
 
       // Check for required Schwab environment variables
@@ -115,7 +115,7 @@ export const getSchwabCredentialsStatusServerFn = createServerFn({
 
   try {
     const { user } = await requireAuth();
-
+  const _db = dbProxy;
     console.log(`👤 [ServerFn] Using authenticated user ID: ${user.id.substring(0, 10)}...`);
 
     // Check for required Schwab environment variables
@@ -157,7 +157,7 @@ export const syncSchwabAccountsServerFn = createServerFn({
   console.log('🏦 [ServerFn] Starting Schwab accounts sync');
   try {
     const { user } = await requireAuth();
-
+  const _db = dbProxy;
     console.log('👤 [ServerFn] Using user ID:', user.id);
 
     const { getSchwabSyncService } = await import('~/features/schwab/schwab-sync.server');
@@ -199,7 +199,7 @@ export const syncSchwabHoldingsServerFn = createServerFn({ method: 'POST' })
     console.log('📋 [ServerFn] Request data:', data);
     try {
       const { user } = await requireAuth();
-
+  const _db = dbProxy;
       console.log('👤 [ServerFn] Using user ID:', user.id);
 
       const { getSchwabSyncService } = await import('~/features/schwab/schwab-sync.server');
@@ -240,7 +240,7 @@ export const syncSchwabTransactionsServerFn = createServerFn({ method: 'POST' })
   .handler(async ({ data }): Promise<SyncResult> => {
     try {
       const { user } = await requireAuth();
-
+  const _db = dbProxy;
       const { getSchwabSyncService } = await import('~/features/schwab/schwab-sync.server');
       const syncService = getSchwabSyncService();
       const startDate = data.startDate ? new Date(data.startDate) : undefined;
@@ -278,7 +278,7 @@ export const getHeldPositionTickersServerFn = createServerFn({
 
   try {
     const { user } = await requireAuth();
-    console.log('🔍 [ServerFn] Authenticated user:', user.id);
+  const _db = dbProxy;    console.log('🔍 [ServerFn] Authenticated user:', user.id);
 
     console.log('🔍 [ServerFn] Importing db-api to get positions...');
     const { getPositions } = await import('~/lib/db-api');
@@ -326,10 +326,10 @@ export const getSleeveTargetTickersServerFn = createServerFn({
 
   try {
     const { user } = await requireAuth();
+  const _db = dbProxy;
+    
 
-    const db = await createDatabaseInstance();
-
-    const sleeveRows = await db
+    const sleeveRows = await dbProxy
       .select({ ticker: schema.sleeveMember.ticker })
       .from(schema.sleeveMember)
       .innerJoin(schema.sleeve, eq(schema.sleeveMember.sleeveId, schema.sleeve.id))
@@ -360,15 +360,15 @@ export const getHeldAndSleeveTickersServerFn = createServerFn({
 
   try {
     const { user } = await requireAuth();
-
+  const _db = dbProxy;
     const { getPositions } = await import('~/lib/db-api');
     const heldPositions = await getPositions(user.id);
     const heldTickers = heldPositions
       .map((position) => position.ticker?.trim())
       .filter((ticker): ticker is string => Boolean(ticker) && !isAnyCashTicker(ticker));
 
-    const db = await createDatabaseInstance();
-    const sleeveRows = await db
+    
+    const sleeveRows = await dbProxy
       .select({ ticker: schema.sleeveMember.ticker })
       .from(schema.sleeveMember)
       .innerJoin(schema.sleeve, eq(schema.sleeveMember.sleeveId, schema.sleeve.id))
@@ -402,12 +402,12 @@ export const getGroupSecuritiesNeedingPriceUpdatesServerFn = createServerFn({
     console.log('🔄 [ServerFn] Getting securities needing price updates for group:', data.groupId);
 
     const { user } = await requireAuth();
-    const { groupId } = data;
+  const _db = dbProxy;    const { groupId } = data;
 
-    const db = await createDatabaseInstance();
+    
 
     // First, verify the group belongs to the user
-    const groupResult = await db
+    const groupResult = await dbProxy
       .select()
       .from(schema.rebalancingGroup)
       .where(
@@ -420,7 +420,7 @@ export const getGroupSecuritiesNeedingPriceUpdatesServerFn = createServerFn({
     }
 
     // Get account IDs for this group
-    const groupMembers = await db
+    const groupMembers = await dbProxy
       .select({ accountId: schema.rebalancingGroupMember.accountId })
       .from(schema.rebalancingGroupMember)
       .where(eq(schema.rebalancingGroupMember.groupId, groupId));
@@ -430,7 +430,7 @@ export const getGroupSecuritiesNeedingPriceUpdatesServerFn = createServerFn({
     // Get securities held in group accounts
     const heldTickers = new Set<string>();
     if (accountIds.length > 0) {
-      const holdings = await db
+      const holdings = await dbProxy
         .select({
           ticker: schema.holding.ticker,
         })
@@ -446,14 +446,14 @@ export const getGroupSecuritiesNeedingPriceUpdatesServerFn = createServerFn({
 
     // Get securities in sleeves associated with the group's model
     const sleeveTickers = new Set<string>();
-    const modelAssignments = await db
+    const modelAssignments = await dbProxy
       .select({ modelId: schema.modelGroupAssignment.modelId })
       .from(schema.modelGroupAssignment)
       .where(eq(schema.modelGroupAssignment.rebalancingGroupId, groupId));
 
     if (modelAssignments.length > 0) {
       const modelId = modelAssignments[0].modelId;
-      const sleeveMembers = await db
+      const sleeveMembers = await dbProxy
         .select({ ticker: schema.sleeveMember.ticker })
         .from(schema.sleeveMember)
         .innerJoin(schema.sleeve, eq(schema.sleeveMember.sleeveId, schema.sleeve.id))
@@ -480,7 +480,7 @@ export const getGroupSecuritiesNeedingPriceUpdatesServerFn = createServerFn({
     // 2. Last updated more than 1 hour ago
     const oneHourAgo = Date.now() - 60 * 60 * 1000; // 1 hour in milliseconds
 
-    const securitiesNeedingUpdate = await db
+    const securitiesNeedingUpdate = await dbProxy
       .select({
         ticker: schema.security.ticker,
         price: schema.security.price,
@@ -533,7 +533,7 @@ export const syncGroupPricesIfNeededServerFn = createServerFn({
       console.log('🔄 [ServerFn] Checking if group prices need syncing:', data.groupId);
 
       const { user } = await requireAuth();
-      const { groupId } = data;
+  const _db = dbProxy;      const { groupId } = data;
 
       // Check if user is connected to Schwab
       const { getSchwabApiService } = await import('~/features/schwab/schwab-api.server');
@@ -616,10 +616,10 @@ export const syncSchwabPricesServerFn = createServerFn({ method: 'POST' })
       });
 
       const { user } = await requireAuth();
-      console.log('👤 [ServerFn] Authenticated user:', user.id);
+  const _db = dbProxy;      console.log('👤 [ServerFn] Authenticated user:', user.id);
 
       try {
-        const db = await createDatabaseInstance();
+        
 
         const { getPriceSyncService } = await import('~/features/data-feeds/price-sync');
         const priceSyncService = getPriceSyncService();
@@ -636,7 +636,7 @@ export const syncSchwabPricesServerFn = createServerFn({ method: 'POST' })
           startedAt: new Date(),
           createdAt: new Date(),
         };
-        await db.insert(schema.syncLog).values(startLog);
+        await dbProxy.insert(schema.syncLog).values(startLog);
         console.log('📝 [ServerFn] Created sync log for prices:', logId);
 
         console.log('💰 [ServerFn] Calling priceSyncService.syncPrices with params:', {
@@ -686,7 +686,7 @@ export const syncSchwabPricesServerFn = createServerFn({ method: 'POST' })
               price: { old: r.oldPrice, new: r.newPrice },
               source: { old: undefined, new: r.source },
             };
-            await db.insert(schema.syncLogDetail).values({
+            await dbProxy.insert(schema.syncLogDetail).values({
               id: crypto.randomUUID(),
               logId,
               entityType: 'SECURITY',
@@ -724,7 +724,7 @@ export const syncSchwabPricesServerFn = createServerFn({ method: 'POST' })
         );
 
         // Complete sync log
-        await db
+        await dbProxy
           .update(schema.syncLog)
           .set({
             status: errorCount > 0 ? 'PARTIAL' : 'SUCCESS',
@@ -748,8 +748,8 @@ export const syncSchwabPricesServerFn = createServerFn({ method: 'POST' })
         console.error('❌ [ServerFn] Error syncing prices:', error);
         // Attempt to log error in sync log if we started one
         try {
-          const db = await createDatabaseInstance();
-          await db.insert(schema.syncLog).values({
+          
+          await dbProxy.insert(schema.syncLog).values({
             id: crypto.randomUUID(),
             userId: user.id,
             syncType: 'SECURITIES',
@@ -782,7 +782,7 @@ export const revokeSchwabCredentialsServerFn = createServerFn({
   console.log('🗑️ [ServerFn] Starting Schwab credentials revocation');
   try {
     const { user } = await requireAuth();
-
+  const _db = dbProxy;
     console.log('👤 [ServerFn] Using user ID:', user.id);
 
     // Check for required Schwab environment variables
@@ -820,11 +820,11 @@ export const deleteSyncLogServerFn = createServerFn({ method: 'POST' })
     const { logId } = data;
     try {
       const { user } = await requireAuth();
-
-      const db = await createDatabaseInstance();
+  const _db = dbProxy;
+      
 
       // First verify the log belongs to the user
-      const log = await db
+      const log = await dbProxy
         .select()
         .from(schema.syncLog)
         .where(eq(schema.syncLog.id, logId))
@@ -839,7 +839,7 @@ export const deleteSyncLogServerFn = createServerFn({ method: 'POST' })
       }
 
       // Delete the log (syncLogDetail will be deleted automatically due to CASCADE)
-      await db.delete(schema.syncLog).where(eq(schema.syncLog.id, logId));
+      await dbProxy.delete(schema.syncLog).where(eq(schema.syncLog.id, logId));
 
       console.log('🗑️ [ServerFn] Deleted sync log:', logId);
       return { success: true, logId };
@@ -853,10 +853,10 @@ export const deleteSyncLogServerFn = createServerFn({ method: 'POST' })
 export const getSyncLogsServerFn = createServerFn({ method: 'GET' }).handler(async () => {
   try {
     const { user } = await requireAuth();
+  const _db = dbProxy;
+    
 
-    const db = await createDatabaseInstance();
-
-    const logs = await db
+    const logs = await dbProxy
       .select()
       .from(schema.syncLog)
       .where(eq(schema.syncLog.userId, user.id))
@@ -867,7 +867,7 @@ export const getSyncLogsServerFn = createServerFn({ method: 'GET' }).handler(asy
     const logsWithDetails = await Promise.all(
       logs.map(async (log) => {
         try {
-          const details = await db
+          const details = await dbProxy
             .select()
             .from(schema.syncLogDetail)
             .where(eq(schema.syncLogDetail.logId, log.id))
@@ -910,7 +910,7 @@ export const addGroupTradesToBlotterServerFn = createServerFn({
     }
 
     const { user } = await requireAuth();
-
+  const _db = dbProxy;
     // Normalize trades into existing Trade type used by db-api
     const normalizedTrades = trades.map((t) => ({
       id: crypto.randomUUID(),
@@ -947,13 +947,13 @@ export const getGroupOrdersServerFn = createServerFn({ method: 'POST' })
     if (!groupId) throw new Error('groupId required');
 
     const { user } = await requireAuth();
-
-    const db = await createDatabaseInstance();
+  const _db = dbProxy;
+    
     const schema = await import('~/db/schema');
     const { eq } = await import('drizzle-orm');
 
     // Verify that the rebalancing group belongs to the authenticated user
-    const group = await db
+    const group = await dbProxy
       .select({ userId: schema.rebalancingGroup.userId })
       .from(schema.rebalancingGroup)
       .where(eq(schema.rebalancingGroup.id, groupId))
@@ -963,7 +963,7 @@ export const getGroupOrdersServerFn = createServerFn({ method: 'POST' })
       throw new Error('Access denied: Rebalancing group not found or does not belong to you');
     }
     // Find group members (accounts)
-    const members = await db
+    const members = await dbProxy
       .select({ accountId: schema.rebalancingGroupMember.accountId })
       .from(schema.rebalancingGroupMember)
       .where(eq(schema.rebalancingGroupMember.groupId, groupId));
@@ -994,13 +994,13 @@ export const updateOrderServerFn = createServerFn({ method: 'POST' })
     if (!id) throw new Error('id required');
 
     const { user } = await requireAuth();
-
+  const _db = dbProxy;
     // Verify that the order belongs to the authenticated user
-    const db = await createDatabaseInstance();
+    
     const schema = await import('~/db/schema');
     const { eq } = await import('drizzle-orm');
 
-    const order = await db
+    const order = await dbProxy
       .select({
         userId: schema.account.userId,
       })
@@ -1025,13 +1025,13 @@ export const deleteOrderServerFn = createServerFn({ method: 'POST' })
     if (!id) throw new Error('id required');
 
     const { user } = await requireAuth();
-
+  const _db = dbProxy;
     // Verify that the order belongs to the authenticated user
-    const db = await createDatabaseInstance();
+    
     const schema = await import('~/db/schema');
     const { eq } = await import('drizzle-orm');
 
-    const order = await db
+    const order = await dbProxy
       .select({
         userId: schema.account.userId,
       })
@@ -1057,13 +1057,13 @@ export const previewOrderServerFn = createServerFn({ method: 'POST' })
     if (!id) throw new Error('id required');
 
     const { user } = await requireAuth();
-
-    const db = await createDatabaseInstance();
+  const _db = dbProxy;
+    
     const schema = await import('~/db/schema');
     const { eq } = await import('drizzle-orm');
 
     // Verify that the order belongs to the authenticated user
-    const order = await db
+    const order = await dbProxy
       .select({
         userId: schema.account.userId,
       })
@@ -1080,7 +1080,7 @@ export const previewOrderServerFn = createServerFn({ method: 'POST' })
     const schwab = getSchwabApiService();
 
     // Load order and account
-    const rows = await db
+    const rows = await dbProxy
       .select()
       .from(schema.tradeOrder)
       .where(eq(schema.tradeOrder.id, id))
@@ -1107,7 +1107,7 @@ export const previewOrderServerFn = createServerFn({ method: 'POST' })
     } as Record<string, unknown>;
 
     // Resolve Schwab account identifier from our internal account
-    const acctRow = await db
+    const acctRow = await dbProxy
       .select({
         schwabAccountId: schema.account.schwabAccountId,
         accountNumber: schema.account.accountNumber,
@@ -1147,7 +1147,7 @@ export const previewOrderServerFn = createServerFn({ method: 'POST' })
           resp = await schwab.previewOrder(user.id, altIdentifier, payload);
         } catch (e2) {
           // Persist preview error and rethrow
-          await db
+          await dbProxy
             .update(schema.tradeOrder)
             .set({
               status: 'PREVIEW_ERROR',
@@ -1162,7 +1162,7 @@ export const previewOrderServerFn = createServerFn({ method: 'POST' })
         }
       } else {
         // Persist preview error and rethrow
-        await db
+        await dbProxy
           .update(schema.tradeOrder)
           .set({
             status: 'PREVIEW_ERROR',
@@ -1189,7 +1189,7 @@ export const previewOrderServerFn = createServerFn({ method: 'POST' })
       ((respObj?.orderValidationResult as Record<string, unknown>)?.rejects as unknown[]) ?? [];
 
     // Persist preview details
-    await db
+    await dbProxy
       .update(schema.tradeOrder)
       .set({
         previewJson: JSON.stringify(resp),
@@ -1294,7 +1294,7 @@ export const previewOrderServerFn = createServerFn({ method: 'POST' })
 
     if (chosenPrice && chosenPrice > 0) {
       try {
-        await db
+        await dbProxy
           .update(schema.security)
           .set({ price: chosenPrice, updatedAt: Date.now() })
           .where(eq(schema.security.ticker, o.symbol));
@@ -1314,13 +1314,13 @@ export const submitOrderServerFn = createServerFn({ method: 'POST' })
     if (!id) throw new Error('id required');
 
     const { user } = await requireAuth();
-
-    const db = await createDatabaseInstance();
+  const _db = dbProxy;
+    
     const schema = await import('~/db/schema');
     const { eq } = await import('drizzle-orm');
 
     // Verify order belongs to user and load
-    const rows = await db
+    const rows = await dbProxy
       .select({
         orderUserId: schema.account.userId,
         all: schema.tradeOrder,
@@ -1358,7 +1358,7 @@ export const submitOrderServerFn = createServerFn({ method: 'POST' })
     } as Record<string, unknown>;
 
     // Resolve Schwab account identifier
-    const acctRow = await db
+    const acctRow = await dbProxy
       .select({
         schwabAccountId: schema.account.schwabAccountId,
         accountNumber: schema.account.accountNumber,
@@ -1380,7 +1380,7 @@ export const submitOrderServerFn = createServerFn({ method: 'POST' })
       resp = await schwab.placeOrder(user.id, accountIdentifier, payload);
     } catch (e) {
       // Persist failure snapshot and rethrow
-      await db
+      await dbProxy
         .update(schema.tradeOrder)
         .set({
           status: 'REJECTED',
@@ -1426,7 +1426,7 @@ export const submitOrderServerFn = createServerFn({ method: 'POST' })
     ]);
     const status = allowed.has(rawStatus) ? rawStatus : 'ACCEPTED';
 
-    await db
+    await dbProxy
       .update(schema.tradeOrder)
       .set({
         schwabOrderId: schwabOrderId ?? undefined,

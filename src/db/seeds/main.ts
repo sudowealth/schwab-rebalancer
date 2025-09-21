@@ -1,6 +1,6 @@
 // Import individual seed functions
 
-import { createDatabaseInstance } from '~/lib/db-config';
+import { dbProxy } from '~/lib/db-config';
 import { seedRebalancingGroups } from './rebalancing-groups';
 import { seedSecurities } from './securities';
 import { seedModels, seedSleeves, seedSP500Securities } from './sp500-model-seeder';
@@ -9,17 +9,16 @@ export async function seedDatabase(userId?: string) {
   console.log('🌱 Starting database seeding...');
 
   // Create database connection using lazy initialization
-  const db = await createDatabaseInstance();
 
   try {
     // Tables will be created by Drizzle migrations
 
     // PostgreSQL doesn't need to disable foreign keys - seed data in correct order
-    await seedSP500Securities(db); // S&P 500 securities and index first
-    await seedSecurities(db); // Then ETFs and cash
-    await seedSleeves(db, userId);
-    await seedModels(db, userId);
-    await seedRebalancingGroups(db, userId);
+    await seedSP500Securities(); // S&P 500 securities and index first
+    await seedSecurities(); // Then ETFs and cash
+    await seedSleeves(userId);
+    await seedModels(userId);
+    await seedRebalancingGroups(userId);
 
     console.log('✅ Database seeding completed successfully!');
   } catch (error) {

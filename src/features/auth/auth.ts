@@ -1,23 +1,11 @@
-import { neon } from '@neondatabase/serverless';
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
-import { drizzle } from 'drizzle-orm/neon-http';
 import * as schema from '~/db/schema';
+import { dbProxy } from '~/lib/db-config';
 
-// Create database connection synchronously
-const connectionString = process.env.DATABASE_URL || process.env.NETLIFY_DATABASE_URL;
-if (!connectionString) {
-  throw new Error('DATABASE_URL or NETLIFY_DATABASE_URL environment variable is required');
-}
-
-// Create the database instance synchronously
-// The actual connection happens lazily when queries are executed
-const sql = neon(connectionString);
-const dbInstance = drizzle(sql, { schema });
-
-// Initialize Better Auth with database instance
+// Initialize Better Auth with unified database instance
 const authInstance = betterAuth({
-  database: drizzleAdapter(dbInstance, {
+  database: drizzleAdapter(dbProxy, {
     provider: 'pg',
     schema: {
       user: schema.user,

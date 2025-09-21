@@ -1,7 +1,7 @@
 import { and, eq } from 'drizzle-orm';
 import * as schema from '~/db/schema';
 import { decrypt, encrypt } from '~/lib/crypto';
-import { createDatabaseInstance } from '~/lib/db-config';
+import { dbProxy } from '~/lib/db-config';
 
 // Types based on sudowealth/schwab-api structure
 interface SchwabApiClient {
@@ -134,8 +134,8 @@ export class SchwabApiService {
     private clientSecret: string,
   ) {}
 
-  private async getDb() {
-    return await createDatabaseInstance();
+  private getDb() {
+    return dbProxy;
   }
 
   private async initializeAuth(redirectUri: string): Promise<AuthClient> {
@@ -426,8 +426,8 @@ export class SchwabApiService {
 
       console.log('🔄 [SchwabApi] Deactivating existing credentials...');
       // Deactivate existing credentials
-      const db = await this.getDb();
-      await db
+      const db = this.getDb();
+      await dbProxy
         .update(schema.schwabCredentials)
         .set({ isActive: false, updatedAt: now })
         .where(
@@ -441,7 +441,7 @@ export class SchwabApiService {
 
       console.log('💿 [SchwabApi] Inserting new credentials...');
       // Insert new credentials
-      await db.insert(schema.schwabCredentials).values({
+      await dbProxy.insert(schema.schwabCredentials).values({
         id: crypto.randomUUID(),
         userId,
         encryptedAccessToken,
@@ -463,8 +463,8 @@ export class SchwabApiService {
 
   private async getCredentials(userId: string): Promise<SchwabCredentials | null> {
     try {
-      const db = await this.getDb();
-      const result = await db
+      const db = this.getDb();
+      const result = await dbProxy
         .select()
         .from(schema.schwabCredentials)
         .where(
@@ -1256,7 +1256,7 @@ export class SchwabApiService {
   async revokeCredentials(userId: string): Promise<void> {
     const now = new Date();
     const db = await this.getDb();
-    await db
+    await dbProxy
       .update(schema.schwabCredentials)
       .set({ isActive: false, updatedAt: now })
       .where(

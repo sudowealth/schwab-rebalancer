@@ -1,7 +1,7 @@
 import { createServerFn } from '@tanstack/react-start';
 import { eq } from 'drizzle-orm';
 import * as schema from '~/db/schema';
-import { createDatabaseInstance } from '~/lib/db-config';
+import { dbProxy } from '~/lib/db-config';
 
 // Defer server-only auth utilities to runtime to avoid bundling them in the client build
 const requireAdmin = async () => {
@@ -13,9 +13,7 @@ const requireAdmin = async () => {
 export const getAllUsersServerFn = createServerFn({ method: 'GET' }).handler(async () => {
   await requireAdmin();
 
-  const db = await createDatabaseInstance();
-
-  const users = await db
+  const users = await dbProxy
     .select({
       id: schema.user.id,
       email: schema.user.email,
@@ -39,10 +37,8 @@ export const updateUserRoleServerFn = createServerFn({ method: 'POST' })
 
     await requireAdmin();
 
-    const db = await createDatabaseInstance();
-
     // Verify user exists
-    const existingUser = await db
+    const existingUser = await dbProxy
       .select({ id: schema.user.id })
       .from(schema.user)
       .where(eq(schema.user.id, userId))
@@ -53,7 +49,7 @@ export const updateUserRoleServerFn = createServerFn({ method: 'POST' })
     }
 
     // Update role
-    await db
+    await dbProxy
       .update(schema.user)
       .set({
         role,
@@ -68,30 +64,29 @@ export const updateUserRoleServerFn = createServerFn({ method: 'POST' })
 export const getSystemStatsServerFn = createServerFn({ method: 'GET' }).handler(async () => {
   await requireAdmin();
 
-  const db = await createDatabaseInstance();
   const schema = await import('~/db/schema');
   const { sql } = await import('drizzle-orm');
 
   // Get various counts
-  const userCount = await db.select({ count: sql<number>`count(*)` }).from(schema.user);
+  const userCount = await dbProxy.select({ count: sql<number>`count(*)` }).from(schema.user);
 
-  const accountCount = await db.select({ count: sql<number>`count(*)` }).from(schema.account);
+  const accountCount = await dbProxy.select({ count: sql<number>`count(*)` }).from(schema.account);
 
-  const sleeveCount = await db.select({ count: sql<number>`count(*)` }).from(schema.sleeve);
+  const sleeveCount = await dbProxy.select({ count: sql<number>`count(*)` }).from(schema.sleeve);
 
-  const modelCount = await db.select({ count: sql<number>`count(*)` }).from(schema.model);
+  const modelCount = await dbProxy.select({ count: sql<number>`count(*)` }).from(schema.model);
 
-  const holdingCount = await db.select({ count: sql<number>`count(*)` }).from(schema.holding);
+  const holdingCount = await dbProxy.select({ count: sql<number>`count(*)` }).from(schema.holding);
 
-  const transactionCount = await db
+  const transactionCount = await dbProxy
     .select({ count: sql<number>`count(*)` })
     .from(schema.transaction);
 
-  const rebalancingGroupCount = await db
+  const rebalancingGroupCount = await dbProxy
     .select({ count: sql<number>`count(*)` })
     .from(schema.rebalancingGroup);
 
-  const orderCount = await db.select({ count: sql<number>`count(*)` }).from(schema.tradeOrder);
+  const orderCount = await dbProxy.select({ count: sql<number>`count(*)` }).from(schema.tradeOrder);
 
   return {
     users: Number(userCount[0]?.count ?? 0),
@@ -110,14 +105,12 @@ export const getAuditLogsServerFn = createServerFn({ method: 'GET' })
   .validator((data?: { limit?: number; offset?: number; userId?: string }) => data || {})
   .handler(async ({ data = {} }) => {
     await requireAdmin();
-
     const { limit = 100, offset = 0, userId } = data;
 
-    const db = await createDatabaseInstance();
     const schema = await import('~/db/schema');
     const { eq, desc } = await import('drizzle-orm');
 
-    const baseQuery = db
+    const baseQuery = dbProxy
       .select({
         id: schema.auditLog.id,
         userId: schema.auditLog.userId,
@@ -150,26 +143,31 @@ export const getUserDataServerFn = createServerFn({ method: 'GET' })
 
     await requireAdmin();
 
-    const db = await createDatabaseInstance();
-
     // Get user info
-    const user = await db.select().from(schema.user).where(eq(schema.user.id, userId)).limit(1);
+    const user = await dbProxy
+      .select()
+      .from(schema.user)
+      .where(eq(schema.user.id, userId))
+      .limit(1);
 
     if (user.length === 0) {
       throw new Error('User not found');
     }
 
     // Get all user data
-    const accounts = await db
+    const accounts = await dbProxy
       .select()
       .from(schema.account)
       .where(eq(schema.account.userId, userId));
 
-    const sleeves = await db.select().from(schema.sleeve).where(eq(schema.sleeve.userId, userId));
+    const sleeves = await dbProxy
+      .select()
+      .from(schema.sleeve)
+      .where(eq(schema.sleeve.userId, userId));
 
-    const models = await db.select().from(schema.model).where(eq(schema.model.userId, userId));
+    const models = await dbProxy.select().from(schema.model).where(eq(schema.model.userId, userId));
 
-    const rebalancingGroups = await db
+    const rebalancingGroups = await dbProxy
       .select()
       .from(schema.rebalancingGroup)
       .where(eq(schema.rebalancingGroup.userId, userId));

@@ -3,7 +3,7 @@ import { and, eq, inArray } from 'drizzle-orm';
 import * as schema from '~/db/schema';
 import type { RebalancingGroup } from '~/features/auth/schemas';
 import type { AccountHoldingsResult } from '~/lib/db-api';
-import { createDatabaseInstance } from '~/lib/db-config';
+import { dbProxy } from '~/lib/db-config';
 
 // Defer server-only auth utilities to runtime to avoid bundling them in the client build
 const requireAuth = async () => {
@@ -20,7 +20,7 @@ export const getRebalancingGroupsServerFn = createServerFn({
 
   try {
     const { user } = await requireAuth();
-
+  const _db = dbProxy;
     const { getRebalancingGroups } = await import('~/lib/db-api');
     const groups = await getRebalancingGroups(user.id);
     return groups;
@@ -40,7 +40,7 @@ export const createRebalancingGroupServerFn = createServerFn({ method: 'POST' })
 
   .handler(async ({ data }) => {
     const { user } = await requireAuth();
-
+  const _db = dbProxy;
     const { name, members, updateExisting } = data;
 
     if (!name || !members || !Array.isArray(members)) {
@@ -59,7 +59,7 @@ export const updateRebalancingGroupServerFn = createServerFn({ method: 'POST' })
   )
   .handler(async ({ data }) => {
     const { user } = await requireAuth();
-
+  const _db = dbProxy;
     const { groupId, name, members } = data;
 
     if (!groupId || !name || !members || !Array.isArray(members)) {
@@ -77,7 +77,7 @@ export const deleteRebalancingGroupServerFn = createServerFn({ method: 'POST' })
 
   .handler(async ({ data }) => {
     const { user } = await requireAuth();
-
+  const _db = dbProxy;
     const { groupId } = data;
 
     if (!groupId) {
@@ -98,7 +98,7 @@ export const getRebalancingGroupByIdServerFn = createServerFn({
 
   .handler(async ({ data }) => {
     const { user } = await requireAuth();
-
+  const _db = dbProxy;
     const { groupId } = data;
 
     if (!groupId) {
@@ -132,11 +132,11 @@ export const getGroupAccountHoldingsServerFn = createServerFn({
 
     try {
       const { user } = await requireAuth();
-
+  const _db = dbProxy;
       // Verify that all accountIds belong to the authenticated user
-      const db = await createDatabaseInstance();
+      
 
-      const ownedAccounts = await db
+      const ownedAccounts = await dbProxy
         .select({ id: schema.account.id })
         .from(schema.account)
         .where(and(eq(schema.account.userId, user.id), inArray(schema.account.id, accountIds)));
@@ -163,7 +163,7 @@ export const getHoldingsForMultipleGroupsServerFn = createServerFn({
   method: 'GET',
 }).handler(async (): Promise<{ groups: RebalancingGroup[]; holdings: AccountHoldingsResult }> => {
   const { user } = await requireAuth();
-
+  const _db = dbProxy;
   // Import database API only on the server
   const { getRebalancingGroups, getAccountHoldings } = await import('~/lib/db-api');
 
@@ -184,7 +184,7 @@ export const getSleeveMembersServerFn = createServerFn({ method: 'POST' })
   .validator((data: { sleeveIds: string[] }) => data)
   .handler(async ({ data }) => {
     await requireAuth();
-
+  const _db = dbProxy;
     const { sleeveIds } = data;
 
     if (!sleeveIds || sleeveIds.length === 0) {
@@ -211,7 +211,7 @@ export const assignModelToGroupServerFn = createServerFn({ method: 'POST' })
     }
 
     const { user } = await requireAuth();
-
+  const _db = dbProxy;
     // Import database API only on the server
     const { assignModelToGroup } = await import('~/lib/db-api');
     await assignModelToGroup(modelId, groupId, user.id);
@@ -229,11 +229,11 @@ export const unassignModelFromGroupServerFn = createServerFn({ method: 'POST' })
     }
 
     const { user } = await requireAuth();
-
+  const _db = dbProxy;
     // Verify that the rebalancing group belongs to the authenticated user
-    const db = await createDatabaseInstance();
+    
 
-    const group = await db
+    const group = await dbProxy
       .select({ userId: schema.rebalancingGroup.userId })
       .from(schema.rebalancingGroup)
       .where(eq(schema.rebalancingGroup.id, groupId))
