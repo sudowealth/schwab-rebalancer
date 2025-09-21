@@ -151,7 +151,15 @@ export class SchwabSyncService {
       }
 
       console.log('🗄️ [SchwabSync] Querying database for Schwab accounts');
-      const accounts = await this.getDb().select().from(schema.account).where(whereClause);
+      const accounts = await this.getDb()
+        .select({
+          id: schema.account.id,
+          name: schema.account.name,
+          schwabAccountId: schema.account.schwabAccountId,
+          accountNumber: schema.account.accountNumber,
+        })
+        .from(schema.account)
+        .where(whereClause);
 
       // Filter out demo accounts when using real Schwab credentials
       const realAccounts = accounts.filter((account) => {
@@ -369,7 +377,14 @@ export class SchwabSyncService {
       if (options?.accountId) {
         whereClause = and(whereClause, eq(schema.account.id, options.accountId));
       }
-      const accounts = await this.getDb().select().from(schema.account).where(whereClause);
+      const accounts = await this.getDb()
+        .select({
+          id: schema.account.id,
+          schwabAccountId: schema.account.schwabAccountId,
+          accountNumber: schema.account.accountNumber,
+        })
+        .from(schema.account)
+        .where(whereClause);
 
       let processed = 0;
       for (const account of accounts) {

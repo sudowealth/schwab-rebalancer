@@ -60,7 +60,7 @@ export function SchwabIntegration() {
 
   // Query to check credentials status
   const { data: credentialsStatus, isLoading: statusLoading } = useQuery({
-    queryKey: queryKeys.schwab.credentials(),
+    queryKey: queryKeys.integrations.schwab.credentials(),
     queryFn: () => {
       console.log('🔍 [UI] Fetching Schwab credentials status');
       return getSchwabCredentialsStatusServerFn();
@@ -101,7 +101,7 @@ export function SchwabIntegration() {
     onSuccess: (data) => {
       console.log('✅ [UI] Accounts sync completed successfully:', data);
       queryClient.invalidateQueries({
-        queryKey: queryKeys.schwab.credentials(),
+        queryKey: queryKeys.integrations.schwab.credentials(),
       });
       // Re-run route loaders so dashboard status updates without manual refresh
       router.invalidate();
@@ -155,7 +155,7 @@ export function SchwabIntegration() {
       }
 
       queryClient.invalidateQueries({
-        queryKey: queryKeys.schwab.credentials(),
+        queryKey: queryKeys.integrations.schwab.credentials(),
       });
       router.invalidate();
     },
@@ -176,7 +176,7 @@ export function SchwabIntegration() {
       console.log('✅ [UI] Prices sync completed successfully:', data);
       // Invalidate all dashboard queries to refresh price data
       queryClient.invalidateQueries({
-        queryKey: queryKeys.schwab.credentials(),
+        queryKey: queryKeys.integrations.schwab.credentials(),
       });
       queryClient.invalidateQueries({
         queryKey: queryKeys.dashboard.positions(),
@@ -204,7 +204,7 @@ export function SchwabIntegration() {
     onSuccess: () => {
       console.log('✅ [UI] Transactions sync completed successfully');
       queryClient.invalidateQueries({
-        queryKey: queryKeys.schwab.credentials(),
+        queryKey: queryKeys.integrations.schwab.credentials(),
       });
       queryClient.invalidateQueries({
         queryKey: queryKeys.dashboard.transactions(),
@@ -263,7 +263,7 @@ export function SchwabIntegration() {
       console.log('✅ [UI] Full Schwab sync completed successfully:', data);
       // Invalidate all dashboard queries to refresh data after full sync
       queryClient.invalidateQueries({
-        queryKey: queryKeys.schwab.credentials(),
+        queryKey: queryKeys.integrations.schwab.credentials(),
       });
       queryClient.invalidateQueries({
         queryKey: queryKeys.dashboard.positions(),
@@ -297,7 +297,7 @@ export function SchwabIntegration() {
     onSuccess: () => {
       console.log('✅ [UI] Credentials revoked successfully');
       queryClient.invalidateQueries({
-        queryKey: queryKeys.schwab.credentials(),
+        queryKey: queryKeys.integrations.schwab.credentials(),
       });
       router.invalidate();
     },
