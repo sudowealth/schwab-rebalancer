@@ -155,7 +155,5 @@ export {
   getSleevesServerFn,
   updateSleeveServerFn,
 } from '../features/sleeves/sleeves.server';
-// Legacy type exports for backward compatibility
-export type { AccountHoldingsResult } from './db-api';
 // Utility functions
 export { healthCheckServerFn } from './utility.server';

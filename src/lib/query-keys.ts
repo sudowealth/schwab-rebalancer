@@ -159,7 +159,9 @@ export const queryInvalidators = {
       queryClient.invalidateQueries({ queryKey: queryKeys.integrations.schwab.credentials() });
     },
     activeCredentials: (queryClient: import('@tanstack/react-query').QueryClient) => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.integrations.schwab.activeCredentials() });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.integrations.schwab.activeCredentials(),
+      });
     },
     accounts: (queryClient: import('@tanstack/react-query').QueryClient) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.integrations.schwab.accounts() });
@@ -191,11 +193,28 @@ export const queryInvalidators = {
       detail: (queryClient: import('@tanstack/react-query').QueryClient, id: string) => {
         queryClient.invalidateQueries({ queryKey: queryKeys.rebalancing.groups.detail(id) });
       },
-      allocationData: (queryClient: import('@tanstack/react-query').QueryClient, groupId: string, allocationView: string, totalValue: number) => {
-        queryClient.invalidateQueries({ queryKey: queryKeys.rebalancing.groups.allocationData(groupId, allocationView, totalValue) });
+      allocationData: (
+        queryClient: import('@tanstack/react-query').QueryClient,
+        groupId: string,
+        allocationView: string,
+        totalValue: number,
+      ) => {
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.rebalancing.groups.allocationData(
+            groupId,
+            allocationView,
+            totalValue,
+          ),
+        });
       },
-      topHoldings: (queryClient: import('@tanstack/react-query').QueryClient, groupId: string, totalValue: number) => {
-        queryClient.invalidateQueries({ queryKey: queryKeys.rebalancing.groups.topHoldings(groupId, totalValue) });
+      topHoldings: (
+        queryClient: import('@tanstack/react-query').QueryClient,
+        groupId: string,
+        totalValue: number,
+      ) => {
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.rebalancing.groups.topHoldings(groupId, totalValue),
+        });
       },
     },
   },
@@ -246,25 +265,3 @@ export const queryInvalidators = {
     },
   },
 } as const;
-
-/**
- * Type definitions for query keys
- */
-export type DashboardQueryKeys = ReturnType<
-  (typeof queryKeys.dashboard)[keyof typeof queryKeys.dashboard]
->;
-export type ModelsQueryKeys = ReturnType<(typeof queryKeys.models)[keyof typeof queryKeys.models]>;
-export type SecuritiesQueryKeys = ReturnType<
-  (typeof queryKeys.securities)[keyof typeof queryKeys.securities]
->;
-export type OnboardingQueryKeys = ReturnType<
-  (typeof queryKeys.onboarding)[keyof typeof queryKeys.onboarding]
->;
-export type SchwabQueryKeys = ReturnType<
-  (typeof queryKeys.integrations.schwab)[keyof typeof queryKeys.integrations.schwab]
->;
-export type AdminQueryKeys = ReturnType<(typeof queryKeys.admin)[keyof typeof queryKeys.admin]>;
-export type RebalancingQueryKeys = ReturnType<
-  (typeof queryKeys.rebalancing.groups)[keyof typeof queryKeys.rebalancing.groups]
->;
-export type SystemQueryKeys = ReturnType<(typeof queryKeys.system)[keyof typeof queryKeys.system]>;

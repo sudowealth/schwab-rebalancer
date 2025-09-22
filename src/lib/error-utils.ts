@@ -59,18 +59,6 @@ export const handleServerError = (error: unknown, context?: string): ServerError
 };
 
 /**
- * Creates a standardized server error response for client consumption
- */
-export const createErrorResponse = (error: unknown, context?: string) => {
-  const serverError = handleServerError(error, context);
-
-  return {
-    error: serverError.message,
-    code: serverError.code,
-  };
-};
-
-/**
  * Utility for consistent error throwing in server functions
  */
 export const throwServerError = (

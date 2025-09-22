@@ -141,6 +141,9 @@ importers:
       knip:
         specifier: ^5.62.0
         version: 5.63.1(@types/node@24.5.2)(typescript@5.9.2)
+      rollup-plugin-visualizer:
+        specifier: ^6.0.3
+        version: 6.0.3(rollup@4.52.0)
       tailwindcss:
         specifier: ^4.1.13
         version: 4.1.13

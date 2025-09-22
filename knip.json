@@ -6,7 +6,6 @@
     "src/lib/server-functions.ts",
     "src/lib/api.ts",
     "src/lib/client-api.ts",
-    "src/lib/restrictions-utils.ts",
     "scripts/**/*.ts",
     "*.config.{ts,js,mjs}"
   ],

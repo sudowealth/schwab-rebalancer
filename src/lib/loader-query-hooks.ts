@@ -124,34 +124,6 @@ export function useStaticLoaderQuery<TData = unknown, TError = unknown>(
 }
 
 /**
- * Utility function to create optimized query options for loader data
- */
-export function createLoaderQueryOptions<TData = unknown, TError = unknown>({
-  queryKey,
-  queryFn,
-  initialData,
-  enabled = true,
-  staleTime = 5 * 60 * 1000,
-  gcTime = 10 * 60 * 1000,
-  refetchOnWindowFocus = true,
-  refetchOnMount = false,
-  ...additionalOptions
-}: LoaderQueryConfig<TData, TError>): UseQueryOptions<TData, TError, TData, QueryKey> {
-  return {
-    queryKey,
-    queryFn,
-    initialData,
-    enabled,
-    staleTime,
-    gcTime,
-    refetchOnWindowFocus,
-    refetchOnMount,
-    refetchIntervalInBackground: true,
-    ...additionalOptions,
-  };
-}
-
-/**
  * Background refetch manager for critical dashboard data
  *
  * Provides intelligent background refetching based on user activity and time
@@ -249,13 +221,16 @@ export class BackgroundRefetchManager {
  */
 export function useBackgroundRefetchManager() {
   const queryClient = useQueryClient();
+  const managerRef = React.useRef<BackgroundRefetchManager | null>(null);
 
-  const manager = new BackgroundRefetchManager(queryClient);
+  if (!managerRef.current) {
+    managerRef.current = new BackgroundRefetchManager(queryClient);
+  }
 
   // Cleanup on unmount
   React.useEffect(() => {
-    return () => manager.stopAll();
-  }, [manager]);
+    return () => managerRef.current?.stopAll();
+  }, []);
 
-  return manager;
+  return managerRef.current;
 }
