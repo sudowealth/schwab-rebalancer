@@ -20,6 +20,40 @@ import { getPriceSyncService } from '../data-feeds/price-sync';
 import { getSchwabApiService } from './schwab-api.server';
 import { getSchwabSyncService } from './schwab-sync.server';
 
+// Generic orchestrator for Schwab sync operations
+async function orchestrateSchwabSync<T extends Record<string, unknown>>(
+  operationName: string,
+  syncFunction: (userId: string, params?: T) => Promise<SyncResult>,
+  params?: T,
+  cacheClearFunction?: (userId: string) => void,
+): Promise<SyncResult> {
+  console.log(`🔄 [ServerFn] Starting ${operationName}`);
+  try {
+    const { user } = await requireAuth();
+    console.log('👤 [ServerFn] Using user ID:', user.id);
+
+    const result = await syncFunction(user.id, params);
+    console.log(`✅ [ServerFn] ${operationName} completed:`, result);
+
+    // Clear relevant caches after successful sync
+    if (cacheClearFunction && result.success && result.recordsProcessed > 0) {
+      console.log(`🧹 [ServerFn] Clearing caches after successful ${operationName}`);
+      cacheClearFunction(user.id);
+    }
+
+    return result;
+  } catch (error) {
+    console.error(`❌ [ServerFn] Error in ${operationName}:`, error);
+    const errorResult = {
+      success: false,
+      recordsProcessed: 0,
+      errorMessage: getErrorMessage(error),
+    };
+    console.log('🔄 [ServerFn] Returning error result:', errorResult);
+    return errorResult;
+  }
+}
+
 // Utility function to validate Schwab environment variables
 function validateSchwabEnvironment() {
   const clientId = process.env.SCHWAB_CLIENT_ID;
@@ -38,11 +72,9 @@ function validateSchwabEnvironment() {
 
 // Utility functions for cache management
 
-function clearHoldingsCache(userId: string) {
-  clearCache(`positions-${userId}`);
+function clearTransactionsCache(userId: string) {
   clearCache(`transactions-${userId}`);
   clearCache(`metrics-${userId}`);
-  clearCache('sp500-data'); // Clear S&P 500 data since holdings may have new securities
 }
 
 function clearPricesCache(userId?: string) {
@@ -51,11 +83,6 @@ function clearPricesCache(userId?: string) {
     clearCache(`positions-${userId}`); // Clear positions cache since prices affect position values
     clearCache(`metrics-${userId}`); // Clear metrics cache since prices affect portfolio metrics
   }
-}
-
-function clearTransactionsCache(userId: string) {
-  clearCache(`transactions-${userId}`);
-  clearCache(`metrics-${userId}`); // Transactions can affect metrics
 }
 
 // Utility functions for sync logging
@@ -245,112 +272,60 @@ export const getSchwabCredentialsStatusServerFn = createServerFn({
 });
 
 // Server function to sync Schwab accounts
+// Core sync function for accounts - single responsibility: just sync accounts
+async function syncAccountsCore(userId: string): Promise<SyncResult> {
+  const syncService = getSchwabSyncService();
+  return syncService.syncAccounts(userId);
+}
+
+// Server function to sync Schwab accounts - orchestrates auth, logging, and cache management
 export const syncSchwabAccountsServerFn = createServerFn({
   method: 'POST',
 }).handler(async (): Promise<SyncResult> => {
-  console.log('🏦 [ServerFn] Starting Schwab accounts sync');
-  try {
-    const { user } = await requireAuth();
-    const _db = dbProxy;
-    console.log('👤 [ServerFn] Using user ID:', user.id);
-
-    const syncService = getSchwabSyncService();
-    console.log('🔧 [ServerFn] Schwab sync service initialized');
-
-    const result = await syncService.syncAccounts(user.id);
-    console.log('✅ [ServerFn] Accounts sync completed:', result);
-
-    // Clear relevant caches after successful sync
-    if (result.success && result.recordsProcessed > 0) {
-      console.log('🧹 [ServerFn] Clearing caches after successful accounts sync');
-
-      // Clear user-specific caches that might be affected
-      clearCache(`positions-${user.id}`);
-      clearCache(`transactions-${user.id}`);
-      clearCache(`metrics-${user.id}`);
-    }
-
-    return result;
-  } catch (error) {
-    console.error('❌ [ServerFn] Error syncing Schwab accounts:', error);
-    const errorResult = {
-      success: false,
-      recordsProcessed: 0,
-      errorMessage: getErrorMessage(error),
-    };
-    console.log('🔄 [ServerFn] Returning error result:', errorResult);
-    return errorResult;
-  }
+  return orchestrateSchwabSync('Schwab accounts sync', syncAccountsCore);
 });
 
-// Server function to sync Schwab holdings
+// Core sync function for holdings - single responsibility: just sync holdings
+async function syncHoldingsCore(
+  userId: string,
+  params?: { accountId?: string },
+): Promise<SyncResult> {
+  const syncService = getSchwabSyncService();
+  return syncService.syncHoldings(userId, params?.accountId);
+}
+
+// Core sync function for transactions - single responsibility: just sync transactions
+async function syncTransactionsCore(
+  userId: string,
+  params?: { accountId?: string; startDate?: string; endDate?: string },
+): Promise<SyncResult> {
+  const syncService = getSchwabSyncService();
+  const startDate = params?.startDate ? new Date(params.startDate) : undefined;
+  const endDate = params?.endDate ? new Date(params.endDate) : undefined;
+  return syncService.syncTransactions(userId, {
+    accountId: params?.accountId,
+    startDate,
+    endDate,
+  });
+}
+
+// Server function to sync Schwab holdings - orchestrates auth, logging, and cache management
 export const syncSchwabHoldingsServerFn = createServerFn({ method: 'POST' })
   .validator((data: { accountId?: string }) => data)
-
   .handler(async ({ data }): Promise<SyncResult> => {
-    console.log('📊 [ServerFn] Starting Schwab holdings sync');
-    console.log('📋 [ServerFn] Request data:', data);
-    try {
-      const { user } = await requireAuth();
-      const _db = dbProxy;
-      console.log('👤 [ServerFn] Using user ID:', user.id);
-
-      const syncService = getSchwabSyncService();
-      console.log('🔧 [ServerFn] Schwab sync service initialized');
-
-      const result = await syncService.syncHoldings(user.id, data.accountId);
-      console.log('✅ [ServerFn] Holdings sync completed:', result);
-
-      // Clear relevant caches after successful sync
-      if (result.success && result.recordsProcessed > 0) {
-        console.log('🧹 [ServerFn] Clearing caches after successful holdings sync');
-        clearHoldingsCache(user.id);
-      }
-
-      return result;
-    } catch (error) {
-      console.error('❌ [ServerFn] Error syncing Schwab holdings:', error);
-      const errorResult = {
-        success: false,
-        recordsProcessed: 0,
-        errorMessage: getErrorMessage(error),
-      };
-      console.log('🔄 [ServerFn] Returning error result:', errorResult);
-      return errorResult;
-    }
+    return orchestrateSchwabSync('Schwab holdings sync', syncHoldingsCore, data);
   });
 
-// Server function to sync Schwab transactions
+// Server function to sync Schwab transactions - orchestrates auth, logging, and cache management
 export const syncSchwabTransactionsServerFn = createServerFn({ method: 'POST' })
   .validator((data: { accountId?: string; startDate?: string; endDate?: string }) => data)
-
   .handler(async ({ data }): Promise<SyncResult> => {
-    try {
-      const { user } = await requireAuth();
-      const _db = dbProxy;
-      const syncService = getSchwabSyncService();
-      const startDate = data.startDate ? new Date(data.startDate) : undefined;
-      const endDate = data.endDate ? new Date(data.endDate) : undefined;
-      const result = await syncService.syncTransactions(user.id, {
-        accountId: data.accountId,
-        startDate,
-        endDate,
-      });
-
-      // Clear relevant caches after successful sync
-      if (result.success && result.recordsProcessed > 0) {
-        console.log('🧹 [ServerFn] Clearing caches after successful transactions sync');
-        clearTransactionsCache(user.id);
-      }
-
-      return result;
-    } catch (error) {
-      return {
-        success: false,
-        recordsProcessed: 0,
-        errorMessage: getErrorMessage(error),
-      };
-    }
+    return orchestrateSchwabSync(
+      'Schwab transactions sync',
+      syncTransactionsCore,
+      data,
+      clearTransactionsCache,
+    );
   });
 
 // Server function to get held position tickers
