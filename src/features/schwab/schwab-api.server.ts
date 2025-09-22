@@ -2,6 +2,7 @@ import { and, eq } from 'drizzle-orm';
 import * as schema from '~/db/schema';
 import { decrypt, encrypt } from '~/lib/crypto';
 import { getDb } from '~/lib/db-config';
+import { sanitizeAccountNumber, sanitizeSchwabAccountId } from '~/lib/sanitization';
 
 // Types based on sudowealth/schwab-api structure
 interface SchwabApiClient {
@@ -620,7 +621,7 @@ export class SchwabApiService {
   async getPositions(userId: string, accountIdentifier: string): Promise<SchwabPosition[]> {
     console.log(
       '📊 [SchwabApi] Fetching positions using improved API client for account:',
-      accountIdentifier,
+      sanitizeAccountNumber(accountIdentifier),
     );
 
     try {
@@ -643,9 +644,9 @@ export class SchwabApiService {
         '🔍 [SchwabApi] Accounts data structure:',
         JSON.stringify(
           accountsData.map((acc) => ({
-            accountNumber: acc.securitiesAccount?.accountNumber,
-            accountId: acc.securitiesAccount?.accountId,
-            hashValue: acc.securitiesAccount?.hashValue,
+            accountNumber: sanitizeAccountNumber(acc.securitiesAccount?.accountNumber || ''),
+            accountId: sanitizeSchwabAccountId(acc.securitiesAccount?.accountId || ''),
+            hashValue: sanitizeSchwabAccountId(acc.securitiesAccount?.hashValue || ''),
           })),
           null,
           2,
@@ -980,6 +981,7 @@ export class SchwabApiService {
       displayAcctId?: string;
       autoPositionEffect?: boolean;
     }>;
+    streamerInfo?: unknown;
   }> {
     console.log('🏷️ [SchwabApi] Fetching user preferences');
 
@@ -990,7 +992,21 @@ export class SchwabApiService {
       console.log('📡 [SchwabApi] Calling trader.userPreference.getUserPreference()');
       const preferences = await schwabClient.trader.userPreference.getUserPreference();
 
-      console.log('✅ [SchwabApi] Successfully fetched user preferences:', preferences);
+      const sanitizedPreferences = {
+        ...(preferences as Record<string, unknown>),
+        accounts: (preferences as { accounts?: unknown[] }).accounts?.map((account) => {
+          const accountNumber = (account as { accountNumber?: string }).accountNumber;
+          return {
+            ...(account as Record<string, unknown>),
+            accountNumber: accountNumber ? sanitizeAccountNumber(accountNumber) : undefined,
+          };
+        }),
+      };
+      console.log('✅ [SchwabApi] Successfully fetched user preferences:', {
+        ...sanitizedPreferences,
+        streamerInfo: '[REDACTED-STREAMER-INFO]',
+        offers: '[REDACTED-OFFERS]',
+      });
       return preferences as {
         accounts?: Array<{
           accountNumber?: string;
@@ -1001,6 +1017,7 @@ export class SchwabApiService {
           displayAcctId?: string;
           autoPositionEffect?: boolean;
         }>;
+        streamerInfo?: unknown;
       };
     } catch (error) {
       console.error('❌ [SchwabApi] Error fetching user preferences:', error);

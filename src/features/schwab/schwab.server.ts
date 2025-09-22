@@ -15,6 +15,7 @@ import {
 import { getDb } from '~/lib/db-config';
 import { getErrorMessage } from '~/lib/error-handler';
 import { throwServerError } from '~/lib/error-utils';
+import { sanitizeAccountNumber, sanitizeSchwabAccountId } from '~/lib/sanitization';
 import { requireAuth } from '../auth/auth-utils';
 import { getPriceSyncService } from '../data-feeds/price-sync';
 import { getSchwabApiService } from './schwab-api.server';
@@ -33,12 +34,14 @@ async function orchestrateSchwabSync<T extends Record<string, unknown>>(
   console.log(`🔄 [ServerFn] Starting ${operationName}`);
   try {
     const { user } = await requireAuth();
-    console.log('👤 [ServerFn] Using user ID:', user.id);
+    console.log('👤 [ServerFn] Using user ID:', `${user.id.substring(0, 10)}...`);
 
     // Check if a sync of this type is already running for this user
     const syncKey = `${user.id}-${operationName}`;
     if (runningSyncs.get(syncKey)) {
-      console.log(`⚠️ [ServerFn] ${operationName} already running for user ${user.id}, skipping`);
+      console.log(
+        `⚠️ [ServerFn] ${operationName} already running for user ${user.id.substring(0, 10)}..., skipping`,
+      );
       return {
         success: false,
         recordsProcessed: 0,
@@ -361,15 +364,21 @@ export const getHeldPositionTickersServerFn = createServerFn({
   try {
     const { user } = await requireAuth();
     const _db = getDb();
-    console.log('🔍 [ServerFn] Authenticated user:', user.id);
+    console.log('🔍 [ServerFn] Authenticated user:', `${user.id.substring(0, 10)}...`);
 
     console.log('🔍 [ServerFn] Importing db-api to get positions...');
 
-    console.log('🔍 [ServerFn] Calling getPositions for user:', user.id);
+    console.log('🔍 [ServerFn] Calling getPositions for user:', `${user.id.substring(0, 10)}...`);
     const positions = await getPositions(user.id);
+    // SECURITY: Sanitize positions data before logging to avoid exposing account numbers
+    const sanitizedPositions = positions.map((p) => ({
+      ...p,
+      accountId: sanitizeSchwabAccountId(p.accountId || ''),
+      accountNumber: p.accountNumber ? sanitizeAccountNumber(p.accountNumber) : undefined,
+    }));
     console.log('🔍 [ServerFn] getPositions result:', {
       totalPositions: positions.length,
-      positions: positions.map((p) => ({ ticker: p.ticker, qty: p.qty })),
+      positions: sanitizedPositions,
       timestamp: new Date().toISOString(),
     });
 
@@ -693,7 +702,7 @@ export const syncSchwabPricesServerFn = createServerFn({ method: 'POST' })
       });
 
       const { user } = await requireAuth();
-      console.log('👤 [ServerFn] Authenticated user:', user.id);
+      console.log('👤 [ServerFn] Authenticated user:', `${user.id.substring(0, 10)}...`);
 
       // Create sync log entry
       const logId = crypto.randomUUID();
@@ -823,7 +832,7 @@ export const revokeSchwabCredentialsServerFn = createServerFn({
   try {
     const { user } = await requireAuth();
     const _db = getDb();
-    console.log('👤 [ServerFn] Using user ID:', user.id);
+    console.log('👤 [ServerFn] Using user ID:', `${user.id.substring(0, 10)}...`);
 
     // Check for required Schwab environment variables
     const clientId = process.env.SCHWAB_CLIENT_ID;

@@ -1,6 +1,7 @@
 import { and, eq } from 'drizzle-orm';
 import * as schema from '~/db/schema';
 import { getDb } from '~/lib/db-config';
+import { sanitizeAccountNumber, sanitizeSchwabAccountId, sanitizeUserId } from '~/lib/sanitization';
 import {
   getSchwabApiService,
   type SchwabAccount,
@@ -22,7 +23,10 @@ export class SchwabSyncService {
   }
 
   async syncAccounts(userId: string): Promise<SyncResult> {
-    console.log('🏦 [SchwabSync] Starting account synchronization for user:', userId);
+    console.log(
+      '🏦 [SchwabSync] Starting account synchronization for user:',
+      sanitizeUserId(userId),
+    );
     const syncLog = await this.startSyncLog(userId, 'ACCOUNTS');
     console.log('📝 [SchwabSync] Created sync log:', syncLog.id);
 
@@ -53,7 +57,18 @@ export class SchwabSyncService {
         null;
       try {
         userPreferences = await this.schwabApi.getUserPreference(userId);
-        console.log('✅ [SchwabSync] Retrieved user preferences:', userPreferences);
+        const sanitizedPreferences = {
+          ...userPreferences,
+          accounts: userPreferences.accounts?.map((account) => ({
+            ...account,
+            accountNumber: account.accountNumber
+              ? sanitizeAccountNumber(account.accountNumber)
+              : undefined,
+          })),
+          streamerInfo: userPreferences.streamerInfo ? '[REDACTED-STREAMER-INFO]' : undefined,
+          offers: '[REDACTED-OFFERS]',
+        };
+        console.log('✅ [SchwabSync] Retrieved user preferences:', sanitizedPreferences);
       } catch (error) {
         console.warn(
           '⚠️ [SchwabSync] Failed to fetch user preferences, continuing without nicknames:',
@@ -95,8 +110,8 @@ export class SchwabSyncService {
       for (const schwabAccount of schwabAccounts) {
         console.log(
           '🔄 [SchwabSync] Processing account:',
-          schwabAccount.accountId,
-          schwabAccount.nickName || schwabAccount.type,
+          sanitizeSchwabAccountId(schwabAccount.accountId),
+          sanitizeAccountNumber(schwabAccount.accountNumber),
         );
         await this.syncAccount(userId, schwabAccount, nicknameMap, syncLog.id);
         processedCount++;
@@ -134,7 +149,10 @@ export class SchwabSyncService {
   }
 
   async syncHoldings(userId: string, accountId?: string): Promise<SyncResult> {
-    console.log('📊 [SchwabSync] Starting holdings synchronization for user:', userId);
+    console.log(
+      `📊 [SchwabSync] Starting holdings synchronization for user:`,
+      sanitizeUserId(userId),
+    );
     console.log('🔍 [SchwabSync] Account filter:', accountId || 'all accounts');
     const syncLog = await this.startSyncLog(userId, 'HOLDINGS');
     console.log('📝 [SchwabSync] Created sync log:', syncLog.id);
@@ -171,7 +189,7 @@ export class SchwabSyncService {
           console.log(
             '🎭 [SchwabSync] Skipping demo account:',
             account.name,
-            account.schwabAccountId,
+            sanitizeSchwabAccountId(account.schwabAccountId || ''),
           );
           return false;
         }
@@ -190,7 +208,7 @@ export class SchwabSyncService {
         realAccounts.map((a) => ({
           id: a.id,
           name: a.name,
-          schwabId: a.schwabAccountId,
+          schwabId: sanitizeSchwabAccountId(a.schwabAccountId || ''),
         })),
       );
 
@@ -207,7 +225,7 @@ export class SchwabSyncService {
         console.log(
           '🔄 [SchwabSync] Processing holdings for account:',
           account.name,
-          account.schwabAccountId,
+          sanitizeSchwabAccountId(account.schwabAccountId || ''),
         );
 
         if (!account.schwabAccountId) {
@@ -494,7 +512,7 @@ export class SchwabSyncService {
   }
 
   async syncPrices(userId: string, symbols?: string[]): Promise<SyncResult> {
-    console.log('💰 [SchwabSync] Starting price synchronization for user:', userId);
+    console.log('💰 [SchwabSync] Starting price synchronization for user:', sanitizeUserId(userId));
     console.log('🔍 [SchwabSync] Symbol filter:', symbols || 'all user holdings');
     const syncLog = await this.startSyncLog(userId, 'PRICES');
     console.log('📝 [SchwabSync] Created sync log:', syncLog.id);
@@ -611,7 +629,11 @@ export class SchwabSyncService {
     nicknameMap: Map<string, string>,
     logId?: string,
   ): Promise<void> {
-    console.log('🏦 [SchwabSync] Syncing individual account:', schwabAccount.accountId);
+    console.log(
+      '🏦 [SchwabSync] Syncing individual account:',
+      sanitizeSchwabAccountId(schwabAccount.accountId),
+      sanitizeAccountNumber(schwabAccount.accountNumber),
+    );
     const now = Date.now();
 
     // Get the nickname from user preferences, fallback to Schwab account nickname or type
@@ -651,7 +673,16 @@ export class SchwabSyncService {
         lastSyncAt: new Date(),
         updatedAt: now,
       } as const;
-      console.log('📝 [SchwabSync] Update data (by number):', updateData);
+      const sanitizedUpdateData = {
+        ...updateData,
+        accountNumber: updateData.accountNumber
+          ? sanitizeAccountNumber(updateData.accountNumber)
+          : undefined,
+        schwabAccountId: updateData.schwabAccountId
+          ? sanitizeSchwabAccountId(updateData.schwabAccountId)
+          : undefined,
+      };
+      console.log('📝 [SchwabSync] Update data (by number):', sanitizedUpdateData);
 
       await this.getDb()
         .update(schema.account)
@@ -774,7 +805,12 @@ export class SchwabSyncService {
               changes: JSON.stringify({
                 name: { old: undefined, new: insertData.name },
                 type: { old: undefined, new: insertData.type },
-                accountNumber: { old: undefined, new: '[REDACTED]' },
+                accountNumber: {
+                  old: undefined,
+                  new: insertData.accountNumber
+                    ? sanitizeAccountNumber(insertData.accountNumber)
+                    : undefined,
+                },
               }),
               success: true,
               message: undefined,
@@ -1095,7 +1131,12 @@ export class SchwabSyncService {
   }
 
   private async startSyncLog(userId: string, syncType: string) {
-    console.log('📝 [SchwabSync] Starting sync log for user:', userId, 'type:', syncType);
+    console.log(
+      '📝 [SchwabSync] Starting sync log for user:',
+      sanitizeUserId(userId),
+      'type:',
+      syncType,
+    );
     const log = {
       id: crypto.randomUUID(),
       userId,
@@ -1105,7 +1146,10 @@ export class SchwabSyncService {
       startedAt: new Date(),
       createdAt: new Date(),
     };
-    console.log('📊 [SchwabSync] Sync log data:', log);
+    console.log('📊 [SchwabSync] Sync log data:', {
+      ...log,
+      userId: sanitizeUserId(log.userId),
+    });
 
     await this.getDb().insert(schema.syncLog).values(log);
     console.log('✅ [SchwabSync] Successfully created sync log:', log.id);
