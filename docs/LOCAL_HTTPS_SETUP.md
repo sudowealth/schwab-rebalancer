@@ -53,6 +53,8 @@ mkcert 127.0.0.1    # creates 127.0.0.1.pem and 127.0.0.1-key.pem in the repo
 
 - Callback URL: `https://127.0.0.1/schwab/callback`
 
+  > **⚠️ Important**: Schwab processes new callback URLs overnight. After registering your callback URL, OAuth authentication may not work until the next business day.
+
 #### Ongoing (daily) development
 
 ```bash

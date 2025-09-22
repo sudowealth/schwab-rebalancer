@@ -26,6 +26,8 @@
    - **Callback URL**: `https://127.0.0.1/schwab/callback` (for local development)
    - **Production URL**: `https://{your-domain}.com/schwab/callback`
 
+   > **⚠️ Important**: Schwab processes new callback URLs overnight. After registering or changing your callback URL, you may need to wait until the next business day before OAuth authentication will work.
+
 2. Select the required API products:
    - **Accounts and Trading API** - For account information, balances, and trading
    - **Market Data API** - For real-time quotes and market data
@@ -70,9 +72,9 @@ SCHWAB_CLIENT_SECRET=your_secret_here
 
 ## Common Issues
 
-### SSL Certificate Errors
+### Callback URL Processing Delay
 
-- Sometimes Schwab needs an overnight sync before your SCHWAB_REDIRECT_URI is activated
+- **Overnight Processing**: Schwab processes new or updated callback URLs overnight. OAuth authentication may not work until the next business day after registering your callback URL.
 - Schwab requires HTTPS for OAuth callbacks (see `docs/LOCAL_HTTPS_SETUP.md`)
 - Use self-signed certificates for local development (see `docs/LOCAL_HTTPS_SETUP.md`)
 - Add certificate exceptions in browser (see `docs/LOCAL_HTTPS_SETUP.md`)

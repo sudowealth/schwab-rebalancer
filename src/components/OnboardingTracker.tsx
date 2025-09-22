@@ -272,6 +272,13 @@ export function OnboardingTracker({
                                     </code>
                                   </li>
                                 </ul>
+                                <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded text-xs">
+                                  <p className="text-amber-800">
+                                    <strong>⚠️ Important:</strong> Schwab processes new callback URLs
+                                    overnight. After registering or changing your callback URL,
+                                    OAuth authentication may not work until the next business day.
+                                  </p>
+                                </div>
                               </li>
                             </ul>
                           </div>
