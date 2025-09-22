@@ -1,7 +1,7 @@
 import { createFileRoute, Outlet, redirect } from '@tanstack/react-router';
 import { getDashboardDataServerFn } from '~/lib/server-functions';
 
-export const Route = createFileRoute('/schwab')({
+export const Route = createFileRoute('/schwab/schwab')({
   component: SchwabLayout,
   beforeLoad: async ({ location }) => {
     // Conditional protection: only protect non-OAuth routes

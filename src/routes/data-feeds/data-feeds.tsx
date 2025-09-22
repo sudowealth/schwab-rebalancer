@@ -1,6 +1,6 @@
 import { createFileRoute, Outlet } from '@tanstack/react-router';
 
-export const Route = createFileRoute('/data-feeds')({
+export const Route = createFileRoute('/data-feeds/data-feeds')({
   component: DataFeedsLayout,
 });
 
