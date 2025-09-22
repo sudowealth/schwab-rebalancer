@@ -18,6 +18,7 @@ import {
   checkSecuritiesExistServerFn,
   getPortfolioMetricsServerFn,
   getPositionsServerFn,
+  getRebalancingGroupsServerFn,
   getSleevesServerFn,
   getTransactionsServerFn,
 } from '~/lib/server-functions';
@@ -98,6 +99,9 @@ export function useDashboardData(loaderData: LoaderData) {
     false, // Disable sync triggering - handled globally in root component
   );
 
+  // Show rebalancing section only when rebalancing groups exist
+  const shouldShowRebalancingSection = loaderData.rebalancingGroupsStatus.hasGroups;
+
   // Use onboarding queries with optimized settings
   const { data: reactiveSecuritiesStatus } = useQuery({
     queryKey: queryKeys.onboarding.securities(),
@@ -126,37 +130,37 @@ export function useDashboardData(loaderData: LoaderData) {
     refetchOnMount: false, // Use loader data initially
   });
 
-  // Use reactive queries for rebalancing groups status
+  // Use reactive queries for rebalancing groups status (always enabled for onboarding)
   const { data: rawRebalancingGroups } = useQuery({
     queryKey: queryKeys.dashboard.groups(),
-    queryFn: async () => loaderData.rebalancingGroups, // Use loader data as query function
+    queryFn: getRebalancingGroupsServerFn,
     initialData: loaderData.rebalancingGroups,
-    refetchOnMount: true, // Ensure fresh data after group creation
-    staleTime: 5 * 60 * 1000, // 5 minutes default
-    gcTime: 10 * 60 * 1000, // 10 minutes default
-    refetchOnWindowFocus: true,
+    enabled: true, // Always enabled for onboarding status updates
+    staleTime: 5 * 60 * 1000, // 5 minutes for financial data
+    gcTime: 30 * 60 * 1000, // 30 minutes cache time
+    refetchOnWindowFocus: false, // Reduce unnecessary refetching
+    refetchOnMount: false, // Use loader data initially
   });
 
   // Transform the data for onboarding status
-  const reactiveRebalancingGroupsStatus = rawRebalancingGroups
-    ? {
-        hasGroups: rawRebalancingGroups.length > 0,
-        groupsCount: rawRebalancingGroups.length,
-      }
-    : { hasGroups: false, groupsCount: 0 };
+  const reactiveRebalancingGroupsStatus: { hasGroups: boolean; groupsCount: number } =
+    rawRebalancingGroups
+      ? {
+          hasGroups: rawRebalancingGroups.length > 0,
+          groupsCount: rawRebalancingGroups.length,
+        }
+      : { hasGroups: false, groupsCount: 0 };
 
-  // Show rebalancing section only when rebalancing groups exist
-  const shouldShowRebalancingSection = reactiveRebalancingGroupsStatus.hasGroups;
-
-  // Execute queries with optimized loader data hydration to prevent waterfalls
+  // Execute queries with optimized financial data settings to reduce server load
   const positionsResult = useQuery({
     queryKey: queryKeys.dashboard.positions(),
     queryFn: getPositionsServerFn,
     initialData: loaderData.positions,
     enabled: shouldShowRebalancingSection,
-    refetchOnWindowFocus: 'always',
-    refetchInterval: 2 * 60 * 1000, // Refetch every 2 minutes in background
-    staleTime: 1 * 60 * 1000, // Consider stale after 1 minute
+    refetchOnWindowFocus: false, // Reduce unnecessary refetching
+    refetchInterval: 5 * 60 * 1000, // Check every 5 minutes for financial data
+    staleTime: 2 * 60 * 1000, // Consider fresh for 2 minutes
+    gcTime: 30 * 60 * 1000, // Keep in cache for 30 minutes
   });
 
   const metricsResult = useQuery({
@@ -164,9 +168,10 @@ export function useDashboardData(loaderData: LoaderData) {
     queryFn: getPortfolioMetricsServerFn,
     initialData: loaderData.metrics,
     enabled: shouldShowRebalancingSection,
-    refetchOnWindowFocus: 'always',
-    refetchInterval: 2 * 60 * 1000, // Refetch every 2 minutes in background
-    staleTime: 1 * 60 * 1000, // Consider stale after 1 minute
+    refetchOnWindowFocus: false, // Reduce unnecessary refetching
+    refetchInterval: 5 * 60 * 1000, // Check every 5 minutes for financial data
+    staleTime: 2 * 60 * 1000, // Consider fresh for 2 minutes
+    gcTime: 30 * 60 * 1000, // Keep in cache for 30 minutes
   });
 
   const transactionsResult = useQuery({
@@ -174,9 +179,10 @@ export function useDashboardData(loaderData: LoaderData) {
     queryFn: getTransactionsServerFn,
     initialData: loaderData.transactions,
     enabled: shouldShowRebalancingSection,
-    refetchOnWindowFocus: 'always',
-    refetchInterval: 2 * 60 * 1000, // Refetch every 2 minutes in background
-    staleTime: 1 * 60 * 1000, // Consider stale after 1 minute
+    refetchOnWindowFocus: false, // Reduce unnecessary refetching
+    refetchInterval: 5 * 60 * 1000, // Check every 5 minutes for financial data
+    staleTime: 2 * 60 * 1000, // Consider fresh for 2 minutes
+    gcTime: 30 * 60 * 1000, // Keep in cache for 30 minutes
   });
 
   const sleevesResult = useQuery({
@@ -190,38 +196,26 @@ export function useDashboardData(loaderData: LoaderData) {
     refetchOnMount: false,
   });
 
-  const rebalancingGroupsResult = useQuery({
-    queryKey: queryKeys.dashboard.groups(),
-    queryFn: async () => loaderData.rebalancingGroups, // Use loader data as query function
-    initialData: loaderData.rebalancingGroups,
-    enabled: shouldShowRebalancingSection,
-    refetchOnWindowFocus: 'always',
-    refetchInterval: 2 * 60 * 1000, // Refetch every 2 minutes in background
-    staleTime: 1 * 60 * 1000, // Consider stale after 1 minute
-  });
-
   // Extract data
   const positions = positionsResult.data;
   const metrics = metricsResult.data;
   const transactions = transactionsResult.data;
   const sleeves = sleevesResult.data;
-  const rebalancingGroups = rebalancingGroupsResult.data;
+  const rebalancingGroups = rawRebalancingGroups;
 
   // Simplified loading state management - core states only
   const isLoading =
     positionsResult.isPending ||
     metricsResult.isPending ||
     transactionsResult.isPending ||
-    sleevesResult.isPending ||
-    rebalancingGroupsResult.isPending;
+    sleevesResult.isPending;
 
   // Background refetch states for showing subtle loading indicators
   const isRefetching =
     (positionsResult.isFetching && !positionsResult.isPending) ||
     (metricsResult.isFetching && !metricsResult.isPending) ||
     (transactionsResult.isFetching && !transactionsResult.isPending) ||
-    (sleevesResult.isFetching && !sleevesResult.isPending) ||
-    (rebalancingGroupsResult.isFetching && !rebalancingGroupsResult.isPending);
+    (sleevesResult.isFetching && !sleevesResult.isPending);
 
   return {
     // Loading states - simplified to core states only

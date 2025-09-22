@@ -56,7 +56,6 @@ export {
   getAvailableAccountsServerFn,
   getAvailableSecuritiesServerFn,
   getCompleteDashboardDataServerFn,
-  getDashboardDataServerFn,
   getGroupTransactionsServerFn,
   getPortfolioMetricsServerFn,
   getPositionsServerFn,

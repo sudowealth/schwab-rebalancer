@@ -28,7 +28,7 @@ import { authGuard } from '~/lib/route-guards';
 import {
   generateAllocationDataServerFn,
   generateTopHoldingsDataServerFn,
-  type getDashboardDataServerFn,
+  type getCompleteDashboardDataServerFn,
   getGroupAccountHoldingsServerFn,
   getGroupOrdersServerFn,
   getGroupTransactionsServerFn,
@@ -69,10 +69,10 @@ export const Route = createFileRoute('/rebalancing-groups/$groupId')({
     };
     accountHoldings: Awaited<ReturnType<typeof getGroupAccountHoldingsServerFn>>;
     sleeveMembers: Awaited<ReturnType<typeof getSleeveMembersServerFn>>;
-    sp500Data: Awaited<ReturnType<typeof getDashboardDataServerFn>>['sp500Data'];
-    positions: Awaited<ReturnType<typeof getDashboardDataServerFn>>['positions'];
-    transactions: Awaited<ReturnType<typeof getDashboardDataServerFn>>['transactions'];
-    proposedTrades: Awaited<ReturnType<typeof getDashboardDataServerFn>>['proposedTrades'];
+    sp500Data: Awaited<ReturnType<typeof getCompleteDashboardDataServerFn>>['sp500Data'];
+    positions: Awaited<ReturnType<typeof getCompleteDashboardDataServerFn>>['positions'];
+    transactions: Awaited<ReturnType<typeof getCompleteDashboardDataServerFn>>['transactions'];
+    proposedTrades: Awaited<ReturnType<typeof getCompleteDashboardDataServerFn>>['proposedTrades'];
   }> => {
     // Auth is handled by beforeLoad
     const group = await getRebalancingGroupByIdServerFn({

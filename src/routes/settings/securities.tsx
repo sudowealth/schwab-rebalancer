@@ -7,7 +7,7 @@ import { SecuritiesTable } from '~/features/dashboard/components/securities-tabl
 import { getIndices, getSnP500Data } from '~/lib/api';
 import { useExcelExport } from '~/lib/excel-export';
 import { authGuard } from '~/lib/route-guards';
-import { getDashboardDataServerFn } from '~/lib/server-functions';
+import { getCompleteDashboardDataServerFn } from '~/lib/server-functions';
 
 export const Route = createFileRoute('/settings/securities')({
   component: SecuritiesComponent,
@@ -28,7 +28,7 @@ export const Route = createFileRoute('/settings/securities')({
     index: typeof search.index === 'string' ? search.index : '',
   }),
   loader: async ({ context: _context }) => {
-    return await getDashboardDataServerFn();
+    return await getCompleteDashboardDataServerFn();
   },
 });
 

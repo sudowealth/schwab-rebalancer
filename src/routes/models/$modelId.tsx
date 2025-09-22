@@ -18,7 +18,7 @@ import { DeleteModelModal } from '~/features/models/components/delete-model-moda
 import { EditModelModal } from '~/features/models/components/edit-model-modal';
 import { authGuard } from '~/lib/route-guards';
 import {
-  getDashboardDataServerFn,
+  getCompleteDashboardDataServerFn,
   getModelByIdServerFn,
   getRebalancingGroupsServerFn,
 } from '~/lib/server-functions';
@@ -32,7 +32,7 @@ export const Route = createFileRoute('/models/$modelId')({
       // Parallelize all server calls for better performance
       const [model, dashboardData, allRebalancingGroups] = await Promise.all([
         getModelByIdServerFn({ data: { modelId } }),
-        getDashboardDataServerFn(),
+        getCompleteDashboardDataServerFn(),
         getRebalancingGroupsServerFn(),
       ]);
 

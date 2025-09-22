@@ -2124,6 +2124,163 @@ export const getRebalancingGroups = async (userId: string): Promise<RebalancingG
   return validatedData;
 };
 
+// Optimized function that gets rebalancing groups with balances in a single query
+export const getRebalancingGroupsWithBalances = async (
+  userId: string,
+): Promise<RebalancingGroup[]> => {
+  const cacheKey = `rebalancing-groups-with-balances-${userId}`;
+  const cached = getCached<RebalancingGroup[]>(cacheKey);
+  if (cached) {
+    return cached;
+  }
+
+  // Single relational query to get all groups with their members, balances, and assigned models
+  const groupsWithData = await getDb()
+    .select({
+      // Group data
+      groupId: schema.rebalancingGroup.id,
+      groupName: schema.rebalancingGroup.name,
+      groupIsActive: schema.rebalancingGroup.isActive,
+      groupCreatedAt: schema.rebalancingGroup.createdAt,
+      groupUpdatedAt: schema.rebalancingGroup.updatedAt,
+      // Member data
+      memberId: schema.rebalancingGroupMember.id,
+      memberAccountId: schema.rebalancingGroupMember.accountId,
+      memberIsActive: schema.rebalancingGroupMember.isActive,
+      accountName: schema.account.name,
+      accountType: schema.account.type,
+      // Model assignment data
+      modelId: schema.model.id,
+      modelName: schema.model.name,
+      modelDescription: schema.model.description,
+      modelIsActive: schema.model.isActive,
+      modelCreatedAt: schema.model.createdAt,
+      modelUpdatedAt: schema.model.updatedAt,
+    })
+    .from(schema.rebalancingGroup)
+    .leftJoin(
+      schema.rebalancingGroupMember,
+      and(
+        eq(schema.rebalancingGroup.id, schema.rebalancingGroupMember.groupId),
+        eq(schema.rebalancingGroupMember.isActive, true),
+      ),
+    )
+    .leftJoin(schema.account, eq(schema.rebalancingGroupMember.accountId, schema.account.id))
+    .leftJoin(
+      schema.modelGroupAssignment,
+      eq(schema.rebalancingGroup.id, schema.modelGroupAssignment.rebalancingGroupId),
+    )
+    .leftJoin(
+      schema.model,
+      and(
+        eq(schema.modelGroupAssignment.modelId, schema.model.id),
+        eq(schema.model.isActive, true),
+      ),
+    )
+    .where(
+      and(eq(schema.rebalancingGroup.userId, userId), eq(schema.rebalancingGroup.isActive, true)),
+    )
+    .orderBy(schema.rebalancingGroup.name);
+
+  // Group data by group ID
+  const groupsMap = new Map<
+    string,
+    {
+      id: string;
+      name: string;
+      isActive: boolean;
+      createdAt: Date;
+      updatedAt: Date;
+      members: Array<{
+        id: string;
+        accountId: string;
+        isActive: boolean;
+        accountName?: string;
+        accountType?: string;
+        balance?: number;
+      }>;
+      assignedModel?: {
+        id: string;
+        name: string;
+        description?: string;
+        isActive: boolean;
+        members: Array<{
+          id: string;
+          sleeveId: string;
+          targetWeight: number;
+          isActive: boolean;
+          sleeveName?: string;
+        }>;
+        createdAt: Date;
+        updatedAt: Date;
+      };
+    }
+  >();
+
+  for (const row of groupsWithData) {
+    let group = groupsMap.get(row.groupId);
+    if (!group) {
+      group = {
+        id: row.groupId,
+        name: row.groupName,
+        isActive: row.groupIsActive,
+        createdAt: row.groupCreatedAt,
+        updatedAt: row.groupUpdatedAt,
+        members: [],
+      };
+      groupsMap.set(row.groupId, group);
+    }
+
+    // Add member if exists and not already added
+    if (row.memberId && row.memberAccountId && !group.members.some((m) => m.id === row.memberId)) {
+      group.members.push({
+        id: row.memberId,
+        accountId: row.memberAccountId,
+        accountName: row.accountName || undefined,
+        accountType: row.accountType || undefined,
+        balance: 0, // Will be calculated from positions in server function
+        isActive: !!row.memberIsActive,
+      });
+    }
+
+    // Add assigned model if exists and not already added
+    if (
+      row.modelId &&
+      row.modelName &&
+      row.modelCreatedAt &&
+      row.modelUpdatedAt &&
+      !group.assignedModel
+    ) {
+      group.assignedModel = {
+        id: row.modelId,
+        name: row.modelName,
+        description: row.modelDescription || undefined,
+        isActive: !!row.modelIsActive,
+        members: [], // We don't need full member details for the group view
+        createdAt: row.modelCreatedAt,
+        updatedAt: row.modelUpdatedAt,
+      };
+    }
+  }
+
+  // Convert to final format
+  const finalGroups: RebalancingGroup[] = Array.from(groupsMap.values()).map((group) => ({
+    id: group.id,
+    name: group.name,
+    isActive: group.isActive,
+    members: group.members,
+    assignedModel: group.assignedModel,
+    createdAt: group.createdAt,
+    updatedAt: group.updatedAt,
+  }));
+
+  // Validate data
+  const validatedData = validateData(RebalancingGroupsSchema, finalGroups, 'rebalancing groups');
+  setCache(cacheKey, validatedData);
+
+  return validatedData;
+};
+
 // Get rebalancing group by ID
 export const getRebalancingGroupById = async (
   groupId: string,

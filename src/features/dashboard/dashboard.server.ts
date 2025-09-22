@@ -19,19 +19,22 @@ import {
   getAvailableSecurities,
   getFilteredSecuritiesData,
   getGroupTransactions,
+  getIndexMembers,
+  getIndices,
   getPortfolioMetrics,
   getPositions,
   getProposedTrades,
   getRebalancingGroupById,
-  getRebalancingGroups,
+  getRebalancingGroupsWithBalances,
   getRestrictedSecurities,
+  getSleeves,
   getSnP500Data,
   getTransactions,
   updateAccount,
 } from '../../lib/db-api';
 
 // Static imports for server-only utilities
-import { loadDashboardData } from '../../lib/server-only';
+// Note: loadDashboardData removed during server function cleanup
 import { requireAdmin, requireAuth } from '../auth/auth-utils';
 
 // Zod schemas for type safety
@@ -91,57 +94,130 @@ export const getSecuritiesDataServerFn = createServerFn({ method: 'POST' })
     };
   });
 
-// Atomic server function that loads ALL dashboard data in parallel
+// Removed unused _getDashboardDataSchema during server function cleanup
+
+// Optimized server function that loads ALL dashboard data in parallel to eliminate waterfalls
 export const getCompleteDashboardDataServerFn = createServerFn({
   method: 'GET',
 }).handler(async () => {
-  // Handle unauthenticated requests gracefully during SSR
-
   try {
     const { user } = await requireAuth();
     const userId = user.id;
 
-    // Load all dashboard data and rebalancing groups in parallel
-    const [dashboardData, rebalancingGroups] = await Promise.all([
-      // Load all dashboard data (positions, metrics, transactions, etc.)
-      loadDashboardData(userId, user),
-      // Load rebalancing groups with calculated balances
-      getRebalancingGroups(userId).then(async (groups) => {
-        // Collect all account IDs from all groups
-        const allAccountIds = groups.flatMap((group) =>
-          group.members.map((member) => member.accountId),
-        );
-
-        // Get account holdings for all accounts in a single query
-        const accountHoldings =
-          allAccountIds.length > 0 ? await getAccountHoldings(allAccountIds) : [];
-
-        // Update group members with calculated balances from holdings
-        return groups.map((group) => {
-          const updatedMembers = group.members.map((member) => {
-            const accountData = accountHoldings.find((ah) => ah.accountId === member.accountId);
-            return {
-              ...member,
-              balance: accountData ? accountData.accountBalance : member.balance,
-            };
-          });
-
-          return {
-            ...group,
-            members: updatedMembers,
-          };
-        });
-      }),
+    // Load ALL data in parallel to eliminate waterfalls
+    const [
+      positions,
+      metrics,
+      transactions,
+      sp500Data,
+      proposedTrades,
+      sleeves,
+      indices,
+      indexMembers,
+      rebalancingGroups,
+    ] = await Promise.all([
+      getPositions(userId),
+      getPortfolioMetrics(userId),
+      getTransactions(userId),
+      getSnP500Data(),
+      getProposedTrades(userId),
+      getSleeves(userId),
+      getIndices(),
+      getIndexMembers(),
+      getRebalancingGroupsWithBalances(userId), // Single query with balances
     ]);
 
+    // Load Schwab status in parallel with other data
+    const [schwabCredentialsStatus, schwabOAuthStatus] = await Promise.all([
+      // Schwab environment variables status
+      (async () => {
+        try {
+          const { hasSchwabCredentialsConfigured } = await import(
+            '~/features/schwab/schwab-api.server'
+          );
+          return { hasCredentials: hasSchwabCredentialsConfigured() };
+        } catch {
+          return { hasCredentials: false };
+        }
+      })(),
+      // Schwab OAuth status
+      (async () => {
+        try {
+          const clientId = process.env.SCHWAB_CLIENT_ID;
+          const clientSecret = process.env.SCHWAB_CLIENT_SECRET;
+
+          if (!clientId || !clientSecret) {
+            return { hasCredentials: false };
+          }
+
+          const { getSchwabApiService } = await import('~/features/schwab/schwab-api.server');
+          const schwabApi = getSchwabApiService();
+          const hasOAuthCredentials = await schwabApi.hasValidCredentials(userId);
+          return { hasCredentials: hasOAuthCredentials };
+        } catch {
+          return { hasCredentials: false };
+        }
+      })(),
+    ]);
+
+    // Calculate account balances from positions
+    const accountBalances = new Map<string, number>();
+    for (const position of positions) {
+      if (position.accountId && typeof position.marketValue === 'number') {
+        const currentBalance = accountBalances.get(position.accountId) || 0;
+        accountBalances.set(position.accountId, currentBalance + position.marketValue);
+      }
+    }
+
+    // Update rebalancing group member balances
+    const updatedRebalancingGroups = rebalancingGroups.map((group) => ({
+      ...group,
+      members: group.members.map((member) => ({
+        ...member,
+        balance: accountBalances.get(member.accountId) ?? 0,
+      })),
+    }));
+
+    // Compute status counts from main queries (no additional DB queries needed)
+    const accountsCount = new Set(positions.map((pos) => pos.accountId).filter(Boolean)).size;
+
+    const securitiesCount = positions.filter((pos) => pos.ticker !== '$$$' && pos.ticker).length;
+    const securitiesStatus = {
+      hasSecurities: securitiesCount > 0,
+      securitiesCount,
+    };
+
+    const modelsStatus = {
+      hasModels: sleeves.length > 0,
+      modelsCount: sleeves.length,
+    };
+
+    const rebalancingGroupsStatus = {
+      hasGroups: updatedRebalancingGroups.length > 0,
+      groupsCount: updatedRebalancingGroups.length,
+    };
+
     return {
-      ...dashboardData,
-      rebalancingGroups,
+      positions,
+      metrics,
+      transactions,
+      sp500Data,
+      proposedTrades,
+      sleeves,
+      indices,
+      indexMembers,
+      user,
+      schwabCredentialsStatus,
+      schwabOAuthStatus,
+      accountsCount,
+      securitiesStatus,
+      modelsStatus,
+      rebalancingGroupsStatus,
+      rebalancingGroups: updatedRebalancingGroups,
     };
   } catch (error) {
     // Handle authentication errors gracefully during SSR
     console.warn('Complete dashboard data load failed during SSR, returning empty data:', error);
-    // Don't re-throw during SSR - return fallback data instead
 
     return {
       positions: [],
@@ -180,61 +256,18 @@ export const getCompleteDashboardDataServerFn = createServerFn({
   }
 });
 
-export const getDashboardDataServerFn = createServerFn({
-  method: 'GET',
-}).handler(async () => {
-  // Handle unauthenticated requests gracefully during SSR
+// Removed duplicate getDashboardDataServerFn during server function cleanup
+// Use getCompleteDashboardDataServerFn instead for optimized parallel loading
 
-  try {
-    const { user } = await requireAuth();
-
-    const data = await loadDashboardData(user.id, user);
-    return data;
-  } catch (error) {
-    // Handle authentication errors gracefully during SSR
-    console.warn('Dashboard data load failed during SSR, returning empty data:', error);
-    // Don't re-throw during SSR - return fallback data instead
-
-    return {
-      positions: [],
-      metrics: {
-        totalMarketValue: 0,
-        totalCostBasis: 0,
-        unrealizedGain: 0,
-        unrealizedGainPercent: 0,
-        realizedGain: 0,
-        realizedGainPercent: 0,
-        totalGain: 0,
-        totalGainPercent: 0,
-        ytdHarvestedLosses: 0,
-        harvestablelosses: 0,
-        harvestingTarget: {
-          year1Target: 0.03,
-          steadyStateTarget: 0.02,
-          currentProgress: 0,
-        },
-      },
-      transactions: [],
-      sp500Data: [],
-      proposedTrades: [],
-      sleeves: [],
-      indices: [],
-      indexMembers: [],
-      user: null,
-      schwabCredentialsStatus: { hasCredentials: false },
-      accountsCount: 0,
-      securitiesStatus: { hasSecurities: false, securitiesCount: 0 },
-      modelsStatus: { hasModels: false, modelsCount: 0 },
-      rebalancingGroupsStatus: { hasGroups: false, groupsCount: 0 },
-    };
-  }
-});
+// Removed unused _getPositionsSchema during server function cleanup
 
 // Lightweight server functions for individual dashboard queries
 export const getPositionsServerFn = createServerFn({ method: 'GET' }).handler(async () => {
   const { user } = await requireAuth();
   return getPositions(user.id);
 });
+
+// Removed unused _getTransactionsSchema during server function cleanup
 
 export const getTransactionsServerFn = createServerFn({ method: 'GET' }).handler(async () => {
   const { user } = await requireAuth();
@@ -264,6 +297,10 @@ export const getGroupTransactionsServerFn = createServerFn({ method: 'POST' })
 
     return getGroupTransactions(accountIds);
   });
+
+// Removed unused _getSp500DataSchema during server function cleanup
+
+// Removed unused _getPortfolioMetricsSchema during server function cleanup
 
 export const getSp500DataServerFn = createServerFn({
   method: 'GET',

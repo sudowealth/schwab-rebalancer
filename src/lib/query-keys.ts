@@ -232,11 +232,12 @@ export const queryInvalidators = {
 
   // Composite invalidation helpers for common operations
   composites: {
-    // Invalidate all data that changes after Schwab sync
+    // Invalidate only data that actually changes after Schwab sync
     afterSchwabSync: (queryClient: import('@tanstack/react-query').QueryClient) => {
-      queryInvalidators.dashboard.all(queryClient);
-      queryInvalidators.schwab.credentials(queryClient);
-      queryInvalidators.schwab.accounts(queryClient);
+      // Only invalidate what Schwab sync actually changes
+      queryInvalidators.dashboard.positions(queryClient);
+      queryInvalidators.dashboard.transactions(queryClient);
+      queryInvalidators.dashboard.metrics(queryClient);
       queryInvalidators.onboarding.schwab(queryClient);
     },
 

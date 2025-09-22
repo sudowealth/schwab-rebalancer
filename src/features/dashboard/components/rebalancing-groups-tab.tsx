@@ -8,7 +8,7 @@ import {
   useReactTable,
 } from '@tanstack/react-table';
 import { ArrowRight, ChevronDown, ChevronsUpDown, ChevronUp } from 'lucide-react';
-import { useCallback, useMemo, useState } from 'react';
+import { memo, useCallback, useMemo, useState } from 'react';
 import { withDashboardErrorBoundary } from '~/components/ErrorBoundary';
 import { Badge } from '~/components/ui/badge';
 import { Button } from '~/components/ui/button';
@@ -18,7 +18,9 @@ interface RebalancingGroupsTabProps {
   groups: RebalancingGroup[];
 }
 
-function RebalancingGroupsTabComponent({ groups }: RebalancingGroupsTabProps) {
+const RebalancingGroupsTabComponent = memo(function RebalancingGroupsTabComponent({
+  groups,
+}: RebalancingGroupsTabProps) {
   const [sorting, setSorting] = useState<SortingState>([{ id: 'group', desc: false }]);
 
   // Helper to format account balance
@@ -31,10 +33,16 @@ function RebalancingGroupsTabComponent({ groups }: RebalancingGroupsTabProps) {
     }).format(balance);
   }, []);
 
-  // Helper to calculate total group value
-  const calculateGroupValue = useCallback((group: RebalancingGroup): number => {
-    return group.members.reduce((total, member) => total + (member.balance || 0), 0);
-  }, []);
+  // Pre-calculate group values and formatted values to avoid recalculation during render
+  const processedGroups = useMemo(() => {
+    return groups.map((group) => ({
+      ...group,
+      totalValue: group.members.reduce((total, member) => total + (member.balance || 0), 0),
+      formattedValue: formatBalance(
+        group.members.reduce((total, member) => total + (member.balance || 0), 0),
+      ),
+    }));
+  }, [groups, formatBalance]);
 
   const columns = useMemo<ColumnDef<RebalancingGroup>[]>(
     () => [
@@ -102,13 +110,12 @@ function RebalancingGroupsTabComponent({ groups }: RebalancingGroupsTabProps) {
         id: 'value',
         header: 'Value',
         cell: ({ row }) => {
-          const group = row.original;
-          const totalValue = calculateGroupValue(group);
-          return <span className="font-medium text-gray-900">{formatBalance(totalValue)}</span>;
+          const group = row.original as RebalancingGroup & { formattedValue: string };
+          return <span className="font-medium text-gray-900">{group.formattedValue}</span>;
         },
         sortingFn: (rowA, rowB, _columnId) => {
-          const a = calculateGroupValue(rowA.original);
-          const b = calculateGroupValue(rowB.original);
+          const a = (rowA.original as RebalancingGroup & { totalValue: number }).totalValue;
+          const b = (rowB.original as RebalancingGroup & { totalValue: number }).totalValue;
           return a - b;
         },
       },
@@ -132,11 +139,11 @@ function RebalancingGroupsTabComponent({ groups }: RebalancingGroupsTabProps) {
         },
       },
     ],
-    [formatBalance, calculateGroupValue],
+    [],
   );
 
   const table = useReactTable({
-    data: groups,
+    data: processedGroups,
     columns,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
@@ -207,6 +214,6 @@ function RebalancingGroupsTabComponent({ groups }: RebalancingGroupsTabProps) {
       </table>
     </div>
   );
-}
+});
 
 export const RebalancingGroupsTab = withDashboardErrorBoundary(RebalancingGroupsTabComponent);

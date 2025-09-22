@@ -9,14 +9,14 @@ import { AddSleeveModal } from '~/features/sleeves/components/add-sleeve-modal';
 import { DeleteSleeveModal } from '~/features/sleeves/components/delete-sleeve-modal';
 import { EditSleeveModal } from '~/features/sleeves/components/edit-sleeve-modal';
 import { authGuard } from '~/lib/route-guards';
-import { getDashboardDataServerFn } from '~/lib/server-functions';
+import { getCompleteDashboardDataServerFn } from '~/lib/server-functions';
 
 export const Route = createFileRoute('/sleeves/')({
   component: SleevesComponent,
   errorComponent: SleevesErrorBoundary,
   beforeLoad: authGuard,
   loader: async () => {
-    const data = await getDashboardDataServerFn();
+    const data = await getCompleteDashboardDataServerFn();
     return data;
   },
 });

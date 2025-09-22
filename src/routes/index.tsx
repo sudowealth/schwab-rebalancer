@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { createFileRoute } from '@tanstack/react-router';
+import { lazy, Suspense, useEffect } from 'react';
 import { OnboardingTracker } from '~/components/OnboardingTracker';
 import { DashboardErrorBoundary } from '~/components/RouteErrorBoundaries';
 import { ExportButton } from '~/components/ui/export-button';
@@ -7,9 +8,18 @@ import type { Sleeve } from '~/features/auth/schemas';
 import { DashboardMetrics } from '~/features/dashboard/components/dashboard-metrics';
 import { PositionsTable } from '~/features/dashboard/components/positions-table';
 import { RebalancingGroupsTab } from '~/features/dashboard/components/rebalancing-groups-tab';
-import { SecurityModal } from '~/features/dashboard/components/security-modal';
-import { SleeveModal } from '~/features/dashboard/components/sleeve-modal';
 import { TransactionsTable } from '~/features/dashboard/components/transactions-table';
+
+// Lazy load heavy modal components for better bundle splitting
+const SecurityModal = lazy(() =>
+  import('~/features/dashboard/components/security-modal').then((m) => ({
+    default: m.SecurityModal,
+  })),
+);
+const SleeveModal = lazy(() =>
+  import('~/features/dashboard/components/sleeve-modal').then((m) => ({ default: m.SleeveModal })),
+);
+
 import { useDashboardData } from '~/features/dashboard/hooks/use-dashboard-data';
 import { useDashboardModals } from '~/features/dashboard/hooks/use-dashboard-modals';
 import { useDashboardTabs } from '~/features/dashboard/hooks/use-dashboard-tabs';
@@ -83,6 +93,32 @@ export const Route = createFileRoute('/')({
 function DashboardComponent() {
   const loaderData = Route.useLoaderData();
 
+  // Performance monitoring - measure dashboard route load time
+  useEffect(() => {
+    if (typeof window !== 'undefined' && 'performance' in window) {
+      const navigation = performance.getEntriesByType(
+        'navigation',
+      )[0] as PerformanceNavigationTiming;
+      const loadTime = navigation.loadEventEnd - navigation.fetchStart;
+      console.log(`🚀 [Performance] Dashboard route load time: ${loadTime.toFixed(2)}ms`);
+
+      // Log additional performance metrics
+      const domContentLoaded = navigation.domContentLoadedEventEnd - navigation.fetchStart;
+      const firstPaint = performance.getEntriesByName('first-paint')[0] as PerformanceEntry;
+      const firstContentfulPaint = performance.getEntriesByName(
+        'first-contentful-paint',
+      )[0] as PerformanceEntry;
+
+      console.log(`📊 [Performance] DOM Content Loaded: ${domContentLoaded.toFixed(2)}ms`);
+      if (firstPaint)
+        console.log(`🎨 [Performance] First Paint: ${firstPaint.startTime.toFixed(2)}ms`);
+      if (firstContentfulPaint)
+        console.log(
+          `📝 [Performance] First Contentful Paint: ${firstContentfulPaint.startTime.toFixed(2)}ms`,
+        );
+    }
+  }, []);
+
   // Note: loaderData.user is available as fallback for session?.user if needed
   // Note: Server-side auth check in loader ensures user is authenticated
 
@@ -107,7 +143,6 @@ function DashboardComponent() {
     reactiveSecuritiesStatus,
     reactiveModelsStatus,
     reactiveSchwabCredentialsStatus,
-    reactiveRebalancingGroupsStatus,
     positions,
     metrics,
     transactions,
@@ -145,11 +180,12 @@ function DashboardComponent() {
   );
 
   // Use the onboarding status hook for clean conditional rendering
+  // Use loader data for rebalancing groups status since route loader provides fresh data
   const { title, subtitle } = useOnboardingStatus({
     securitiesStatus: reactiveSecuritiesStatus,
     schwabCredentialsStatus: reactiveSchwabCredentialsStatus,
     modelsStatus: reactiveModelsStatus,
-    rebalancingGroupsStatus: reactiveRebalancingGroupsStatus,
+    rebalancingGroupsStatus: loaderData.rebalancingGroupsStatus,
     schwabOAuthComplete,
   });
 
@@ -201,9 +237,7 @@ function DashboardComponent() {
       <OnboardingTracker
         schwabCredentialsStatusProp={reactiveSchwabCredentialsStatus}
         schwabOAuthStatusProp={{ hasCredentials: schwabOAuthComplete }}
-        rebalancingGroupsStatus={
-          reactiveRebalancingGroupsStatus as { hasGroups: boolean; groupsCount: number } | undefined
-        }
+        rebalancingGroupsStatus={loaderData.rebalancingGroupsStatus}
         securitiesStatusProp={reactiveSecuritiesStatus}
         modelsStatusProp={reactiveModelsStatus}
         securitiesSeedingState={{ isSeeding, hasError, seedResult, showSuccessMessage }}
@@ -311,22 +345,26 @@ function DashboardComponent() {
         </div>
       )}
 
-      <SleeveModal
-        isOpen={showSleeveModal}
-        onClose={closeSleeveModal}
-        sleeve={
-          selectedSleeve ? sleeves?.find((s: Sleeve) => s.id === selectedSleeve) || null : null
-        }
-      />
+      <Suspense fallback={null}>
+        <SleeveModal
+          isOpen={showSleeveModal}
+          onClose={closeSleeveModal}
+          sleeve={
+            selectedSleeve ? sleeves?.find((s: Sleeve) => s.id === selectedSleeve) || null : null
+          }
+        />
+      </Suspense>
 
-      <SecurityModal
-        isOpen={showSecurityModal}
-        onClose={closeSecurityModal}
-        ticker={selectedTicker}
-        sp500Data={loaderData.sp500Data}
-        positions={positions}
-        transactions={transactions}
-      />
+      <Suspense fallback={null}>
+        <SecurityModal
+          isOpen={showSecurityModal}
+          onClose={closeSecurityModal}
+          ticker={selectedTicker}
+          sp500Data={loaderData.sp500Data}
+          positions={positions}
+          transactions={transactions}
+        />
+      </Suspense>
     </div>
   );
 }
