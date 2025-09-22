@@ -27,12 +27,13 @@ function createDatabaseClient() {
  */
 let dbInstance: ReturnType<typeof createDatabaseClient> | null = null;
 
-export const dbProxy = new Proxy({} as ReturnType<typeof createDatabaseClient>, {
-  get(_target, prop) {
-    if (!dbInstance) {
-      dbInstance = createDatabaseClient();
-    }
-    const value = dbInstance[prop as keyof typeof dbInstance];
-    return typeof value === 'function' ? value.bind(dbInstance) : value;
-  },
-});
+/**
+ * Get database instance with lazy initialization
+ * Replaces proxy pattern for better performance
+ */
+export function getDb() {
+  if (!dbInstance) {
+    dbInstance = createDatabaseClient();
+  }
+  return dbInstance;
+}

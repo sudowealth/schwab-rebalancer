@@ -1,6 +1,6 @@
 import { and, eq } from 'drizzle-orm';
 import * as schema from '~/db/schema';
-import { dbProxy } from '~/lib/db-config';
+import { getDb } from '~/lib/db-config';
 import {
   getSchwabApiService,
   type SchwabAccount,
@@ -18,7 +18,7 @@ export class SchwabSyncService {
   private schwabApi = getSchwabApiService();
 
   private getDb() {
-    return dbProxy;
+    return getDb();
   }
 
   async syncAccounts(userId: string): Promise<SyncResult> {

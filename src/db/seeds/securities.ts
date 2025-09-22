@@ -1,6 +1,6 @@
 import { inArray } from 'drizzle-orm';
 import * as schema from '~/db/schema';
-import { dbProxy } from '~/lib/db-config';
+import { getDb } from '~/lib/db-config';
 
 const CASH_DATA = [
   {
@@ -26,7 +26,7 @@ export async function seedSecurities() {
   const now = Math.floor(Date.now() / 1000);
 
   // Only seed cash securities, ETFs and stocks will be populated via equity securities sync
-  const existingCash = await dbProxy
+  const existingCash = await getDb()
     .select({ ticker: schema.security.ticker })
     .from(schema.security)
     .where(
@@ -44,7 +44,7 @@ export async function seedSecurities() {
   let insertedCount = 0;
 
   if (securitiesToInsert.length > 0) {
-    const inserted = await dbProxy
+    const inserted = await getDb()
       .insert(schema.security)
       .values(
         securitiesToInsert.map((security) => ({

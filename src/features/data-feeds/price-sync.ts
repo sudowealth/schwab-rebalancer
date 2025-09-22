@@ -3,7 +3,7 @@ import yahooFinance from 'yahoo-finance2';
 import * as schema from '~/db/schema';
 import { getSchwabApiService } from '~/features/schwab/schwab-api.server';
 import { CASH_TICKER, MANUAL_CASH_TICKER } from '~/lib/constants';
-import { dbProxy } from '~/lib/db-config';
+import { getDb } from '~/lib/db-config';
 
 export interface PriceUpdateResult {
   ticker: string;
@@ -28,7 +28,7 @@ export class PriceSyncService {
   private readonly MAX_QUOTES_PER_REQUEST = 150;
 
   private getDb() {
-    return dbProxy;
+    return getDb();
   }
 
   async syncPrices(options: PriceSyncOptions = {}): Promise<PriceUpdateResult[]> {
@@ -41,7 +41,7 @@ export class PriceSyncService {
       symbolsToUpdate = symbols;
     } else {
       // Get all symbols from securities table, excluding cash tickers
-      const securities = await dbProxy.select({ ticker: schema.security.ticker }).from(schema.security);
+      const securities = await getDb().select({ ticker: schema.security.ticker }).from(schema.security);
 
       symbolsToUpdate = securities
         .map((s) => s.ticker)
@@ -55,7 +55,7 @@ export class PriceSyncService {
     const results: PriceUpdateResult[] = [];
 
     // Get current prices from database
-    const currentSecurities = await dbProxy
+    const currentSecurities = await getDb()
       .select({
         ticker: schema.security.ticker,
         price: schema.security.price,
@@ -245,7 +245,7 @@ export class PriceSyncService {
           continue;
         }
 
-        await dbProxy
+        await getDb()
           .update(schema.security)
           .set({ price: newPrice, updatedAt: Date.now() })
           .where(eq(schema.security.ticker, symbol));
@@ -311,7 +311,7 @@ export class PriceSyncService {
 
       if (info.name) {
         // Fetch current to compute change
-        const current = await dbProxy
+        const current = await getDb()
           .select({ name: schema.security.name })
           .from(schema.security)
           .where(eq(schema.security.ticker, ticker))
@@ -342,7 +342,7 @@ export class PriceSyncService {
             `⚠️ [PriceSync] Invalid asset type for ${ticker}: ${info.assetType}, using default EQUITY`,
           );
         }
-        const current = await dbProxy
+        const current = await getDb()
           .select({ assetType: schema.security.assetType })
           .from(schema.security)
           .where(eq(schema.security.ticker, ticker))
@@ -376,7 +376,7 @@ export class PriceSyncService {
             `⚠️ [PriceSync] Invalid assetTypeSub for ${ticker}: ${info.assetTypeSub}, storing NULL`,
           );
         }
-        const currentSub = await dbProxy
+        const currentSub = await getDb()
           .select({ assetTypeSub: schema.security.assetTypeSub })
           .from(schema.security)
           .where(eq(schema.security.ticker, ticker))
@@ -391,7 +391,7 @@ export class PriceSyncService {
       if (Object.keys(updateData).length > 0) {
         updateData.updatedAt = Date.now();
 
-        await dbProxy.update(schema.security).set(updateData).where(eq(schema.security.ticker, ticker));
+        await getDb().update(schema.security).set(updateData).where(eq(schema.security.ticker, ticker));
 
         console.log(`✅ [PriceSync] Updated security info for ${ticker}:`, updateData);
       }

@@ -1,6 +1,6 @@
 import { eq } from 'drizzle-orm';
 import * as schema from '~/db/schema';
-import { dbProxy } from '~/lib/db-config';
+import { getDb } from '~/lib/db-config';
 
 type AuthModule = typeof import('./auth');
 
@@ -67,7 +67,7 @@ async function getCurrentUser(): Promise<AuthenticatedUser | null> {
     }
 
     // Fetch the user role from the database since it's not included in the session
-    const userRecord = await dbProxy
+    const userRecord = await getDb()
       .select({ role: schema.user.role })
       .from(schema.user)
       .where(eq(schema.user.id, session.user.id))

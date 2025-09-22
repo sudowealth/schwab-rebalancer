@@ -1,5 +1,5 @@
 import { eq } from 'drizzle-orm';
-import { dbProxy } from "~/lib/db-config";
+import { getDb } from "~/lib/db-config";
 import * as schema from '~/db/schema';
 
 // Demo rebalancing groups data
@@ -25,7 +25,7 @@ export async function seedRebalancingGroups(userId?: string) {
   let targetUserId = userId;
 
   if (!targetUserId) {
-    const existingUser = await dbProxy
+    const existingUser = await getDb()
       .select()
       .from(schema.user)
       .where(eq(schema.user.role, 'admin'))
@@ -36,15 +36,15 @@ export async function seedRebalancingGroups(userId?: string) {
   console.log(`✅ Using user ID for rebalancing groups: ${targetUserId}`);
 
   // Clear existing rebalancing groups
-  await dbProxy.delete(schema.rebalancingGroupMember);
-  await dbProxy.delete(schema.modelGroupAssignment);
-  await dbProxy.delete(schema.rebalancingGroup);
+  await getDb().delete(schema.rebalancingGroupMember);
+  await getDb().delete(schema.modelGroupAssignment);
+  await getDb().delete(schema.rebalancingGroup);
 
   // Insert rebalancing groups
   for (const group of REBALANCING_GROUPS_DATA) {
     try {
       // Create the group
-      await dbProxy.insert(schema.rebalancingGroup).values({
+      await getDb().insert(schema.rebalancingGroup).values({
         id: group.id,
         userId: targetUserId,
         name: group.name,
@@ -55,7 +55,7 @@ export async function seedRebalancingGroups(userId?: string) {
 
       // Create group members
       for (const accountId of group.memberAccountIds) {
-        await dbProxy.insert(schema.rebalancingGroupMember).values({
+        await getDb().insert(schema.rebalancingGroupMember).values({
           id: `${group.id}_member_${accountId}`,
           groupId: group.id,
           accountId: accountId,
@@ -76,7 +76,7 @@ export async function seedRebalancingGroups(userId?: string) {
 
   for (const group of REBALANCING_GROUPS_DATA) {
     try {
-      await dbProxy.insert(schema.modelGroupAssignment).values({
+      await getDb().insert(schema.modelGroupAssignment).values({
         id: `${modelId}_${group.id}`,
         modelId: modelId,
         rebalancingGroupId: group.id,

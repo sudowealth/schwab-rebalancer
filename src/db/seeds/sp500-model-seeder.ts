@@ -1,6 +1,6 @@
 import { and, eq, inArray, like } from 'drizzle-orm';
 import * as schema from '~/db/schema';
-import { dbProxy } from '~/lib/db-config';
+import { getDb } from '~/lib/db-config';
 
 // Combined function to seed S&P 500 securities, sleeves, and models
 async function _seedSp500Model(userId?: string) {
@@ -147,7 +147,7 @@ export async function seedSP500Securities() {
         updatedAt: now,
       }));
 
-      const inserted = await dbProxy
+      const inserted = await getDb()
         .insert(schema.security)
         .values(chunk)
         .onConflictDoNothing({ target: schema.security.ticker })
@@ -161,7 +161,7 @@ export async function seedSP500Securities() {
   console.log(`✅ Seeded ${insertedCount} S&P 500 securities (${skippedCount} already existed)`);
 
   // Seed S&P 500 index and members
-  const indexInsert = await dbProxy
+  const indexInsert = await getDb()
     .insert(schema.indexTable)
     .values({
       id: 'sp500',
@@ -192,7 +192,7 @@ export async function seedSP500Securities() {
         updatedAt: now,
       }));
 
-      const inserted = await dbProxy
+      const inserted = await getDb()
         .insert(schema.indexMember)
         .values(chunk)
         .onConflictDoNothing({ target: schema.indexMember.id })
@@ -215,7 +215,7 @@ async function generateDynamicSleeves() {
   console.log('📊 Generating sleeves from S&P 500 data...');
 
   // Get all S&P 500 securities with industry and market cap data
-  const sp500Securities = await dbProxy
+  const sp500Securities = await getDb()
     .select({
       ticker: schema.security.ticker,
       industry: schema.security.industry,
@@ -327,7 +327,7 @@ export async function seedSleeves(userId?: string) {
   const { sleeves: dynamicSleeves, sleeveMembers: dynamicMembers } = await generateDynamicSleeves();
 
   // Clear existing dynamic S&P 500 sleeves for this user (only sleeves created by this seeder)
-  const existingDynamicSleeves = await dbProxy
+  const existingDynamicSleeves = await getDb()
     .select({ id: schema.sleeve.id })
     .from(schema.sleeve)
     .where(and(eq(schema.sleeve.userId, targetUserId), like(schema.sleeve.id, 'sleeve_dynamic_%')));
@@ -336,20 +336,20 @@ export async function seedSleeves(userId?: string) {
 
   if (sleeveIdsToDelete.length > 0) {
     // Delete related data first (foreign key constraints)
-    await dbProxy
+    await getDb()
       .delete(schema.restrictedSecurity)
       .where(inArray(schema.restrictedSecurity.sleeveId, sleeveIdsToDelete));
-    await dbProxy
+    await getDb()
       .delete(schema.sleeveMember)
       .where(inArray(schema.sleeveMember.sleeveId, sleeveIdsToDelete));
-    await dbProxy.delete(schema.sleeve).where(inArray(schema.sleeve.id, sleeveIdsToDelete));
+    await getDb().delete(schema.sleeve).where(inArray(schema.sleeve.id, sleeveIdsToDelete));
   }
 
   console.log('✅ Cleared existing sleeve data');
 
   // Insert sleeves
   for (const sleeve of dynamicSleeves) {
-    await dbProxy.insert(schema.sleeve).values({
+    await getDb().insert(schema.sleeve).values({
       id: sleeve.id,
       userId: targetUserId, // Use target user ID
       name: sleeve.name,
@@ -363,7 +363,7 @@ export async function seedSleeves(userId?: string) {
   // Insert sleeve members
   for (const member of dynamicMembers) {
     try {
-      await dbProxy.insert(schema.sleeveMember).values({
+      await getDb().insert(schema.sleeveMember).values({
         id: member.id,
         sleeveId: member.sleeveId,
         ticker: member.ticker,
@@ -397,7 +397,7 @@ const getModelData = async (userId?: string) => {
   let actualUserId = userId || 'demo-user';
 
   if (actualUserId === 'demo-user') {
-    const users = await dbProxy
+    const users = await getDb()
       .select({ id: schema.user.id })
       .from(schema.user)
       .where(eq(schema.user.role, 'admin'))
@@ -432,7 +432,7 @@ async function generateDynamicModelMembers(modelId: string, userId?: string) {
   // If no userId provided, check if there's a real user in the database
   let actualUserId = targetUserId;
   if (targetUserId === 'demo-user') {
-    const users = await dbProxy
+    const users = await getDb()
       .select({ id: schema.user.id })
       .from(schema.user)
       .where(eq(schema.user.role, 'admin'))
@@ -444,7 +444,7 @@ async function generateDynamicModelMembers(modelId: string, userId?: string) {
     }
   }
 
-  const sleeves = await dbProxy
+  const sleeves = await getDb()
     .select({
       id: schema.sleeve.id,
       name: schema.sleeve.name,
@@ -494,7 +494,7 @@ export async function seedModels(userId?: string) {
   const modelIdsToInsert = modelData.map((m) => m.id);
 
   // Only delete models that have the same ID as the S&P 500 model we're creating
-  const modelsToDelete = await dbProxy
+  const modelsToDelete = await getDb()
     .select({ id: schema.model.id })
     .from(schema.model)
     .where(inArray(schema.model.id, modelIdsToInsert));
@@ -505,24 +505,24 @@ export async function seedModels(userId?: string) {
     const modelIdsToDelete = modelsToDelete.map((m) => m.id);
 
     // Delete model assignments first
-    await dbProxy
+    await getDb()
       .delete(schema.modelGroupAssignment)
       .where(inArray(schema.modelGroupAssignment.modelId, modelIdsToDelete));
 
     // Delete existing model members (due to foreign key constraints)
-    await dbProxy
+    await getDb()
       .delete(schema.modelMember)
       .where(inArray(schema.modelMember.modelId, modelIdsToDelete));
 
     // Then delete models
-    await dbProxy.delete(schema.model).where(inArray(schema.model.id, modelIdsToDelete));
+    await getDb().delete(schema.model).where(inArray(schema.model.id, modelIdsToDelete));
 
     console.log('✅ Cleared existing model data');
   }
 
   // Insert models
   for (const model of modelData) {
-    await dbProxy.insert(schema.model).values(model);
+    await getDb().insert(schema.model).values(model);
   }
 
   // Generate and insert model members dynamically
@@ -532,7 +532,7 @@ export async function seedModels(userId?: string) {
   );
 
   for (const member of modelMembersData) {
-    await dbProxy.insert(schema.modelMember).values(member);
+    await getDb().insert(schema.modelMember).values(member);
   }
 
   console.log(`✅ Seeded ${modelData.length} models, ${modelMembersData.length} model members`);

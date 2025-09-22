@@ -3,7 +3,7 @@ import { desc, eq, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import * as schema from '~/db/schema';
 import { requireAdmin } from '~/features/auth/auth-utils';
-import { dbProxy } from '~/lib/db-config';
+import { getDb } from '~/lib/db-config';
 import { throwServerError } from '~/lib/error-utils';
 
 // Zod schemas for type safety
@@ -28,7 +28,7 @@ const deleteUserByIdSchema = z.object({
 export const getAllUsersServerFn = createServerFn({ method: 'GET' }).handler(async () => {
   await requireAdmin();
 
-  const users = await dbProxy
+  const users = await getDb()
     .select({
       id: schema.user.id,
       email: schema.user.email,
@@ -53,7 +53,7 @@ export const updateUserRoleServerFn = createServerFn({ method: 'POST' })
     await requireAdmin();
 
     // Verify user exists
-    const existingUser = await dbProxy
+    const existingUser = await getDb()
       .select({ id: schema.user.id })
       .from(schema.user)
       .where(eq(schema.user.id, userId))
@@ -64,7 +64,7 @@ export const updateUserRoleServerFn = createServerFn({ method: 'POST' })
     }
 
     // Update role
-    await dbProxy
+    await getDb()
       .update(schema.user)
       .set({
         role,
@@ -80,25 +80,25 @@ export const getSystemStatsServerFn = createServerFn({ method: 'GET' }).handler(
   await requireAdmin();
 
   // Get various counts
-  const userCount = await dbProxy.select({ count: sql<number>`count(*)` }).from(schema.user);
+  const userCount = await getDb().select({ count: sql<number>`count(*)` }).from(schema.user);
 
-  const accountCount = await dbProxy.select({ count: sql<number>`count(*)` }).from(schema.account);
+  const accountCount = await getDb().select({ count: sql<number>`count(*)` }).from(schema.account);
 
-  const sleeveCount = await dbProxy.select({ count: sql<number>`count(*)` }).from(schema.sleeve);
+  const sleeveCount = await getDb().select({ count: sql<number>`count(*)` }).from(schema.sleeve);
 
-  const modelCount = await dbProxy.select({ count: sql<number>`count(*)` }).from(schema.model);
+  const modelCount = await getDb().select({ count: sql<number>`count(*)` }).from(schema.model);
 
-  const holdingCount = await dbProxy.select({ count: sql<number>`count(*)` }).from(schema.holding);
+  const holdingCount = await getDb().select({ count: sql<number>`count(*)` }).from(schema.holding);
 
-  const transactionCount = await dbProxy
+  const transactionCount = await getDb()
     .select({ count: sql<number>`count(*)` })
     .from(schema.transaction);
 
-  const rebalancingGroupCount = await dbProxy
+  const rebalancingGroupCount = await getDb()
     .select({ count: sql<number>`count(*)` })
     .from(schema.rebalancingGroup);
 
-  const orderCount = await dbProxy.select({ count: sql<number>`count(*)` }).from(schema.tradeOrder);
+  const orderCount = await getDb().select({ count: sql<number>`count(*)` }).from(schema.tradeOrder);
 
   return {
     users: Number(userCount[0]?.count ?? 0),
@@ -119,7 +119,7 @@ export const getAuditLogsServerFn = createServerFn({ method: 'GET' })
     await requireAdmin();
     const { limit = 100, offset = 0, userId } = data;
 
-    const baseQuery = dbProxy
+    const baseQuery = getDb()
       .select({
         id: schema.auditLog.id,
         userId: schema.auditLog.userId,
@@ -153,7 +153,7 @@ export const getUserDataServerFn = createServerFn({ method: 'GET' })
     await requireAdmin();
 
     // Get user info
-    const user = await dbProxy
+    const user = await getDb()
       .select()
       .from(schema.user)
       .where(eq(schema.user.id, userId))
@@ -164,19 +164,19 @@ export const getUserDataServerFn = createServerFn({ method: 'GET' })
     }
 
     // Get all user data
-    const accounts = await dbProxy
+    const accounts = await getDb()
       .select()
       .from(schema.account)
       .where(eq(schema.account.userId, userId));
 
-    const sleeves = await dbProxy
+    const sleeves = await getDb()
       .select()
       .from(schema.sleeve)
       .where(eq(schema.sleeve.userId, userId));
 
-    const models = await dbProxy.select().from(schema.model).where(eq(schema.model.userId, userId));
+    const models = await getDb().select().from(schema.model).where(eq(schema.model.userId, userId));
 
-    const rebalancingGroups = await dbProxy
+    const rebalancingGroups = await getDb()
       .select()
       .from(schema.rebalancingGroup)
       .where(eq(schema.rebalancingGroup.userId, userId));

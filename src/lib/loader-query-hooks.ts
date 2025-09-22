@@ -203,7 +203,9 @@ export class BackgroundRefetchManager {
    * Stop all background refetching
    */
   stopAll() {
-    this.intervals.forEach((interval) => clearInterval(interval));
+    this.intervals.forEach((interval) => {
+      clearInterval(interval);
+    });
     this.intervals.clear();
     this.cleanup();
   }

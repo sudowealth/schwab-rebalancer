@@ -14,7 +14,7 @@ import { seedModels, seedSleeves, seedSP500Securities } from '~/db/seeds/sp500-m
 import { requireAdmin, requireAuth } from '~/features/auth/auth-utils';
 import { CASH_TICKER, isAnyCashTicker } from '~/lib/constants';
 import { clearCache, getPositions } from '~/lib/db-api';
-import { dbProxy } from '~/lib/db-config';
+import { getDb } from '~/lib/db-config';
 import { getEnv } from '~/lib/env';
 import { getErrorMessage, ValidationError } from '~/lib/error-handler';
 import { throwServerError } from '~/lib/error-utils';
@@ -60,7 +60,7 @@ async function syncEquitySecurities() {
  * Seeds S&P 500 securities if they don't exist
  */
 async function seedSP500SecuritiesIfNeeded() {
-  const sp500Index = await dbProxy
+  const sp500Index = await getDb()
     .select({ id: schema.indexTable.id })
     .from(schema.indexTable)
     .where(eq(schema.indexTable.id, 'sp500'))
@@ -144,7 +144,7 @@ async function performPriceSyncForImportedSecurities(equitySyncResult: EquitySyn
 // Server function to seed demo data - runs ONLY on server
 export const seedDemoDataServerFn = createServerFn({ method: 'POST' }).handler(async () => {
   const { user } = await requireAuth();
-  const _db = dbProxy;
+  const _db = getDb();
   await seedDatabase(user.id);
 
   return {
@@ -234,7 +234,7 @@ export const seedSecuritiesDataServerFn = createServerFn({ method: 'POST' }).han
 // Server function to seed models data - runs ONLY on server
 export const seedModelsDataServerFn = createServerFn({ method: 'POST' }).handler(async () => {
   const { user } = await requireAuth();
-  const _db = dbProxy;
+  const _db = getDb();
 
   const sleevesResult = await seedSleeves(user.id);
   const modelsResult = await seedModels(user.id);
@@ -251,7 +251,7 @@ export const seedModelsDataServerFn = createServerFn({ method: 'POST' }).handler
 export const seedGlobalEquityModelServerFn = createServerFn({ method: 'POST' }).handler(
   async () => {
     const { user } = await requireAuth();
-    const _db = dbProxy;
+    const _db = getDb();
 
     const sleevesResult = await seedGlobalEquitySleeves(user.id);
     const modelsResult = await seedGlobalEquityModelData(user.id);
@@ -278,7 +278,7 @@ export const importNasdaqSecuritiesServerFn = createServerFn({
   )
   .handler(async ({ data }) => {
     await requireAuth();
-    const _db = dbProxy;
+    const _db = getDb();
     const { limit, skipExisting = true, feedType = 'all' } = data;
 
     try {
@@ -461,7 +461,7 @@ export const importNasdaqSecuritiesServerFn = createServerFn({
         const chunkSize = 500;
         for (let i = 0; i < tickers.length; i += chunkSize) {
           const chunk = tickers.slice(i, i + chunkSize);
-          const existing = await dbProxy
+          const existing = await getDb()
             .select({ ticker: schema.security.ticker })
             .from(schema.security)
             .where(inArray(schema.security.ticker, chunk));
@@ -487,7 +487,7 @@ export const importNasdaqSecuritiesServerFn = createServerFn({
         const chunkSize = 500;
         for (let i = 0; i < recordsToInsert.length; i += chunkSize) {
           const chunk = recordsToInsert.slice(i, i + chunkSize);
-          const inserted = await dbProxy
+          const inserted = await getDb()
             .insert(schema.security)
             .values(chunk)
             .onConflictDoNothing({ target: schema.security.ticker })
@@ -569,7 +569,7 @@ export const truncateDataServerFn = createServerFn({ method: 'POST' })
       // Truncate each table individually (no transaction support in Neon HTTP)
       for (const tableName of tablesToTruncate) {
         try {
-          await dbProxy.execute(sql`DELETE FROM ${sql.identifier(tableName)}`);
+          await getDb().execute(sql`DELETE FROM ${sql.identifier(tableName)}`);
           truncatedTables.push(tableName);
         } catch (tableError) {
           failedTables.push(tableName);
@@ -578,7 +578,7 @@ export const truncateDataServerFn = createServerFn({ method: 'POST' })
       }
 
       // Log the truncation in audit log
-      await dbProxy.insert(schema.auditLog).values({
+      await getDb().insert(schema.auditLog).values({
         id: crypto.randomUUID(),
         userId: user.id,
         action: 'TRUNCATE_ALL_DATA',
@@ -633,16 +633,16 @@ export const truncateDataServerFn = createServerFn({ method: 'POST' })
 // Get counts for Yahoo Finance sync scopes
 export const getYahooSyncCountsServerFn = createServerFn({ method: 'GET' }).handler(async () => {
   const { user } = await requireAuth();
-  const _db = dbProxy;
+  const _db = getDb();
 
   // Get total securities count
-  const totalSecurities = await dbProxy
+  const totalSecurities = await getDb()
     .select({ count: count() })
     .from(schema.security)
     .where(ne(schema.security.ticker, CASH_TICKER));
 
   // Get securities missing fundamentals
-  const missingFundamentals = await dbProxy
+  const missingFundamentals = await getDb()
     .select({ count: count() })
     .from(schema.security)
     .where(
@@ -664,7 +664,7 @@ export const getYahooSyncCountsServerFn = createServerFn({ method: 'GET' }).hand
   );
 
   // Get held securities missing fundamentals
-  const heldMissingFundamentals = await dbProxy
+  const heldMissingFundamentals = await getDb()
     .select({ count: count() })
     .from(schema.security)
     .where(
@@ -679,7 +679,7 @@ export const getYahooSyncCountsServerFn = createServerFn({ method: 'GET' }).hand
     );
 
   // Get sleeve securities missing fundamentals
-  const sleeveSecurities = await dbProxy
+  const sleeveSecurities = await getDb()
     .select({
       ticker: schema.sleeveMember.ticker,
     })
@@ -689,7 +689,7 @@ export const getYahooSyncCountsServerFn = createServerFn({ method: 'GET' }).hand
 
   const sleeveTickers = new Set(sleeveSecurities.map((s) => s.ticker));
 
-  const sleeveMissingFundamentals = await dbProxy
+  const sleeveMissingFundamentals = await getDb()
     .select({ count: count() })
     .from(schema.security)
     .where(
@@ -704,7 +704,7 @@ export const getYahooSyncCountsServerFn = createServerFn({ method: 'GET' }).hand
     );
 
   // Get held and sleeve securities missing fundamentals
-  const heldSleeveMissingFundamentals = await dbProxy
+  const heldSleeveMissingFundamentals = await getDb()
     .select({ count: count() })
     .from(schema.security)
     .where(
@@ -733,10 +733,10 @@ export const getYahooSyncCountsServerFn = createServerFn({ method: 'GET' }).hand
 // Check if securities exist in the database
 export const checkSecuritiesExistServerFn = createServerFn({ method: 'GET' }).handler(async () => {
   const { user: _user } = await requireAuth();
-  const _db = dbProxy;
+  const _db = getDb();
 
   // Get count of securities (excluding cash)
-  const securitiesCount = await dbProxy
+  const securitiesCount = await getDb()
     .select({ count: count() })
     .from(schema.security)
     .where(ne(schema.security.ticker, CASH_TICKER));
@@ -750,10 +750,10 @@ export const checkSecuritiesExistServerFn = createServerFn({ method: 'GET' }).ha
 // Check if models exist for the user
 export const checkModelsExistServerFn = createServerFn({ method: 'GET' }).handler(async () => {
   const { user } = await requireAuth();
-  const _db = dbProxy;
+  const _db = getDb();
 
   // Get count of models for this user
-  const modelsCount = await dbProxy
+  const modelsCount = await getDb()
     .select({ count: count() })
     .from(schema.model)
     .where(eq(schema.model.userId, user.id));
@@ -786,19 +786,19 @@ async function filterImportedTickersForPriceSync(importedTickers: string[]): Pro
   }
 
   // Get all tickers from holdings
-  const holdingsTickers = await dbProxy
+  const holdingsTickers = await getDb()
     .select({ ticker: schema.holding.ticker })
     .from(schema.holding)
     .where(inArray(schema.holding.ticker, importedTickers));
 
   // Get all tickers from sleeve members
-  const sleeveTickers = await dbProxy
+  const sleeveTickers = await getDb()
     .select({ ticker: schema.sleeveMember.ticker })
     .from(schema.sleeveMember)
     .where(inArray(schema.sleeveMember.ticker, importedTickers));
 
   // Get all tickers from index members
-  const indexTickers = await dbProxy
+  const indexTickers = await getDb()
     .select({ ticker: schema.indexMember.securityId })
     .from(schema.indexMember)
     .where(inArray(schema.indexMember.securityId, importedTickers));

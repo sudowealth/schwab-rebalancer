@@ -1,6 +1,6 @@
 import { and, eq, inArray } from 'drizzle-orm';
 import * as schema from '~/db/schema';
-import { dbProxy } from '~/lib/db-config';
+import { getDb } from '~/lib/db-config';
 
 // Global Equity Model data structure
 const GLOBAL_EQUITY_MODEL_DATA = [
@@ -111,7 +111,7 @@ async function seedGlobalEquitySecurities() {
   // Insert Global Equity securities
   const securities = Array.from(securityData.values());
   for (const security of securities) {
-    await dbProxy.insert(schema.security).values({
+    await getDb().insert(schema.security).values({
       ticker: security.ticker,
       name: security.name,
       price: security.price,
@@ -124,7 +124,7 @@ async function seedGlobalEquitySecurities() {
   console.log(`✅ Seeded ${securities.length} Global Equity securities`);
 
   // Seed Global Equity index and members
-  await dbProxy.insert(schema.indexTable).values({
+  await getDb().insert(schema.indexTable).values({
     id: 'global-equity',
     name: 'Global Equity Model',
     createdAt: now,
@@ -133,7 +133,7 @@ async function seedGlobalEquitySecurities() {
 
   // Insert all securities as index members
   for (const security of securities) {
-    await dbProxy.insert(schema.indexMember).values({
+    await getDb().insert(schema.indexMember).values({
       id: `global-equity-${security.ticker}`,
       indexId: 'global-equity',
       securityId: security.ticker,
@@ -175,7 +175,7 @@ export async function seedGlobalEquitySleeves(userId?: string) {
     'Global Equity Model', // Also clear any existing model with this name
   ];
 
-  const existingGlobalEquitySleeves = await dbProxy
+  const existingGlobalEquitySleeves = await getDb()
     .select({ id: schema.sleeve.id })
     .from(schema.sleeve)
     .where(
@@ -189,13 +189,13 @@ export async function seedGlobalEquitySleeves(userId?: string) {
 
   if (sleeveIdsToDelete.length > 0) {
     // Delete related data first (foreign key constraints)
-    await dbProxy
+    await getDb()
       .delete(schema.restrictedSecurity)
       .where(inArray(schema.restrictedSecurity.sleeveId, sleeveIdsToDelete));
-    await dbProxy
+    await getDb()
       .delete(schema.sleeveMember)
       .where(inArray(schema.sleeveMember.sleeveId, sleeveIdsToDelete));
-    await dbProxy.delete(schema.sleeve).where(inArray(schema.sleeve.id, sleeveIdsToDelete));
+    await getDb().delete(schema.sleeve).where(inArray(schema.sleeve.id, sleeveIdsToDelete));
   }
 
   console.log('✅ Cleared existing sleeve data');
@@ -240,7 +240,7 @@ export async function seedGlobalEquitySleeves(userId?: string) {
 
   // Insert sleeves
   for (const sleeve of sleeves) {
-    await dbProxy.insert(schema.sleeve).values({
+    await getDb().insert(schema.sleeve).values({
       id: sleeve.id,
       userId: targetUserId,
       name: sleeve.name,
@@ -254,7 +254,7 @@ export async function seedGlobalEquitySleeves(userId?: string) {
   // Insert sleeve members
   for (const member of sleeveMembers) {
     try {
-      await dbProxy.insert(schema.sleeveMember).values({
+      await getDb().insert(schema.sleeveMember).values({
         id: member.id,
         sleeveId: member.sleeveId,
         ticker: member.ticker,
@@ -288,7 +288,7 @@ const getGlobalEquityModelData = async (userId?: string) => {
   let actualUserId = userId || 'demo-user';
 
   if (actualUserId === 'demo-user') {
-    const users = await dbProxy
+    const users = await getDb()
       .select({ id: schema.user.id })
       .from(schema.user)
       .where(eq(schema.user.role, 'admin'))
@@ -324,7 +324,7 @@ async function generateGlobalEquityModelMembers(modelId: string, userId?: string
   // If no userId provided, check if there's a real user in the database
   let actualUserId = targetUserId;
   if (targetUserId === 'demo-user') {
-    const users = await dbProxy
+    const users = await getDb()
       .select({ id: schema.user.id })
       .from(schema.user)
       .where(eq(schema.user.role, 'admin'))
@@ -337,7 +337,7 @@ async function generateGlobalEquityModelMembers(modelId: string, userId?: string
   }
 
   // Get all sleeves for this user
-  const sleeves = await dbProxy
+  const sleeves = await getDb()
     .select({
       id: schema.sleeve.id,
       name: schema.sleeve.name,
@@ -390,7 +390,7 @@ export async function seedGlobalEquityModelData(userId?: string) {
   const modelIdsToInsert = modelData.map((m) => m.id);
 
   // Only delete models that have the same ID as the Global Equity model we're creating
-  const modelsToDelete = await dbProxy
+  const modelsToDelete = await getDb()
     .select({ id: schema.model.id })
     .from(schema.model)
     .where(inArray(schema.model.id, modelIdsToInsert));
@@ -401,31 +401,31 @@ export async function seedGlobalEquityModelData(userId?: string) {
     const modelIdsToDelete = modelsToDelete.map((m) => m.id);
 
     // Delete model assignments first
-    await dbProxy
+    await getDb()
       .delete(schema.modelGroupAssignment)
       .where(inArray(schema.modelGroupAssignment.modelId, modelIdsToDelete));
 
     // Delete existing model members (due to foreign key constraints)
-    await dbProxy
+    await getDb()
       .delete(schema.modelMember)
       .where(inArray(schema.modelMember.modelId, modelIdsToDelete));
 
     // Then delete models
-    await dbProxy.delete(schema.model).where(inArray(schema.model.id, modelIdsToDelete));
+    await getDb().delete(schema.model).where(inArray(schema.model.id, modelIdsToDelete));
 
     console.log('✅ Cleared existing model data');
   }
 
   // Insert models
   for (const model of modelData) {
-    await dbProxy.insert(schema.model).values(model);
+    await getDb().insert(schema.model).values(model);
   }
 
   // Generate and insert model members
   const modelMembersData = await generateGlobalEquityModelMembers('model_global_equity', userId);
 
   for (const member of modelMembersData) {
-    await dbProxy.insert(schema.modelMember).values(member);
+    await getDb().insert(schema.modelMember).values(member);
   }
 
   console.log(

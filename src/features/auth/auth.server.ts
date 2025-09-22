@@ -3,7 +3,7 @@ import { eq, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import * as schema from '~/db/schema';
 import { SessionManager } from '~/features/auth/session.server';
-import { dbProxy } from '~/lib/db-config';
+import { getDb } from '~/lib/db-config';
 import { handleServerError, throwServerError } from '~/lib/error-utils';
 import { auth } from './auth';
 import { requireAdmin, requireAuth } from './auth-utils';
@@ -35,7 +35,7 @@ const signUpWithFirstAdminSchema = z.object({
 export const getAllUsersServerFn = createServerFn({ method: 'GET' }).handler(async () => {
   await requireAdmin();
 
-  const users = await dbProxy
+  const users = await getDb()
     .select({
       id: schema.user.id,
       email: schema.user.email,
@@ -59,10 +59,10 @@ export const updateUserRoleServerFn = createServerFn({ method: 'POST' })
 
     await requireAdmin();
 
-    const _db = dbProxy;
+    const _db = getDb();
 
     // Verify user exists
-    const existingUser = await dbProxy
+    const existingUser = await getDb()
       .select({ id: schema.user.id })
       .from(schema.user)
       .where(eq(schema.user.id, userId))
@@ -73,7 +73,7 @@ export const updateUserRoleServerFn = createServerFn({ method: 'POST' })
     }
 
     // Update role
-    await dbProxy
+    await getDb()
       .update(schema.user)
       .set({
         role,
@@ -101,10 +101,10 @@ export const deleteUserServerFn = createServerFn({ method: 'POST' })
       throwServerError('Cannot delete your own account', 400);
     }
 
-    const _db = dbProxy;
+    const _db = getDb();
 
     // Verify user exists
-    const existingUser = await dbProxy
+    const existingUser = await getDb()
       .select({ id: schema.user.id, email: schema.user.email })
       .from(schema.user)
       .where(eq(schema.user.id, userId))
@@ -115,7 +115,7 @@ export const deleteUserServerFn = createServerFn({ method: 'POST' })
     }
 
     // Delete user (cascading deletes will handle associated data)
-    await dbProxy.delete(schema.user).where(eq(schema.user.id, userId));
+    await getDb().delete(schema.user).where(eq(schema.user.id, userId));
 
     return {
       success: true,
@@ -131,10 +131,10 @@ export const getUserDataServerFn = createServerFn({ method: 'GET' })
 
     await requireAdmin();
 
-    const _db = dbProxy;
+    const _db = getDb();
 
     // Get user info
-    const user = await dbProxy
+    const user = await getDb()
       .select()
       .from(schema.user)
       .where(eq(schema.user.id, userId))
@@ -145,19 +145,19 @@ export const getUserDataServerFn = createServerFn({ method: 'GET' })
     }
 
     // Get all user data
-    const accounts = await dbProxy
+    const accounts = await getDb()
       .select()
       .from(schema.account)
       .where(eq(schema.account.userId, userId));
 
-    const sleeves = await dbProxy
+    const sleeves = await getDb()
       .select()
       .from(schema.sleeve)
       .where(eq(schema.sleeve.userId, userId));
 
-    const models = await dbProxy.select().from(schema.model).where(eq(schema.model.userId, userId));
+    const models = await getDb().select().from(schema.model).where(eq(schema.model.userId, userId));
 
-    const rebalancingGroups = await dbProxy
+    const rebalancingGroups = await getDb()
       .select()
       .from(schema.rebalancingGroup)
       .where(eq(schema.rebalancingGroup.userId, userId));
@@ -177,14 +177,14 @@ export const signUpWithFirstAdminServerFn = createServerFn({ method: 'POST' })
   .handler(async ({ data }) => {
     const { email, password, name } = data;
 
-    const _db = dbProxy;
+    const _db = getDb();
 
     try {
       // Check if user creation is allowed
       const individualUse = process.env.INDIVIDUAL_USE === 'true';
 
       if (individualUse) {
-        const userCount = await dbProxy.select({ count: sql<number>`count(*)` }).from(schema.user);
+        const userCount = await getDb().select({ count: sql<number>`count(*)` }).from(schema.user);
 
         const totalUsers = Number(userCount[0]?.count ?? 0);
 
@@ -196,7 +196,7 @@ export const signUpWithFirstAdminServerFn = createServerFn({ method: 'POST' })
       }
 
       // Check if this would be the first user
-      const userCount = await dbProxy.select({ count: sql<number>`count(*)` }).from(schema.user);
+      const userCount = await getDb().select({ count: sql<number>`count(*)` }).from(schema.user);
 
       const totalUsers = Number(userCount[0]?.count ?? 0);
       const isFirstUser = totalUsers === 0;
@@ -219,14 +219,14 @@ export const signUpWithFirstAdminServerFn = createServerFn({ method: 'POST' })
         const newUserId = signUpResult?.user?.id;
         const newUser = newUserId
           ? [{ id: newUserId }]
-          : await dbProxy
+          : await getDb()
               .select({ id: schema.user.id })
               .from(schema.user)
               .where(eq(schema.user.email, email))
               .limit(1);
 
         if (newUser.length > 0) {
-          await dbProxy
+          await getDb()
             .update(schema.user)
             .set({
               role: 'admin',
@@ -269,9 +269,9 @@ export const verifyAdminAccessServerFn = createServerFn({
 export const checkIsFirstUserServerFn = createServerFn({
   method: 'GET',
 }).handler(async () => {
-  const _db = dbProxy;
+  const _db = getDb();
 
-  const userCount = await dbProxy.select({ count: sql<number>`count(*)` }).from(schema.user);
+  const userCount = await getDb().select({ count: sql<number>`count(*)` }).from(schema.user);
 
   const totalUsers = Number(userCount[0]?.count ?? 0);
   return {
@@ -295,9 +295,9 @@ export const checkUserCreationAllowedServerFn = createServerFn({
   }
 
   // If INDIVIDUAL_USE is enabled, check if there are already users
-  const _db = dbProxy;
+  const _db = getDb();
 
-  const userCount = await dbProxy.select({ count: sql<number>`count(*)` }).from(schema.user);
+  const userCount = await getDb().select({ count: sql<number>`count(*)` }).from(schema.user);
 
   const totalUsers = Number(userCount[0]?.count ?? 0);
   const allowed = totalUsers === 0;

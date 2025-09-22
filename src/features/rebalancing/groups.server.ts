@@ -14,7 +14,7 @@ import {
   unassignModelFromGroup,
   updateRebalancingGroup,
 } from '~/lib/db-api';
-import { dbProxy } from '~/lib/db-config';
+import { getDb } from '~/lib/db-config';
 import { throwServerError } from '~/lib/error-utils';
 import { requireAuth } from '../auth/auth-utils';
 
@@ -26,7 +26,7 @@ export const getRebalancingGroupsServerFn = createServerFn({
 
   try {
     const { user } = await requireAuth();
-    const _db = dbProxy;
+    const _db = getDb();
     const groups = await getRebalancingGroups(user.id);
     return groups;
   } catch (error) {
@@ -45,7 +45,7 @@ export const createRebalancingGroupServerFn = createServerFn({ method: 'POST' })
 
   .handler(async ({ data }) => {
     const { user } = await requireAuth();
-    const _db = dbProxy;
+    const _db = getDb();
     const { name, members, updateExisting } = data;
 
     if (!name || !members || !Array.isArray(members)) {
@@ -62,7 +62,7 @@ export const updateRebalancingGroupServerFn = createServerFn({ method: 'POST' })
   )
   .handler(async ({ data }) => {
     const { user } = await requireAuth();
-    const _db = dbProxy;
+    const _db = getDb();
     const { groupId, name, members } = data;
 
     if (!groupId || !name || !members || !Array.isArray(members)) {
@@ -78,7 +78,7 @@ export const deleteRebalancingGroupServerFn = createServerFn({ method: 'POST' })
 
   .handler(async ({ data }) => {
     const { user } = await requireAuth();
-    const _db = dbProxy;
+    const _db = getDb();
     const { groupId } = data;
 
     if (!groupId) {
@@ -97,7 +97,7 @@ export const getRebalancingGroupByIdServerFn = createServerFn({
 
   .handler(async ({ data }) => {
     const { user } = await requireAuth();
-    const _db = dbProxy;
+    const _db = getDb();
     const { groupId } = data;
 
     if (!groupId) {
@@ -124,10 +124,10 @@ export const getGroupAccountHoldingsServerFn = createServerFn({
 
     try {
       const { user } = await requireAuth();
-      const _db = dbProxy;
+      const _db = getDb();
       // Verify that all accountIds belong to the authenticated user
 
-      const ownedAccounts = await dbProxy
+      const ownedAccounts = await getDb()
         .select({ id: schema.account.id })
         .from(schema.account)
         .where(and(eq(schema.account.userId, user.id), inArray(schema.account.id, accountIds)));
@@ -152,7 +152,7 @@ export const getHoldingsForMultipleGroupsServerFn = createServerFn({
   method: 'GET',
 }).handler(async (): Promise<{ groups: RebalancingGroup[]; holdings: AccountHoldingsResult }> => {
   const { user } = await requireAuth();
-  const _db = dbProxy;
+  const _db = getDb();
 
   // Get all groups for the user
   const groups = await getRebalancingGroups(user.id);
@@ -171,7 +171,7 @@ export const getSleeveMembersServerFn = createServerFn({ method: 'POST' })
   .validator((data: { sleeveIds: string[] }) => data)
   .handler(async ({ data }) => {
     await requireAuth();
-    const _db = dbProxy;
+    const _db = getDb();
     const { sleeveIds } = data;
 
     if (!sleeveIds || sleeveIds.length === 0) {
@@ -190,7 +190,7 @@ export const getRebalancingGroupsWithBalancesServerFn = createServerFn({
 
   try {
     const { user } = await requireAuth();
-    const _db = dbProxy;
+    const _db = getDb();
 
     // Get all rebalancing groups for the user
     const groups = await getRebalancingGroups(user.id);
@@ -244,7 +244,7 @@ export const assignModelToGroupServerFn = createServerFn({ method: 'POST' })
     }
 
     const { user } = await requireAuth();
-    const _db = dbProxy;
+    const _db = getDb();
     await assignModelToGroup(modelId, groupId, user.id);
     return { success: true };
   });
@@ -260,10 +260,10 @@ export const unassignModelFromGroupServerFn = createServerFn({ method: 'POST' })
     }
 
     const { user } = await requireAuth();
-    const _db = dbProxy;
+    const _db = getDb();
     // Verify that the rebalancing group belongs to the authenticated user
 
-    const group = await dbProxy
+    const group = await getDb()
       .select({ userId: schema.rebalancingGroup.userId })
       .from(schema.rebalancingGroup)
       .where(eq(schema.rebalancingGroup.id, groupId))

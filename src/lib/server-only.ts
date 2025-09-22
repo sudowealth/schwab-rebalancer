@@ -3,7 +3,7 @@
 
 import { eq, sql } from 'drizzle-orm';
 import * as schema from '~/db/schema';
-import { dbProxy } from './db-config';
+import { getDb } from './db-config';
 
 export async function loadDashboardData(
   userId?: string,
@@ -48,7 +48,7 @@ export async function loadDashboardData(
 
   try {
     // Dynamic import to prevent client-side bundling
-    const dbProxyApiModule = await import('./db-api');
+    const dbApiModule = await import('./db-api');
 
     // Ensure userId is defined for functions that require it
     const safeUserId = userId || '';
@@ -63,14 +63,14 @@ export async function loadDashboardData(
       indices,
       indexMembers,
     ] = await Promise.all([
-      dbProxyApiModule.getPositions(safeUserId),
-      dbProxyApiModule.getPortfolioMetrics(safeUserId),
-      dbProxyApiModule.getTransactions(safeUserId),
-      dbProxyApiModule.getSnP500Data(),
-      dbProxyApiModule.getProposedTrades(safeUserId),
-      dbProxyApiModule.getSleeves(safeUserId),
-      dbProxyApiModule.getIndices(),
-      dbProxyApiModule.getIndexMembers(),
+      dbApiModule.getPositions(safeUserId),
+      dbApiModule.getPortfolioMetrics(safeUserId),
+      dbApiModule.getTransactions(safeUserId),
+      dbApiModule.getSnP500Data(),
+      dbApiModule.getProposedTrades(safeUserId),
+      dbApiModule.getSleeves(safeUserId),
+      dbApiModule.getIndices(),
+      dbApiModule.getIndexMembers(),
     ]);
 
     // Load Schwab environment variables status (for "Configure" step)
@@ -119,7 +119,7 @@ export async function loadDashboardData(
     let accountsCount = 0;
     try {
       if (userId) {
-        const result = await dbProxy
+        const result = await getDb()
           .select({ count: sql<number>`count(*)` })
           .from(schema.account)
           .where(eq(schema.account.userId, userId));
@@ -135,7 +135,7 @@ export async function loadDashboardData(
     try {
       if (userId) {
         const { ne, sql } = await import('drizzle-orm');
-        const result = await dbProxy
+        const result = await getDb()
           .select({ count: sql<number>`count(*)` })
           .from(schema.security)
           .where(ne(schema.security.ticker, '$$$'));
@@ -153,7 +153,7 @@ export async function loadDashboardData(
     let modelsStatus = { hasModels: false, modelsCount: 0 };
     try {
       if (userId) {
-        const result = await dbProxy
+        const result = await getDb()
           .select({ count: sql<number>`count(*)` })
           .from(schema.model)
           .where(eq(schema.model.userId, userId));
@@ -171,7 +171,7 @@ export async function loadDashboardData(
     let rebalancingGroupsStatus = { hasGroups: false, groupsCount: 0 };
     try {
       if (userId) {
-        const result = await dbProxy
+        const result = await getDb()
           .select({ count: sql<number>`count(*)` })
           .from(schema.rebalancingGroup)
           .where(eq(schema.rebalancingGroup.userId, userId));

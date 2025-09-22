@@ -5,7 +5,7 @@ import * as schema from '~/db/schema';
 import { requireAuth } from '~/features/auth/auth-utils';
 import { isAnyCashTicker } from '~/lib/constants';
 import { clearCache, getPositions } from '~/lib/db-api';
-import { dbProxy } from '~/lib/db-config';
+import { getDb } from '~/lib/db-config';
 import { getErrorMessage } from '~/lib/error-handler';
 
 // biome-ignore lint/complexity/noBannedTypes: Change tracking needs to accept arbitrary non-null values
@@ -77,7 +77,7 @@ export const syncYahooFundamentalsServerFn = createServerFn({ method: 'POST' })
       const positions = await getPositions(user.id);
       const heldTickers = new Set(positions.map((p) => p.ticker));
 
-      const sleeveSecurities = await dbProxy
+      const sleeveSecurities = await getDb()
         .select({
           ticker: schema.sleeveMember.ticker,
         })
@@ -96,7 +96,7 @@ export const syncYahooFundamentalsServerFn = createServerFn({ method: 'POST' })
       const positions = await getPositions(user.id);
       const heldTickers = new Set(positions.map((p) => p.ticker));
 
-      const sleeveSecurities = await dbProxy
+      const sleeveSecurities = await getDb()
         .select({
           ticker: schema.sleeveMember.ticker,
         })
@@ -110,7 +110,7 @@ export const syncYahooFundamentalsServerFn = createServerFn({ method: 'POST' })
       const combinedTickers = new Set([...heldTickers, ...sleeveTickers]);
 
       // Filter for securities that are missing fundamentals data or have placeholder price of 1
-      const missingDataSecurities = await dbProxy
+      const missingDataSecurities = await getDb()
         .select({ ticker: schema.security.ticker, price: schema.security.price })
         .from(schema.security)
         .where(
@@ -132,7 +132,7 @@ export const syncYahooFundamentalsServerFn = createServerFn({ method: 'POST' })
       symbols = tickers.filter((t) => !isAnyCashTicker(t));
     } else if (scope === 'all-sleeves') {
       // All securities used in sleeves
-      const sleeveSecurities = await dbProxy
+      const sleeveSecurities = await getDb()
         .select({
           ticker: schema.sleeveMember.ticker,
         })
@@ -143,7 +143,7 @@ export const syncYahooFundamentalsServerFn = createServerFn({ method: 'POST' })
       symbols = Array.from(sleeveTickers).filter((t) => !isAnyCashTicker(t));
     } else if (scope === 'missing-fundamentals') {
       // Securities missing sector, industry, marketCap, or have placeholder price of 1
-      const rows = await dbProxy
+      const rows = await getDb()
         .select({
           ticker: schema.security.ticker,
           sector: schema.security.sector,
@@ -164,7 +164,7 @@ export const syncYahooFundamentalsServerFn = createServerFn({ method: 'POST' })
 
       const positions = await getPositions(user.id);
       const held = new Set(positions.map((p) => p.ticker));
-      const rows = await dbProxy
+      const rows = await getDb()
         .select({
           ticker: schema.security.ticker,
           sector: schema.security.sector,
@@ -183,7 +183,7 @@ export const syncYahooFundamentalsServerFn = createServerFn({ method: 'POST' })
         .map((r) => r.ticker);
     } else if (scope === 'missing-fundamentals-sleeves') {
       // Get securities used in sleeves that are missing fundamentals, plus model securities missing fundamentals (excluding ETFs)
-      const sleeveSecurities = await dbProxy
+      const sleeveSecurities = await getDb()
         .select({
           ticker: schema.sleeveMember.ticker,
         })
@@ -193,7 +193,7 @@ export const syncYahooFundamentalsServerFn = createServerFn({ method: 'POST' })
       const sleeveTickers = new Set(sleeveSecurities.map((s) => s.ticker));
 
       // Get securities used in models that are missing marketCap and are not ETFs
-      const modelSecurities = await dbProxy
+      const modelSecurities = await getDb()
         .select({
           ticker: schema.sleeveMember.ticker,
         })
@@ -204,7 +204,7 @@ export const syncYahooFundamentalsServerFn = createServerFn({ method: 'POST' })
         .where(eq(schema.model.userId, user.id));
       const modelTickers = new Set(modelSecurities.map((s) => s.ticker));
 
-      const rows = await dbProxy
+      const rows = await getDb()
         .select({
           ticker: schema.security.ticker,
           sector: schema.security.sector,
@@ -238,7 +238,7 @@ export const syncYahooFundamentalsServerFn = createServerFn({ method: 'POST' })
       symbols = [...new Set([...sleeveSymbols, ...modelSymbols])];
     } else {
       // Default and 'all-securities' -> all securities
-      const all = await dbProxy.select({ ticker: schema.security.ticker }).from(schema.security);
+      const all = await getDb().select({ ticker: schema.security.ticker }).from(schema.security);
       symbols = all.map((s) => s.ticker).filter((t) => !isAnyCashTicker(t));
     }
 
@@ -256,7 +256,7 @@ export const syncYahooFundamentalsServerFn = createServerFn({ method: 'POST' })
     // Create sync log entry
     const logId = crypto.randomUUID();
     try {
-      await dbProxy.insert(schema.syncLog).values({
+      await getDb().insert(schema.syncLog).values({
         id: logId,
         userId: user.id,
         syncType: 'YAHOO',
@@ -290,7 +290,7 @@ export const syncYahooFundamentalsServerFn = createServerFn({ method: 'POST' })
         const industry = summary.assetProfile?.industry ?? null;
 
         // Read existing values for change set
-        const current = await dbProxy
+        const current = await getDb()
           .select({
             price: schema.security.price,
             marketCap: schema.security.marketCap,
@@ -363,7 +363,7 @@ export const syncYahooFundamentalsServerFn = createServerFn({ method: 'POST' })
         }
 
         if (Object.keys(updateData).length > 0) {
-          await dbProxy
+          await getDb()
             .update(schema.security)
             .set(updateData)
             .where(eq(schema.security.ticker, symbol));
@@ -371,7 +371,7 @@ export const syncYahooFundamentalsServerFn = createServerFn({ method: 'POST' })
 
         // Persist per-symbol detail
         try {
-          await dbProxy.insert(schema.syncLogDetail).values({
+          await getDb().insert(schema.syncLogDetail).values({
             id: crypto.randomUUID(),
             logId,
             entityType: 'SECURITY',
@@ -391,7 +391,7 @@ export const syncYahooFundamentalsServerFn = createServerFn({ method: 'POST' })
       } catch (error) {
         const message = getErrorMessage(error);
         try {
-          await dbProxy.insert(schema.syncLogDetail).values({
+          await getDb().insert(schema.syncLogDetail).values({
             id: crypto.randomUUID(),
             logId,
             entityType: 'SECURITY',
@@ -412,7 +412,7 @@ export const syncYahooFundamentalsServerFn = createServerFn({ method: 'POST' })
     const successCount = results.filter((r) => r.success).length;
     const errorCount = results.length - successCount;
     try {
-      await dbProxy
+      await getDb()
         .update(schema.syncLog)
         .set({
           status: errorCount > 0 ? 'PARTIAL' : 'SUCCESS',

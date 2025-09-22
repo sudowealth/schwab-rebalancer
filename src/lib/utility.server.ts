@@ -1,7 +1,7 @@
 import { createServerFn } from '@tanstack/react-start';
 import { sql } from 'drizzle-orm';
 import * as schema from '~/db/schema';
-import { dbProxy } from './db-config';
+import { getDb } from './db-config';
 
 // Health check endpoint for monitoring database and service readiness
 export const healthCheckServerFn = createServerFn({ method: 'GET' }).handler(async () => {
@@ -9,10 +9,10 @@ export const healthCheckServerFn = createServerFn({ method: 'GET' }).handler(asy
 
   try {
     // Test database connectivity with a simple query
-    await dbProxy.execute(sql`SELECT 1 as health_check`);
+    await getDb().execute(sql`SELECT 1 as health_check`);
 
     // Check if critical tables exist by counting records in a key table
-    const userCount = await dbProxy
+    const userCount = await getDb()
       .select({ count: sql<number>`count(*)` })
       .from(schema.user)
       .limit(1);

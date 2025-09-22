@@ -1,6 +1,6 @@
 import { eq, lt, sql } from 'drizzle-orm';
 import * as schema from '~/db/schema';
-import { dbProxy } from '~/lib/db-config';
+import { getDb } from '~/lib/db-config';
 
 export interface SessionInvalidationOptions {
   userId?: string;
@@ -18,8 +18,8 @@ async function logSessionAuditEvent(
   details: Record<string, unknown>,
 ): Promise<void> {
   try {
-      const _db = dbProxy;    
-    await dbProxy.insert(schema.auditLog).values({
+      const _db = getDb();    
+    await getDb().insert(schema.auditLog).values({
       id: crypto.randomUUID(),
       userId,
       action,
@@ -44,20 +44,20 @@ export class SessionManager {
    * Invalidate user sessions based on criteria
    */
   static async invalidateSessions(options: SessionInvalidationOptions): Promise<number> {
-    const _db = dbProxy;    try {
-      const _db = dbProxy;      let invalidatedCount = 0;
+    const _db = getDb();    try {
+      const _db = getDb();      let invalidatedCount = 0;
       
 
       if (options.sessionId) {
         // Invalidate specific session by updating expiry
-        await dbProxy
+        await getDb()
           .update(schema.session)
           .set({ expiresAt: new Date(Date.now() - 1000) }) // Set to past
           .where(eq(schema.session.id, options.sessionId));
         invalidatedCount = 1;
       } else if (options.userId) {
         // Get all sessions for user
-        const sessions = await dbProxy
+        const sessions = await getDb()
           .select()
           .from(schema.session)
           .where(eq(schema.session.userId, options.userId));
@@ -67,7 +67,7 @@ export class SessionManager {
             continue; // Skip current session if requested
           }
 
-          await dbProxy
+          await getDb()
             .update(schema.session)
             .set({ expiresAt: new Date(Date.now() - 1000) })
             .where(eq(schema.session.id, session.id));
@@ -95,7 +95,7 @@ export class SessionManager {
    * Force logout all sessions for a user (typically after password change)
    */
   static async logoutAllSessions(userId: string, currentSessionId?: string): Promise<void> {
-    const _db = dbProxy;    await SessionManager.invalidateSessions({
+    const _db = getDb();    await SessionManager.invalidateSessions({
       userId,
       reason: 'password_change',
       excludeCurrentSession: currentSessionId,
@@ -106,7 +106,7 @@ export class SessionManager {
    * Invalidate sessions due to suspicious activity
    */
   static async invalidateSuspiciousSessions(userId: string): Promise<void> {
-    const _db = dbProxy;    await SessionManager.invalidateSessions({
+    const _db = getDb();    await SessionManager.invalidateSessions({
       userId,
       reason: 'suspicious_activity',
     });
@@ -127,8 +127,8 @@ export class SessionManager {
     }>
   > {
     try {
-      const _db = dbProxy;      
-      const sessions = await dbProxy
+      const _db = getDb();      
+      const sessions = await getDb()
         .select()
         .from(schema.session)
         .where(eq(schema.session.userId, userId));
@@ -152,12 +152,12 @@ export class SessionManager {
    * Clean up expired sessions from database
    */
   static async cleanupExpiredSessions(): Promise<number> {
-    const _db = dbProxy;    try {
-      const _db = dbProxy;      
-      await dbProxy.delete(schema.session).where(lt(schema.session.expiresAt, new Date()));
+    const _db = getDb();    try {
+      const _db = getDb();      
+      await getDb().delete(schema.session).where(lt(schema.session.expiresAt, new Date()));
 
       // PostgreSQL doesn't have rowsAffected, use a separate count query
-      const countResult = await dbProxy
+      const countResult = await getDb()
         .select({ count: sql<number>`count(*)` })
         .from(schema.session)
         .where(lt(schema.session.expiresAt, new Date()));
@@ -180,8 +180,8 @@ export class SessionManager {
     currentUserAgent: string,
   ): Promise<{ valid: boolean; reason?: string }> {
     try {
-      const _db = dbProxy;      
-      const sessions = await dbProxy
+      const _db = getDb();      
+      const sessions = await getDb()
         .select()
         .from(schema.session)
         .where(eq(schema.session.id, sessionId))

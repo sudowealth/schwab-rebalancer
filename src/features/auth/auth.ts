@@ -1,11 +1,11 @@
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import * as schema from '~/db/schema';
-import { dbProxy } from '~/lib/db-config';
+import { getDb } from '~/lib/db-config';
 
 // Initialize Better Auth with unified database instance
 const authInstance = betterAuth({
-  database: drizzleAdapter(dbProxy, {
+  database: drizzleAdapter(getDb(), {
     provider: 'pg',
     schema: {
       user: schema.user,

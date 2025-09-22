@@ -1,6 +1,6 @@
 import { eq } from 'drizzle-orm';
 import * as schema from '~/db/schema';
-import { dbProxy } from '~/lib/db-config';
+import { getDb } from '~/lib/db-config';
 import { logSecurityEvent } from '~/lib/log';
 
 // Account lockout configuration
@@ -15,7 +15,7 @@ const LOCKOUT_CONFIG = {
  */
 export async function isAccountLocked(userId: string): Promise<boolean> {
   try {
-    const user = await dbProxy
+    const user = await getDb()
       .select({
         lockedUntil: schema.user.lockedUntil,
       })
@@ -52,7 +52,7 @@ export async function recordFailedLoginAttempt(
     );
 
     // Get current user data
-    const users = await dbProxy
+    const users = await getDb()
       .select({
         id: schema.user.id,
         failedLoginAttempts: schema.user.failedLoginAttempts,
@@ -92,7 +92,7 @@ export async function recordFailedLoginAttempt(
     }
 
     // Update user record
-    await dbProxy
+    await getDb()
       .update(schema.user)
       .set({
         failedLoginAttempts: newFailedAttempts,
@@ -139,7 +139,7 @@ export async function recordSuccessfulLogin(userId: string): Promise<void> {
   try {
     const now = new Date();
 
-    await dbProxy
+    await getDb()
       .update(schema.user)
       .set({
         failedLoginAttempts: 0,

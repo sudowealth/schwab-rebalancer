@@ -6,7 +6,7 @@ import {
   generateAllocationData,
   generateTopHoldingsData,
 } from '~/features/rebalancing/rebalancing-utils';
-import { dbProxy } from '~/lib/db-config';
+import { getDb } from '~/lib/db-config';
 import { throwServerError } from '~/lib/error-utils';
 
 // Static imports for database operations
@@ -139,7 +139,7 @@ export const getGroupTransactionsServerFn = createServerFn({
     const { user } = await requireAuth();
     // Verify that all accountIds belong to the authenticated user
 
-    const ownedAccounts = await dbProxy
+    const ownedAccounts = await getDb()
       .select({ id: schema.account.id })
       .from(schema.account)
       .where(and(eq(schema.account.userId, user.id), inArray(schema.account.id, accountIds)));
@@ -237,7 +237,7 @@ export const truncateSecurityTableServerFn = createServerFn({
 }).handler(async () => {
   await requireAdmin();
 
-  await dbProxy.delete(schema.security);
+  await getDb().delete(schema.security);
   clearCache();
   return { success: true, message: 'Security table truncated successfully' };
 });
