@@ -30,17 +30,218 @@ const truncateDataSchema = z.object({
   confirmText: z.literal('TRUNCATE_ALL_DATA'),
 });
 
+// ================================
+// NASDAQ IMPORT UTILITY FUNCTIONS (Single Responsibility)
+// ================================
+
+/**
+ * Interface for parsed NASDAQ security data
+ */
+interface NasdaqSecurity {
+  ticker: string;
+  securityName: string;
+  exchange?: string;
+  marketCategory?: string;
+  etf: string;
+  roundLotSize: string;
+  testIssue: string;
+  financialStatus?: string;
+}
+
+/**
+ * Determines URLs to fetch based on feed type
+ */
+function determineNasdaqUrls(feedType: 'all' | 'nasdaqonly' | 'nonnasdaq'): string[] {
+  const urls: string[] = [];
+  if (feedType === 'all') {
+    urls.push(
+      'https://nasdaqtrader.com/dynamic/symdir/nasdaqlisted.txt',
+      'https://nasdaqtrader.com/dynamic/symdir/otherlisted.txt',
+    );
+  } else if (feedType === 'nasdaqonly') {
+    urls.push('https://nasdaqtrader.com/dynamic/symdir/nasdaqlisted.txt');
+  } else if (feedType === 'nonnasdaq') {
+    urls.push('https://nasdaqtrader.com/dynamic/symdir/otherlisted.txt');
+  }
+  return urls;
+}
+
+/**
+ * Fetches data from NASDAQ URLs
+ */
+async function fetchNasdaqData(urls: string[]): Promise<string[]> {
+  const fetchPromises = urls.map(async (url) => {
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(
+        `Failed to fetch Nasdaq data from ${url}: ${response.status} ${response.statusText}`,
+      );
+    }
+    return response.text();
+  });
+
+  return Promise.all(fetchPromises);
+}
+
+/**
+ * Parses raw NASDAQ data into structured format
+ */
+function parseNasdaqData(responses: string[]): NasdaqSecurity[] {
+  // Combine all lines from all responses
+  const allLines: string[] = [];
+  for (const responseText of responses) {
+    const lines = responseText.split('\n').filter((line) => line.trim());
+    allLines.push(...lines.slice(1)); // Skip header from each file
+  }
+
+  const parsedSecurities: NasdaqSecurity[] = [];
+  for (const line of allLines) {
+    const parts = line.split('|');
+    if (parts.length >= 7) {
+      if (parts.length === 8) {
+        // Check if this looks like nasdaqlisted format (Test Issue field at index 3)
+        const testIssueField = parts[3]?.trim() || '';
+        if (testIssueField === 'N' || testIssueField === 'Y') {
+          // nasdaqlisted.txt format: ETF at index 6
+          parsedSecurities.push({
+            ticker: parts[0]?.trim() || '',
+            securityName: parts[1]?.trim() || '',
+            marketCategory: parts[2]?.trim() || '',
+            testIssue: parts[3]?.trim() || '',
+            financialStatus: parts[4]?.trim() || '',
+            roundLotSize: parts[5]?.trim() || '',
+            etf: parts[6]?.trim() || '',
+            exchange: 'NASDAQ', // nasdaqlisted.txt is specifically NASDAQ securities
+          });
+        } else {
+          // otherlisted.txt format: ETF at index 4
+          parsedSecurities.push({
+            ticker: parts[0]?.trim() || parts[7]?.trim() || '', // Use ACT Symbol or NASDAQ Symbol as fallback
+            securityName: parts[1]?.trim() || '',
+            exchange: parts[2]?.trim() || '',
+            etf: parts[4]?.trim() || '',
+            roundLotSize: parts[5]?.trim() || '',
+            testIssue: parts[6]?.trim() || '',
+          });
+        }
+      } else if (parts.length === 7) {
+        // nasdaqlisted.txt without NextShares field: ETF at index 6
+        parsedSecurities.push({
+          ticker: parts[0]?.trim() || '',
+          securityName: parts[1]?.trim() || '',
+          marketCategory: parts[2]?.trim() || '',
+          testIssue: parts[3]?.trim() || '',
+          financialStatus: parts[4]?.trim() || '',
+          roundLotSize: parts[5]?.trim() || '',
+          etf: parts[6]?.trim() || '',
+          exchange: 'NASDAQ',
+        });
+      }
+    }
+  }
+
+  return parsedSecurities;
+}
+
+/**
+ * Imports parsed securities to database
+ */
+async function importSecuritiesToDatabase(
+  securities: NasdaqSecurity[],
+  skipExisting: boolean,
+): Promise<{
+  imported: number;
+  skipped: number;
+  errors: string[];
+  importedTickers: string[];
+}> {
+  let importedCount = 0;
+  let skippedCount = 0;
+  const errors: string[] = [];
+  const importedTickers: string[] = [];
+
+  for (const security of securities) {
+    try {
+      // Skip test issues
+      if (security.testIssue === 'Y') {
+        skippedCount++;
+        continue;
+      }
+
+      const ticker = security.ticker;
+      if (!ticker) {
+        errors.push(`Security missing ticker: ${JSON.stringify(security)}`);
+        continue;
+      }
+
+      // Check if security already exists
+      if (skipExisting) {
+        const existing = await getDb()
+          .select({ ticker: schema.security.ticker })
+          .from(schema.security)
+          .where(eq(schema.security.ticker, ticker))
+          .limit(1);
+
+        if (existing.length > 0) {
+          skippedCount++;
+          continue;
+        }
+      }
+
+      // Determine asset type
+      let assetType = 'EQUITY';
+      let assetTypeSub = null;
+
+      if (security.etf === 'Y') {
+        assetType = 'EQUITY';
+        assetTypeSub = 'ETF';
+      }
+
+      // Create a descriptive name
+      const exchangeInfo = security.exchange || security.marketCategory || 'NASDAQ';
+      const name = security.securityName || `${ticker} - ${exchangeInfo}`;
+
+      // Insert new security
+      await getDb().insert(schema.security).values({
+        ticker,
+        name,
+        price: 1, // Default price, will be updated later
+        marketCap: null,
+        peRatio: null,
+        industry: null,
+        sector: null,
+        assetType,
+        assetTypeSub,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      });
+
+      importedCount++;
+      importedTickers.push(ticker);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      errors.push(`Failed to import ${security.ticker}: ${errorMessage}`);
+    }
+  }
+
+  return { imported: importedCount, skipped: skippedCount, errors, importedTickers };
+}
+
+// ================================
+// EXISTING UTILITY FUNCTIONS (Single Responsibility)
+// ================================
+
 /**
  * Seeds basic securities data
  */
-async function seedBasicSecurities() {
+async function seedBasicSecurities(): Promise<void> {
   await seedSecurities();
 }
 
 /**
- * Runs equity securities sync
+ * Runs equity securities sync and returns result
  */
-async function syncEquitySecurities() {
+async function syncEquitySecurities(): Promise<EquitySyncResult> {
   const equitySyncResult = await importNasdaqSecuritiesServerFn({
     data: { feedType: 'all', skipExisting: true },
   });
@@ -59,7 +260,7 @@ async function syncEquitySecurities() {
 /**
  * Seeds S&P 500 securities if they don't exist
  */
-async function seedSP500SecuritiesIfNeeded() {
+async function seedSP500SecuritiesIfNeeded(): Promise<void> {
   const sp500Index = await getDb()
     .select({ id: schema.indexTable.id })
     .from(schema.indexTable)
@@ -278,239 +479,35 @@ export const importNasdaqSecuritiesServerFn = createServerFn({
   )
   .handler(async ({ data }) => {
     await requireAuth();
-    const _db = getDb();
     const { limit, skipExisting = true, feedType = 'all' } = data;
 
     try {
-      // Determine URLs to fetch based on feed type
-      const urls: string[] = [];
-      if (feedType === 'all') {
-        urls.push(
-          'https://nasdaqtrader.com/dynamic/symdir/nasdaqlisted.txt',
-          'https://nasdaqtrader.com/dynamic/symdir/otherlisted.txt',
-        );
-      } else if (feedType === 'nasdaqonly') {
-        urls.push('https://nasdaqtrader.com/dynamic/symdir/nasdaqlisted.txt');
-      } else if (feedType === 'nonnasdaq') {
-        urls.push('https://nasdaqtrader.com/dynamic/symdir/otherlisted.txt');
-      }
+      // Step 1: Determine URLs to fetch
+      const urls = determineNasdaqUrls(feedType);
 
-      // Fetch data from all URLs
-      const fetchPromises = urls.map(async (url) => {
-        const response = await fetch(url);
-        if (!response.ok) {
-          throw new Error(
-            `Failed to fetch Nasdaq data from ${url}: ${response.status} ${response.statusText}`,
-          );
-        }
-        return response.text();
-      });
+      // Step 2: Fetch data from NASDAQ
+      const responses = await fetchNasdaqData(urls);
 
-      const responses = await Promise.all(fetchPromises);
+      // Step 3: Parse the raw data
+      const parsedSecurities = parseNasdaqData(responses);
 
-      // Combine all lines from all responses
-      const allLines: string[] = [];
-      for (const responseText of responses) {
-        const lines = responseText.split('\n').filter((line) => line.trim());
-        allLines.push(...lines.slice(1)); // Skip header from each file
-      }
-
-      // Parse pipe-delimited data based on feed type
-      interface NasdaqSecurity {
-        ticker: string;
-        securityName: string;
-        exchange?: string;
-        marketCategory?: string;
-        etf: string;
-        roundLotSize: string;
-        testIssue: string;
-        financialStatus?: string;
-      }
-
-      const parsedSecurities: NasdaqSecurity[] = [];
-      for (const line of allLines) {
-        const parts = line.split('|');
-        if (parts.length >= 7) {
-          // Determine format based on ETF field position
-          // otherlisted.txt: ACT Symbol|Security Name|Exchange|CQS Symbol|ETF|Round Lot Size|Test Issue|NASDAQ Symbol
-          // nasdaqlisted.txt: Symbol|Security Name|Market Category|Test Issue|Financial Status|Round Lot Size|ETF|NextShares
-
-          if (parts.length === 8) {
-            // Check if this looks like nasdaqlisted format (Test Issue field at index 3)
-            const testIssueField = parts[3]?.trim() || '';
-            if (testIssueField === 'N' || testIssueField === 'Y') {
-              // nasdaqlisted.txt format: ETF at index 6
-              parsedSecurities.push({
-                ticker: parts[0]?.trim() || '',
-                securityName: parts[1]?.trim() || '',
-                marketCategory: parts[2]?.trim() || '',
-                testIssue: parts[3]?.trim() || '',
-                financialStatus: parts[4]?.trim() || '',
-                roundLotSize: parts[5]?.trim() || '',
-                etf: parts[6]?.trim() || '',
-                exchange: 'NASDAQ', // nasdaqlisted.txt is specifically NASDAQ securities
-              });
-            } else {
-              // otherlisted.txt format: ETF at index 4
-              parsedSecurities.push({
-                ticker: parts[0]?.trim() || parts[7]?.trim() || '', // Use ACT Symbol or NASDAQ Symbol as fallback
-                securityName: parts[1]?.trim() || '',
-                exchange: parts[2]?.trim() || '',
-                etf: parts[4]?.trim() || '',
-                roundLotSize: parts[5]?.trim() || '',
-                testIssue: parts[6]?.trim() || '',
-              });
-            }
-          } else if (parts.length === 7) {
-            // nasdaqlisted.txt without NextShares field: ETF at index 6
-            parsedSecurities.push({
-              ticker: parts[0]?.trim() || '',
-              securityName: parts[1]?.trim() || '',
-              marketCategory: parts[2]?.trim() || '',
-              testIssue: parts[3]?.trim() || '',
-              financialStatus: parts[4]?.trim() || '',
-              roundLotSize: parts[5]?.trim() || '',
-              etf: parts[6]?.trim() || '',
-              exchange: 'NASDAQ',
-            });
-          }
-        }
-      }
-
-      // Apply limit if specified
+      // Step 4: Apply limit if specified
       const securitiesToProcess = limit ? parsedSecurities.slice(0, limit) : parsedSecurities;
 
-      // Import to database
+      // Step 5: Import to database
+      const result = await importSecuritiesToDatabase(securitiesToProcess, skipExisting);
 
-      let importedCount = 0;
-      let skippedCount = 0;
-      const errors: string[] = [];
-      const importedTickers: string[] = [];
-      const recordsByTicker = new Map<string, typeof schema.security.$inferInsert>();
-
-      for (const security of securitiesToProcess) {
-        try {
-          // Skip test issues
-          if (security.testIssue === 'Y') {
-            skippedCount++;
-            continue;
-          }
-
-          // Use ticker field (already determined based on feed type)
-          const ticker = security.ticker;
-          if (!ticker) {
-            skippedCount++;
-            continue;
-          }
-
-          // Validate ticker format: must be 9 characters or less and all uppercase
-          if (ticker.length > 9) {
-            skippedCount++;
-            continue;
-          }
-
-          if (ticker !== ticker.toUpperCase()) {
-            skippedCount++;
-            continue;
-          }
-
-          // Skip duplicates within the feed to avoid redundant inserts
-          if (recordsByTicker.has(ticker)) {
-            skippedCount++;
-            continue;
-          }
-
-          // Determine asset type
-          let assetType = 'EQUITY';
-          let assetTypeSub = null;
-
-          if (security.etf === 'Y') {
-            assetType = 'EQUITY';
-            assetTypeSub = 'ETF';
-          }
-
-          // Create a descriptive name
-          const exchangeInfo = security.exchange || security.marketCategory || 'NASDAQ';
-          const name = security.securityName || `${ticker} - ${exchangeInfo}`;
-
-          recordsByTicker.set(ticker, {
-            ticker,
-            name,
-            price: 1,
-            marketCap: null,
-            peRatio: null,
-            industry: null,
-            sector: null,
-            assetType,
-            assetTypeSub,
-            createdAt: Date.now(),
-            updatedAt: Date.now(),
-          });
-        } catch (error) {
-          const errorMsg = `Failed to import ${security.ticker}: ${getErrorMessage(error)}`;
-          errors.push(errorMsg);
-          console.error(errorMsg);
-        }
-      }
-
-      let recordsToInsert = Array.from(recordsByTicker.values());
-
-      if (skipExisting && recordsToInsert.length > 0) {
-        const existingTickers = new Set<string>();
-        const tickers = Array.from(recordsByTicker.keys());
-        const chunkSize = 500;
-        for (let i = 0; i < tickers.length; i += chunkSize) {
-          const chunk = tickers.slice(i, i + chunkSize);
-          const existing = await getDb()
-            .select({ ticker: schema.security.ticker })
-            .from(schema.security)
-            .where(inArray(schema.security.ticker, chunk));
-          for (const row of existing) {
-            existingTickers.add(row.ticker);
-          }
-        }
-
-        if (existingTickers.size > 0) {
-          skippedCount += existingTickers.size;
-          recordsToInsert = recordsToInsert.filter((record) => !existingTickers.has(record.ticker));
-        }
-      }
-
-      if (recordsToInsert.length > 0) {
-        const nowTimestamp = Date.now();
-        recordsToInsert = recordsToInsert.map((record) => ({
-          ...record,
-          createdAt: nowTimestamp,
-          updatedAt: nowTimestamp,
-        }));
-
-        const chunkSize = 500;
-        for (let i = 0; i < recordsToInsert.length; i += chunkSize) {
-          const chunk = recordsToInsert.slice(i, i + chunkSize);
-          const inserted = await getDb()
-            .insert(schema.security)
-            .values(chunk)
-            .onConflictDoNothing({ target: schema.security.ticker })
-            .returning({ ticker: schema.security.ticker });
-
-          importedCount += inserted.length;
-          importedTickers.push(...inserted.map((row) => row.ticker));
-          skippedCount += chunk.length - inserted.length;
-        }
-      }
-
-      // Clear cache to refresh data
-
+      // Step 6: Clear cache to refresh data
       clearCache();
 
       return {
         success: true,
-        imported: importedCount,
-        skipped: skippedCount,
-        errors: errors,
+        imported: result.imported,
+        skipped: result.skipped,
+        errors: result.errors,
         totalParsed: parsedSecurities.length,
         totalProcessed: securitiesToProcess.length,
-        importedTickers: importedTickers,
+        importedTickers: result.importedTickers,
       };
     } catch (error) {
       console.error('Failed to import Nasdaq securities');
@@ -578,23 +575,25 @@ export const truncateDataServerFn = createServerFn({ method: 'POST' })
       }
 
       // Log the truncation in audit log
-      await getDb().insert(schema.auditLog).values({
-        id: crypto.randomUUID(),
-        userId: user.id,
-        action: 'TRUNCATE_ALL_DATA',
-        entityType: 'SYSTEM',
-        entityId: null,
-        metadata: JSON.stringify({
-          truncatedTables: truncatedTables.length,
-          failedTables: failedTables.length,
-          tables: truncatedTables,
-          failed: failedTables,
-          note: 'Neon HTTP driver used - no transaction support',
-        }),
-        createdAt: new Date(),
-        ipAddress: request.headers.get('X-Forwarded-For')?.split(',')[0]?.trim() || null,
-        userAgent: request.headers.get('User-Agent') || null,
-      });
+      await getDb()
+        .insert(schema.auditLog)
+        .values({
+          id: crypto.randomUUID(),
+          userId: user.id,
+          action: 'TRUNCATE_ALL_DATA',
+          entityType: 'SYSTEM',
+          entityId: null,
+          metadata: JSON.stringify({
+            truncatedTables: truncatedTables.length,
+            failedTables: failedTables.length,
+            tables: truncatedTables,
+            failed: failedTables,
+            note: 'Neon HTTP driver used - no transaction support',
+          }),
+          createdAt: new Date(),
+          ipAddress: request.headers.get('X-Forwarded-For')?.split(',')[0]?.trim() || null,
+          userAgent: request.headers.get('User-Agent') || null,
+        });
 
       // If any tables failed to truncate, include this in the response
       const hasPartialFailure = failedTables.length > 0;

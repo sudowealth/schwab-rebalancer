@@ -9,8 +9,48 @@ import { AddRebalancingGroupModal } from '~/features/rebalancing/components/add-
 import { getHoldingsForMultipleGroupsServerFn } from '~/features/rebalancing/groups.server';
 import { authGuard } from '~/lib/route-guards';
 
+// Rebalancing groups skeleton component for route-level loading states
+function RebalancingGroupsSkeleton() {
+  return (
+    <div className="px-4 py-8">
+      <div className="animate-pulse">
+        {/* Header */}
+        <div className="flex justify-between items-center mb-8">
+          <h1 className="text-2xl font-bold text-gray-900">Rebalancing Groups</h1>
+          <div className="h-10 bg-gray-300 rounded w-40" />
+        </div>
+
+        {/* Content Grid */}
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          {[...Array(4)].map(() => (
+            <div key="group-card" className="bg-white overflow-hidden shadow rounded-lg">
+              <div className="p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="h-6 bg-gray-300 rounded w-3/4" />
+                  <div className="h-6 bg-gray-300 rounded w-16" />
+                </div>
+                <div className="h-4 bg-gray-300 rounded mb-3 w-1/2" />
+                <div className="space-y-2 mb-4">
+                  <div className="h-3 bg-gray-300 rounded w-full" />
+                  <div className="h-3 bg-gray-300 rounded w-4/5" />
+                </div>
+                <div className="flex justify-between items-center">
+                  <div className="h-4 bg-gray-300 rounded w-20" />
+                  <div className="h-8 bg-gray-300 rounded w-24" />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export const Route = createFileRoute('/rebalancing-groups/')({
   component: RebalancingGroupsComponent,
+  pendingMs: 200,
+  pendingComponent: () => <RebalancingGroupsSkeleton />,
   validateSearch: (search: Record<string, unknown>) => {
     const result: { createGroup?: string } = {};
     if (typeof search.createGroup === 'string') {

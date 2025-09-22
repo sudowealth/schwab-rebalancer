@@ -5,8 +5,42 @@ import { AddModelModal } from '~/features/models/components/add-model-modal';
 import { authGuard } from '~/lib/route-guards';
 import { getModelsServerFn } from '~/lib/server-functions';
 
+// Models skeleton component for route-level loading states
+function ModelsSkeleton() {
+  return (
+    <div className="px-4 py-8">
+      <div className="animate-pulse">
+        {/* Header */}
+        <div className="flex justify-between items-center mb-8">
+          <h1 className="text-2xl font-bold text-gray-900">Portfolio Models</h1>
+          <div className="h-10 bg-gray-300 rounded w-32" />
+        </div>
+
+        {/* Content Grid */}
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          {[...Array(6)].map(() => (
+            <div key="model-card" className="bg-white overflow-hidden shadow rounded-lg">
+              <div className="p-6">
+                <div className="h-6 bg-gray-300 rounded mb-2 w-3/4" />
+                <div className="h-4 bg-gray-300 rounded mb-4 w-1/2" />
+                <div className="space-y-2">
+                  <div className="h-3 bg-gray-300 rounded w-full" />
+                  <div className="h-3 bg-gray-300 rounded w-4/5" />
+                  <div className="h-3 bg-gray-300 rounded w-3/5" />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export const Route = createFileRoute('/models/')({
   component: ModelsComponent,
+  pendingMs: 200,
+  pendingComponent: () => <ModelsSkeleton />,
   beforeLoad: authGuard,
   loader: async () => {
     // Now loader only handles data fetching, auth is handled by beforeLoad
