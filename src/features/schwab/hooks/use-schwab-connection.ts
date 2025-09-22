@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from '@tanstack/react-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { SyncYahooFundamentalsResult } from '~/features/data-feeds/yahoo.server';
 import { queryInvalidators, queryKeys } from '~/lib/query-keys';
 import {
@@ -13,15 +13,51 @@ import {
   syncYahooFundamentalsServerFn,
 } from '~/lib/server-functions';
 
+// Global coordinator to ensure only one hook instance handles sync triggering
+const globalSyncCoordinator = {
+  hasActiveSyncTrigger: false,
+  instanceCount: 0,
+};
+
 export function useSchwabConnection(
   initialCredentialsStatus?: { hasCredentials: boolean },
   initialActiveCredentialsStatus?: { hasCredentials: boolean },
   enableSyncTriggering: boolean = true,
 ) {
-  console.log(
-    '🔧 [useSchwabConnection] Hook called with enableSyncTriggering:',
-    enableSyncTriggering,
-  );
+  const instanceId = useRef(++globalSyncCoordinator.instanceCount);
+  const isPrimarySyncTrigger = useRef(false);
+
+  // Determine if this instance should handle sync triggering
+  useEffect(() => {
+    if (enableSyncTriggering && !globalSyncCoordinator.hasActiveSyncTrigger) {
+      globalSyncCoordinator.hasActiveSyncTrigger = true;
+      isPrimarySyncTrigger.current = true;
+      console.log(
+        `🔧 [useSchwabConnection] Instance ${instanceId.current} is now the primary sync trigger`,
+      );
+    } else if (enableSyncTriggering) {
+      console.log(
+        `🔧 [useSchwabConnection] Instance ${instanceId.current} has sync triggering enabled but another instance is primary`,
+      );
+    } else {
+      console.log(
+        `🔧 [useSchwabConnection] Instance ${instanceId.current} sync triggering disabled`,
+      );
+    }
+
+    // Cleanup on unmount
+    return () => {
+      if (isPrimarySyncTrigger.current) {
+        globalSyncCoordinator.hasActiveSyncTrigger = false;
+        console.log(
+          `🔧 [useSchwabConnection] Instance ${instanceId.current} released primary sync trigger`,
+        );
+      }
+    };
+  }, [enableSyncTriggering]);
+
+  // Only the primary instance should actually trigger sync
+  const shouldTriggerSync = enableSyncTriggering && isPrimarySyncTrigger.current;
   const [isConnecting, setIsConnecting] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncStep, setSyncStep] = useState<string>('');
@@ -315,7 +351,7 @@ export function useSchwabConnection(
       });
 
       if (
-        enableSyncTriggering &&
+        shouldTriggerSync &&
         isConnected &&
         shouldSync &&
         !isSyncing &&
@@ -327,7 +363,9 @@ export function useSchwabConnection(
           justConnected && !localStorage.getItem('schwab-initial-sync-completed')
             ? 'just connected with no previous sync data'
             : 'existing connection needs refresh';
-        console.log(`🔄 [UI] Detected Schwab connection (${reason}), starting sync`);
+        console.log(
+          `🔄 [UI] Instance ${instanceId.current} detected Schwab connection (${reason}), starting sync`,
+        );
         // Store timestamp for 12-hour expiration check
         const syncTimestamp = Date.now();
         localStorage.setItem(
@@ -337,11 +375,20 @@ export function useSchwabConnection(
             timestamp: syncTimestamp,
           }),
         );
-        console.log(`🔄 [UI] Set sync timestamp: ${new Date(syncTimestamp).toISOString()}`);
+        console.log(
+          `🔄 [UI] Instance ${instanceId.current} set sync timestamp: ${new Date(syncTimestamp).toISOString()}`,
+        );
         runFullSync();
       }
     }
-  }, [isConnected, isSyncing, activeCredentialsLoading, runFullSync, enableSyncTriggering]);
+  }, [
+    isConnected,
+    isSyncing,
+    activeCredentialsLoading,
+    runFullSync,
+    shouldTriggerSync,
+    enableSyncTriggering,
+  ]);
 
   // Cleanup sessionStorage on unmount (HMR safety)
   useEffect(() => {
