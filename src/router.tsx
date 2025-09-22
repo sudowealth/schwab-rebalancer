@@ -7,6 +7,8 @@ export function createRouter() {
   const router = createTanStackRouter({
     routeTree,
     defaultPreload: 'intent',
+    defaultPreloadStaleTime: 30_000, // 30 seconds
+    defaultPreloadGcTime: 5 * 60_000, // 5 minutes
     defaultErrorComponent: DefaultCatchBoundary,
     defaultNotFoundComponent: () => <NotFound />,
     scrollRestoration: true,

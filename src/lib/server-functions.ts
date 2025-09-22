@@ -1,41 +1,31 @@
 // Administrative functions
 import { createServerFn } from '@tanstack/react-start';
-import { z } from 'zod';
 import { verifyAdminAccessServerFn } from '~/features/auth/auth.server';
 
 // Static imports for authentication utilities
 import { requireAuth } from '~/features/auth/auth-utils';
 import { getEnv } from '~/lib/env';
 
-// Zod schemas for validation
-const emptySchema = z.object({});
-
 // Get environment information for client-side use
-export const getEnvironmentInfoServerFn = createServerFn({ method: 'GET' })
-  .validator(emptySchema)
-  .handler(async () => {
-    const env = getEnv();
-    return {
-      isDevelopment: env.NODE_ENV === 'development',
-      nodeEnv: env.NODE_ENV,
-    };
-  });
+export const getEnvironmentInfoServerFn = createServerFn({ method: 'GET' }).handler(async () => {
+  const env = getEnv();
+  return {
+    isDevelopment: env.NODE_ENV === 'development',
+    nodeEnv: env.NODE_ENV,
+  };
+});
 
 // Lightweight auth check server function for route guards
-export const checkAuthServerFn = createServerFn({ method: 'GET' })
-  .validator(emptySchema)
-  .handler(async () => {
-    const { user } = await requireAuth();
-    return { authenticated: true, user };
-  });
+export const checkAuthServerFn = createServerFn({ method: 'GET' }).handler(async () => {
+  const { user } = await requireAuth();
+  return { authenticated: true, user };
+});
 
 // Lightweight admin check server function for route guards
-export const checkAdminServerFn = createServerFn({ method: 'GET' })
-  .validator(emptySchema)
-  .handler(async () => {
-    await verifyAdminAccessServerFn();
-    return { authenticated: true, isAdmin: true };
-  });
+export const checkAdminServerFn = createServerFn({ method: 'GET' }).handler(async () => {
+  await verifyAdminAccessServerFn();
+  return { authenticated: true, isAdmin: true };
+});
 
 // Auth server functions
 export {

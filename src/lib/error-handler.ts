@@ -1,4 +1,5 @@
 import { ForbiddenError, UnauthorizedError } from './errors';
+import { logError as structuredLogError } from './log';
 
 export class ValidationError extends Error {
   constructor(
@@ -40,16 +41,11 @@ export function getErrorMessage(error: unknown): string {
 export function logError(error: unknown, context?: string, metadata?: Record<string, unknown>) {
   if (error == null) return;
 
-  const errorMessage = getErrorMessage(error);
-  const logEntry = {
-    message: errorMessage,
-    context,
-    metadata,
-    timestamp: new Date().toISOString(),
-    stack: error instanceof Error ? error.stack : undefined,
-  };
-
-  console.error('Error:', logEntry);
+  // Use the new structured logging utility
+  structuredLogError(error, {
+    component: context,
+    ...metadata,
+  });
 }
 
 export async function withRetry<T>(

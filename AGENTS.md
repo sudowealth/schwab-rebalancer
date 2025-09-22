@@ -65,17 +65,30 @@
 
 ### 🚀 Router Configuration
 - File‑based routing: Root layout in `src/routes/__root.tsx` via `createRootRoute`; pages via `createFileRoute()` (e.g., `src/routes/index.tsx`). Don't edit `src/routeTree.gen.ts` (generated).
-- Router setup: `src/router.tsx` sets `defaultPreload: "intent"`, default error and not‑found components, and enables scroll restoration.
+- Router setup: `src/router.tsx` sets `defaultPreload: "intent"`, aggressive preloading with `defaultPreloadStaleTime: 30_000` and `defaultPreloadGcTime: 5 * 60_000`, default error and not‑found components, and enables scroll restoration.
 - **Advanced**: Use `validateSearch` with Zod for type-safe search params
 - **Performance**: Implement route-based code splitting with lazy loading
 - **SEO**: Comprehensive meta tags including OpenGraph and Twitter cards
+
+#### 🚀 Router Preloading Configuration (Status: ✅ IMPLEMENTED)
+- Aggressive preloading: `defaultPreloadStaleTime: 30_000` (30 seconds)
+- Extended memory retention: `defaultPreloadGcTime: 5 * 60_000` (5 minutes)
+- Preload on intent (hover/focus) for optimal perceived performance
 
 ### 📊 Data Fetching & Loading
 - **Server Data**: Use `Route.loader` for server-only work and call server functions there (see `index.tsx` loader calling `getDashboardDataServerFn`).
 - **Client Hydration**: Pass loader results into React Query as `initialData` to avoid waterfalls and enable caching.
 - **Optimization**: Use `Promise.allSettled()` over `Promise.all()` for better error resilience
 - **Stale Time**: Set aggressive stale times (5+ minutes) for better perceived performance
-- **Error Handling**: Implement comprehensive error boundaries and fallbacks
+- **Error Handling**: Implement comprehensive error boundaries and structured error logging
+
+#### 🔄 React Query Integration (Status: ✅ WELL-STRUCTURED)
+- React Query patterns are already consistent and follow best practices
+- Main dashboard uses loaders with `initialData` to prevent waterfalls
+- Custom hooks properly use `initialData` from loader data
+- Appropriate `staleTime` settings (5 minutes for general data, 2 minutes for frequently changing data)
+- Proper query key organization with dedicated `queryKeys` utility
+- Components use React Query for reactive updates while leveraging loader data
 
 ### 🔧 Server Functions
 - **Database Imports**: Use static imports for database connections at the top of server functions (e.g., `import { dbProxy } from '~/lib/db-config'`). Avoid dynamic imports for performance.
@@ -83,18 +96,37 @@
 - **Single Responsibility Principle**: Each server function should do ONE thing. Avoid mixing data operations, external API calls, OAuth flows, and email sending in single functions.
 - **Authentication**: Better Auth sessions don't include custom user fields like roles. Fetch them from the database using the session user ID when needed.
 - **Client-side Auth Hook**: Use `useAuth()` hook that shows user data immediately from session, fetching role data in background only when needed for optimal UX.
-- **Validation**: Use Zod validators on all server functions for type safety
-- **Error Handling**: Standardize error responses with consistent error codes
+- **Validation**: Use Zod validators on all server functions for type safety; remove unnecessary `emptySchema` validators for GET endpoints
+- **Error Handling**: Standardize error responses with consistent error codes and structured logging
 - **Security**: Implement rate limiting and input sanitization
 - **Performance**: Use database connection pooling and optimize queries with `select()` instead of selecting all columns
 - **Auth Guards**: Use `requireAuth()` and `requireAdmin()` consistently for protecting server functions
 
+#### ✅ Server Function Validation (Status: ✅ IMPLEMENTED)
+- Removed unnecessary `.validator(emptySchema)` from GET endpoints that don't expect input
+- Cleaned up `getEnvironmentInfoServerFn`, `checkAuthServerFn`, and `checkAdminServerFn`
+- Maintains type safety while reducing validation overhead for parameterless endpoints
+
 ### ⚛️ Component Architecture
 - **Feature-based**: Organize by feature with `components/`, `hooks/`, `server.ts` structure
 - **Custom Hooks**: Extract complex logic into reusable hooks
-- **Error Boundaries**: Wrap feature sections with error boundaries
+- **Error Boundaries**: Wrap feature sections with error boundaries and structured error logging
 - **Loading States**: Implement skeleton components and pending states
 - **Code Splitting**: Lazy load heavy components and routes
+
+#### 🚨 Structured Error Logging (Status: ✅ IMPLEMENTED)
+- **Environment-aware logging**: Development uses colored console output; production uses structured JSON
+- **Available utilities**: `logError()`, `logInfo()`, `logWarn()`, `logSecurityEvent()`, `logPerformance()`
+- **Context support**: All logging functions accept structured context (userId, sessionId, component, etc.)
+- **Performance monitoring**: `createPerformanceTimer()` utility for operation timing
+- **Integration**: Existing `error-handler.ts` functions now use structured logging
+- **Future-ready**: Placeholder for error reporting service integration (Sentry, LogRocket, etc.)
+
+#### 🔐 Auth Context Optimization (Status: ✅ IMPLEMENTED)
+- **Memoization**: `useAuth()` hook uses `useMemo()` to prevent unnecessary re-renders
+- **User object memoization**: Prevents recreation of user objects on every render
+- **Auth state memoization**: Memoizes the complete auth state return object
+- **Performance**: Reduces component re-renders when auth state hasn't changed
 
 ### 🎨 UI & Performance
 - **Bundle Splitting**: Use dynamic imports for heavy libraries and routes
@@ -280,5 +312,173 @@ When creating server functions, ask: "Does this function do ONE thing well?"
 2. Move side effects (emails, external APIs) to dedicated functions
 3. Use composition: `createUserServerFn` calls `sendWelcomeEmailServerFn`
 4. Keep database operations synchronous within each function
+
+## 🏗️ Architecture Decision Records
+
+### ADR: Database Connection Pattern - Simplified Lazy Initialization
+**Date:** September 22, 2025
+**Status:** ✅ **IMPLEMENTED**
+
+**Context:**
+- Need lazy database initialization for serverless environments
+- Previous implementation used complex proxy patterns
+- TanStack Start review recommended simplification
+
+**Decision:**
+Use simple lazy initialization with a getter function instead of proxy patterns:
+
+```typescript
+let dbInstance: Database | null = null;
+export function getDb() {
+  if (!dbInstance) {
+    dbInstance = createDatabaseClient();
+  }
+  return dbInstance;
+}
+```
+
+**Consequences:**
+- ✅ Simpler and more maintainable code
+- ✅ Eliminates proxy overhead
+- ✅ Still maintains lazy loading for serverless compatibility
+- ✅ Easier to understand and debug
+
+### ADR: Router Preloading Strategy - Aggressive Intent-Based Preloading
+**Date:** September 22, 2025
+**Status:** ✅ **IMPLEMENTED**
+
+**Context:**
+- Want to optimize perceived performance through intelligent preloading
+- Need to balance memory usage with performance benefits
+- TanStack Start review recommended more aggressive preloading
+
+**Decision:**
+Implement aggressive intent-based preloading with extended memory retention:
+
+```typescript
+export function createRouter() {
+  const router = createTanStackRouter({
+    routeTree,
+    defaultPreload: 'intent',           // Preload on hover/focus
+    defaultPreloadStaleTime: 30_000,    // 30 seconds
+    defaultPreloadGcTime: 5 * 60_000,   // 5 minutes
+    // ... other options
+  });
+  return router;
+}
+```
+
+**Consequences:**
+- ✅ Improved perceived performance through faster navigation
+- ✅ Reduced server requests for frequently accessed routes
+- ✅ Memory usage managed through garbage collection timing
+- ⚠️ Slightly higher memory footprint (acceptable for better UX)
+
+### ADR: Server Function Validation - Minimal Validation for GET Endpoints
+**Date:** September 22, 2025
+**Status:** ✅ **IMPLEMENTED**
+
+**Context:**
+- Server functions using `emptySchema` validators for GET endpoints with no parameters
+- Unnecessary validation overhead for parameterless endpoints
+- TanStack Start review identified this as an improvement opportunity
+
+**Decision:**
+Remove unnecessary `emptySchema` validators from GET endpoints that don't expect input parameters:
+
+```typescript
+// Before
+export const getEnvironmentInfoServerFn = createServerFn({ method: 'GET' })
+  .validator(emptySchema)
+  .handler(async () => { /* ... */ });
+
+// After
+export const getEnvironmentInfoServerFn = createServerFn({ method: 'GET' })
+  .handler(async () => { /* ... */ });
+```
+
+**Consequences:**
+- ✅ Reduced validation overhead for parameterless endpoints
+- ✅ Cleaner, more explicit code about intent
+- ✅ Maintains type safety where validation is actually needed
+- ✅ Follows principle of "validate what you actually need to validate"
+
+### ADR: Error Logging Strategy - Structured Environment-Aware Logging
+**Date:** September 22, 2025
+**Status:** ✅ **IMPLEMENTED**
+
+**Context:**
+- Need consistent error logging across development and production
+- Want to support error reporting services in production
+- TanStack Start review recommended structured error logging
+
+**Decision:**
+Implement environment-aware structured logging with context support:
+
+```typescript
+// Development: Colored console output with full details
+console.group(`🚨 [ERROR] ${error.message}`);
+console.error('Error:', error);
+console.log('Context:', context);
+console.groupEnd();
+
+// Production: Structured JSON for log aggregation
+console.error(JSON.stringify({
+  level: 'error',
+  timestamp: new Date().toISOString(),
+  error: { message, name, stack },
+  context,
+  environment: 'production',
+  service: 'schwab-rebalancer'
+}));
+```
+
+**Consequences:**
+- ✅ Better development experience with readable console output
+- ✅ Production-ready structured logging for monitoring tools
+- ✅ Context support for better error debugging
+- ✅ Future-ready for error reporting service integration
+- ✅ Performance monitoring capabilities included
+
+### ADR: Auth Hook Optimization - Memoized State Management
+**Date:** September 22, 2025
+**Status:** ✅ **IMPLEMENTED**
+
+**Context:**
+- `useAuth()` hook was creating new objects on every render
+- Causing unnecessary re-renders of dependent components
+- TanStack Start review identified performance optimization opportunity
+
+**Decision:**
+Implement memoization in the auth hook to prevent unnecessary re-renders:
+
+```typescript
+export function useAuth() {
+  const { data: session, isPending, error } = useSession();
+
+  const user = useMemo(() => {
+    return session?.user ? {
+      ...session.user,
+      role: (session.user as { role?: UserRole }).role || 'user',
+    } : null;
+  }, [session?.user]);
+
+  const authState = useMemo(() => ({
+    user,
+    isAuthenticated: !!user,
+    isAdmin: user?.role === 'admin',
+    isPending,
+    error,
+  }), [user, isPending, error]);
+
+  return authState;
+}
+```
+
+**Consequences:**
+- ✅ Reduced unnecessary component re-renders
+- ✅ Improved performance, especially in component trees with many auth-dependent components
+- ✅ Maintains reactive behavior when auth state actually changes
+- ✅ No breaking changes to hook API
 
 Remember: TanStack Start is about **developer experience first**. Focus on making development joyful and performant by default, while building applications that scale both in code and performance.
