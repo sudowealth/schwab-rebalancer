@@ -67,9 +67,7 @@ export class SchwabSyncService {
         for (const prefAccount of userPreferences.accounts) {
           if (prefAccount.accountNumber && prefAccount.nickName) {
             nicknameMap.set(prefAccount.accountNumber, prefAccount.nickName);
-            console.log(
-              `🏷️ [SchwabSync] Mapped account ${prefAccount.accountNumber} to nickname: ${prefAccount.nickName}`,
-            );
+            console.log(`🏷️ [SchwabSync] Mapped account to nickname: ${prefAccount.nickName}`);
           }
         }
       }
@@ -222,10 +220,7 @@ export class SchwabSyncService {
           const accountIdentifier = account.accountNumber || account.schwabAccountId;
           console.log(
             '📡 [SchwabSync] Fetching positions from Schwab API for account:',
-            accountIdentifier,
-            '(using accountNumber:',
-            account.accountNumber,
-            ')',
+            account.name,
           );
           const positions = await this.schwabApi.getPositions(userId, accountIdentifier);
           // Truncate raw import for this accountNumber then insert
@@ -617,7 +612,6 @@ export class SchwabSyncService {
     logId?: string,
   ): Promise<void> {
     console.log('🏦 [SchwabSync] Syncing individual account:', schwabAccount.accountId);
-    console.log('📋 [SchwabSync] Account details:', schwabAccount);
     const now = Date.now();
 
     // Get the nickname from user preferences, fallback to Schwab account nickname or type
@@ -780,7 +774,7 @@ export class SchwabSyncService {
               changes: JSON.stringify({
                 name: { old: undefined, new: insertData.name },
                 type: { old: undefined, new: insertData.type },
-                accountNumber: { old: undefined, new: insertData.accountNumber },
+                accountNumber: { old: undefined, new: '[REDACTED]' },
               }),
               success: true,
               message: undefined,

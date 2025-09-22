@@ -652,16 +652,19 @@ export class SchwabApiService {
         ),
       );
 
-      console.log('🎯 [SchwabApi] Looking for accountIdentifier:', accountIdentifier);
-
       // Determine if we're looking for an account number (8 digits) or hash (64 chars)
       const isAccountNumber = /^\d{8}$/.test(accountIdentifier);
       const isHashValue = /^[A-F0-9]{64}$/.test(accountIdentifier);
 
+      const maskedIdentifier = isAccountNumber
+        ? '[REDACTED-ACCOUNT-NUMBER]'
+        : `${accountIdentifier.substring(0, 8)}...`;
+      console.log('🎯 [SchwabApi] Looking for accountIdentifier:', maskedIdentifier);
+
+      // SECURITY: Additional logging of identifier type (identifier already masked above)
       console.log('🔍 [SchwabApi] Identifier type:', {
         isAccountNumber,
         isHashValue,
-        identifier: `${accountIdentifier.substring(0, 20)}...`,
       });
 
       // Find the specific account we want
