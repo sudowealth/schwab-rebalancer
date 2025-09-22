@@ -1,4 +1,4 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import type {
   PortfolioMetrics,
@@ -10,7 +10,14 @@ import type {
   Transaction,
 } from '~/features/auth/schemas';
 import { useSchwabConnection } from '~/features/schwab/hooks/use-schwab-connection';
-import { queryKeys } from '~/lib/query-keys';
+import {
+  useBackgroundRefetchManager,
+  useCriticalLoaderQuery,
+  useLoaderQuery,
+  useOnboardingLoaderQuery,
+  useStaticLoaderQuery,
+} from '~/lib/loader-query-hooks';
+import { queryInvalidators, queryKeys } from '~/lib/query-keys';
 import {
   checkModelsExistServerFn,
   checkSchwabCredentialsServerFn,
@@ -44,6 +51,7 @@ interface LoaderData {
 
 export function useDashboardData(loaderData: LoaderData) {
   const queryClient = useQueryClient();
+  const refetchManager = useBackgroundRefetchManager();
 
   // Detect Schwab OAuth callback and refresh data
   useEffect(() => {
@@ -61,13 +69,9 @@ export function useDashboardData(loaderData: LoaderData) {
       const newUrl = window.location.pathname;
       window.history.replaceState({}, document.title, newUrl);
 
-      // Invalidate all dashboard queries to ensure fresh data after Schwab connection
-      console.log('🔄 [Dashboard] Invalidating all dashboard queries...');
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.dashboard.all(),
-        refetchType: 'active', // Only refetch active queries
-      });
-
+      // Use centralized invalidation for Schwab sync
+      console.log('🔄 [Dashboard] Invalidating queries after Schwab sync...');
+      queryInvalidators.composites.afterSchwabSync(queryClient);
       console.log('✅ [Dashboard] Dashboard data refresh initiated after Schwab OAuth callback');
     }
   }, [queryClient]);
@@ -82,86 +86,94 @@ export function useDashboardData(loaderData: LoaderData) {
     loaderData.schwabOAuthStatus,
   );
 
-  // Use reactive queries for onboarding status (same as OnboardingTracker)
-  const { data: reactiveSecuritiesStatus } = useQuery({
+  // Use optimized onboarding loader queries
+  const { data: reactiveSecuritiesStatus } = useOnboardingLoaderQuery({
     queryKey: queryKeys.onboarding.securities(),
-    queryFn: () => checkSecuritiesExistServerFn(),
+    queryFn: checkSecuritiesExistServerFn,
     initialData: loaderData.securitiesStatus,
-    staleTime: 1000 * 60 * 5,
   });
 
-  const { data: reactiveModelsStatus } = useQuery({
+  const { data: reactiveModelsStatus } = useOnboardingLoaderQuery({
     queryKey: queryKeys.onboarding.models(),
-    queryFn: () => checkModelsExistServerFn(),
+    queryFn: checkModelsExistServerFn,
     initialData: loaderData.modelsStatus,
-    staleTime: 1000 * 60 * 5,
   });
 
-  const { data: reactiveSchwabCredentialsStatus } = useQuery({
+  const { data: reactiveSchwabCredentialsStatus } = useOnboardingLoaderQuery({
     queryKey: queryKeys.onboarding.schwab(),
-    queryFn: () => checkSchwabCredentialsServerFn(),
+    queryFn: checkSchwabCredentialsServerFn,
     initialData: loaderData.schwabCredentialsStatus,
-    staleTime: 1000 * 60 * 2,
-    refetchOnMount: false,
-    refetchOnWindowFocus: true,
   });
 
-  // Use reactive queries for rebalancing groups status
-  const { data: reactiveRebalancingGroupsStatus } = useQuery({
+  // Use reactive queries for rebalancing groups status with optimized loader query
+  const { data: rawRebalancingGroups } = useLoaderQuery({
     queryKey: queryKeys.dashboard.groups(),
     queryFn: getRebalancingGroupsWithBalancesServerFn,
     initialData: loaderData.rebalancingGroups,
-    staleTime: 1000 * 60 * 2,
-    select: (groups) => ({
-      hasGroups: groups && groups.length > 0,
-      groupsCount: groups ? groups.length : 0,
-    }),
   });
+
+  // Transform the data for onboarding status
+  const reactiveRebalancingGroupsStatus = rawRebalancingGroups
+    ? {
+        hasGroups: rawRebalancingGroups.length > 0,
+        groupsCount: rawRebalancingGroups.length,
+      }
+    : { hasGroups: false, groupsCount: 0 };
 
   // For the dashboard, we also want to show rebalancing groups if we have accounts
   // and the user has completed onboarding (has models, etc.)
   // We'll use a simple approach: show if we have accounts and either have groups or are still loading
   const shouldShowRebalancingSection = hasAccounts;
 
-  // Execute queries with loader data as initialData to prevent waterfalls
-  const positionsResult = useQuery({
+  // Setup background refetching for critical dashboard data
+  useEffect(() => {
+    if (shouldShowRebalancingSection) {
+      refetchManager.startCriticalRefetching([
+        queryKeys.dashboard.positions(),
+        queryKeys.dashboard.metrics(),
+        queryKeys.dashboard.groups(),
+      ]);
+    }
+
+    return () => {
+      refetchManager.stopAll();
+    };
+  }, [refetchManager, shouldShowRebalancingSection]);
+
+  // Execute queries with optimized loader data hydration to prevent waterfalls
+  const positionsResult = useCriticalLoaderQuery({
     queryKey: queryKeys.dashboard.positions(),
     queryFn: getPositionsServerFn,
     initialData: loaderData.positions,
     enabled: shouldShowRebalancingSection,
-    staleTime: 1000 * 60 * 2, // 2 minutes (reduced for faster refresh after Schwab sync)
   });
 
-  const metricsResult = useQuery({
+  const metricsResult = useCriticalLoaderQuery({
     queryKey: queryKeys.dashboard.metrics(),
     queryFn: getPortfolioMetricsServerFn,
     initialData: loaderData.metrics,
     enabled: shouldShowRebalancingSection,
-    staleTime: 1000 * 60 * 2,
   });
 
-  const transactionsResult = useQuery({
+  const transactionsResult = useCriticalLoaderQuery({
     queryKey: queryKeys.dashboard.transactions(),
     queryFn: getTransactionsServerFn,
     initialData: loaderData.transactions,
     enabled: shouldShowRebalancingSection,
-    staleTime: 1000 * 60 * 2,
   });
 
-  const sleevesResult = useQuery({
+  const sleevesResult = useStaticLoaderQuery({
     queryKey: queryKeys.dashboard.sleeves(),
     queryFn: getSleevesServerFn,
     initialData: loaderData.sleeves,
     enabled: shouldShowRebalancingSection,
-    staleTime: 1000 * 60 * 2,
   });
 
-  const rebalancingGroupsResult = useQuery({
+  const rebalancingGroupsResult = useCriticalLoaderQuery({
     queryKey: queryKeys.dashboard.groups(),
     queryFn: getRebalancingGroupsWithBalancesServerFn,
     initialData: loaderData.rebalancingGroups,
     enabled: shouldShowRebalancingSection,
-    staleTime: 1000 * 60 * 2,
   });
 
   // Extract data
@@ -226,9 +238,7 @@ export function useDashboardData(loaderData: LoaderData) {
 
     // Utility functions
     invalidateDashboardQueries: () => {
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.dashboard.all(),
-      });
+      queryInvalidators.dashboard.all(queryClient);
     },
   };
 }

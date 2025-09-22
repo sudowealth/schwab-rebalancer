@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from '@tanstack/react-router';
 import { useCallback, useEffect, useState } from 'react';
 import type { SyncYahooFundamentalsResult } from '~/features/data-feeds/yahoo.server';
-import { queryKeys } from '~/lib/query-keys';
+import { queryInvalidators, queryKeys } from '~/lib/query-keys';
 import {
   getHeldPositionTickersServerFn,
   getSchwabCredentialsStatusServerFn,
@@ -174,16 +174,9 @@ export function useSchwabConnection(
       console.log('✅ [UI] Final timestamp:', new Date().toISOString());
       setSyncStep('Sync complete!');
 
-      // Refresh targeted data after Schwab sync
+      // Refresh targeted data after Schwab sync using centralized invalidators
       console.log('🔄 [UI] Invalidating targeted queries to refresh data...');
-      queryClient.invalidateQueries({ queryKey: queryKeys.integrations.schwab.credentials() });
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.integrations.schwab.activeCredentials(),
-      });
-      queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.positions() });
-      queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.metrics() });
-      queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.all() });
-      queryClient.invalidateQueries({ queryKey: queryKeys.integrations.schwab.accounts() });
+      queryInvalidators.composites.afterSchwabSync(queryClient);
 
       // Invalidate the home route loader to refresh onboarding status
       router.invalidate();

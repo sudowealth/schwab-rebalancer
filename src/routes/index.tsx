@@ -165,7 +165,7 @@ function DashboardComponent() {
               const schwabCredentialsComplete =
                 reactiveSchwabCredentialsStatus?.hasCredentials || false;
               const modelsComplete = reactiveModelsStatus?.hasModels || false;
-              const rebalancingGroupsComplete = reactiveRebalancingGroupsStatus?.hasGroups || false;
+              const rebalancingGroupsComplete = (reactiveRebalancingGroupsStatus as { hasGroups?: boolean })?.hasGroups || false;
 
               const isFullyOnboarded =
                 securitiesComplete &&
@@ -193,12 +193,12 @@ function DashboardComponent() {
       <OnboardingTracker
         schwabCredentialsStatusProp={reactiveSchwabCredentialsStatus}
         schwabOAuthStatusProp={{ hasCredentials: schwabOAuthComplete }}
-        rebalancingGroupsStatus={reactiveRebalancingGroupsStatus}
+        rebalancingGroupsStatus={reactiveRebalancingGroupsStatus as { hasGroups: boolean; groupsCount: number } | undefined}
         securitiesStatusProp={reactiveSecuritiesStatus}
         modelsStatusProp={reactiveModelsStatus}
       />
 
-      {shouldShowRebalancingSection && (
+      {shouldShowRebalancingSection && metrics && (
         <ErrorBoundaryWrapper
           title="Dashboard Metrics Error"
           description="Failed to load portfolio metrics. This might be due to a temporary data issue."

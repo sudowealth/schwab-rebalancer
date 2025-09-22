@@ -77,6 +77,177 @@ export const queryKeys = {
 } as const;
 
 /**
+ * Centralized Query Invalidation Helpers
+ *
+ * Provides type-safe invalidation methods for React Query cache management.
+ * These helpers ensure consistent invalidation patterns across the application.
+ */
+export const queryInvalidators = {
+  // Dashboard invalidation helpers
+  dashboard: {
+    all: (queryClient: import('@tanstack/react-query').QueryClient) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.all() });
+    },
+    positions: (queryClient: import('@tanstack/react-query').QueryClient) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.positions() });
+    },
+    metrics: (queryClient: import('@tanstack/react-query').QueryClient) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.metrics() });
+    },
+    transactions: (queryClient: import('@tanstack/react-query').QueryClient) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.transactions() });
+    },
+    sleeves: (queryClient: import('@tanstack/react-query').QueryClient) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.sleeves() });
+    },
+    groups: (queryClient: import('@tanstack/react-query').QueryClient) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.groups() });
+    },
+  },
+
+  // Models invalidation helpers
+  models: {
+    all: (queryClient: import('@tanstack/react-query').QueryClient) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.models.all() });
+    },
+    detail: (queryClient: import('@tanstack/react-query').QueryClient, id: string) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.models.detail(id) });
+    },
+  },
+
+  // Securities invalidation helpers
+  securities: {
+    all: (queryClient: import('@tanstack/react-query').QueryClient) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.securities.all() });
+    },
+    list: (queryClient: import('@tanstack/react-query').QueryClient) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.securities.list() });
+    },
+    data: (queryClient: import('@tanstack/react-query').QueryClient) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.securities.data() });
+    },
+    indices: (queryClient: import('@tanstack/react-query').QueryClient) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.securities.indices() });
+    },
+    syncLogs: (queryClient: import('@tanstack/react-query').QueryClient) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.securities.syncLogs() });
+    },
+    yahooSyncCounts: (queryClient: import('@tanstack/react-query').QueryClient) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.securities.yahooSyncCounts() });
+    },
+  },
+
+  // Onboarding invalidation helpers
+  onboarding: {
+    all: (queryClient: import('@tanstack/react-query').QueryClient) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.onboarding.all() });
+    },
+    securities: (queryClient: import('@tanstack/react-query').QueryClient) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.onboarding.securities() });
+    },
+    models: (queryClient: import('@tanstack/react-query').QueryClient) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.onboarding.models() });
+    },
+    schwab: (queryClient: import('@tanstack/react-query').QueryClient) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.onboarding.schwab() });
+    },
+  },
+
+  // Schwab integration invalidation helpers
+  schwab: {
+    credentials: (queryClient: import('@tanstack/react-query').QueryClient) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.integrations.schwab.credentials() });
+    },
+    activeCredentials: (queryClient: import('@tanstack/react-query').QueryClient) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.integrations.schwab.activeCredentials() });
+    },
+    accounts: (queryClient: import('@tanstack/react-query').QueryClient) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.integrations.schwab.accounts() });
+    },
+  },
+
+  // Admin invalidation helpers
+  admin: {
+    all: (queryClient: import('@tanstack/react-query').QueryClient) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.admin.all() });
+    },
+    users: (queryClient: import('@tanstack/react-query').QueryClient) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.admin.users() });
+    },
+    userData: (queryClient: import('@tanstack/react-query').QueryClient, userId: string) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.admin.userData(userId) });
+    },
+    stats: (queryClient: import('@tanstack/react-query').QueryClient) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.admin.stats() });
+    },
+  },
+
+  // Rebalancing invalidation helpers
+  rebalancing: {
+    groups: {
+      all: (queryClient: import('@tanstack/react-query').QueryClient) => {
+        queryClient.invalidateQueries({ queryKey: queryKeys.rebalancing.groups.all() });
+      },
+      detail: (queryClient: import('@tanstack/react-query').QueryClient, id: string) => {
+        queryClient.invalidateQueries({ queryKey: queryKeys.rebalancing.groups.detail(id) });
+      },
+      allocationData: (queryClient: import('@tanstack/react-query').QueryClient, groupId: string, allocationView: string, totalValue: number) => {
+        queryClient.invalidateQueries({ queryKey: queryKeys.rebalancing.groups.allocationData(groupId, allocationView, totalValue) });
+      },
+      topHoldings: (queryClient: import('@tanstack/react-query').QueryClient, groupId: string, totalValue: number) => {
+        queryClient.invalidateQueries({ queryKey: queryKeys.rebalancing.groups.topHoldings(groupId, totalValue) });
+      },
+    },
+  },
+
+  // System invalidation helpers
+  system: {
+    environment: (queryClient: import('@tanstack/react-query').QueryClient) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.system.environment() });
+    },
+  },
+
+  // Composite invalidation helpers for common operations
+  composites: {
+    // Invalidate all data that changes after Schwab sync
+    afterSchwabSync: (queryClient: import('@tanstack/react-query').QueryClient) => {
+      queryInvalidators.dashboard.all(queryClient);
+      queryInvalidators.schwab.credentials(queryClient);
+      queryInvalidators.schwab.accounts(queryClient);
+      queryInvalidators.onboarding.schwab(queryClient);
+    },
+
+    // Invalidate all data that changes after model operations
+    afterModelOperation: (queryClient: import('@tanstack/react-query').QueryClient) => {
+      queryInvalidators.models.all(queryClient);
+      queryInvalidators.dashboard.all(queryClient);
+      queryInvalidators.onboarding.models(queryClient);
+    },
+
+    // Invalidate all data that changes after security operations
+    afterSecurityOperation: (queryClient: import('@tanstack/react-query').QueryClient) => {
+      queryInvalidators.securities.all(queryClient);
+      queryInvalidators.dashboard.all(queryClient);
+      queryInvalidators.onboarding.securities(queryClient);
+    },
+
+    // Invalidate all onboarding-related data
+    onboardingStatus: (queryClient: import('@tanstack/react-query').QueryClient) => {
+      queryInvalidators.onboarding.all(queryClient);
+      queryInvalidators.models.all(queryClient);
+      queryInvalidators.securities.all(queryClient);
+      queryInvalidators.schwab.credentials(queryClient);
+      queryInvalidators.dashboard.groups(queryClient);
+    },
+
+    // Complete data refresh (use sparingly)
+    completeRefresh: (queryClient: import('@tanstack/react-query').QueryClient) => {
+      queryClient.invalidateQueries();
+    },
+  },
+} as const;
+
+/**
  * Type definitions for query keys
  */
 export type DashboardQueryKeys = ReturnType<

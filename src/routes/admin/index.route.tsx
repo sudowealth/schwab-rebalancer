@@ -7,7 +7,7 @@ import { Alert, AlertDescription, AlertTitle } from '~/components/ui/alert';
 import { Button } from '~/components/ui/button';
 import { Input } from '~/components/ui/input';
 import { Label } from '~/components/ui/label';
-import { queryKeys } from '~/lib/query-keys';
+import { queryInvalidators, queryKeys } from '~/lib/query-keys';
 import { adminGuard } from '~/lib/route-guards';
 import { truncateDataServerFn } from '~/lib/server-functions';
 
@@ -54,30 +54,10 @@ function AdminDashboardIndex() {
       const result = await truncateDataServerFn({ data: { confirmText } });
       setTruncateResult(result);
 
-      // Invalidate specific React Query caches after data truncation
+      // Invalidate specific React Query caches after data truncation using centralized helpers
       if (result.invalidateAllCaches) {
         console.log('🔄 Invalidating relevant React Query caches after data truncation');
-
-        // Invalidate dashboard data (positions, metrics, transactions, etc.)
-        queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.all() });
-
-        // Invalidate models data
-        queryClient.invalidateQueries({ queryKey: queryKeys.models.all() });
-
-        // Invalidate securities and data feeds
-        queryClient.invalidateQueries({ queryKey: queryKeys.securities.all() });
-
-        // Invalidate onboarding status
-        queryClient.invalidateQueries({ queryKey: queryKeys.onboarding.all() });
-
-        // Invalidate Schwab integration data
-        queryClient.invalidateQueries({ queryKey: queryKeys.integrations.schwab.credentials() });
-
-        // Invalidate rebalancing groups
-        queryClient.invalidateQueries({ queryKey: queryKeys.rebalancing.groups.all() });
-
-        // Invalidate admin stats (since they count financial data)
-        queryClient.invalidateQueries({ queryKey: queryKeys.admin.stats() });
+        queryInvalidators.composites.completeRefresh(queryClient);
       }
 
       setShowTruncateModal(false);
