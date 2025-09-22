@@ -1,5 +1,6 @@
 import { createServerFn } from '@tanstack/react-start';
 import { and, desc, eq, gt, inArray } from 'drizzle-orm';
+import { z } from 'zod';
 import * as schema from '~/db/schema';
 import {
   CASH_TICKER,
@@ -10,22 +11,22 @@ import {
 import { clearCache } from '~/lib/db-api';
 import { dbProxy } from '~/lib/db-config';
 import { getErrorMessage } from '~/lib/error-handler';
-import { throwServerError } from '~/lib/error-utils';
 import { requireAuth } from '../auth/auth-utils';
 import type { RebalanceSecurityData, RebalanceSleeveDataNew } from './rebalance-logic.server';
 import { executeRebalance } from './rebalance-logic.server';
 
-// Server function to rebalance a portfolio - runs ONLY on server
+// Zod schemas for validation
+const rebalancePortfolioSchema = z.object({
+  portfolioId: z.string().min(1, 'Portfolio ID is required'),
+  method: z.enum(['allocation', 'tlhSwap', 'tlhRebalance', 'investCash']),
+  allowOverinvestment: z.boolean().optional().default(false),
+  maxOverinvestmentPercent: z.number().min(0).max(100).optional().default(5.0),
+  cashAmount: z.number().optional(),
+});
+
+// Server function to rebalance a portfolio - orchestrates the rebalancing process
 export const rebalancePortfolioServerFn = createServerFn({ method: 'POST' })
-  .validator(
-    (data: {
-      portfolioId: string;
-      method: 'allocation' | 'tlhSwap' | 'tlhRebalance' | 'investCash';
-      allowOverinvestment?: boolean;
-      maxOverinvestmentPercent?: number;
-      cashAmount?: number;
-    }) => data,
-  )
+  .validator(rebalancePortfolioSchema)
   .handler(async ({ data }) => {
     const {
       portfolioId,
@@ -35,18 +36,13 @@ export const rebalancePortfolioServerFn = createServerFn({ method: 'POST' })
       cashAmount,
     } = data;
 
-    const cashLogValue =
-      typeof cashAmount === 'number' ? cashAmount : method === 'investCash' ? 0 : 'n/a';
+    console.log(`🎯 SERVER DEBUG: Received method: ${method}, cashAmount: ${cashAmount ?? 'n/a'}`);
 
-    console.log(`🎯 SERVER DEBUG: Received method: ${method}, cashAmount: ${cashLogValue}`);
-
-    if (!portfolioId || !method) {
-      throwServerError('Invalid request: portfolioId and method required', 400);
-    }
-
+    // Step 1: Validate request (now handled by Zod schema)
+    // Step 2: Authenticate user
     const { user } = await requireAuth();
-    // Verify that the portfolio (rebalancing group) belongs to the authenticated user
 
+    // Step 3: Authorize portfolio access
     const portfolio = await dbProxy
       .select({ userId: schema.rebalancingGroup.userId })
       .from(schema.rebalancingGroup)
@@ -54,11 +50,11 @@ export const rebalancePortfolioServerFn = createServerFn({ method: 'POST' })
       .limit(1);
 
     if (portfolio.length === 0 || portfolio[0].userId !== user.id) {
-      throwServerError('Access denied: Portfolio not found or does not belong to you', 403);
+      throw new Error('Access denied: Portfolio not found or does not belong to you');
     }
 
     try {
-      // Get rebalancing group and its accounts
+      // Step 4: Gather portfolio configuration
       const group = await dbProxy
         .select({ id: schema.rebalancingGroup.id })
         .from(schema.rebalancingGroup)
@@ -66,7 +62,7 @@ export const rebalancePortfolioServerFn = createServerFn({ method: 'POST' })
         .limit(1);
 
       if (!group.length) {
-        throwServerError('Rebalancing group not found', 404);
+        throw new Error('Rebalancing group not found');
       }
 
       // Get group members (accounts)
@@ -85,7 +81,7 @@ export const rebalancePortfolioServerFn = createServerFn({ method: 'POST' })
         .limit(1);
 
       if (!modelAssignment.length) {
-        throwServerError('No model assigned to this rebalancing group', 400);
+        throw new Error('No model assigned to this rebalancing group');
       }
 
       // Get model sleeves
@@ -98,7 +94,7 @@ export const rebalancePortfolioServerFn = createServerFn({ method: 'POST' })
         .from(schema.modelMember)
         .where(eq(schema.modelMember.modelId, modelAssignment[0].modelId));
 
-      // Get current holdings
+      // Step 5: Gather current holdings
       const holdings = await dbProxy
         .select({
           accountId: schema.holding.accountId,
@@ -114,7 +110,13 @@ export const rebalancePortfolioServerFn = createServerFn({ method: 'POST' })
         .innerJoin(schema.account, eq(schema.holding.accountId, schema.account.id))
         .where(inArray(schema.holding.accountId, accountIds));
 
-      // Get wash sale restrictions from database
+      // Convert openedAt to Date
+      const processedHoldings = holdings.map((holding) => ({
+        ...holding,
+        openedAt: new Date(holding.openedAt),
+      }));
+
+      // Step 6: Gather wash sale restrictions
       const restrictions = await dbProxy
         .select()
         .from(schema.restrictedSecurity)
@@ -134,7 +136,7 @@ export const rebalancePortfolioServerFn = createServerFn({ method: 'POST' })
         reason: `Tax loss harvested on ${new Date(r.soldAt).toLocaleDateString()}`,
       }));
 
-      // Get transaction history to check for wash sale restrictions
+      // Step 7: Gather transaction history for wash sale checks
       const transactionData = await dbProxy
         .select({
           ticker: schema.transaction.ticker,
@@ -168,12 +170,10 @@ export const rebalancePortfolioServerFn = createServerFn({ method: 'POST' })
         );
       });
 
-      // Now using unified wash sale logic for both UI and rebalancing
-
-      // Transform data to new format
+      // Step 8: Transform data for rebalancing logic
 
       const sleeves: RebalanceSleeveDataNew[] = [];
-      const totalPortfolioValue = holdings.reduce((sum, h) => sum + h.qty * h.price, 0);
+      const totalPortfolioValue = processedHoldings.reduce((sum, h) => sum + h.qty * h.price, 0);
 
       console.log(
         `🎯 PORTFOLIO VALUE DEBUG: totalPortfolioValue: $${totalPortfolioValue.toFixed(2)} (raw: ${totalPortfolioValue})`,
@@ -198,7 +198,7 @@ export const rebalancePortfolioServerFn = createServerFn({ method: 'POST' })
           accountId: string;
         }>
       >();
-      holdings.forEach((holding) => {
+      processedHoldings.forEach((holding) => {
         if (isAnyCashTicker(holding.ticker)) {
           const key = isBaseCashTicker(holding.ticker) ? CASH_TICKER : MANUAL_CASH_TICKER;
           if (!cashHoldingsMap.has(key)) {
@@ -257,12 +257,12 @@ export const rebalancePortfolioServerFn = createServerFn({ method: 'POST' })
 
         for (const member of sleeveMembers) {
           // Get current holdings for this security
-          const securityHoldings = holdings.filter((h) => h.ticker === member.ticker);
+          const securityHoldings = processedHoldings.filter((h) => h.ticker === member.ticker);
           const currentQty = securityHoldings.reduce((sum, h) => sum + h.qty, 0);
 
           // Get security price from holdings or database
           let price = 1.0; // Default price $1.00
-          const securityHolding = holdings.find((h) => h.ticker === member.ticker);
+          const securityHolding = processedHoldings.find((h) => h.ticker === member.ticker);
 
           if (securityHolding) {
             price = securityHolding.price;
@@ -294,7 +294,8 @@ export const rebalancePortfolioServerFn = createServerFn({ method: 'POST' })
             accountId: securityHoldings[0]?.accountId || accountIds[0],
             isTaxable: securityHoldings.some(
               (h) =>
-                holdings.find((hold) => hold.accountId === h.accountId)?.accountType === 'TAXABLE',
+                processedHoldings.find((hold) => hold.accountId === h.accountId)?.accountType ===
+                'TAXABLE',
             ),
             unrealizedGain,
           });
@@ -318,7 +319,7 @@ export const rebalancePortfolioServerFn = createServerFn({ method: 'POST' })
       }
 
       const orphanSecurities: RebalanceSecurityData[] = [];
-      holdings.forEach((holding) => {
+      processedHoldings.forEach((holding) => {
         if (!sleeveTickers.has(holding.ticker)) {
           const currentValue = holding.qty * holding.price;
           if (currentValue > 0) {

@@ -1,5 +1,6 @@
 import { createServerFn } from '@tanstack/react-start';
 import { and, count, eq, inArray, isNull, ne, or, sql } from 'drizzle-orm';
+import { z } from 'zod';
 import * as schema from '~/db/schema';
 import { requireAdmin, requireAuth } from '~/features/auth/auth-utils';
 import { CASH_TICKER, isAnyCashTicker } from '~/lib/constants';
@@ -13,6 +14,124 @@ import {
 } from '../schwab/schwab.server';
 import type { SyncYahooFundamentalsResult } from './yahoo.server';
 import { syncYahooFundamentalsServerFn } from './yahoo.server';
+
+// Zod schemas for validation
+const truncateDataSchema = z.object({
+  confirmText: z.literal('TRUNCATE_ALL_DATA'),
+});
+
+/**
+ * Seeds basic securities data
+ */
+async function seedBasicSecurities() {
+  const { seedSecurities } = await import('~/db/seeds/securities');
+  await seedSecurities();
+}
+
+/**
+ * Runs equity securities sync
+ */
+async function syncEquitySecurities() {
+  const equitySyncResult = await importNasdaqSecuritiesServerFn({
+    data: { feedType: 'all', skipExisting: true },
+  });
+
+  if (!equitySyncResult.success) {
+    console.warn('⚠️  Equity securities sync completed with warnings:', equitySyncResult.errors);
+  } else {
+    console.log(
+      `✅ Equity securities sync completed: ${equitySyncResult.imported} imported, ${equitySyncResult.skipped} skipped`,
+    );
+  }
+
+  return equitySyncResult;
+}
+
+/**
+ * Seeds S&P 500 securities if they don't exist
+ */
+async function seedSP500SecuritiesIfNeeded() {
+  const sp500Index = await dbProxy
+    .select({ id: schema.indexTable.id })
+    .from(schema.indexTable)
+    .where(eq(schema.indexTable.id, 'sp500'))
+    .limit(1);
+
+  if (sp500Index.length === 0) {
+    console.log('🔄 S&P 500 index not found, seeding S&P 500 securities...');
+    const { seedSP500Securities } = await import('~/db/seeds/sp500-model-seeder');
+    await seedSP500Securities();
+    console.log('✅ S&P 500 securities seeding completed');
+  } else {
+    console.log('⏭️ Skipping S&P 500 seeding - index already exists');
+  }
+}
+
+// Define the equity sync result type
+interface EquitySyncResult {
+  success: boolean;
+  imported: number;
+  skipped: number;
+  errors: string[];
+  totalParsed: number;
+  totalProcessed: number;
+  importedTickers: string[];
+}
+
+/**
+ * Performs automatic price sync for newly imported securities
+ */
+async function performPriceSyncForImportedSecurities(equitySyncResult: EquitySyncResult) {
+  if (
+    !equitySyncResult.success ||
+    equitySyncResult.imported === 0 ||
+    !equitySyncResult.importedTickers ||
+    equitySyncResult.importedTickers.length === 0
+  ) {
+    return { success: true, recordsProcessed: 0, message: 'No securities to sync' };
+  }
+
+  try {
+    const schwabStatus = await getSchwabCredentialsStatusServerFn();
+    if (!schwabStatus?.hasCredentials) {
+      return { success: true, recordsProcessed: 0, message: 'Schwab not connected' };
+    }
+
+    const relevantTickers = await filterImportedTickersForPriceSync(
+      equitySyncResult.importedTickers,
+    );
+
+    if (relevantTickers.length === 0) {
+      console.log(
+        'ℹ️ No newly imported securities found in holdings, indices, or sleeves - skipping Schwab price sync',
+      );
+      return {
+        success: true,
+        recordsProcessed: 0,
+        message: 'No relevant securities to sync',
+      };
+    }
+
+    console.log(
+      '🔄 Starting automatic Schwab price sync for relevant newly imported securities:',
+      relevantTickers,
+    );
+
+    const syncResult = await syncSchwabPricesServerFn({
+      data: { symbols: relevantTickers },
+    });
+
+    console.log('✅ Schwab price sync completed:', syncResult);
+    return syncResult;
+  } catch (error) {
+    console.error('❌ Schwab price sync failed:', error);
+    return {
+      success: false,
+      recordsProcessed: 0,
+      errorMessage: error instanceof Error ? error.message : 'Unknown error occurred',
+    };
+  }
+}
 
 // Server function to seed demo data - runs ONLY on server
 export const seedDemoDataServerFn = createServerFn({ method: 'POST' }).handler(async () => {
@@ -33,140 +152,76 @@ export const seedDemoDataServerFn = createServerFn({ method: 'POST' }).handler(a
   };
 });
 
-// Server function to seed securities data - runs ONLY on server
+// Server function to seed securities data - orchestrates the seeding process
 export const seedSecuritiesDataServerFn = createServerFn({ method: 'POST' }).handler(async () => {
+  // Step 1: Authenticate user
   await requireAuth();
-  const _db = dbProxy;
 
-  const { seedSecurities } = await import('~/db/seeds/securities');
-  const { seedSP500Securities } = await import('~/db/seeds/sp500-model-seeder');
+  try {
+    // Step 2: Seed basic securities data
+    await seedBasicSecurities();
 
-  // Seed cash securities first
-  await seedSecurities();
+    // Step 3: Run equity securities sync
+    const equitySyncResult = await syncEquitySecurities();
 
-  // Then run the equity securities sync to populate ETFs and stocks
-  console.log('🔄 Running equity securities sync...');
-  const equitySyncResult = await importNasdaqSecuritiesServerFn({
-    data: { feedType: 'all', skipExisting: true },
-  });
+    // Step 4: Seed S&P 500 securities if needed
+    await seedSP500SecuritiesIfNeeded();
 
-  if (!equitySyncResult.success) {
-    console.warn('⚠️  Equity securities sync completed with warnings:', equitySyncResult.errors);
-  } else {
-    console.log(
-      `✅ Equity securities sync completed: ${equitySyncResult.imported} imported, ${equitySyncResult.skipped} skipped`,
-    );
-  }
+    // Step 5: Perform price sync for imported securities
+    const schwabSyncResult = await performPriceSyncForImportedSecurities(equitySyncResult);
 
-  // Seed S&P 500 securities after equity sync, but only if they don't already exist
-  const sp500Index = await dbProxy
-    .select({ id: schema.indexTable.id })
-    .from(schema.indexTable)
-    .where(eq(schema.indexTable.id, 'sp500'))
-    .limit(1);
-
-  if (sp500Index.length === 0) {
-    console.log('🔄 S&P 500 index not found, seeding S&P 500 securities...');
-    await seedSP500Securities();
-    console.log('✅ S&P 500 securities seeding completed');
-  } else {
-    console.log('⏭️ Skipping S&P 500 seeding - index already exists');
-  }
-
-  // Check if Schwab is connected and trigger price sync for newly imported securities that appear in holdings, indices, or sleeves
-  let schwabSyncResult = null;
-  if (
-    equitySyncResult.success &&
-    equitySyncResult.imported > 0 &&
-    equitySyncResult.importedTickers &&
-    equitySyncResult.importedTickers.length > 0
-  ) {
-    try {
-      const schwabStatus = await getSchwabCredentialsStatusServerFn();
-      if (schwabStatus?.hasCredentials) {
-        // Filter tickers to only include those that appear in holdings, indices, or sleeves
-        const relevantTickers = await filterImportedTickersForPriceSync(
-          equitySyncResult.importedTickers,
-        );
-
-        if (relevantTickers.length > 0) {
-          console.log(
-            '🔄 Starting automatic Schwab price sync for relevant newly imported securities:',
-            relevantTickers,
-          );
-          schwabSyncResult = await syncSchwabPricesServerFn({
-            data: { symbols: relevantTickers },
-          });
-          console.log('✅ Schwab price sync completed:', schwabSyncResult);
-        } else {
-          console.log(
-            'ℹ️ No newly imported securities found in holdings, indices, or sleeves - skipping Schwab price sync',
-          );
-          schwabSyncResult = {
-            success: true,
-            recordsProcessed: 0,
-            message: 'No relevant securities to sync',
-          };
-        }
+    // Step 6: Run Yahoo sync for missing data (if securities were imported)
+    let yahooSyncResult: SyncYahooFundamentalsResult | null = null;
+    if (equitySyncResult.imported > 0) {
+      try {
+        console.log('🔄 Starting Yahoo sync for newly imported securities missing data...');
+        yahooSyncResult = (await syncYahooFundamentalsServerFn({
+          data: { scope: 'held-sleeve-securities-missing-data' },
+        })) as SyncYahooFundamentalsResult;
+        console.log('✅ Yahoo sync completed:', yahooSyncResult);
+      } catch (error) {
+        console.error('❌ Yahoo sync failed:', error);
+        yahooSyncResult = {
+          success: false,
+          recordsProcessed: 0,
+          errorMessage: error instanceof Error ? error.message : 'Unknown error occurred',
+          details: [],
+          logId: crypto.randomUUID(),
+        };
       }
-    } catch (error) {
-      console.error('❌ Schwab price sync failed:', error);
-      schwabSyncResult = {
-        success: false,
-        recordsProcessed: 0,
-        errorMessage: error instanceof Error ? error.message : 'Unknown error occurred',
-      };
-    }
-  }
-
-  // Run Yahoo sync for held/sleeve securities missing data - only if we imported new securities
-  let yahooSyncResult: SyncYahooFundamentalsResult | null = null;
-  if (equitySyncResult.imported > 0) {
-    try {
-      console.log('🔄 Starting Yahoo sync for newly imported securities missing data...');
-      yahooSyncResult = (await syncYahooFundamentalsServerFn({
-        data: { scope: 'held-sleeve-securities-missing-data' },
-      })) as SyncYahooFundamentalsResult;
-      console.log('✅ Yahoo sync completed:', yahooSyncResult);
-    } catch (error) {
-      console.error('❌ Yahoo sync failed:', error);
+    } else {
+      console.log('⏭️ Skipping Yahoo sync - no new securities were imported');
       yahooSyncResult = {
-        success: false,
+        success: true,
         recordsProcessed: 0,
-        errorMessage: error instanceof Error ? error.message : 'Unknown error occurred',
         details: [],
         logId: crypto.randomUUID(),
       };
     }
-  } else {
-    console.log('⏭️ Skipping Yahoo sync - no new securities were imported');
-    yahooSyncResult = {
+
+    return {
       success: true,
-      recordsProcessed: 0,
-      details: [],
-      logId: crypto.randomUUID(),
+      message: (() => {
+        let message = `Securities data seeded successfully. Cash securities seeded, ${equitySyncResult.imported} equity securities imported from NASDAQ feeds, and S&P 500 securities seeded.`;
+
+        if (schwabSyncResult?.recordsProcessed && schwabSyncResult.recordsProcessed > 0) {
+          message += ` Prices updated for ${schwabSyncResult.recordsProcessed} securities via Schwab.`;
+        }
+
+        if (yahooSyncResult && yahooSyncResult.recordsProcessed > 0) {
+          message += ` Yahoo data synced for ${yahooSyncResult.recordsProcessed} securities.`;
+        }
+
+        return message;
+      })(),
+      equitySyncResult,
+      schwabSyncResult,
+      yahooSyncResult,
     };
+  } catch (error) {
+    console.error('❌ Securities seeding failed:', error);
+    throw error;
   }
-
-  return {
-    success: true,
-    message: (() => {
-      let message = `Securities data seeded successfully. Cash securities seeded, ${equitySyncResult.imported} equity securities imported from NASDAQ feeds, and S&P 500 securities seeded.`;
-
-      if (schwabSyncResult?.recordsProcessed && schwabSyncResult.recordsProcessed > 0) {
-        message += ` Prices updated for ${schwabSyncResult.recordsProcessed} securities via Schwab.`;
-      }
-
-      if (yahooSyncResult && yahooSyncResult.recordsProcessed > 0) {
-        message += ` Yahoo data synced for ${yahooSyncResult.recordsProcessed} securities.`;
-      }
-
-      return message;
-    })(),
-    equitySyncResult,
-    schwabSyncResult,
-    yahooSyncResult,
-  };
 });
 
 // Server function to seed models data - runs ONLY on server
@@ -464,15 +519,10 @@ export const importNasdaqSecuritiesServerFn = createServerFn({
 
 // Server function to truncate data - runs ONLY on server
 export const truncateDataServerFn = createServerFn({ method: 'POST' })
-  .validator((data: { confirmText?: string }) => data)
-  .handler(async ({ data }) => {
+  .validator(truncateDataSchema)
+  .handler(async ({ data: _data }) => {
     // Only admins can truncate data
     const { user } = await requireAdmin();
-
-    // Safety check - require confirmation text
-    if (data.confirmText !== 'TRUNCATE_ALL_DATA') {
-      throwServerError('Confirmation text required: "TRUNCATE_ALL_DATA"', 400);
-    }
 
     try {
       // Get request info for audit logging

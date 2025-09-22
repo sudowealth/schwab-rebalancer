@@ -44,7 +44,7 @@ function EnvironmentAwareProviders({ children }: { children: ReactNode }) {
 function EnvironmentQueryWrapper({ children }: { children: ReactNode }) {
   const { data: envInfo } = useQuery({
     queryKey: queryKeys.system.environment(),
-    queryFn: () => getEnvironmentInfoServerFn(),
+    queryFn: () => getEnvironmentInfoServerFn({ data: {} }),
     staleTime: Infinity, // Environment info doesn't change during runtime
     gcTime: Infinity,
   });

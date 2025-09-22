@@ -8,7 +8,7 @@ import { checkAdminServerFn, checkAuthServerFn } from '~/lib/server-functions';
 export const authGuard = async ({ location }: { location: { href: string } }) => {
   try {
     // Use lightweight server function auth check
-    await checkAuthServerFn();
+    await checkAuthServerFn({ data: {} });
     return { authenticated: true };
   } catch (error) {
     if (error instanceof Error && error.message.includes('Authentication required')) {
@@ -28,7 +28,7 @@ export const authGuard = async ({ location }: { location: { href: string } }) =>
 export const adminGuard = async ({ location }: { location: { href: string } }) => {
   try {
     // Use lightweight server function admin check
-    await checkAdminServerFn();
+    await checkAdminServerFn({ data: {} });
     return { authenticated: true, isAdmin: true };
   } catch (error) {
     if (
