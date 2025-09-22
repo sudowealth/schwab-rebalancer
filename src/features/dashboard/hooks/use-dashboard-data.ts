@@ -183,7 +183,7 @@ export function useDashboardData(loaderData: LoaderData) {
   const sleeves = sleevesResult.data;
   const rebalancingGroups = rebalancingGroupsResult.data;
 
-  // Enhanced loading state management
+  // Simplified loading state management - core states only
   const isLoading =
     positionsResult.isPending ||
     metricsResult.isPending ||
@@ -191,14 +191,7 @@ export function useDashboardData(loaderData: LoaderData) {
     sleevesResult.isPending ||
     rebalancingGroupsResult.isPending;
 
-  // Individual loading states for more granular control
-  const isLoadingPositions = positionsResult.isPending;
-  const isLoadingMetrics = metricsResult.isPending;
-  const isLoadingTransactions = transactionsResult.isPending;
-  const isLoadingSleeves = sleevesResult.isPending;
-  const isLoadingRebalancingGroups = rebalancingGroupsResult.isPending;
-
-  // Background refetch states (useful for showing subtle loading indicators)
+  // Background refetch states for showing subtle loading indicators
   const isRefetching =
     (positionsResult.isFetching && !positionsResult.isPending) ||
     (metricsResult.isFetching && !metricsResult.isPending) ||
@@ -207,16 +200,9 @@ export function useDashboardData(loaderData: LoaderData) {
     (rebalancingGroupsResult.isFetching && !rebalancingGroupsResult.isPending);
 
   return {
-    // Loading states
+    // Loading states - simplified to core states only
     isLoading,
     isRefetching,
-    loadingStates: {
-      positions: isLoadingPositions,
-      metrics: isLoadingMetrics,
-      transactions: isLoadingTransactions,
-      sleeves: isLoadingSleeves,
-      rebalancingGroups: isLoadingRebalancingGroups,
-    },
 
     // Status data
     hasAccounts,

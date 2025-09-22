@@ -12,6 +12,7 @@ import { TransactionsTable } from '~/features/dashboard/components/transactions-
 import { useDashboardData } from '~/features/dashboard/hooks/use-dashboard-data';
 import { useDashboardModals } from '~/features/dashboard/hooks/use-dashboard-modals';
 import { useDashboardTabs } from '~/features/dashboard/hooks/use-dashboard-tabs';
+import { useOnboardingStatus } from '~/features/dashboard/hooks/use-onboarding-status';
 import { useExcelExport } from '~/lib/excel-export';
 import {
   getDashboardDataServerFn,
@@ -172,6 +173,15 @@ function DashboardComponent() {
     rebalancingGroups,
   } = useDashboardData(loaderData);
 
+  // Use the onboarding status hook for clean conditional rendering
+  const { title, subtitle } = useOnboardingStatus({
+    securitiesStatus: reactiveSecuritiesStatus,
+    schwabCredentialsStatus: reactiveSchwabCredentialsStatus,
+    modelsStatus: reactiveModelsStatus,
+    rebalancingGroupsStatus: reactiveRebalancingGroupsStatus,
+    schwabOAuthComplete,
+  });
+
   // Lazy-loaded Excel export functions
   const { exportPositionsToExcel, exportTransactionsToExcel } = useExcelExport();
 
@@ -210,33 +220,8 @@ function DashboardComponent() {
       <div className="mb-8">
         <div className="flex items-center justify-between">
           <div>
-            {(() => {
-              // Calculate if onboarding is complete using reactive data (same as OnboardingTracker)
-              const securitiesComplete = reactiveSecuritiesStatus?.hasSecurities || false;
-              const schwabCredentialsComplete =
-                reactiveSchwabCredentialsStatus?.hasCredentials || false;
-              const modelsComplete = reactiveModelsStatus?.hasModels || false;
-              const rebalancingGroupsComplete =
-                (reactiveRebalancingGroupsStatus as { hasGroups?: boolean })?.hasGroups || false;
-
-              const isFullyOnboarded =
-                securitiesComplete &&
-                schwabCredentialsComplete &&
-                schwabOAuthComplete &&
-                modelsComplete &&
-                rebalancingGroupsComplete;
-
-              return isFullyOnboarded ? (
-                <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-              ) : (
-                <>
-                  <h1 className="text-2xl font-bold text-gray-900">Getting Started</h1>
-                  <p className="text-sm text-gray-600">
-                    Complete these steps to start rebalancing your portfolio at Schwab
-                  </p>
-                </>
-              );
-            })()}
+            <h1 className="text-2xl font-bold text-gray-900">{title}</h1>
+            {subtitle && <p className="text-sm text-gray-600">{subtitle}</p>}
           </div>
         </div>
       </div>

@@ -17,20 +17,20 @@
 ## Build, Test, and Development Commands
 
 - `pnpm dev`: Start Vite dev server on port 3000.
-- `npm run build`: Production build and TypeScript check.
-- `npm start`: Run built server from `.output/`.
-- `npm run deploy`: Build then deploy via Netlify CLI.
-- `npm run lint` / `npm run format` / `npm run typecheck`: Lint and format with Biome; type‑check.
-- `npm run db:generate`: Generate Drizzle migrations from schema.
-- `npm run db:migrate`: Apply migrations locally to PostgreSQL database.
-- `npm run db:migrate:prod`: Apply migrations to production.
-- `npm run db:studio`: Open Drizzle Studio.
-- `npm run seed`: Seed local data (see `src/lib/seeds/main.ts`).
+- `pnpm build`: Production build and TypeScript check.
+- `pnpm start`: Run built server from `.output/`.
+- `pnpm deploy`: Build then deploy via Netlify CLI.
+- `pnpm lint` / `pnpm format` / `pnpm typecheck`: Lint and format with Biome; type‑check.
+- `pnpm db:generate`: Generate Drizzle migrations from schema.
+- `pnpm db:migrate`: Apply migrations locally to PostgreSQL database.
+- `pnpm db:migrate:prod`: Apply migrations to production.
+- `pnpm db:studio`: Open Drizzle Studio.
+- `pnpm seed`: Seed local data (see `src/lib/seeds/main.ts`).
 
 ## Coding Style & Naming Conventions
 
 - Language: TypeScript + React. Prefer functional components and hooks.
-- Formatting & Linting: Biome (2‑space indent, single quotes). Use `npm run format`, `npm run lint`, or `npm run fix`.
+- Formatting & Linting: Biome (2‑space indent, single quotes). Use `pnpm format`, `pnpm lint`, or `pnpm fix`.
 - Naming: Components `PascalCase.tsx` in `src/components`; utilities `camelCase.ts` in `src/lib`/`src/utils`; routes `kebab-case.tsx` in `src/routes` with `index.tsx` for folders.
 - Types: Prefer exported return types and `Awaited<ReturnType<typeof fn>>`; avoid `as any` and redundant manual type aliases.
 
