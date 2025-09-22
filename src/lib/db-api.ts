@@ -2033,8 +2033,8 @@ export const getRebalancingGroups = async (userId: string): Promise<RebalancingG
         description: row.modelDescription || undefined,
         isActive: !!row.modelIsActive,
         members: [], // We don't need full member details for the group view
-        createdAt: new Date(row.modelCreatedAt),
-        updatedAt: new Date(row.modelUpdatedAt),
+        createdAt: row.modelCreatedAt,
+        updatedAt: row.modelUpdatedAt,
       };
     }
   }

@@ -210,12 +210,6 @@ export function AddRebalancingGroupModal({
         });
       }
 
-      // Reset form
-      setGroupName('');
-      setSelectedAccounts(new Set());
-      setSelectedModelId('');
-      setIsOpen(false);
-
       // Call the callback if provided
       if (onGroupCreated) {
         onGroupCreated();
@@ -225,6 +219,15 @@ export function AddRebalancingGroupModal({
       if (result.groupId) {
         router.navigate({ to: `/rebalancing-groups/${result.groupId}` });
       }
+
+      // Reset form and close modal after navigation starts
+      // Use setTimeout to ensure navigation has time to begin before closing modal
+      setTimeout(() => {
+        setGroupName('');
+        setSelectedAccounts(new Set());
+        setSelectedModelId('');
+        setIsOpen(false);
+      }, 100);
     } catch (err: unknown) {
       console.error('Failed to create rebalancing group:', err);
       setError(err instanceof Error ? err.message : 'Failed to create rebalancing group');

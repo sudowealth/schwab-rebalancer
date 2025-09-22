@@ -843,7 +843,7 @@ export const OpenedAtCell: React.FC<{
 }> = ({ item, className = '', onClick }) => {
   const openedAt = isSecurityItem(item) ? item.openedAt : undefined;
 
-  const oa = openedAt ? new Date(openedAt).toLocaleDateString() : '-';
+  const oa = openedAt ? openedAt.toLocaleDateString() : '-';
   return (
     <td className={`p-2 text-right ${className}`}>
       {onClick ? (

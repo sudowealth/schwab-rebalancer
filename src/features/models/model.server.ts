@@ -12,7 +12,10 @@ const createModelSchema = z.object({
     .array(
       z.object({
         sleeveId: z.string().min(1, 'Sleeve ID is required'),
-        targetWeight: z.number().min(0).max(100, 'Weight must be between 0 and 100'),
+        targetWeight: z
+          .number()
+          .min(0)
+          .max(10000, 'Weight must be between 0 and 10000 basis points'),
       }),
     )
     .min(1, 'At least one member is required'),
@@ -27,7 +30,10 @@ const updateModelSchema = z.object({
     .array(
       z.object({
         sleeveId: z.string().min(1, 'Sleeve ID is required'),
-        targetWeight: z.number().min(0).max(100, 'Weight must be between 0 and 100'),
+        targetWeight: z
+          .number()
+          .min(0)
+          .max(10000, 'Weight must be between 0 and 10000 basis points'),
       }),
     )
     .min(1, 'At least one member is required'),

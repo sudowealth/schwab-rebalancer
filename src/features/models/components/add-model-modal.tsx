@@ -1,4 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query';
+import { useRouter } from '@tanstack/react-router';
 import { FileDown, Plus, Upload, X } from 'lucide-react';
 import { useEffect, useId, useState } from 'react';
 import { Button } from '~/components/ui/button';
@@ -59,6 +60,7 @@ export function AddModelModal({
     { id: genId(), sleeveId: '', targetWeight: 0 },
   ]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isNavigating, setIsNavigating] = useState(false);
   const [error, setError] = useState('');
   const [sleeves, setSleeves] = useState<Sleeve[]>([]);
   const [sleeveOptions, setSleeveOptions] = useState<Option[]>([]);
@@ -66,6 +68,7 @@ export function AddModelModal({
   const [updateExisting, setUpdateExisting] = useState(false);
   const [showAddSleeveModal, setShowAddSleeveModal] = useState(false);
   const queryClient = useQueryClient();
+  const router = useRouter();
   const modelNameId = `${useId()}-model-name`;
   const descriptionId = `${useId()}-description`;
   const updateExistingId = `${useId()}-update-existing`;
@@ -121,6 +124,7 @@ export function AddModelModal({
     setError('');
     setMode('single');
     setUpdateExisting(false);
+    setIsNavigating(false);
   };
 
   const validateMembers = (membersToValidate: WeightMember[]) => {
@@ -214,7 +218,7 @@ export function AddModelModal({
         throw new Error(validationErrors.join(', '));
       }
 
-      await createModelServerFn({
+      const result = await createModelServerFn({
         data: {
           name: modelName.trim(),
           description: description.trim() || undefined,
@@ -222,16 +226,19 @@ export function AddModelModal({
         },
       });
 
-      resetForm();
-      setIsOpen(false);
       onModelCreated?.();
 
-      // Invalidate models query to refresh the UI immediately
+      // Invalidate models query and route loader to refresh the UI immediately
       queryClient.invalidateQueries({ queryKey: ['models'] });
+      router.invalidate();
+
+      // Set navigating state and navigate to the newly created model
+      setIsNavigating(true);
+      router.navigate({ to: `/models/${result.modelId}` });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
-    } finally {
       setIsLoading(false);
+      setIsNavigating(false);
     }
   };
 
@@ -359,8 +366,9 @@ export function AddModelModal({
       setIsOpen(false);
       onModelCreated?.();
 
-      // Invalidate models query to refresh the UI immediately
+      // Invalidate models query and route loader to refresh the UI immediately
       queryClient.invalidateQueries({ queryKey: ['models'] });
+      router.invalidate();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
@@ -599,9 +607,15 @@ S&P 500 Tech, Semiconductors - 1, 25.5"
           <Button
             type="button"
             onClick={mode === 'single' ? handleSingleSubmit : handleBulkSubmit}
-            disabled={isLoading}
+            disabled={isLoading || isNavigating}
           >
-            {isLoading ? 'Creating...' : mode === 'single' ? 'Create Model' : 'Create Models'}
+            {isNavigating
+              ? 'Redirecting...'
+              : isLoading
+                ? 'Creating...'
+                : mode === 'single'
+                  ? 'Create Model'
+                  : 'Create Models'}
           </Button>
         </DialogFooter>
       </DialogContent>
