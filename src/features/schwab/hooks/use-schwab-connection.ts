@@ -94,7 +94,6 @@ export function useSchwabConnection(
   // Mutations for sync operations
   const syncAccountsMutation = useMutation({
     mutationFn: async () => {
-      console.log('🏦 [UI] Starting Schwab accounts sync');
       return await syncSchwabAccountsServerFn();
     },
   });
@@ -113,7 +112,6 @@ export function useSchwabConnection(
 
   const syncPricesMutation = useMutation({
     mutationFn: async (symbols?: string[]) => {
-      console.log('💰 [UI] Starting Schwab prices sync for symbols:', symbols || 'all symbols');
       return await syncSchwabPricesServerFn({
         data: { symbols },
       });
@@ -122,29 +120,16 @@ export function useSchwabConnection(
 
   // Function to run full Schwab sync sequentially
   const runFullSync = useCallback(async () => {
-    console.log('🔄 [UI] ===== STARTING FULL SCHWAB SYNC AFTER CONNECTION =====');
-    console.log('🔄 [UI] Timestamp:', new Date().toISOString());
-    console.log('🔄 [UI] THIS SHOULD NOT BE CALLED IF SYNC IS DISABLED!');
     setIsSyncing(true);
 
     try {
       // 1) Sync accounts
       setSyncStep('Syncing accounts...');
-      console.log('🏦 [UI] Step 1: Starting accounts sync...');
-      console.log('🏦 [UI] Current time:', new Date().toISOString());
       const accountsResult = await syncAccountsMutation.mutateAsync();
-      console.log('🏦 [UI] Accounts sync result:', {
-        success: accountsResult?.success,
-        recordsProcessed: accountsResult?.recordsProcessed,
-        errorMessage: accountsResult?.errorMessage,
-        timestamp: new Date().toISOString(),
-      });
 
       if (!accountsResult?.success) {
-        console.error('❌ [UI] Accounts sync failed with error:', accountsResult?.errorMessage);
         throw new Error(accountsResult?.errorMessage || 'Accounts sync failed');
       }
-      console.log('✅ [UI] Accounts sync completed successfully');
 
       // 2) Sync holdings
       setSyncStep('Syncing holdings...');
