@@ -144,6 +144,7 @@ For full Schwab API integration see the [Schwab Setup Guide](./docs/SCHWAB_SETUP
 - **Schwab API**: Live trading through Charles Schwab accounts
 - **Real-time Pricing**: Yahoo Finance data with intelligent caching
 - **Order Management**: Advanced order tracking and execution
+- **Automatic Data Sync**: 12-hour refresh cycle for portfolio data
 
 ## Security
 
@@ -173,6 +174,42 @@ For full Schwab API integration see the [Schwab Setup Guide](./docs/SCHWAB_SETUP
 - **Rebalancing Groups**: Portfolio containers with custom allocations
 - **Sleeves**: 2-3 similar securities that can substitute for each other during tax-loss harvesting
 - **Models**: Pre-built allocation templates (Conservative, Moderate, Aggressive)
+
+## Schwab Data Synchronization
+
+The platform automatically synchronizes portfolio data from Charles Schwab with intelligent timing to balance freshness and API usage:
+
+### Sync Triggers
+
+- **Post-OAuth**: Immediate full sync after connecting Schwab account
+- **12-Hour Cycle**: Automatic refresh every 12 hours while browser tab is open (on any page)
+- **Browser Reopen**: Automatic sync when reopening site after closing browser (if 12+ hours passed)
+- **Manual**: User-initiated syncs via Data Feeds page
+
+### Sync Sequence
+
+When a sync runs, it executes in this order:
+1. **Accounts** → Fetch account information and create/update local records
+2. **Holdings** → Sync current positions and cash balances
+3. **Prices** → Update security prices for held positions
+4. **Yahoo Fundamentals** → Fetch additional data for missing securities
+
+### Smart Timing
+
+- **Global Hook**: Sync logic runs on every route via root component
+- **localStorage Tracking**: Uses timestamps that persist across browser sessions
+- **Background Operation**: Syncs happen automatically without user interaction
+- **Session Persistence**: Data stays fresh even after closing/reopening browser
+- **Error Handling**: Failed syncs don't break the application
+
+### Manual Controls
+
+Users can manually trigger syncs via `/data-feeds` page:
+- **All**: Full sequence (accounts → holdings → prices)
+- **Accounts**: Account information only
+- **Holdings**: Positions and balances only
+- **Prices**: Security pricing updates
+- **Transactions**: Trade history (last 365 days)
 
 ## Contributing
 

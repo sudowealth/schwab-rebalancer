@@ -60,7 +60,7 @@ export function OnboardingTracker({
     oauthMutation,
     isConnected,
     handleConnect,
-  } = useSchwabConnection(schwabCredentialsStatusProp, schwabOAuthStatusProp);
+  } = useSchwabConnection(schwabCredentialsStatusProp, schwabOAuthStatusProp, false);
 
   // Query for reactive securities status
   const {

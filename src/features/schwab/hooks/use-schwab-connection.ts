@@ -16,6 +16,7 @@ import {
 export function useSchwabConnection(
   initialCredentialsStatus?: { hasCredentials: boolean },
   initialActiveCredentialsStatus?: { hasCredentials: boolean },
+  enableSyncTriggering: boolean = true,
 ) {
   const [isConnecting, setIsConnecting] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
@@ -243,7 +244,7 @@ export function useSchwabConnection(
 
   // State for tracking initial sync after connection
   // Trigger sync after successful OAuth connection
-  // Only trigger if we have credentials, haven't run sync yet, not currently syncing,
+  // Only trigger if we have credentials, haven't run sync in last 12 hours, not currently syncing,
   // and we're not coming from a fresh OAuth callback (which already triggered sync)
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -254,16 +255,42 @@ export function useSchwabConnection(
       // Also check sessionStorage to see if we just completed OAuth
       const returnUrl = sessionStorage.getItem('schwabReturnUrl');
 
-      // Use sessionStorage to persist across component re-mounts
-      const hasRunInitialSync = sessionStorage.getItem('schwab-initial-sync-completed') === 'true';
+      // Check if we need to sync (either never synced or 12 hours have passed)
+      const shouldSync = (() => {
+        const syncData = localStorage.getItem('schwab-initial-sync-completed');
+        if (!syncData) return true; // Never synced
 
-      if (isConnected && !hasRunInitialSync && !isSyncing && !justConnected && !returnUrl) {
+        try {
+          const { timestamp } = JSON.parse(syncData);
+          const twelveHoursMs = 12 * 60 * 60 * 1000; // 12 hours in milliseconds
+          const now = Date.now();
+          return now - timestamp > twelveHoursMs; // More than 12 hours ago
+        } catch {
+          return true; // Invalid data, sync anyway
+        }
+      })();
+
+      if (
+        enableSyncTriggering &&
+        isConnected &&
+        shouldSync &&
+        !isSyncing &&
+        !justConnected &&
+        !returnUrl
+      ) {
         console.log('🔄 [UI] Detected existing Schwab connection, starting sync');
-        sessionStorage.setItem('schwab-initial-sync-completed', 'true');
+        // Store timestamp for 12-hour expiration check
+        localStorage.setItem(
+          'schwab-initial-sync-completed',
+          JSON.stringify({
+            completed: true,
+            timestamp: Date.now(),
+          }),
+        );
         runFullSync();
       }
     }
-  }, [isConnected, isSyncing, runFullSync]);
+  }, [isConnected, isSyncing, runFullSync, enableSyncTriggering]);
 
   // Cleanup sessionStorage on unmount (HMR safety)
   useEffect(() => {
@@ -271,8 +298,8 @@ export function useSchwabConnection(
       // Only cleanup if we're navigating away completely, not on HMR
       if (typeof window !== 'undefined' && !import.meta.hot) {
         sessionStorage.removeItem('schwabReturnUrl');
-        // Don't cleanup the initial sync flag - we want it to persist across navigation
-        // It will be reset when the user actually disconnects/reconnects Schwab
+        // Don't cleanup the initial sync flag in localStorage - we want it to persist
+        // with 12-hour expiration. It will be reset when the user disconnects Schwab.
       }
     };
   }, []);
@@ -280,7 +307,7 @@ export function useSchwabConnection(
   // Clear initial sync flag when Schwab is disconnected
   useEffect(() => {
     if (!isConnected && typeof window !== 'undefined') {
-      sessionStorage.removeItem('schwab-initial-sync-completed');
+      localStorage.removeItem('schwab-initial-sync-completed');
     }
   }, [isConnected]);
 

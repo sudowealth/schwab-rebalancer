@@ -84,6 +84,7 @@ export function useDashboardData(loaderData: LoaderData) {
   const { isConnected: schwabOAuthComplete } = useSchwabConnection(
     loaderData.schwabCredentialsStatus,
     loaderData.schwabOAuthStatus,
+    false, // Disable sync triggering - handled globally in root component
   );
 
   // Use optimized onboarding loader queries

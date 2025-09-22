@@ -18,8 +18,9 @@ function ModelsSkeleton() {
 
         {/* Content Grid */}
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {[...Array(6)].map(() => (
-            <div key="model-card" className="bg-white overflow-hidden shadow rounded-lg">
+          {Array.from({ length: 6 }, (_, index) => (
+            // biome-ignore lint: The skeleton cards are identical and don't need unique identity
+            <div key={`skeleton-${index}`} className="bg-white overflow-hidden shadow rounded-lg">
               <div className="p-6">
                 <div className="h-6 bg-gray-300 rounded mb-2 w-3/4" />
                 <div className="h-4 bg-gray-300 rounded mb-4 w-1/2" />

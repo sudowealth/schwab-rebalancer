@@ -24,6 +24,7 @@ import {
 } from '~/components/ui/navigation-menu';
 import { signOut } from '~/features/auth/auth-client';
 import { useAuth } from '~/features/auth/hooks/useAuth';
+import { useSchwabConnection } from '~/features/schwab/hooks/use-schwab-connection';
 import { seo } from '~/lib/seo';
 import { cn } from '~/lib/utils';
 import appCss from '~/styles/app.css?url';
@@ -73,6 +74,15 @@ export const Route = createRootRoute({
   shellComponent: RootDocument,
 });
 
+// Global hooks that need to run inside Providers (after QueryClient is available)
+function GlobalHooks() {
+  // Global Schwab connection hook - runs on all routes for 12-hour sync checks
+  useSchwabConnection();
+
+  // This component doesn't render anything visible
+  return null;
+}
+
 function RootDocument({ children }: { children: React.ReactNode }) {
   const location = useLocation();
 
@@ -86,6 +96,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
       </head>
       <body>
         <Providers>
+          <GlobalHooks />
           <div className="min-h-screen bg-gray-50">
             {!isAuthRoute && (
               <nav className="bg-white shadow-sm border-b">
