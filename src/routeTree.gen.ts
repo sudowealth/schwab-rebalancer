@@ -30,7 +30,6 @@ import { Route as DataFeedsDataFeedsRouteImport } from './routes/data-feeds/data
 import { Route as AdminAdminRouteImport } from './routes/admin/admin'
 import { Route as AdminUsersRouteRouteImport } from './routes/admin/users.route'
 import { Route as AdminStatsRouteRouteImport } from './routes/admin/stats.route'
-import { Route as ApiWorkersYahooSyncRouteImport } from './routes/api/workers/yahoo-sync'
 import { ServerRoute as ApiHealthServerRouteImport } from './routes/api/health'
 import { ServerRoute as ApiAuthSplatServerRouteImport } from './routes/api/auth/$'
 
@@ -132,11 +131,6 @@ const AdminStatsRouteRoute = AdminStatsRouteRouteImport.update({
   path: '/admin/stats',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiWorkersYahooSyncRoute = ApiWorkersYahooSyncRouteImport.update({
-  id: '/api/workers/yahoo-sync',
-  path: '/api/workers/yahoo-sync',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ApiHealthServerRoute = ApiHealthServerRouteImport.update({
   id: '/api/health',
   path: '/api/health',
@@ -168,7 +162,6 @@ export interface FileRoutesByFullPath {
   '/models': typeof ModelsIndexRoute
   '/rebalancing-groups': typeof RebalancingGroupsIndexRoute
   '/sleeves': typeof SleevesIndexRoute
-  '/api/workers/yahoo-sync': typeof ApiWorkersYahooSyncRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -190,7 +183,6 @@ export interface FileRoutesByTo {
   '/models': typeof ModelsIndexRoute
   '/rebalancing-groups': typeof RebalancingGroupsIndexRoute
   '/sleeves': typeof SleevesIndexRoute
-  '/api/workers/yahoo-sync': typeof ApiWorkersYahooSyncRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -213,7 +205,6 @@ export interface FileRoutesById {
   '/models/': typeof ModelsIndexRoute
   '/rebalancing-groups/': typeof RebalancingGroupsIndexRoute
   '/sleeves/': typeof SleevesIndexRoute
-  '/api/workers/yahoo-sync': typeof ApiWorkersYahooSyncRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -237,7 +228,6 @@ export interface FileRouteTypes {
     | '/models'
     | '/rebalancing-groups'
     | '/sleeves'
-    | '/api/workers/yahoo-sync'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -259,7 +249,6 @@ export interface FileRouteTypes {
     | '/models'
     | '/rebalancing-groups'
     | '/sleeves'
-    | '/api/workers/yahoo-sync'
   id:
     | '__root__'
     | '/'
@@ -281,7 +270,6 @@ export interface FileRouteTypes {
     | '/models/'
     | '/rebalancing-groups/'
     | '/sleeves/'
-    | '/api/workers/yahoo-sync'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -304,7 +292,6 @@ export interface RootRouteChildren {
   ModelsIndexRoute: typeof ModelsIndexRoute
   RebalancingGroupsIndexRoute: typeof RebalancingGroupsIndexRoute
   SleevesIndexRoute: typeof SleevesIndexRoute
-  ApiWorkersYahooSyncRoute: typeof ApiWorkersYahooSyncRoute
 }
 export interface FileServerRoutesByFullPath {
   '/api/health': typeof ApiHealthServerRoute
@@ -467,13 +454,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminStatsRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/workers/yahoo-sync': {
-      id: '/api/workers/yahoo-sync'
-      path: '/api/workers/yahoo-sync'
-      fullPath: '/api/workers/yahoo-sync'
-      preLoaderRoute: typeof ApiWorkersYahooSyncRouteImport
-      parentRoute: typeof rootRouteImport
-    }
   }
 }
 declare module '@tanstack/react-start/server' {
@@ -515,7 +495,6 @@ const rootRouteChildren: RootRouteChildren = {
   ModelsIndexRoute: ModelsIndexRoute,
   RebalancingGroupsIndexRoute: RebalancingGroupsIndexRoute,
   SleevesIndexRoute: SleevesIndexRoute,
-  ApiWorkersYahooSyncRoute: ApiWorkersYahooSyncRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

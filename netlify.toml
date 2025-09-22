@@ -21,12 +21,6 @@ default = ""
 description = "Encrypts Schwab API credentials before database storage. Run 'openssl rand -base64 32' in your terminal to generate"
 
 [[template.environment]]
-name = "CRON_KEY"
-required = true
-default = ""
-description = "Protects scheduled worker API endpoints. Run 'openssl rand -base64 32' in your terminal to generate"
-
-[[template.environment]]
 name = "INDIVIDUAL_USE"
 required = true
 default = "true"

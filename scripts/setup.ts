@@ -3,7 +3,6 @@
 /**
  * Set up local development environment with secrets and configuration.
  * - DB_ENCRYPTION_KEY: 32 bytes for AES-256 encryption of Schwab API credentials
- * - CRON_KEY: 32 bytes for API worker authentication
  * - BETTER_AUTH_SECRET: 32 bytes for session signing
  * Run: npm run setup
  */
@@ -15,9 +14,8 @@ import { generateSecret } from '../src/lib/crypto';
 async function main() {
   console.log('🔧 Setting up local development environment...\n');
 
-  const [encryptionKey, cronKey, authSecret] = await Promise.all([
+  const [encryptionKey, authSecret] = await Promise.all([
     generateSecret(32), // DB_ENCRYPTION_KEY: 32 bytes for AES-256
-    generateSecret(32), // CRON_KEY: 32 bytes for API auth
     generateSecret(32), // BETTER_AUTH_SECRET: 32 bytes for session signing
   ]);
 
@@ -28,7 +26,6 @@ async function main() {
     console.log('⚠️  .env.local already exists!');
     console.log('   To avoid overwriting existing configuration, here are your generated secrets:');
     console.log('────────────────────────────────────────────────');
-    console.log(`CRON_KEY=${cronKey}`);
     console.log(`DB_ENCRYPTION_KEY=${encryptionKey}`);
     console.log(`BETTER_AUTH_SECRET=${authSecret}`);
     console.log('────────────────────────────────────────────────\n');
@@ -44,9 +41,6 @@ async function main() {
 # ==========================================
 # REQUIRED SECRETS (Generated Securely)
 # ==========================================
-
-# Protects scheduled worker API endpoints
-CRON_KEY=${cronKey}
 
 # Encrypts Schwab API credentials before database storage
 DB_ENCRYPTION_KEY=${encryptionKey}
@@ -92,7 +86,6 @@ NODE_ENV=development
   console.log(`   📁 Created: ${envPath}`);
   console.log('────────────────────────────────────────────────');
   console.log('🔑 Generated Secrets:');
-  console.log(`   CRON_KEY: ${cronKey.substring(0, 10)}...`);
   console.log(`   DB_ENCRYPTION_KEY: ${encryptionKey.substring(0, 10)}...`);
   console.log(`   BETTER_AUTH_SECRET: ${authSecret.substring(0, 10)}...`);
   console.log('────────────────────────────────────────────────\n');

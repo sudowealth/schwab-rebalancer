@@ -21,7 +21,7 @@ This creates a fresh copy of the codebase in your GitHub account.
 - Connect your GitHub account
 - Select your new repository
 - Netlify creates a Neon PostgreSQL database
-- Generates required secrets (BETTER_AUTH_SECRET, DB_ENCRYPTION_KEY, CRON_KEY)
+- Generates required secrets (BETTER_AUTH_SECRET, DB_ENCRYPTION_KEY)
 - Builds and deploys your app
 - Sets up automatic deployments on every push
 
