@@ -1,4 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query';
+import { useRouter } from '@tanstack/react-router';
 import { useEffect } from 'react';
 import type {
   PortfolioMetrics,
@@ -51,6 +52,7 @@ interface LoaderData {
 
 export function useDashboardData(loaderData: LoaderData) {
   const queryClient = useQueryClient();
+  const router = useRouter();
   const refetchManager = useBackgroundRefetchManager();
 
   // Detect Schwab OAuth callback and refresh data
@@ -73,6 +75,8 @@ export function useDashboardData(loaderData: LoaderData) {
       // Use centralized invalidation for Schwab sync
       console.log('🔄 [Dashboard] Invalidating queries after Schwab sync...');
       queryInvalidators.composites.afterSchwabSync(queryClient);
+      // Also invalidate the route loader
+      router.invalidate();
       console.log('✅ [Dashboard] Dashboard data refresh initiated after Schwab OAuth callback');
     } else if (hasSchwabConnected) {
       console.log(
@@ -86,9 +90,11 @@ export function useDashboardData(loaderData: LoaderData) {
       // Use centralized invalidation for Schwab sync
       console.log('🔄 [Dashboard] Invalidating queries after Schwab connection...');
       queryInvalidators.composites.afterSchwabSync(queryClient);
+      // Also invalidate the route loader
+      router.invalidate();
       console.log('✅ [Dashboard] Dashboard data refresh initiated after Schwab connection');
     }
-  }, [queryClient]);
+  }, [queryClient, router]);
 
   // Calculate derived state
   const hasAccounts =
@@ -125,6 +131,7 @@ export function useDashboardData(loaderData: LoaderData) {
     queryKey: queryKeys.dashboard.groups(),
     queryFn: getRebalancingGroupsWithBalancesServerFn,
     initialData: loaderData.rebalancingGroups,
+    refetchOnMount: true, // Ensure fresh data after group creation
   });
 
   // Transform the data for onboarding status
@@ -135,10 +142,8 @@ export function useDashboardData(loaderData: LoaderData) {
       }
     : { hasGroups: false, groupsCount: 0 };
 
-  // For the dashboard, we also want to show rebalancing groups if we have accounts
-  // and the user has completed onboarding (has models, etc.)
-  // We'll use a simple approach: show if we have accounts and either have groups or are still loading
-  const shouldShowRebalancingSection = hasAccounts;
+  // Show rebalancing section only when rebalancing groups exist
+  const shouldShowRebalancingSection = reactiveRebalancingGroupsStatus.hasGroups;
 
   // Setup background refetching for critical dashboard data
   useEffect(() => {
@@ -163,8 +168,15 @@ export function useDashboardData(loaderData: LoaderData) {
     enabled: shouldShowRebalancingSection,
   });
 
+  // Make metrics query key depend on positions data to force refetch when positions change
+  const positionsFingerprint = positionsResult.data
+    ? positionsResult.data.map((p) => `${p.ticker}:${p.qty}:${p.costBasis}`).join('|')
+    : '';
+
   const metricsResult = useCriticalLoaderQuery({
-    queryKey: queryKeys.dashboard.metrics(),
+    queryKey: positionsFingerprint
+      ? [...queryKeys.dashboard.metrics(), positionsFingerprint]
+      : queryKeys.dashboard.metrics(),
     queryFn: getPortfolioMetricsServerFn,
     initialData: loaderData.metrics,
     enabled: shouldShowRebalancingSection,

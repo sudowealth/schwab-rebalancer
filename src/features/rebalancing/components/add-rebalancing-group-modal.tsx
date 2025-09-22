@@ -1,3 +1,4 @@
+import { useQueryClient } from '@tanstack/react-query';
 import { useRouter } from '@tanstack/react-router';
 import { Plus } from 'lucide-react';
 import { useCallback, useEffect, useId, useState } from 'react';
@@ -22,6 +23,7 @@ import {
 } from '~/components/ui/select';
 import { VirtualizedSelect } from '~/components/ui/virtualized-select';
 import { AddModelModal } from '~/features/models/components/add-model-modal';
+import { queryInvalidators } from '~/lib/query-keys';
 import {
   assignModelToGroupServerFn,
   createRebalancingGroupServerFn,
@@ -82,6 +84,7 @@ export function AddRebalancingGroupModal({
   const [models, setModels] = useState<Model[]>([]);
   const [showAddModelModal, setShowAddModelModal] = useState(false);
   const router = useRouter();
+  const queryClient = useQueryClient();
 
   const loadData = useCallback(async () => {
     try {
@@ -210,6 +213,13 @@ export function AddRebalancingGroupModal({
           },
         });
       }
+
+      // Invalidate dashboard queries so the dashboard knows a rebalancing group now exists
+      queryInvalidators.dashboard.groups(queryClient);
+      queryInvalidators.onboarding.all(queryClient);
+      queryInvalidators.onboarding.groups(queryClient);
+      // Also invalidate route loader data
+      router.invalidate();
 
       // Call the callback if provided
       if (onGroupCreated) {
@@ -360,7 +370,7 @@ export function AddRebalancingGroupModal({
                     className="underline hover:text-red-800"
                     onClick={(e) => {
                       e.preventDefault();
-                      router.navigate({ to: '/' });
+                      router.navigate({ to: '/', search: { schwabConnected: undefined } });
                     }}
                   >
                     homepage

@@ -104,6 +104,8 @@ export function OnboardingTracker({
     refetchOnWindowFocus: true,
   });
 
+  // Use the reactive groups status passed from dashboard hook (now properly refetches)
+
   // Use securities seeding state passed from parent
   const { isSeeding, hasError, seedResult, showSuccessMessage } = securitiesSeedingState || {
     isSeeding: false,

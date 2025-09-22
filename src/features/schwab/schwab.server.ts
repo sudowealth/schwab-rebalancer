@@ -25,6 +25,9 @@ import { getSchwabSyncService } from './schwab-sync.server';
 // In-memory lock to prevent concurrent syncs for the same user and operation
 const runningSyncs = new Map<string, boolean>();
 
+// Lock to prevent concurrent OAuth callbacks for the same user
+const runningOAuthCallbacks = new Map<string, boolean>();
+
 async function orchestrateSchwabSync<T extends Record<string, unknown>>(
   operationName: string,
   syncFunction: (userId: string, params?: T) => Promise<SyncResult>,
@@ -112,6 +115,7 @@ function clearPricesCache(userId?: string) {
 
 function clearPositionsCache(userId: string) {
   clearCache(`positions-${userId}`); // Clear positions cache since holdings have changed
+  clearCache(`metrics-${userId}`); // Clear metrics cache since holdings affect portfolio metrics
 }
 
 // Utility functions for sync logging
@@ -227,6 +231,18 @@ export const handleSchwabOAuthCallbackServerFn = createServerFn({
     const _db = getDb();
     console.log(`👤 [ServerFn] Using authenticated user ID: ${user.id.substring(0, 10)}...`);
 
+    // Check if an OAuth callback is already running for this user
+    const oauthKey = `oauth-${user.id}`;
+    if (runningOAuthCallbacks.get(oauthKey)) {
+      console.log(
+        `⚠️ [ServerFn] OAuth callback already running for user ${user.id.substring(0, 10)}..., skipping`,
+      );
+      return { success: true };
+    }
+
+    // Set the lock
+    runningOAuthCallbacks.set(oauthKey, true);
+
     try {
       // Check for required Schwab environment variables
       const clientId = process.env.SCHWAB_CLIENT_ID;
@@ -279,6 +295,9 @@ export const handleSchwabOAuthCallbackServerFn = createServerFn({
         error instanceof Error ? error.stack : 'No stack trace',
       );
       throw new Error(`Failed to handle OAuth callback: ${getErrorMessage(error)}`);
+    } finally {
+      // Always release the lock
+      runningOAuthCallbacks.delete(oauthKey);
     }
   });
 

@@ -149,7 +149,13 @@ export function RebalancingGroupsTab({ groups }: RebalancingGroupsTabProps) {
     return (
       <div className="text-center py-12">
         <p className="text-gray-500">No rebalancing groups found</p>
-        <p className="text-sm text-gray-400 mt-1">Create a rebalancing group to get started</p>
+        <Link
+          to="/rebalancing-groups"
+          search={{ createGroup: 'true' }}
+          className="text-sm text-blue-600 hover:text-blue-800 hover:underline mt-1 inline-block"
+        >
+          Create a rebalancing group to get started
+        </Link>
       </div>
     );
   }

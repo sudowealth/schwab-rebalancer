@@ -70,6 +70,7 @@ export {
 // Data import and seeding functions
 export {
   checkModelsExistServerFn,
+  checkRebalancingGroupsExistServerFn,
   checkSchwabCredentialsServerFn,
   checkSecuritiesExistServerFn,
   getYahooSyncCountsServerFn,

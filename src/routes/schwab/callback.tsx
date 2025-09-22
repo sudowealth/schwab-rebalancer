@@ -1,6 +1,6 @@
 import { createFileRoute, useRouter } from '@tanstack/react-router';
 import { AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Button } from '~/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card';
 import { handleSchwabOAuthCallbackServerFn } from '~/lib/server-functions';
@@ -36,12 +36,22 @@ function SchwabCallbackPage() {
   const [isProcessing, setIsProcessing] = useState(true);
   const [callbackError, setCallbackError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const hasProcessedRef = useRef(false);
 
   // Get return URL from sessionStorage
   const returnUrl = getFromSessionStorage('schwabReturnUrl', '/');
 
   useEffect(() => {
+    // Prevent multiple processing of the same OAuth callback
+    if (hasProcessedRef.current) {
+      console.log('🔄 [Callback] OAuth callback already processed, skipping');
+      return;
+    }
+
     const processCallback = async () => {
+      // Mark as processed to prevent duplicate calls
+      hasProcessedRef.current = true;
+
       // Validate OAuth state parameter to prevent token interception attacks
       const storedState = getFromSessionStorage('schwab_oauth_state');
       if (storedState && state && storedState !== state) {

@@ -39,6 +39,7 @@ export const queryKeys = {
     securities: () => ['onboarding', 'securities'] as const,
     models: () => ['onboarding', 'models'] as const,
     schwab: () => ['onboarding', 'schwab'] as const,
+    groups: () => ['onboarding', 'groups'] as const,
   },
 
   // Integration services - all external service queries
@@ -150,6 +151,9 @@ export const queryInvalidators = {
     },
     schwab: (queryClient: import('@tanstack/react-query').QueryClient) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.onboarding.schwab() });
+    },
+    groups: (queryClient: import('@tanstack/react-query').QueryClient) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.onboarding.groups() });
     },
   },
 

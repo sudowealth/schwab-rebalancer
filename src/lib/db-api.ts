@@ -733,15 +733,35 @@ export const getPortfolioMetrics = async (userId?: string) => {
     };
   }
 
+  console.log('📊 [getPortfolioMetrics] Called for userId:', userId.substring(0, 10) + '...');
+
   const cacheKey = `portfolio-metrics-${userId}`;
   const cached = getCached<PortfolioMetrics>(cacheKey);
   if (cached) {
+    console.log('📊 [getPortfolioMetrics] Returning cached metrics');
     return cached;
   }
+
+  console.log('📊 [getPortfolioMetrics] Cache miss, calculating metrics...');
 
   // Use recursion-safe approach to avoid circular dependencies
   const positions = await getPositions(userId);
   const transactions = await getTransactions(userId);
+
+  console.log(
+    '📊 [getPortfolioMetrics] Got positions:',
+    positions.length,
+    'transactions:',
+    transactions.length,
+  );
+  if (positions.length > 0) {
+    console.log('📊 [getPortfolioMetrics] Sample position:', {
+      ticker: positions[0].ticker,
+      marketValue: positions[0].marketValue,
+      costBasis: positions[0].costBasis,
+      qty: positions[0].qty,
+    });
+  }
 
   // Calculate portfolio metrics
   let totalMarketValue = 0;
@@ -754,6 +774,12 @@ export const getPortfolioMetrics = async (userId?: string) => {
     totalMarketValue += marketValue;
     totalCostBasis += costBasis;
   }
+
+  console.log('📊 [getPortfolioMetrics] Calculated totals:', {
+    totalMarketValue,
+    totalCostBasis,
+    positionCount: positions.length,
+  });
 
   const unrealizedGain = totalMarketValue - totalCostBasis;
   const unrealizedGainPercent = totalCostBasis > 0 ? (unrealizedGain / totalCostBasis) * 100 : 0;

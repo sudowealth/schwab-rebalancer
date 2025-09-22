@@ -826,6 +826,25 @@ export const checkModelsExistServerFn = createServerFn({ method: 'GET' }).handle
   };
 });
 
+// Check if rebalancing groups exist for the user
+export const checkRebalancingGroupsExistServerFn = createServerFn({ method: 'GET' }).handler(
+  async () => {
+    const { user } = await requireAuth();
+    const _db = getDb();
+
+    // Get count of rebalancing groups for this user
+    const groupsCount = await getDb()
+      .select({ count: count() })
+      .from(schema.rebalancingGroup)
+      .where(eq(schema.rebalancingGroup.userId, user.id));
+
+    return {
+      hasGroups: Number(groupsCount[0]?.count ?? 0) > 0,
+      groupsCount: Number(groupsCount[0]?.count ?? 0),
+    };
+  },
+);
+
 // Check if Schwab API credentials are configured
 export const checkSchwabCredentialsServerFn = createServerFn({ method: 'GET' }).handler(
   async () => {
