@@ -16,7 +16,7 @@ export interface RestrictionChecker {
 export interface Transaction {
   ticker: string;
   type: string;
-  executedAt: Date | string;
+  executedAt: Date;
   accountType?: string;
   accountName?: string;
   realizedGainLoss: number;
@@ -42,9 +42,8 @@ export const checkTransactionHistoryForWashSale = (
 
   // Find sell transactions for this ticker in the last 31 days with losses in TAXABLE accounts
   const recentLossSells = transactions.filter((tx) => {
-    const executedDate = new Date(tx.executedAt);
     const isRecentSell =
-      tx.ticker === ticker && tx.type === 'SELL' && executedDate >= thirtyOneDaysAgo;
+      tx.ticker === ticker && tx.type === 'SELL' && tx.executedAt >= thirtyOneDaysAgo;
 
     // Only check taxable accounts for wash sale rules
     const isTaxableAccount =
@@ -58,7 +57,7 @@ export const checkTransactionHistoryForWashSale = (
     // Only log if it's a potential wash sale candidate for debugging
     if (tx.ticker === ticker && isRecentSell && isWashSaleCandidate) {
       console.log(
-        `🔍 WASH SALE DETECTED: ${ticker} sold at loss $${Math.abs(tx.realizedGainLoss / 100).toFixed(2)} on ${executedDate.toLocaleDateString()} in ${tx.accountName}`,
+        `🔍 WASH SALE DETECTED: ${ticker} sold at loss $${Math.abs(tx.realizedGainLoss / 100).toFixed(2)} on ${tx.executedAt.toLocaleDateString()} in ${tx.accountName}`,
       );
     }
 
@@ -67,21 +66,20 @@ export const checkTransactionHistoryForWashSale = (
 
   if (recentLossSells.length > 0) {
     const mostRecent = recentLossSells.sort(
-      (a, b) => new Date(b.executedAt).getTime() - new Date(a.executedAt).getTime(),
+      (a, b) => b.executedAt.getTime() - a.executedAt.getTime(),
     )[0];
 
-    const sellDate = new Date(mostRecent.executedAt);
-    const daysAgo = Math.floor((now.getTime() - sellDate.getTime()) / (24 * 60 * 60 * 1000));
+    const daysAgo = Math.floor((now.getTime() - mostRecent.executedAt.getTime()) / (24 * 60 * 60 * 1000));
 
-    const blockedUntil = new Date(sellDate.getTime() + 31 * 24 * 60 * 60 * 1000);
+    const blockedUntil = new Date(mostRecent.executedAt.getTime() + 31 * 24 * 60 * 60 * 1000);
 
     return {
       hasRisk: true,
       info: {
         ticker,
         restrictedUntil: blockedUntil,
-        reason: `Tax loss harvested on ${sellDate.toLocaleDateString()}, ${31 - daysAgo} days remaining`,
-        soldDate: sellDate,
+        reason: `Tax loss harvested on ${mostRecent.executedAt.toLocaleDateString()}, ${31 - daysAgo} days remaining`,
+        soldDate: mostRecent.executedAt,
         daysAgo,
         daysRemaining: 31 - daysAgo,
         lossAmount: Math.abs(mostRecent.realizedGainLoss),

@@ -16,15 +16,10 @@ import {
 import { Button } from '~/components/ui/button';
 import { SimpleTooltip } from '~/components/ui/simple-tooltip';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '~/components/ui/tabs';
-import { useSecuritiesSeeding } from '~/features/data-feeds/hooks/use-securities-seeding';
 import { useModelCreation } from '~/features/models/hooks/use-model-creation';
 import { useSchwabConnection } from '~/features/schwab/hooks/use-schwab-connection';
 import { queryKeys } from '~/lib/query-keys';
-import {
-  checkModelsExistServerFn,
-  checkSchwabCredentialsServerFn,
-  checkSecuritiesExistServerFn,
-} from '~/lib/server-functions';
+import { checkModelsExistServerFn, checkSchwabCredentialsServerFn } from '~/lib/server-functions';
 
 interface OnboardingTask {
   id: string;
@@ -34,12 +29,39 @@ interface OnboardingTask {
   icon: React.ComponentType<{ className?: string }>;
 }
 
+interface SeedSecuritiesResult {
+  success: boolean;
+  message: string;
+  equitySyncResult: {
+    success: boolean;
+    imported: number;
+    skipped: number;
+    errors: string[];
+    totalParsed: number;
+    totalProcessed: number;
+  };
+  schwabSyncResult?: {
+    success: boolean;
+    recordsProcessed: number;
+    errorMessage?: string;
+  } | null;
+  yahooSyncResult?: unknown | null;
+}
+
+interface SecuritiesSeedingState {
+  isSeeding: boolean;
+  hasError: boolean;
+  seedResult: SeedSecuritiesResult | null | undefined;
+  showSuccessMessage: boolean;
+}
+
 interface OnboardingTrackerProps {
   schwabCredentialsStatusProp?: { hasCredentials: boolean };
   schwabOAuthStatusProp?: { hasCredentials: boolean };
   rebalancingGroupsStatus?: { hasGroups: boolean; groupsCount: number };
   securitiesStatusProp?: { hasSecurities: boolean; securitiesCount: number };
   modelsStatusProp?: { hasModels: boolean; modelsCount: number };
+  securitiesSeedingState?: SecuritiesSeedingState;
 }
 
 export function OnboardingTracker({
@@ -48,6 +70,7 @@ export function OnboardingTracker({
   rebalancingGroupsStatus,
   securitiesStatusProp,
   modelsStatusProp,
+  securitiesSeedingState,
 }: OnboardingTrackerProps) {
   const navigate = useNavigate();
 
@@ -61,20 +84,6 @@ export function OnboardingTracker({
     isConnected,
     handleConnect,
   } = useSchwabConnection(schwabCredentialsStatusProp, schwabOAuthStatusProp, false);
-
-  // Query for reactive securities status
-  const {
-    data: reactiveSecuritiesStatus,
-    status: securitiesQueryStatus,
-    fetchStatus: securitiesFetchStatus,
-    isFetchedAfterMount: securitiesFetchedAfterMount,
-  } = useQuery({
-    queryKey: queryKeys.onboarding.securities(),
-    queryFn: () => checkSecuritiesExistServerFn(),
-    initialData: securitiesStatusProp,
-    initialDataUpdatedAt: 0, // mark as stale so it refetches on mount
-    staleTime: 1000 * 60 * 5, // 5 minutes
-  });
 
   // Query for reactive models status
   const { data: reactiveModelsStatus } = useQuery({
@@ -95,13 +104,13 @@ export function OnboardingTracker({
     refetchOnWindowFocus: true,
   });
 
-  // Use the securities seeding hook for managing securities import state
-  const { isSeeding, hasError, seedResult, showSuccessMessage } = useSecuritiesSeeding(
-    reactiveSecuritiesStatus,
-    securitiesQueryStatus,
-    securitiesFetchStatus,
-    securitiesFetchedAfterMount,
-  );
+  // Use securities seeding state passed from parent
+  const { isSeeding, hasError, seedResult, showSuccessMessage } = securitiesSeedingState || {
+    isSeeding: false,
+    hasError: false,
+    seedResult: null,
+    showSuccessMessage: false,
+  };
 
   // Use the model creation hook for managing model creation state
   const { handleSeedGlobalEquity, isSeeding: isCreatingModel } = useModelCreation();
@@ -111,7 +120,7 @@ export function OnboardingTracker({
       id: 'securities-import',
       title: 'Securities Import (Automatic)',
       description: 'Add ~11,000 stocks and ETFs from NASDAQ feeds to your database',
-      completed: reactiveSecuritiesStatus?.hasSecurities || false,
+      completed: securitiesStatusProp?.hasSecurities || false,
       icon: Database,
     },
     {
@@ -492,13 +501,12 @@ netlify env:set SCHWAB_CLIENT_SECRET your_app_secret
                     );
                   }
                   if (!task.completed && task.id === 'create-model') {
-                    const hasSecurities = reactiveSecuritiesStatus?.hasSecurities || false;
-                    const isDisabled = !hasSecurities;
+                    const hasSecurities = securitiesStatusProp?.hasSecurities || false;
 
                     return (
                       <div className="mt-3 space-y-3">
                         {/* Show message if securities not imported */}
-                        {isDisabled && (
+                        {!hasSecurities && (
                           <div className="flex items-center gap-2 p-2 bg-amber-50 border border-amber-200 rounded-lg">
                             <AlertCircle className="h-4 w-4 text-amber-600 flex-shrink-0" />
                             <p className="text-xs text-amber-800">
@@ -512,36 +520,36 @@ netlify env:set SCHWAB_CLIENT_SECRET your_app_secret
                           {/* Global Equity Model Option */}
                           <div
                             className={`border-2 rounded-lg p-3 ${
-                              isDisabled
+                              !hasSecurities
                                 ? 'border-gray-200 bg-gray-50/50'
                                 : 'border-blue-200 bg-blue-50/50'
                             }`}
                           >
                             <div className="flex items-center gap-2 mb-2">
                               <TrendingUp
-                                className={`h-4 w-4 ${isDisabled ? 'text-gray-400' : 'text-blue-600'}`}
+                                className={`h-4 w-4 ${!hasSecurities ? 'text-gray-400' : 'text-blue-600'}`}
                               />
                               <h5
-                                className={`font-medium ${isDisabled ? 'text-gray-500' : 'text-blue-900'}`}
+                                className={`font-medium ${!hasSecurities ? 'text-gray-500' : 'text-blue-900'}`}
                               >
                                 Global Equity Model
                               </h5>
                             </div>
                             <p
-                              className={`text-xs mb-3 ${isDisabled ? 'text-gray-500' : 'text-blue-700'}`}
+                              className={`text-xs mb-3 ${!hasSecurities ? 'text-gray-500' : 'text-blue-700'}`}
                             >
                               Pre-built model with geographic diversification across US,
                               International, and Emerging markets
                             </p>
                             <ul
-                              className={`text-xs space-y-1 mb-3 ${isDisabled ? 'text-gray-400' : 'text-gray-600'}`}
+                              className={`text-xs space-y-1 mb-3 ${!hasSecurities ? 'text-gray-400' : 'text-gray-600'}`}
                             >
                               <li>• US Large Cap (40%): VTI</li>
                               <li>• International (20%): VXUS</li>
                               <li>• Emerging Markets (10%): VWO</li>
                               <li>• And more regional ETFs</li>
                             </ul>
-                            {isDisabled ? (
+                            {!hasSecurities ? (
                               <SimpleTooltip content="Complete securities import before creating models">
                                 <Button disabled={true} className="w-full text-xs" size="sm">
                                   <TrendingUp className="mr-1 h-3 w-3" />
@@ -573,46 +581,46 @@ netlify env:set SCHWAB_CLIENT_SECRET your_app_secret
                           {/* Custom Model Option */}
                           <div
                             className={`border-2 rounded-lg p-3 ${
-                              isDisabled ? 'border-gray-200 bg-gray-50/50' : 'border-gray-200'
+                              !hasSecurities ? 'border-gray-200 bg-gray-50/50' : 'border-gray-200'
                             }`}
                           >
                             <div className="flex items-center gap-2 mb-2">
                               <Plus
-                                className={`h-4 w-4 ${isDisabled ? 'text-gray-400' : 'text-gray-600'}`}
+                                className={`h-4 w-4 ${!hasSecurities ? 'text-gray-400' : 'text-gray-600'}`}
                               />
                               <h5
-                                className={`font-medium ${isDisabled ? 'text-gray-500' : 'text-gray-900'}`}
+                                className={`font-medium ${!hasSecurities ? 'text-gray-500' : 'text-gray-900'}`}
                               >
                                 Custom Model
                               </h5>
                             </div>
                             <p
-                              className={`text-xs mb-3 ${isDisabled ? 'text-gray-500' : 'text-gray-600'}`}
+                              className={`text-xs mb-3 ${!hasSecurities ? 'text-gray-500' : 'text-gray-600'}`}
                             >
                               Create your own model with custom sleeves and allocations
                             </p>
                             <div className="space-y-2">
                               <p
-                                className={`text-xs font-medium ${isDisabled ? 'text-gray-500' : 'text-gray-700'}`}
+                                className={`text-xs font-medium ${!hasSecurities ? 'text-gray-500' : 'text-gray-700'}`}
                               >
                                 How to create a custom model:
                               </p>
                               <ol
-                                className={`text-xs space-y-1 ml-3 list-decimal ${isDisabled ? 'text-gray-400' : 'text-gray-600'}`}
+                                className={`text-xs space-y-1 ml-3 list-decimal ${!hasSecurities ? 'text-gray-400' : 'text-gray-600'}`}
                               >
                                 <li>Go to Sleeves page to create sleeves</li>
                                 <li>Go to Models page to create your model</li>
                                 <li>Add your sleeves with target allocations</li>
                               </ol>
                               <p
-                                className={`text-xs mt-2 ${isDisabled ? 'text-gray-400' : 'text-gray-500'}`}
+                                className={`text-xs mt-2 ${!hasSecurities ? 'text-gray-400' : 'text-gray-500'}`}
                               >
                                 Sleeves group similar securities by industry, sector, or investment
                                 style
                               </p>
                             </div>
                             <div className="flex gap-1 mt-3">
-                              {isDisabled ? (
+                              {!hasSecurities ? (
                                 <>
                                   <SimpleTooltip content="Complete securities import before creating models">
                                     <Button

@@ -336,7 +336,7 @@ export class SchwabSyncService {
           console.log('⏰ [SchwabSync] Updating last sync time for account:', account.name);
           this.getDb()
             .update(schema.account)
-            .set({ lastSyncAt: new Date(), updatedAt: Date.now() })
+            .set({ lastSyncAt: new Date(), updatedAt: new Date() })
             .where(eq(schema.account.id, account.id));
           console.log('✅ [SchwabSync] Updated sync time for account:', account.name);
         } catch (accountError) {
@@ -448,10 +448,8 @@ export class SchwabSyncService {
             await this.ensureSecurityExists(symbol);
 
             const id = `schwab-${activity.activityId}-${account.id}-${symbol}`;
-            const executedAt = new Date(
-              activity.tradeDate || activity.time || new Date(),
-            ).getTime();
-            const now = Date.now();
+            const executedAt = new Date(activity.tradeDate || activity.time || new Date());
+            const now = new Date();
 
             // Upsert transaction by id
             const existing = await this.getDb()
@@ -584,7 +582,7 @@ export class SchwabSyncService {
             const subValue = rawSub && validSubs.includes(rawSub) ? rawSub : null;
             this.getDb()
               .update(schema.security)
-              .set({ price, assetTypeSub: subValue, updatedAt: Date.now() })
+              .set({ price, assetTypeSub: subValue, updatedAt: new Date() })
               .where(eq(schema.security.ticker, symbol));
             processedCount++;
           }
@@ -634,7 +632,7 @@ export class SchwabSyncService {
       sanitizeSchwabAccountId(schwabAccount.accountId),
       sanitizeAccountNumber(schwabAccount.accountNumber),
     );
-    const now = Date.now();
+    const now = new Date();
 
     // Get the nickname from user preferences, fallback to Schwab account nickname or type
     const preferredNickname = nicknameMap.get(schwabAccount.accountNumber);
@@ -829,7 +827,7 @@ export class SchwabSyncService {
     logId?: string,
   ): Promise<void> {
     console.log('📊 [SchwabSync] Syncing individual position for account:', accountId);
-    const now = Date.now();
+    const now = new Date();
     const symbol = position.instrument.symbol;
 
     // Prefer settled long quantity when provided; otherwise use longQuantity
@@ -882,9 +880,40 @@ export class SchwabSyncService {
     if (existingHolding.length > 0) {
       // Update existing holding
       console.log('🔄 [SchwabSync] Updating existing holding:', existingHolding[0].id);
+
+      // Check if we need to update openedAt based on transaction history
+      const earliestTransaction = await this.getDb()
+        .select({ executedAt: schema.transaction.executedAt })
+        .from(schema.transaction)
+        .where(
+          and(
+            eq(schema.transaction.accountId, accountId),
+            eq(schema.transaction.ticker, symbol),
+            eq(schema.transaction.type, 'BUY'),
+          ),
+        )
+        .orderBy(schema.transaction.executedAt)
+        .limit(1);
+
+      const updateData: typeof holdingData & { openedAt?: Date } = { ...holdingData };
+
+      // Update openedAt if we found a transaction and the current openedAt is newer than the transaction
+      if (earliestTransaction.length > 0) {
+        const transactionOpenedAt = earliestTransaction[0].executedAt;
+        const currentOpenedAt = existingHolding[0].openedAt;
+
+        // If current openedAt is much newer than transaction date (indicating it was set to import time),
+        // update it to the transaction date
+        if (currentOpenedAt.getTime() > transactionOpenedAt.getTime() + 86400000) {
+          // More than 1 day difference
+          updateData.openedAt = transactionOpenedAt;
+          console.log('📅 [SchwabSync] Updating openedAt from transaction history for', symbol);
+        }
+      }
+
       this.getDb()
         .update(schema.holding)
-        .set(holdingData)
+        .set(updateData)
         .where(eq(schema.holding.id, existingHolding[0].id));
       console.log('✅ [SchwabSync] Successfully updated existing holding for', symbol);
       // Record detail row
@@ -912,12 +941,29 @@ export class SchwabSyncService {
       // Create new holding
       console.log('🆕 [SchwabSync] Creating new holding for symbol:', symbol);
       const newHoldingId = crypto.randomUUID();
+
+      // Find the earliest BUY transaction for this ticker/account to determine openedAt
+      const earliestTransaction = await this.getDb()
+        .select({ executedAt: schema.transaction.executedAt })
+        .from(schema.transaction)
+        .where(
+          and(
+            eq(schema.transaction.accountId, accountId),
+            eq(schema.transaction.ticker, symbol),
+            eq(schema.transaction.type, 'BUY'),
+          ),
+        )
+        .orderBy(schema.transaction.executedAt)
+        .limit(1);
+
+      const openedAt = earliestTransaction.length > 0 ? earliestTransaction[0].executedAt : now; // Fallback to current time if no transactions found
+
       const insertData = {
         id: newHoldingId,
         accountId,
         ticker: symbol,
         ...holdingData,
-        openedAt: now, // Use current time as opened date for imported positions
+        openedAt,
         dataSource: 'SCHWAB',
         createdAt: now,
       };
@@ -952,7 +998,7 @@ export class SchwabSyncService {
     cashAmount: number,
     logId?: string,
   ): Promise<void> {
-    const now = Date.now();
+    const now = new Date();
     const symbol = '$$$';
     // Ensure cash security exists at $1 and asset type CASH/MMF
     const existingSec = await this.getDb()
@@ -1064,7 +1110,7 @@ export class SchwabSyncService {
 
     if (existing.length === 0) {
       console.log('🆕 [SchwabSync] Creating new security for ticker:', ticker);
-      const now = Date.now();
+      const now = new Date();
       const insertData = {
         ticker,
         name: ticker, // Will be updated when we get more info

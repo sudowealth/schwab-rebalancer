@@ -256,15 +256,17 @@ export const syncYahooFundamentalsServerFn = createServerFn({ method: 'POST' })
     // Create sync log entry
     const logId = crypto.randomUUID();
     try {
-      await getDb().insert(schema.syncLog).values({
-        id: logId,
-        userId: user.id,
-        syncType: 'YAHOO',
-        status: 'RUNNING',
-        recordsProcessed: 0,
-        startedAt: new Date(),
-        createdAt: new Date(),
-      } as unknown as typeof schema.syncLog.$inferInsert);
+      await getDb()
+        .insert(schema.syncLog)
+        .values({
+          id: logId,
+          userId: user.id,
+          syncType: 'YAHOO',
+          status: 'RUNNING',
+          recordsProcessed: 0,
+          startedAt: new Date(),
+          createdAt: new Date(),
+        } as unknown as typeof schema.syncLog.$inferInsert);
     } catch {
       // Ignore logging failure when creating sync log
     }
@@ -311,7 +313,7 @@ export const syncYahooFundamentalsServerFn = createServerFn({ method: 'POST' })
           continue;
         }
 
-        const updateData: Record<string, unknown> = { updatedAt: Date.now() };
+        const updateData: Record<string, unknown> = { updatedAt: new Date() };
         const changes: FieldChangeSet = {};
 
         if (typeof price === 'number') {
@@ -371,16 +373,18 @@ export const syncYahooFundamentalsServerFn = createServerFn({ method: 'POST' })
 
         // Persist per-symbol detail
         try {
-          await getDb().insert(schema.syncLogDetail).values({
-            id: crypto.randomUUID(),
-            logId,
-            entityType: 'SECURITY',
-            entityId: symbol,
-            operation: 'UPDATE',
-            changes: JSON.stringify(changes),
-            success: true,
-            createdAt: new Date(),
-          } as unknown as typeof schema.syncLogDetail.$inferInsert);
+          await getDb()
+            .insert(schema.syncLogDetail)
+            .values({
+              id: crypto.randomUUID(),
+              logId,
+              entityType: 'SECURITY',
+              entityId: symbol,
+              operation: 'UPDATE',
+              changes: JSON.stringify(changes),
+              success: true,
+              createdAt: new Date(),
+            } as unknown as typeof schema.syncLogDetail.$inferInsert);
         } catch {
           // Non-fatal detail logging failure
         }
@@ -391,17 +395,19 @@ export const syncYahooFundamentalsServerFn = createServerFn({ method: 'POST' })
       } catch (error) {
         const message = getErrorMessage(error);
         try {
-          await getDb().insert(schema.syncLogDetail).values({
-            id: crypto.randomUUID(),
-            logId,
-            entityType: 'SECURITY',
-            entityId: symbol,
-            operation: 'NOOP',
-            changes: JSON.stringify({}),
-            success: false,
-            message,
-            createdAt: new Date(),
-          } as unknown as typeof schema.syncLogDetail.$inferInsert);
+          await getDb()
+            .insert(schema.syncLogDetail)
+            .values({
+              id: crypto.randomUUID(),
+              logId,
+              entityType: 'SECURITY',
+              entityId: symbol,
+              operation: 'NOOP',
+              changes: JSON.stringify({}),
+              success: false,
+              message,
+              createdAt: new Date(),
+            } as unknown as typeof schema.syncLogDetail.$inferInsert);
         } catch {
           // Non-fatal detail logging failure
         }

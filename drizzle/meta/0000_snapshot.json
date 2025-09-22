@@ -1,5 +1,5 @@
 {
-  "id": "8174a560-a451-473f-9f73-cec6e95c7e1a",
+  "id": "3179a1f9-f22e-43a9-9909-66b738e3c8a7",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -60,13 +60,13 @@
         },
         "createdAt": {
           "name": "createdAt",
-          "type": "integer",
+          "type": "timestamp",
           "primaryKey": false,
           "notNull": true
         },
         "updatedAt": {
           "name": "updatedAt",
-          "type": "integer",
+          "type": "timestamp",
           "primaryKey": false,
           "notNull": true
         }
@@ -95,6 +95,14 @@
           "columns": [
             "userId",
             "accountNumber"
+          ]
+        },
+        "account_userId_schwabAccountId_unique": {
+          "name": "account_userId_schwabAccountId_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "userId",
+            "schwabAccountId"
           ]
         }
       },
@@ -288,482 +296,6 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.financial_plan": {
-      "name": "financial_plan",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "text",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "userId": {
-          "name": "userId",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "name": {
-          "name": "name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "createdAt": {
-          "name": "createdAt",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "updatedAt": {
-          "name": "updatedAt",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "financial_plan_userId_user_id_fk": {
-          "name": "financial_plan_userId_user_id_fk",
-          "tableFrom": "financial_plan",
-          "tableTo": "user",
-          "columnsFrom": [
-            "userId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.financial_plan_goal": {
-      "name": "financial_plan_goal",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "text",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "planId": {
-          "name": "planId",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "purpose": {
-          "name": "purpose",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "type": {
-          "name": "type",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "amount": {
-          "name": "amount",
-          "type": "real",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "inflationAdjusted": {
-          "name": "inflationAdjusted",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": true
-        },
-        "startTiming": {
-          "name": "startTiming",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'immediately'"
-        },
-        "durationYears": {
-          "name": "durationYears",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "frequency": {
-          "name": "frequency",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'annually'"
-        },
-        "repeatPattern": {
-          "name": "repeatPattern",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'none'"
-        },
-        "occurrences": {
-          "name": "occurrences",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        },
-        "createdAt": {
-          "name": "createdAt",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "financial_plan_goal_planId_financial_plan_id_fk": {
-          "name": "financial_plan_goal_planId_financial_plan_id_fk",
-          "tableFrom": "financial_plan_goal",
-          "tableTo": "financial_plan",
-          "columnsFrom": [
-            "planId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.financial_plan_input": {
-      "name": "financial_plan_input",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "text",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "planId": {
-          "name": "planId",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "filingStatus": {
-          "name": "filingStatus",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'single'"
-        },
-        "primaryUserAge": {
-          "name": "primaryUserAge",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "spouseAge": {
-          "name": "spouseAge",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "simulationPeriod": {
-          "name": "simulationPeriod",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 50
-        },
-        "returnRate": {
-          "name": "returnRate",
-          "type": "real",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 10
-        },
-        "inflationRate": {
-          "name": "inflationRate",
-          "type": "real",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 2
-        },
-        "dividendRate": {
-          "name": "dividendRate",
-          "type": "real",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 2
-        },
-        "taxableBalance": {
-          "name": "taxableBalance",
-          "type": "real",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 100000
-        },
-        "taxableCostBasis": {
-          "name": "taxableCostBasis",
-          "type": "real",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 100000
-        },
-        "rothBalance": {
-          "name": "rothBalance",
-          "type": "real",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 100000
-        },
-        "deferredBalance": {
-          "name": "deferredBalance",
-          "type": "real",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 100000
-        },
-        "updatedAt": {
-          "name": "updatedAt",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "financial_plan_input_planId_financial_plan_id_fk": {
-          "name": "financial_plan_input_planId_financial_plan_id_fk",
-          "tableFrom": "financial_plan_input",
-          "tableTo": "financial_plan",
-          "columnsFrom": [
-            "planId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.financial_plan_result": {
-      "name": "financial_plan_result",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "text",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "planId": {
-          "name": "planId",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "year": {
-          "name": "year",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "startingTaxable": {
-          "name": "startingTaxable",
-          "type": "real",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "startingRoth": {
-          "name": "startingRoth",
-          "type": "real",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "startingDeferred": {
-          "name": "startingDeferred",
-          "type": "real",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "growthTaxable": {
-          "name": "growthTaxable",
-          "type": "real",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "growthRoth": {
-          "name": "growthRoth",
-          "type": "real",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "growthDeferred": {
-          "name": "growthDeferred",
-          "type": "real",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "contributionsTaxable": {
-          "name": "contributionsTaxable",
-          "type": "real",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "contributionsRoth": {
-          "name": "contributionsRoth",
-          "type": "real",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "contributionsDeferred": {
-          "name": "contributionsDeferred",
-          "type": "real",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "withdrawalsTaxable": {
-          "name": "withdrawalsTaxable",
-          "type": "real",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "withdrawalsRoth": {
-          "name": "withdrawalsRoth",
-          "type": "real",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "withdrawalsDeferred": {
-          "name": "withdrawalsDeferred",
-          "type": "real",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "federalIncomeTax": {
-          "name": "federalIncomeTax",
-          "type": "real",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "californiaIncomeTax": {
-          "name": "californiaIncomeTax",
-          "type": "real",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "federalCapitalGainsTax": {
-          "name": "federalCapitalGainsTax",
-          "type": "real",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "californiaCapitalGainsTax": {
-          "name": "californiaCapitalGainsTax",
-          "type": "real",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "federalDividendTax": {
-          "name": "federalDividendTax",
-          "type": "real",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "californiaDividendTax": {
-          "name": "californiaDividendTax",
-          "type": "real",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "totalTaxes": {
-          "name": "totalTaxes",
-          "type": "real",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "endingTaxable": {
-          "name": "endingTaxable",
-          "type": "real",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "endingRoth": {
-          "name": "endingRoth",
-          "type": "real",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "endingDeferred": {
-          "name": "endingDeferred",
-          "type": "real",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "totalPortfolioNominal": {
-          "name": "totalPortfolioNominal",
-          "type": "real",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "totalPortfolioReal": {
-          "name": "totalPortfolioReal",
-          "type": "real",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "calculatedAt": {
-          "name": "calculatedAt",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "financial_plan_result_planId_financial_plan_id_fk": {
-          "name": "financial_plan_result_planId_financial_plan_id_fk",
-          "tableFrom": "financial_plan_result",
-          "tableTo": "financial_plan",
-          "columnsFrom": [
-            "planId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
     "public.holding": {
       "name": "holding",
       "schema": "",
@@ -800,7 +332,7 @@
         },
         "openedAt": {
           "name": "openedAt",
-          "type": "integer",
+          "type": "timestamp",
           "primaryKey": false,
           "notNull": true
         },
@@ -825,13 +357,13 @@
         },
         "createdAt": {
           "name": "createdAt",
-          "type": "integer",
+          "type": "timestamp",
           "primaryKey": false,
           "notNull": true
         },
         "updatedAt": {
           "name": "updatedAt",
-          "type": "integer",
+          "type": "timestamp",
           "primaryKey": false,
           "notNull": true
         }
@@ -895,13 +427,13 @@
         },
         "createdAt": {
           "name": "createdAt",
-          "type": "integer",
+          "type": "timestamp",
           "primaryKey": false,
           "notNull": true
         },
         "updatedAt": {
           "name": "updatedAt",
-          "type": "integer",
+          "type": "timestamp",
           "primaryKey": false,
           "notNull": true
         }
@@ -959,13 +491,13 @@
         },
         "createdAt": {
           "name": "createdAt",
-          "type": "integer",
+          "type": "timestamp",
           "primaryKey": false,
           "notNull": true
         },
         "updatedAt": {
           "name": "updatedAt",
-          "type": "integer",
+          "type": "timestamp",
           "primaryKey": false,
           "notNull": true
         }
@@ -1015,13 +547,13 @@
         },
         "createdAt": {
           "name": "createdAt",
-          "type": "integer",
+          "type": "timestamp",
           "primaryKey": false,
           "notNull": true
         },
         "updatedAt": {
           "name": "updatedAt",
-          "type": "integer",
+          "type": "timestamp",
           "primaryKey": false,
           "notNull": true
         }
@@ -1081,13 +613,13 @@
         },
         "createdAt": {
           "name": "createdAt",
-          "type": "integer",
+          "type": "timestamp",
           "primaryKey": false,
           "notNull": true
         },
         "updatedAt": {
           "name": "updatedAt",
-          "type": "integer",
+          "type": "timestamp",
           "primaryKey": false,
           "notNull": true
         }
@@ -1173,13 +705,13 @@
         },
         "createdAt": {
           "name": "createdAt",
-          "type": "integer",
+          "type": "timestamp",
           "primaryKey": false,
           "notNull": true
         },
         "updatedAt": {
           "name": "updatedAt",
-          "type": "integer",
+          "type": "timestamp",
           "primaryKey": false,
           "notNull": true
         }
@@ -1365,13 +897,13 @@
         },
         "createdAt": {
           "name": "createdAt",
-          "type": "integer",
+          "type": "timestamp",
           "primaryKey": false,
           "notNull": true
         },
         "updatedAt": {
           "name": "updatedAt",
-          "type": "integer",
+          "type": "timestamp",
           "primaryKey": false,
           "notNull": true
         }
@@ -1429,13 +961,13 @@
         },
         "createdAt": {
           "name": "createdAt",
-          "type": "integer",
+          "type": "timestamp",
           "primaryKey": false,
           "notNull": true
         },
         "updatedAt": {
           "name": "updatedAt",
-          "type": "integer",
+          "type": "timestamp",
           "primaryKey": false,
           "notNull": true
         }
@@ -1505,25 +1037,25 @@
         },
         "soldAt": {
           "name": "soldAt",
-          "type": "integer",
+          "type": "timestamp",
           "primaryKey": false,
           "notNull": true
         },
         "blockedUntil": {
           "name": "blockedUntil",
-          "type": "integer",
+          "type": "timestamp",
           "primaryKey": false,
           "notNull": true
         },
         "createdAt": {
           "name": "createdAt",
-          "type": "integer",
+          "type": "timestamp",
           "primaryKey": false,
           "notNull": true
         },
         "updatedAt": {
           "name": "updatedAt",
-          "type": "integer",
+          "type": "timestamp",
           "primaryKey": false,
           "notNull": true
         }
@@ -1736,8 +1268,8 @@
           "primaryKey": false,
           "notNull": true
         },
-        "schwabClientId": {
-          "name": "schwabClientId",
+        "encryptedSchwabClientId": {
+          "name": "encryptedSchwabClientId",
           "type": "text",
           "primaryKey": false,
           "notNull": true
@@ -2299,13 +1831,13 @@
         },
         "createdAt": {
           "name": "createdAt",
-          "type": "integer",
+          "type": "timestamp",
           "primaryKey": false,
           "notNull": true
         },
         "updatedAt": {
           "name": "updatedAt",
-          "type": "integer",
+          "type": "timestamp",
           "primaryKey": false,
           "notNull": true
         }
@@ -2432,13 +1964,13 @@
         },
         "createdAt": {
           "name": "createdAt",
-          "type": "integer",
+          "type": "timestamp",
           "primaryKey": false,
           "notNull": true
         },
         "updatedAt": {
           "name": "updatedAt",
-          "type": "integer",
+          "type": "timestamp",
           "primaryKey": false,
           "notNull": true
         }
@@ -2518,13 +2050,13 @@
         },
         "createdAt": {
           "name": "createdAt",
-          "type": "integer",
+          "type": "timestamp",
           "primaryKey": false,
           "notNull": true
         },
         "updatedAt": {
           "name": "updatedAt",
-          "type": "integer",
+          "type": "timestamp",
           "primaryKey": false,
           "notNull": true
         }
@@ -2722,68 +2254,6 @@
           "onUpdate": "no action"
         }
       },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.tax_bracket": {
-      "name": "tax_bracket",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "text",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "bracketType": {
-          "name": "bracketType",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "filingStatus": {
-          "name": "filingStatus",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "minIncome": {
-          "name": "minIncome",
-          "type": "real",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "maxIncome": {
-          "name": "maxIncome",
-          "type": "real",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "rate": {
-          "name": "rate",
-          "type": "real",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "year": {
-          "name": "year",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 2025
-        },
-        "createdAt": {
-          "name": "createdAt",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
@@ -3264,19 +2734,19 @@
         },
         "executedAt": {
           "name": "executedAt",
-          "type": "integer",
+          "type": "timestamp",
           "primaryKey": false,
           "notNull": true
         },
         "createdAt": {
           "name": "createdAt",
-          "type": "integer",
+          "type": "timestamp",
           "primaryKey": false,
           "notNull": true
         },
         "updatedAt": {
           "name": "updatedAt",
-          "type": "integer",
+          "type": "timestamp",
           "primaryKey": false,
           "notNull": true
         }
@@ -3369,6 +2839,25 @@
           "primaryKey": false,
           "notNull": false,
           "default": "'user'"
+        },
+        "failedLoginAttempts": {
+          "name": "failedLoginAttempts",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "lastFailedLoginAt": {
+          "name": "lastFailedLoginAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "lockedUntil": {
+          "name": "lockedUntil",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
         },
         "createdAt": {
           "name": "createdAt",

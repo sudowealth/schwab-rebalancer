@@ -126,7 +126,7 @@ async function generateSP500SecuritiesData(): Promise<
 export async function seedSP500Securities() {
   console.log('📊 Seeding S&P 500 securities and index...');
 
-  const now = Math.floor(Date.now() / 1000);
+  const now = new Date();
 
   // Generate S&P 500 securities data from GitHub CSV
   const SP500_SECURITIES_DATA = await generateSP500SecuritiesData();
@@ -208,7 +208,7 @@ export async function seedSP500Securities() {
   );
 }
 
-const createdAt = Math.floor(Date.now() / 1000);
+const createdAt = new Date();
 
 // Function to generate sleeves dynamically from S&P 500 data
 async function generateDynamicSleeves() {
@@ -318,7 +318,7 @@ async function generateDynamicSleeves() {
 export async function seedSleeves(userId?: string) {
   console.log('📂 Seeding sleeves...');
 
-  const now = Math.floor(Date.now() / 1000);
+  const now = new Date();
 
   const targetUserId = userId || 'demo-user';
   console.log(`✅ Using user ID for sleeves: ${targetUserId}`);

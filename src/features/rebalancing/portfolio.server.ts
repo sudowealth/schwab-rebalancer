@@ -110,11 +110,7 @@ export const rebalancePortfolioServerFn = createServerFn({ method: 'POST' })
         .innerJoin(schema.account, eq(schema.holding.accountId, schema.account.id))
         .where(inArray(schema.holding.accountId, accountIds));
 
-      // Convert openedAt to Date
-      const processedHoldings = holdings.map((holding) => ({
-        ...holding,
-        openedAt: new Date(holding.openedAt),
-      }));
+      const processedHoldings = holdings;
 
       // Step 6: Gather wash sale restrictions
       const restrictions = await getDb()
@@ -126,7 +122,7 @@ export const rebalancePortfolioServerFn = createServerFn({ method: 'POST' })
               schema.restrictedSecurity.sleeveId,
               modelSleeves.map((s) => s.sleeveId),
             ),
-            gt(schema.restrictedSecurity.blockedUntil, Date.now()),
+            gt(schema.restrictedSecurity.blockedUntil, new Date()),
           ),
         );
 
@@ -152,10 +148,8 @@ export const rebalancePortfolioServerFn = createServerFn({ method: 'POST' })
         .where(inArray(schema.transaction.accountId, accountIds))
         .orderBy(desc(schema.transaction.executedAt));
 
-      // Convert executedAt to Date for Transaction interface
       const transactions = transactionData.map((tx) => ({
         ...tx,
-        executedAt: new Date(tx.executedAt),
         realizedGainLoss: tx.realizedGainLoss ?? 0,
       }));
 
@@ -166,7 +160,7 @@ export const rebalancePortfolioServerFn = createServerFn({ method: 'POST' })
       // Debug: Show what transactions we have
       transactions.forEach((tx) => {
         console.log(
-          `🔍 Transaction: ${tx.ticker} ${tx.type} $${tx.realizedGainLoss?.toFixed(2) ?? 0} on ${new Date(tx.executedAt).toLocaleDateString()} in ${tx.accountName} (${tx.accountType})`,
+          `🔍 Transaction: ${tx.ticker} ${tx.type} $${tx.realizedGainLoss?.toFixed(2) ?? 0} on ${tx.executedAt.toLocaleDateString()} in ${tx.accountName} (${tx.accountType})`,
         );
       });
 
@@ -403,7 +397,7 @@ export const updateManualCashServerFn = createServerFn({ method: 'POST' })
       throw new Error('Access denied: Account not found or does not belong to you');
     }
 
-    const now = Date.now();
+    const now = new Date();
 
     try {
       // Check if MCASH holding already exists for this account

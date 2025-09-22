@@ -20,7 +20,7 @@ export interface Security extends Record<string, unknown> {
   accountNames: string[]; // UI uses array format
   costBasis?: number;
   costBasisPerShare?: number;
-  openedAt?: Date | string | number | { getTime(): number } | null;
+  openedAt?: Date | null;
   totalGainLoss?: number;
   longTermGainLoss?: number;
   shortTermGainLoss?: number;

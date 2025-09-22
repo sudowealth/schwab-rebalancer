@@ -207,7 +207,7 @@ export const getPositions = async (userId?: string) => {
           ticker: string;
           qty: number;
           costBasis: number;
-          openedAt: Date | number;
+          openedAt: Date;
           accountId: string;
           accountName: string;
           accountType: string;
@@ -288,7 +288,7 @@ export const getPositions = async (userId?: string) => {
             const dollarGainLoss = marketValue - costValue;
             const percentGainLoss = costValue > 0 ? (dollarGainLoss / costValue) * 100 : 0;
 
-            const openedAt = new Date(holding.openedAt);
+            const openedAt = holding.openedAt;
             const daysHeld = Math.floor((Date.now() - openedAt.getTime()) / (1000 * 60 * 60 * 24));
 
             // Get sleeve information from sleeve_member table
@@ -390,7 +390,7 @@ export async function getGroupTransactions(accountIds: string[]) {
     type: tx.type as 'BUY' | 'SELL',
     qty: tx.qty,
     price: tx.price,
-    executedAt: new Date(tx.executedAt), // Convert number to Date
+    executedAt: tx.executedAt, // Already a Date object
     realizedGainLoss: tx.realizedGainLoss || 0, // Convert null to 0
     sleeveName: tx.sleeveName || '',
     accountName: tx.accountName,
@@ -469,7 +469,7 @@ export const getSleeves = async (userId?: string) => {
     ticker: string;
     qty: number;
     costBasis: number;
-    openedAt: Date | number;
+    openedAt: Date;
   }> = [];
 
   if (memberTickers.length > 0) {
@@ -504,7 +504,7 @@ export const getSleeves = async (userId?: string) => {
         ticker: string;
         qty: number;
         costBasis: number;
-        openedAt: Date | number;
+        openedAt: Date;
       }>;
     }
   >();
@@ -567,7 +567,7 @@ export const getSleeves = async (userId?: string) => {
       ticker: string;
       qty: number;
       costBasis: number;
-      openedAt: Date | number;
+      openedAt: Date;
       currentPrice?: number;
       marketValue?: number;
       dollarGainLoss?: number;
@@ -599,7 +599,7 @@ export const getSleeves = async (userId?: string) => {
         marketValue,
         dollarGainLoss,
         percentGainLoss,
-        openedAt: new Date(holding.openedAt),
+        openedAt: holding.openedAt,
       };
       break; // Use first available holding
     }
@@ -638,11 +638,11 @@ export const getRestrictedSecurities = async (): Promise<RestrictedSecurity[]> =
     })
     .from(schema.restrictedSecurity)
     .innerJoin(schema.sleeve, eq(schema.restrictedSecurity.sleeveId, schema.sleeve.id))
-    .where(sql`${schema.restrictedSecurity.blockedUntil} > ${Date.now()}`);
+    .where(sql`${schema.restrictedSecurity.blockedUntil} > ${new Date()}`);
 
   const formattedRestrictedSecurities: RestrictedSecurity[] = restrictedSecurities.map((rs) => {
-    const soldAt = new Date(rs.soldAt);
-    const blockedUntil = new Date(rs.blockedUntil);
+    const soldAt = rs.soldAt;
+    const blockedUntil = rs.blockedUntil;
     const daysToUnblock = Math.ceil((blockedUntil.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
 
     return {
@@ -1035,7 +1035,7 @@ export const createSleeve = async (
     throw new Error(`Invalid tickers (not found in securities): ${invalidTickers.join(', ')}`);
   }
 
-  const now = Date.now();
+  const now = new Date();
 
   // Start transaction
   try {
@@ -1147,7 +1147,7 @@ export const updateSleeve = async (
     throw new Error(`Invalid tickers (not found in securities): ${invalidTickers.join(', ')}`);
   }
 
-  const now = Date.now();
+  const now = new Date();
 
   try {
     // Update sleeve name
@@ -1320,8 +1320,8 @@ export const getModels = async (userId?: string) => {
       name: string;
       description: string | null;
       isActive: boolean;
-      createdAt: number;
-      updatedAt: number;
+      createdAt: Date;
+      updatedAt: Date;
       members: Array<{
         id: string;
         sleeveId: string;
@@ -1366,8 +1366,8 @@ export const getModels = async (userId?: string) => {
     description: model.description || undefined,
     isActive: model.isActive,
     members: model.members,
-    createdAt: new Date(model.createdAt),
-    updatedAt: new Date(model.updatedAt),
+    createdAt: model.createdAt,
+    updatedAt: model.updatedAt,
   }));
 
   // Validate data
@@ -1421,8 +1421,8 @@ export const getModelById = async (modelId: string): Promise<Model | null> => {
       targetWeight: member.targetWeight,
       isActive: member.isActive,
     })),
-    createdAt: new Date(model[0].createdAt),
-    updatedAt: new Date(model[0].updatedAt),
+    createdAt: model[0].createdAt,
+    updatedAt: model[0].updatedAt,
   };
 };
 
@@ -1470,19 +1470,21 @@ export const createModel = async (data: CreateModel, userId: string): Promise<st
     );
   }
 
-  const now = Date.now();
+  const now = new Date();
 
   try {
     // Create the model
-    await getDb().insert(schema.model).values({
-      id: modelId,
-      userId: userId,
-      name: data.name,
-      description: data.description || null,
-      isActive: true,
-      createdAt: now,
-      updatedAt: now,
-    });
+    await getDb()
+      .insert(schema.model)
+      .values({
+        id: modelId,
+        userId: userId,
+        name: data.name,
+        description: data.description || null,
+        isActive: true,
+        createdAt: now,
+        updatedAt: now,
+      });
 
     // Create model members
     if (data.members.length > 0) {
@@ -1558,7 +1560,7 @@ export const updateModel = async (modelId: string, data: CreateModel): Promise<v
     );
   }
 
-  const now = Date.now();
+  const now = new Date();
 
   try {
     // Update the model
@@ -1680,8 +1682,8 @@ export async function getOrdersForAccounts(accountIds: string[]): Promise<Order[
     cancelAt: r.cancelAt ? new Date(r.cancelAt) : null,
     placedAt: r.placedAt ? new Date(r.placedAt) : null,
     closedAt: r.closedAt ? new Date(r.closedAt) : null,
-    createdAt: new Date(r.createdAt),
-    updatedAt: new Date(r.updatedAt),
+    createdAt: r.createdAt,
+    updatedAt: r.updatedAt,
   }));
   return validateData(OrdersSchema, normalized, 'orders');
 }
@@ -1693,7 +1695,7 @@ export async function addDraftOrdersFromProposedTrades(params: {
   accountId?: string; // optional override
   batchLabel?: string;
 }): Promise<{ created: number }> {
-  const now = Date.now();
+  const now = new Date();
   let created = 0;
 
   for (const t of params.trades) {
@@ -1963,8 +1965,8 @@ export const getRebalancingGroups = async (userId: string): Promise<RebalancingG
       id: string;
       name: string;
       isActive: boolean;
-      createdAt: number;
-      updatedAt: number;
+      createdAt: Date;
+      updatedAt: Date;
       members: Array<{
         id: string;
         accountId: string;
@@ -2044,8 +2046,8 @@ export const getRebalancingGroups = async (userId: string): Promise<RebalancingG
     isActive: group.isActive,
     members: group.members,
     assignedModel: group.assignedModel,
-    createdAt: new Date(group.createdAt),
-    updatedAt: new Date(group.updatedAt),
+    createdAt: group.createdAt,
+    updatedAt: group.updatedAt,
   }));
 
   // Validate data
@@ -2165,12 +2167,12 @@ export const getRebalancingGroupById = async (
               targetWeight: member.targetWeight,
               isActive: member.isActive,
             })),
-            createdAt: new Date(assignedModel[0].createdAt),
-            updatedAt: new Date(assignedModel[0].updatedAt),
+            createdAt: assignedModel[0].createdAt,
+            updatedAt: assignedModel[0].updatedAt,
           }
         : undefined,
-    createdAt: new Date(group[0].createdAt),
-    updatedAt: new Date(group[0].updatedAt),
+    createdAt: group[0].createdAt,
+    updatedAt: group[0].updatedAt,
   };
 };
 
@@ -2313,7 +2315,7 @@ export const getAccountHoldings = async (accountIds: string[]) => {
       sleeves,
       sector: securityInfo.sector,
       industry: securityInfo.industry,
-      openedAt: new Date(holding.openedAt),
+      openedAt: holding.openedAt,
     });
   }
 
@@ -2479,7 +2481,7 @@ export const createRebalancingGroup = async (
     }
   }
 
-  const now = Date.now();
+  const now = new Date();
 
   try {
     // Create the rebalancing group
@@ -2566,7 +2568,7 @@ export const updateRebalancingGroup = async (
     }
   }
 
-  const now = Date.now();
+  const now = new Date();
 
   try {
     // Update the group
@@ -2909,8 +2911,8 @@ export const assignModelToGroup = async (
         id: assignmentId,
         modelId: modelId,
         rebalancingGroupId: groupId,
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
+        createdAt: new Date(),
+        updatedAt: new Date(),
       });
     }
 
@@ -2979,7 +2981,7 @@ export const updateAccount = async (
       .set({
         name: updates.name,
         type: updates.type,
-        updatedAt: Date.now(),
+        updatedAt: new Date(),
       })
       .where(eq(schema.account.id, accountId));
 

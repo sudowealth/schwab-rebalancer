@@ -27,7 +27,7 @@ export function SecurityModal({
   const position = positions?.find((p) => p.ticker === ticker);
   const recentTransactions = transactions
     ?.filter((t) => t.ticker === ticker)
-    ?.sort((a, b) => new Date(b.executedAt).getTime() - new Date(a.executedAt).getTime())
+    ?.sort((a, b) => b.executedAt.getTime() - a.executedAt.getTime())
     ?.slice(0, 5);
   const proposedTrade = proposedTrades?.find((t) => t.ticker === ticker);
 
@@ -250,7 +250,7 @@ export function SecurityModal({
                           {transaction.type}
                         </span>
                         <span className="text-gray-600">
-                          {new Date(transaction.executedAt).toLocaleDateString()}
+                          {transaction.executedAt.toLocaleDateString()}
                         </span>
                       </div>
                       <div className="text-right">

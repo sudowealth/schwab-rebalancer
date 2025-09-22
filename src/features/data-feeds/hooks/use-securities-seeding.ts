@@ -41,6 +41,14 @@ export function useSecuritiesSeeding(
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const [hasTriggeredSeedingCheck, setHasTriggeredSeedingCheck] = useState(false);
 
+  // Debug: log when hook is called
+  console.log('🔧 useSecuritiesSeeding hook called with:', {
+    securitiesStatus,
+    queryStatus,
+    fetchStatus,
+    isFetchedAfterMount,
+  });
+
   // Seed securities mutation
   const seedSecuritiesMutation = useMutation({
     mutationFn: seedSecuritiesDataServerFn,
@@ -73,6 +81,16 @@ export function useSecuritiesSeeding(
   // Automatically start seeding when no securities exist.
   // This effect waits until the initial query is successful and no longer fetching before making a decision.
   useEffect(() => {
+    console.log('🔍 useSecuritiesSeeding check:', {
+      queryStatus,
+      fetchStatus,
+      isFetchedAfterMount,
+      hasTriggeredSeedingCheck,
+      securitiesStatus,
+      hasSecurities: securitiesStatus?.hasSecurities,
+      securitiesCount: securitiesStatus?.securitiesCount,
+    });
+
     // Only run this check once the query has successfully completed, is idle, and has refetched after mount
     if (
       queryStatus === 'success' &&
@@ -80,6 +98,7 @@ export function useSecuritiesSeeding(
       (isFetchedAfterMount ?? true) &&
       !hasTriggeredSeedingCheck
     ) {
+      console.log('✅ Seeding check conditions met');
       setHasTriggeredSeedingCheck(true); // Mark that we've performed the check
 
       if (
@@ -87,9 +106,16 @@ export function useSecuritiesSeeding(
         !securitiesStatus.hasSecurities &&
         !seedSecuritiesMutation.isPending
       ) {
-        console.log('Automatically starting securities seeding...');
+        console.log('🚀 Starting automatic securities seeding...');
         setHasStartedSeeding(true);
         seedSecuritiesMutation.mutate(undefined);
+      } else {
+        console.log(
+          '❌ Not seeding - hasSecurities:',
+          securitiesStatus?.hasSecurities,
+          'count:',
+          securitiesStatus?.securitiesCount,
+        );
       }
     }
   }, [

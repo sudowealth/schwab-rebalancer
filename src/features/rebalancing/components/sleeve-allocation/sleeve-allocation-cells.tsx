@@ -30,7 +30,7 @@ interface Security {
   targetPercent?: number;
   currentPrice?: number;
   costBasis?: number;
-  openedAt?: Date | string;
+  openedAt?: Date;
   totalGainLoss?: number;
   longTermGainLoss?: number;
   shortTermGainLoss?: number;

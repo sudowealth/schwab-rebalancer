@@ -1,4 +1,4 @@
-import { inArray } from 'drizzle-orm';
+import { inArray, sql } from 'drizzle-orm';
 import * as schema from '~/db/schema';
 import { getDb } from '~/lib/db-config';
 
@@ -23,8 +23,6 @@ const CASH_DATA = [
 export async function seedSecurities() {
   console.log('📊 Seeding cash securities...');
 
-  const now = Math.floor(Date.now() / 1000);
-
   // Only seed cash securities, ETFs and stocks will be populated via equity securities sync
   const existingCash = await getDb()
     .select({ ticker: schema.security.ticker })
@@ -44,23 +42,31 @@ export async function seedSecurities() {
   let insertedCount = 0;
 
   if (securitiesToInsert.length > 0) {
-    const inserted = await getDb()
-      .insert(schema.security)
-      .values(
-        securitiesToInsert.map((security) => ({
-          ticker: security.ticker,
-          name: security.name,
-          price: security.price,
-          industry: security.industry,
-          sector: security.sector,
-          createdAt: now,
-          updatedAt: now,
-        })),
-      )
-      .onConflictDoNothing({ target: schema.security.ticker })
-      .returning({ ticker: schema.security.ticker });
+    // Insert one by one to avoid parameter alignment issues
+    for (const security of securitiesToInsert) {
+      try {
+        await getDb()
+          .insert(schema.security)
+          .values({
+            ticker: security.ticker,
+            name: security.name,
+            price: security.price,
+            marketCap: null,
+            peRatio: null,
+            industry: security.industry,
+            sector: security.sector,
+            assetType: 'CASH',
+            assetTypeSub: null,
+            createdAt: sql`NOW()`,
+            updatedAt: sql`NOW()`,
+          })
+          .onConflictDoNothing({ target: schema.security.ticker });
 
-    insertedCount = inserted.length;
+        insertedCount++;
+      } catch (error) {
+        console.error(`Failed to insert security ${security.ticker}:`, error);
+      }
+    }
   }
 
   if (insertedCount > 0) {

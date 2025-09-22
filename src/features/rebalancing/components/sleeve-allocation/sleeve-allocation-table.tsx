@@ -99,17 +99,7 @@ const calculateRealizedGains = (
   });
 
   // Determine if long-term (>1 year) or short-term
-  const isLongTerm = openedAt
-    ? Date.now() -
-        (typeof openedAt === 'number'
-          ? openedAt
-          : openedAt instanceof Date
-            ? openedAt.getTime()
-            : typeof openedAt === 'object' && 'getTime' in openedAt
-              ? openedAt.getTime()
-              : new Date(openedAt).getTime()) >
-      365 * 24 * 60 * 60 * 1000
-    : false;
+  const isLongTerm = openedAt ? Date.now() - openedAt.getTime() > 365 * 24 * 60 * 60 * 1000 : false;
 
   return {
     realizedGainLoss: totalRealizedGain,

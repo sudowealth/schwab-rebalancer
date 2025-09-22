@@ -1,4 +1,6 @@
+import { useQuery } from '@tanstack/react-query';
 import { createFileRoute } from '@tanstack/react-router';
+import { useEffect } from 'react';
 import { ErrorBoundaryWrapper } from '~/components/ErrorBoundary';
 import { OnboardingTracker } from '~/components/OnboardingTracker';
 import { ExportButton } from '~/components/ui/export-button';
@@ -13,9 +15,12 @@ import { useDashboardData } from '~/features/dashboard/hooks/use-dashboard-data'
 import { useDashboardModals } from '~/features/dashboard/hooks/use-dashboard-modals';
 import { useDashboardTabs } from '~/features/dashboard/hooks/use-dashboard-tabs';
 import { useOnboardingStatus } from '~/features/dashboard/hooks/use-onboarding-status';
+import { useSecuritiesSeeding } from '~/features/data-feeds/hooks/use-securities-seeding';
+import { seedSecuritiesDataServerFn } from '~/features/data-feeds/import.server';
 import { useExcelExport } from '~/lib/excel-export';
 import { authGuard } from '~/lib/route-guards';
 import {
+  checkSecuritiesExistServerFn,
   getDashboardDataServerFn,
   getRebalancingGroupsWithBalancesServerFn,
 } from '~/lib/server-functions';
@@ -41,17 +46,6 @@ function DashboardSkeleton() {
               </div>
             </div>
           ))}
-        </div>
-
-        {/* Tabs */}
-        <div className="mb-6">
-          <div className="border-b border-gray-200">
-            <nav className="-mb-px flex space-x-8">
-              {[...Array(3)].map(() => (
-                <div key="tab" className="h-8 bg-gray-300 rounded w-24" />
-              ))}
-            </nav>
-          </div>
         </div>
 
         {/* Content Area */}
@@ -80,6 +74,15 @@ export const Route = createFileRoute('/')({
   beforeLoad: authGuard,
   validateSearch: () => ({}),
   loader: async ({ context: _context }) => {
+    // DEBUG: Test seeding function on server side - TEMPORARILY DISABLED
+    // console.log('🔥 DEBUG: Calling seedSecuritiesDataServerFn from loader');
+    // try {
+    //   const seedResult = await seedSecuritiesDataServerFn();
+    //   console.log('🔥 DEBUG: Seeding result from loader:', seedResult);
+    // } catch (error) {
+    //   console.error('🔥 DEBUG: Seeding error from loader:', error);
+    // }
+
     // Load all dashboard data upfront to prevent waterfalls
     // This includes positions, metrics, transactions, and all status data
     const results = await Promise.allSettled([
@@ -176,6 +179,47 @@ function DashboardComponent() {
     rebalancingGroups,
   } = useDashboardData(loaderData);
 
+  // Query for securities status with full query metadata for seeding hook
+  const {
+    data: securitiesStatusForSeeding,
+    status: securitiesQueryStatus,
+    fetchStatus: securitiesFetchStatus,
+    isFetchedAfterMount: securitiesFetchedAfterMount,
+  } = useQuery({
+    queryKey: ['dashboard-securities-status'],
+    queryFn: () => checkSecuritiesExistServerFn(),
+    staleTime: 1000 * 60 * 5, // 5 minutes
+  });
+
+  // DEBUG: Force hasSecurities to false to test automatic import
+  const debugSecuritiesStatus = securitiesStatusForSeeding
+    ? {
+        ...securitiesStatusForSeeding,
+        hasSecurities: false,
+        securitiesCount: 0,
+      }
+    : undefined;
+
+  // DEBUG: Directly call seeding function to test
+  useEffect(() => {
+    console.log('🔥 DEBUG: Component mounted, calling seedSecuritiesDataServerFn');
+    seedSecuritiesDataServerFn()
+      .then((result) => {
+        console.log('🔥 DEBUG: Seeding result:', result);
+      })
+      .catch((error) => {
+        console.error('🔥 DEBUG: Seeding error:', error);
+      });
+  }, []); // Run once on mount
+
+  // Use the securities seeding hook to automatically import securities when needed
+  const { isSeeding, hasError, seedResult, showSuccessMessage } = useSecuritiesSeeding(
+    debugSecuritiesStatus,
+    securitiesQueryStatus,
+    securitiesFetchStatus,
+    securitiesFetchedAfterMount,
+  );
+
   // Use the onboarding status hook for clean conditional rendering
   const { title, subtitle } = useOnboardingStatus({
     securitiesStatus: reactiveSecuritiesStatus,
@@ -238,6 +282,7 @@ function DashboardComponent() {
         }
         securitiesStatusProp={reactiveSecuritiesStatus}
         modelsStatusProp={reactiveModelsStatus}
+        securitiesSeedingState={{ isSeeding, hasError, seedResult, showSuccessMessage }}
       />
 
       {shouldShowRebalancingSection && metrics && (

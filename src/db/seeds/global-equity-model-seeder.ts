@@ -75,7 +75,7 @@ async function _seedGlobalEquityModel(userId?: string) {
 async function seedGlobalEquitySecurities() {
   console.log('📊 Seeding Global Equity securities and index...');
 
-  const now = Math.floor(Date.now() / 1000);
+  const now = new Date();
 
   // Collect all securities (primary and alternatives)
   const allSecurities = new Set<string>();
@@ -133,13 +133,15 @@ async function seedGlobalEquitySecurities() {
 
   // Insert all securities as index members
   for (const security of securities) {
-    await getDb().insert(schema.indexMember).values({
-      id: `global-equity-${security.ticker}`,
-      indexId: 'global-equity',
-      securityId: security.ticker,
-      createdAt: now,
-      updatedAt: now,
-    });
+    await getDb()
+      .insert(schema.indexMember)
+      .values({
+        id: `global-equity-${security.ticker}`,
+        indexId: 'global-equity',
+        securityId: security.ticker,
+        createdAt: now,
+        updatedAt: now,
+      });
   }
 
   console.log(`✅ Seeded Global Equity index with ${securities.length} members`);
@@ -148,7 +150,7 @@ async function seedGlobalEquitySecurities() {
 export async function seedGlobalEquitySleeves(userId?: string) {
   console.log('📂 Seeding Global Equity sleeves...');
 
-  const now = Math.floor(Date.now() / 1000);
+  const now = new Date();
   const targetUserId = userId || 'demo-user';
   console.log(`✅ Using user ID for sleeves: ${targetUserId}`);
 
@@ -300,7 +302,7 @@ const getGlobalEquityModelData = async (userId?: string) => {
     }
   }
 
-  const now = Math.floor(Date.now() / 1000);
+  const now = new Date();
 
   return [
     {
@@ -352,7 +354,7 @@ async function generateGlobalEquityModelMembers(modelId: string, userId?: string
     return [];
   }
 
-  const now = Math.floor(Date.now() / 1000);
+  const now = new Date();
   const modelMembers = [];
 
   // Create model members based on the predefined weights

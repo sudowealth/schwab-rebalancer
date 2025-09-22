@@ -141,8 +141,7 @@ function SleevesComponent() {
             const recentTransactions = transactions
               ?.filter((t) => t.ticker === selectedTicker)
               ?.sort(
-                (a: Transaction, b: Transaction) =>
-                  new Date(b.executedAt).getTime() - new Date(a.executedAt).getTime(),
+                (a: Transaction, b: Transaction) => b.executedAt.getTime() - a.executedAt.getTime(),
               )
               ?.slice(0, 5);
 
@@ -308,7 +307,7 @@ function SleevesComponent() {
                                     {transaction.type}
                                   </span>
                                   <span className="text-gray-600">
-                                    {new Date(transaction.executedAt).toLocaleDateString()}
+                                    {transaction.executedAt.toLocaleDateString()}
                                   </span>
                                 </div>
                                 <div className="text-right">

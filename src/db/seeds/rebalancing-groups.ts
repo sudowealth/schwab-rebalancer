@@ -1,6 +1,6 @@
 import { eq } from 'drizzle-orm';
-import { getDb } from "~/lib/db-config";
 import * as schema from '~/db/schema';
+import { getDb } from '~/lib/db-config';
 
 // Demo rebalancing groups data
 const REBALANCING_GROUPS_DATA = [
@@ -19,7 +19,7 @@ const REBALANCING_GROUPS_DATA = [
 export async function seedRebalancingGroups(userId?: string) {
   console.log('👥 Seeding rebalancing groups...');
 
-  const now = Math.floor(Date.now() / 1000);
+  const now = new Date();
 
   // Use provided userId or get the demo user ID
   let targetUserId = userId;
@@ -55,14 +55,16 @@ export async function seedRebalancingGroups(userId?: string) {
 
       // Create group members
       for (const accountId of group.memberAccountIds) {
-        await getDb().insert(schema.rebalancingGroupMember).values({
-          id: `${group.id}_member_${accountId}`,
-          groupId: group.id,
-          accountId: accountId,
-          isActive: true,
-          createdAt: now,
-          updatedAt: now,
-        });
+        await getDb()
+          .insert(schema.rebalancingGroupMember)
+          .values({
+            id: `${group.id}_member_${accountId}`,
+            groupId: group.id,
+            accountId: accountId,
+            isActive: true,
+            createdAt: now,
+            updatedAt: now,
+          });
       }
 
       console.log(`✅ Created rebalancing group: ${group.name}`);
@@ -76,13 +78,15 @@ export async function seedRebalancingGroups(userId?: string) {
 
   for (const group of REBALANCING_GROUPS_DATA) {
     try {
-      await getDb().insert(schema.modelGroupAssignment).values({
-        id: `${modelId}_${group.id}`,
-        modelId: modelId,
-        rebalancingGroupId: group.id,
-        createdAt: now,
-        updatedAt: now,
-      });
+      await getDb()
+        .insert(schema.modelGroupAssignment)
+        .values({
+          id: `${modelId}_${group.id}`,
+          modelId: modelId,
+          rebalancingGroupId: group.id,
+          createdAt: now,
+          updatedAt: now,
+        });
       console.log(`✅ Assigned model ${modelId} to group: ${group.name}`);
     } catch (error) {
       console.error(`❌ Failed to assign model to group ${group.name}:`, error);

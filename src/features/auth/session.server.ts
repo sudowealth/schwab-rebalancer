@@ -18,18 +18,20 @@ async function logSessionAuditEvent(
   details: Record<string, unknown>,
 ): Promise<void> {
   try {
-      const _db = getDb();    
-    await getDb().insert(schema.auditLog).values({
-      id: crypto.randomUUID(),
-      userId,
-      action,
-      entityType: 'session',
-      entityId: null,
-      metadata: JSON.stringify(details),
-      createdAt: new Date(),
-      ipAddress: null, // Will be set by middleware if available
-      userAgent: null,
-    });
+    const _db = getDb();
+    await getDb()
+      .insert(schema.auditLog)
+      .values({
+        id: crypto.randomUUID(),
+        userId,
+        action,
+        entityType: 'session',
+        entityId: null,
+        metadata: JSON.stringify(details),
+        createdAt: new Date(),
+        ipAddress: null, // Will be set by middleware if available
+        userAgent: null,
+      });
   } catch (error) {
     console.error('Failed to log audit event:', error);
   }
@@ -44,9 +46,10 @@ export class SessionManager {
    * Invalidate user sessions based on criteria
    */
   static async invalidateSessions(options: SessionInvalidationOptions): Promise<number> {
-    const _db = getDb();    try {
-      const _db = getDb();      let invalidatedCount = 0;
-      
+    const _db = getDb();
+    try {
+      const _db = getDb();
+      let invalidatedCount = 0;
 
       if (options.sessionId) {
         // Invalidate specific session by updating expiry
@@ -95,7 +98,8 @@ export class SessionManager {
    * Force logout all sessions for a user (typically after password change)
    */
   static async logoutAllSessions(userId: string, currentSessionId?: string): Promise<void> {
-    const _db = getDb();    await SessionManager.invalidateSessions({
+    const _db = getDb();
+    await SessionManager.invalidateSessions({
       userId,
       reason: 'password_change',
       excludeCurrentSession: currentSessionId,
@@ -106,7 +110,8 @@ export class SessionManager {
    * Invalidate sessions due to suspicious activity
    */
   static async invalidateSuspiciousSessions(userId: string): Promise<void> {
-    const _db = getDb();    await SessionManager.invalidateSessions({
+    const _db = getDb();
+    await SessionManager.invalidateSessions({
       userId,
       reason: 'suspicious_activity',
     });
@@ -127,7 +132,7 @@ export class SessionManager {
     }>
   > {
     try {
-      const _db = getDb();      
+      const _db = getDb();
       const sessions = await getDb()
         .select()
         .from(schema.session)
@@ -152,8 +157,9 @@ export class SessionManager {
    * Clean up expired sessions from database
    */
   static async cleanupExpiredSessions(): Promise<number> {
-    const _db = getDb();    try {
-      const _db = getDb();      
+    const _db = getDb();
+    try {
+      const _db = getDb();
       await getDb().delete(schema.session).where(lt(schema.session.expiresAt, new Date()));
 
       // PostgreSQL doesn't have rowsAffected, use a separate count query
@@ -180,7 +186,7 @@ export class SessionManager {
     currentUserAgent: string,
   ): Promise<{ valid: boolean; reason?: string }> {
     try {
-      const _db = getDb();      
+      const _db = getDb();
       const sessions = await getDb()
         .select()
         .from(schema.session)

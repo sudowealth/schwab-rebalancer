@@ -168,7 +168,7 @@ export async function exportPositionsToExcel(positions: Position[], filename = '
     { header: 'Days Held', accessor: 'daysHeld' as const },
     {
       header: 'Opened At',
-      accessor: (row: Position) => new Date(row.openedAt).toLocaleDateString(),
+      accessor: (row: Position) => row.openedAt.toLocaleDateString(),
     },
   ];
 
@@ -191,7 +191,7 @@ export async function exportTransactionsToExcel(
     { header: 'Realized Gain/Loss', accessor: 'realizedGainLoss' as const },
     {
       header: 'Executed At',
-      accessor: (row: Transaction) => new Date(row.executedAt).toLocaleDateString(),
+      accessor: (row: Transaction) => row.executedAt.toLocaleDateString(),
     },
   ];
 

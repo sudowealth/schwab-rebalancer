@@ -144,7 +144,7 @@ function parseNasdaqData(responses: string[]): NasdaqSecurity[] {
 }
 
 /**
- * Imports parsed securities to database
+ * Imports parsed securities to database using bulk operations for better performance
  */
 async function importSecuritiesToDatabase(
   securities: NasdaqSecurity[],
@@ -155,76 +155,129 @@ async function importSecuritiesToDatabase(
   errors: string[];
   importedTickers: string[];
 }> {
-  let importedCount = 0;
   let skippedCount = 0;
   const errors: string[] = [];
   const importedTickers: string[] = [];
 
+  // First pass: filter out test issues, invalid tickers, and prepare valid securities
+  const validSecurities: NasdaqSecurity[] = [];
   for (const security of securities) {
-    try {
-      // Skip test issues
-      if (security.testIssue === 'Y') {
-        skippedCount++;
-        continue;
-      }
-
-      const ticker = security.ticker;
-      if (!ticker) {
-        errors.push(`Security missing ticker: ${JSON.stringify(security)}`);
-        continue;
-      }
-
-      // Check if security already exists
-      if (skipExisting) {
-        const existing = await getDb()
-          .select({ ticker: schema.security.ticker })
-          .from(schema.security)
-          .where(eq(schema.security.ticker, ticker))
-          .limit(1);
-
-        if (existing.length > 0) {
-          skippedCount++;
-          continue;
-        }
-      }
-
-      // Determine asset type
-      let assetType = 'EQUITY';
-      let assetTypeSub = null;
-
-      if (security.etf === 'Y') {
-        assetType = 'EQUITY';
-        assetTypeSub = 'ETF';
-      }
-
-      // Create a descriptive name
-      const exchangeInfo = security.exchange || security.marketCategory || 'NASDAQ';
-      const name = security.securityName || `${ticker} - ${exchangeInfo}`;
-
-      // Insert new security
-      await getDb().insert(schema.security).values({
-        ticker,
-        name,
-        price: 1, // Default price, will be updated later
-        marketCap: null,
-        peRatio: null,
-        industry: null,
-        sector: null,
-        assetType,
-        assetTypeSub,
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-      });
-
-      importedCount++;
-      importedTickers.push(ticker);
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      errors.push(`Failed to import ${security.ticker}: ${errorMessage}`);
+    // Skip test issues
+    if (security.testIssue === 'Y') {
+      skippedCount++;
+      continue;
     }
+
+    const ticker = security.ticker;
+    if (!ticker) {
+      errors.push(`Security missing ticker: ${JSON.stringify(security)}`);
+      continue;
+    }
+
+    // Filter out tickers that are too long (database constraint)
+    if (ticker.length > 10) {
+      skippedCount++;
+      continue;
+    }
+
+    validSecurities.push(security);
   }
 
-  return { imported: importedCount, skipped: skippedCount, errors, importedTickers };
+  if (validSecurities.length === 0) {
+    return { imported: 0, skipped: skippedCount, errors, importedTickers };
+  }
+
+  // Check for existing securities in bulk if skipExisting is enabled
+  let existingTickers = new Set<string>();
+  if (skipExisting) {
+    const allTickers = validSecurities.map((s) => s.ticker);
+    const existing = await getDb()
+      .select({ ticker: schema.security.ticker })
+      .from(schema.security)
+      .where(inArray(schema.security.ticker, allTickers));
+
+    existingTickers = new Set(existing.map((e) => e.ticker));
+  }
+
+  // Filter out existing securities and prepare bulk insert data
+  const securitiesToInsert = validSecurities.filter((security) => {
+    if (skipExisting && existingTickers.has(security.ticker)) {
+      skippedCount++;
+      return false;
+    }
+    return true;
+  });
+
+  if (securitiesToInsert.length === 0) {
+    return { imported: 0, skipped: skippedCount, errors, importedTickers };
+  }
+
+  // Prepare bulk insert data
+  const insertData = securitiesToInsert.map((security) => {
+    const ticker = security.ticker;
+
+    // Determine asset type
+    let assetType = 'EQUITY';
+    let assetTypeSub = null;
+
+    if (security.etf === 'Y') {
+      assetType = 'EQUITY';
+      assetTypeSub = 'ETF';
+    }
+
+    // Create a descriptive name
+    const exchangeInfo = security.exchange || security.marketCategory || 'NASDAQ';
+    const name = security.securityName || `${ticker} - ${exchangeInfo}`;
+
+    return {
+      ticker,
+      name,
+      price: 1, // Default price, will be updated later
+      marketCap: null,
+      peRatio: null,
+      industry: null,
+      sector: null,
+      assetType,
+      assetTypeSub,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+  });
+
+  // Perform batched bulk inserts with conflict handling
+  const BATCH_SIZE = 500; // Insert in batches of 500 to avoid call stack issues
+  let successfullyInserted = 0;
+
+  try {
+    // Process securities in batches
+    for (let i = 0; i < insertData.length; i += BATCH_SIZE) {
+      const batch = insertData.slice(i, i + BATCH_SIZE);
+
+      await getDb()
+        .insert(schema.security)
+        .values(batch)
+        .onConflictDoNothing({ target: schema.security.ticker });
+
+      successfullyInserted += batch.length;
+    }
+
+    // Note: Drizzle doesn't return the number of affected rows for bulk inserts
+    // We track successfully processed batches instead
+    const importedCount = successfullyInserted;
+
+    importedTickers.push(...securitiesToInsert.map((s) => s.ticker));
+
+    return { imported: importedCount, skipped: skippedCount, errors, importedTickers };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    errors.push(`Batched bulk insert failed: ${errorMessage}`);
+    return {
+      imported: successfullyInserted,
+      skipped: skippedCount + (securitiesToInsert.length - successfullyInserted),
+      errors,
+      importedTickers,
+    };
+  }
 }
 
 // ================================
@@ -362,8 +415,11 @@ export const seedDemoDataServerFn = createServerFn({ method: 'POST' }).handler(a
 
 // Server function to seed securities data - orchestrates the seeding process
 export const seedSecuritiesDataServerFn = createServerFn({ method: 'POST' }).handler(async () => {
+  console.log('🚀 seedSecuritiesDataServerFn: Starting securities seeding process');
+
   // Step 1: Authenticate user
   await requireAuth();
+  console.log('✅ seedSecuritiesDataServerFn: Authentication successful');
 
   try {
     // Step 2: Seed basic securities data
@@ -734,11 +790,18 @@ export const checkSecuritiesExistServerFn = createServerFn({ method: 'GET' }).ha
   const { user: _user } = await requireAuth();
   const _db = getDb();
 
-  // Get count of securities (excluding cash)
+  // Get count of securities (excluding cash and S&P 500 index members)
+  // This ensures the automatic import triggers when only basic cash securities and S&P 500 exist
   const securitiesCount = await getDb()
     .select({ count: count() })
     .from(schema.security)
-    .where(ne(schema.security.ticker, CASH_TICKER));
+    .leftJoin(schema.indexMember, eq(schema.security.ticker, schema.indexMember.securityId))
+    .where(
+      and(
+        ne(schema.security.ticker, CASH_TICKER),
+        or(isNull(schema.indexMember.indexId), ne(schema.indexMember.indexId, 'sp500')),
+      ),
+    );
 
   return {
     hasSecurities: Number(securitiesCount[0]?.count ?? 0) > 0,

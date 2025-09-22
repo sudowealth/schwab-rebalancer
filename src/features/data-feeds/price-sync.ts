@@ -41,7 +41,9 @@ export class PriceSyncService {
       symbolsToUpdate = symbols;
     } else {
       // Get all symbols from securities table, excluding cash tickers
-      const securities = await getDb().select({ ticker: schema.security.ticker }).from(schema.security);
+      const securities = await getDb()
+        .select({ ticker: schema.security.ticker })
+        .from(schema.security);
 
       symbolsToUpdate = securities
         .map((s) => s.ticker)
@@ -247,7 +249,7 @@ export class PriceSyncService {
 
         await getDb()
           .update(schema.security)
-          .set({ price: newPrice, updatedAt: Date.now() })
+          .set({ price: newPrice, updatedAt: new Date() })
           .where(eq(schema.security.ticker, symbol));
 
         this.cache.set(symbol, { price: newPrice, timestamp: Date.now() });
@@ -278,13 +280,13 @@ export class PriceSyncService {
 
   private isPriceFresh(
     symbol: string,
-    security: { price: number; updatedAt: number } | undefined,
+    security: { price: number; updatedAt: Date } | undefined,
     maxAgeSeconds: number,
   ): boolean {
     if (!security) return false;
 
     // Check database timestamp
-    const dbAge = (Date.now() - security.updatedAt) / 1000;
+    const dbAge = (Date.now() - security.updatedAt.getTime()) / 1000;
     if (dbAge <= maxAgeSeconds) return true;
 
     // Check cache
@@ -389,9 +391,12 @@ export class PriceSyncService {
       }
 
       if (Object.keys(updateData).length > 0) {
-        updateData.updatedAt = Date.now();
+        updateData.updatedAt = new Date();
 
-        await getDb().update(schema.security).set(updateData).where(eq(schema.security.ticker, ticker));
+        await getDb()
+          .update(schema.security)
+          .set(updateData)
+          .where(eq(schema.security.ticker, ticker));
 
         console.log(`✅ [PriceSync] Updated security info for ${ticker}:`, updateData);
       }

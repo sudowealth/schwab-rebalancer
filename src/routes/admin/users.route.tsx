@@ -171,7 +171,7 @@ function UserManagement() {
                       {user.emailVerified ? 'Verified' : 'Unverified'}
                     </Badge>
                   </TableCell>
-                  <TableCell>{new Date(user.createdAt).toLocaleDateString()}</TableCell>
+                  <TableCell>{user.createdAt.toLocaleDateString()}</TableCell>
                   <TableCell>
                     <div className="flex gap-2">
                       <Button
@@ -264,7 +264,7 @@ function UserManagement() {
                     <strong>Role:</strong> {userData.user.role}
                   </p>
                   <p>
-                    <strong>Created:</strong> {new Date(userData.user.createdAt).toLocaleString()}
+                    <strong>Created:</strong> {userData.user.createdAt.toLocaleString()}
                   </p>
                 </div>
               </div>

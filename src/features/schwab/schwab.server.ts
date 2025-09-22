@@ -564,7 +564,7 @@ export const getGroupSecuritiesNeedingPriceUpdatesServerFn = createServerFn({
     // Get securities that need price updates:
     // 1. Price is 1 (likely never properly priced)
     // 2. Last updated more than 1 hour ago
-    const oneHourAgo = Date.now() - 60 * 60 * 1000; // 1 hour in milliseconds
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000); // 1 hour ago
 
     const securitiesNeedingUpdate = await getDb()
       .select({
@@ -599,9 +599,10 @@ export const getGroupSecuritiesNeedingPriceUpdatesServerFn = createServerFn({
         olderThanOneHour: oldSecurities.map((s) => ({
           ticker: s.ticker,
           price: s.price,
-          lastUpdated: s.updatedAt > 0 ? new Date(s.updatedAt).toISOString() : 'Never updated',
-          ageMinutes:
-            s.updatedAt > 0 ? Math.floor((Date.now() - s.updatedAt) / (1000 * 60)) : 'Unknown',
+          lastUpdated: s.updatedAt ? s.updatedAt.toISOString() : 'Never updated',
+          ageMinutes: s.updatedAt
+            ? Math.floor((Date.now() - s.updatedAt.getTime()) / (1000 * 60))
+            : 'Unknown',
         })),
       });
     }
@@ -1329,7 +1330,7 @@ export const previewOrderServerFn = createServerFn({ method: 'POST' })
       try {
         await getDb()
           .update(schema.security)
-          .set({ price: chosenPrice, updatedAt: Date.now() })
+          .set({ price: chosenPrice, updatedAt: new Date() })
           .where(eq(schema.security.ticker, o.symbol));
       } catch (e) {
         console.warn('⚠️ Failed to persist mark price for', o.symbol, e);

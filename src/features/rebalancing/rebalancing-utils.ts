@@ -31,7 +31,7 @@ export interface SecurityData {
   accountNames: Set<string>; // Internal calculations use Set, UI uses array
   costBasis?: number;
   costBasisPerShare?: number;
-  openedAt?: Date | number | { getTime(): number } | null; // Internal can be null
+  openedAt?: Date | null; // Internal can be null
   totalGainLoss?: number;
   longTermGainLoss?: number;
   shortTermGainLoss?: number;
@@ -99,7 +99,7 @@ interface Holding {
   marketValue: number;
   qty?: number;
   costBasis?: number;
-  openedAt?: Date | number | { getTime(): number };
+  openedAt?: Date;
   currentPrice?: number;
   sleeves?: SleeveInfo[];
   [key: string]: unknown;
@@ -397,7 +397,7 @@ export const calculateSleeveAllocations = (
           currentValue: number;
           costBasis: number;
           qty: number;
-          openedAt?: Date | number | { getTime(): number };
+          openedAt?: Date;
           currentPrice?: number;
           totalCostBasis: number;
           weightedOpenedAt: number;
@@ -457,7 +457,7 @@ export const calculateSleeveAllocations = (
           currentValue: number;
           costBasis: number;
           qty: number;
-          openedAt?: Date | number | { getTime(): number };
+          openedAt?: Date;
           currentPrice?: number;
           totalCostBasis: number;
           weightedOpenedAt: number;
@@ -469,13 +469,7 @@ export const calculateSleeveAllocations = (
 
         // Calculate weighted average cost basis and opened date
         const holdingCostBasis = holding.costBasisPerShare || 0;
-        const holdingOpenedAt = holding.openedAt
-          ? typeof holding.openedAt === 'object' && 'getTime' in holding.openedAt
-            ? holding.openedAt.getTime()
-            : typeof holding.openedAt === 'number'
-              ? holding.openedAt
-              : Date.now()
-          : Date.now();
+        const holdingOpenedAt = holding.openedAt?.getTime() ?? Date.now();
 
         const holdingQty = holding.qty || 0;
         // Update aggregated values for weighted calculations
@@ -506,7 +500,7 @@ export const calculateSleeveAllocations = (
                 currentValue: number;
                 costBasis: number;
                 qty: number;
-                openedAt?: Date | number | { getTime(): number };
+                openedAt?: Date;
                 currentPrice?: number;
                 totalCostBasis: number;
                 weightedOpenedAt: number;
@@ -539,7 +533,7 @@ export const calculateSleeveAllocations = (
           currentValue: number;
           costBasis: number;
           qty: number;
-          openedAt?: Date | number | { getTime(): number };
+          openedAt?: Date;
           currentPrice?: number;
           totalCostBasis: number;
           weightedOpenedAt: number;
@@ -551,13 +545,7 @@ export const calculateSleeveAllocations = (
 
         // Calculate weighted average cost basis and opened date
         const holdingCostBasis = holding.costBasisPerShare || 0;
-        const holdingOpenedAt = holding.openedAt
-          ? typeof holding.openedAt === 'object' && 'getTime' in holding.openedAt
-            ? holding.openedAt.getTime()
-            : typeof holding.openedAt === 'number'
-              ? holding.openedAt
-              : Date.now()
-          : Date.now();
+        const holdingOpenedAt = holding.openedAt?.getTime() ?? Date.now();
 
         const holdingQty = holding.qty || 0;
         // Update aggregated values for weighted calculations
@@ -629,13 +617,7 @@ export const calculateSleeveAllocations = (
         const totalCostValue = tickerData.costBasis * tickerData.qty;
         const totalGainLoss = tickerData.currentValue - totalCostValue;
         const isLongTerm = tickerData.openedAt
-          ? Date.now() -
-              (typeof tickerData.openedAt === 'number'
-                ? tickerData.openedAt
-                : 'getTime' in tickerData.openedAt
-                  ? tickerData.openedAt.getTime()
-                  : new Date(tickerData.openedAt).getTime()) >
-            365 * 24 * 60 * 60 * 1000
+          ? Date.now() - tickerData.openedAt.getTime() > 365 * 24 * 60 * 60 * 1000
           : false;
 
         unassignedSecurities.push({
@@ -784,7 +766,7 @@ interface CurrentSleeveData {
       currentValue: number;
       costBasis: number;
       qty: number;
-      openedAt?: Date | number | { getTime(): number };
+      openedAt?: Date;
       currentPrice?: number;
       totalCostBasis: number;
       weightedOpenedAt: number;
@@ -858,13 +840,7 @@ const calculateSleeveTargetSecurities = (
       const totalCostValue = costBasis * (currentHolding?.qty || 0);
       const totalGainLoss = securityCurrentValue - totalCostValue;
       const isLongTerm = openedAt
-        ? Date.now() -
-            (typeof openedAt === 'number'
-              ? openedAt
-              : 'getTime' in openedAt
-                ? openedAt.getTime()
-                : new Date(openedAt).getTime()) >
-          365 * 24 * 60 * 60 * 1000
+        ? Date.now() - openedAt.getTime() > 365 * 24 * 60 * 60 * 1000
         : false;
 
       targetSecurities.push({
