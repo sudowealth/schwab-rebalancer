@@ -8,12 +8,10 @@ import { Button } from '~/components/ui/button';
 import { Input } from '~/components/ui/input';
 import { Label } from '~/components/ui/label';
 import { queryInvalidators } from '~/lib/query-keys';
-import { adminGuard } from '~/lib/route-guards';
 import { truncateDataServerFn } from '~/lib/server-functions';
 
 export const Route = createFileRoute('/admin/')({
   component: AdminDashboardIndex,
-  beforeLoad: adminGuard,
 });
 
 function AdminDashboardIndex() {

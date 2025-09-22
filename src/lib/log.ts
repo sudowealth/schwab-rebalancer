@@ -16,6 +16,73 @@ export interface LogContext {
   [key: string]: unknown;
 }
 
+/**
+ * Sensitive data fields that should be sanitized from logs
+ */
+const SENSITIVE_FIELDS = new Set([
+  'password',
+  'token',
+  'secret',
+  'key',
+  'credential',
+  'balance',
+  'accountValue',
+  'cash',
+  'quantity',
+  'price',
+  'value',
+  'amount',
+  'accountNumber',
+  'accountId',
+  'positions',
+  'holdings',
+  'transactions',
+  'apiKey',
+  'authToken',
+  'sessionToken',
+  'creditCard',
+  'ssn',
+  'socialSecurity',
+  'email', // Only in certain contexts
+  'phone',
+  'address',
+]);
+
+/**
+ * Sanitizes log context by removing or masking sensitive data
+ */
+function sanitizeLogContext(context: LogContext): LogContext {
+  if (!context || typeof context !== 'object') {
+    return context;
+  }
+
+  const sanitized = { ...context };
+
+  // Remove sensitive fields
+  for (const field of SENSITIVE_FIELDS) {
+    if (field in sanitized) {
+      sanitized[field] = '[REDACTED]';
+    }
+  }
+
+  // Recursively sanitize nested objects
+  for (const [key, value] of Object.entries(sanitized)) {
+    if (value && typeof value === 'object' && !Array.isArray(value)) {
+      sanitized[key] = sanitizeLogContext(value as LogContext);
+    } else if (Array.isArray(value)) {
+      // For arrays, check if they contain sensitive objects
+      sanitized[key] = value.map((item) => {
+        if (item && typeof item === 'object') {
+          return sanitizeLogContext(item as LogContext);
+        }
+        return item;
+      });
+    }
+  }
+
+  return sanitized;
+}
+
 export type LogLevel = 'debug' | 'info' | 'warn' | 'error' | 'fatal';
 
 /**
@@ -29,7 +96,7 @@ export function logError(
   const env = getEnv();
   const isDevelopment = env.NODE_ENV === 'development';
 
-  // Create structured log entry
+  // Create structured log entry with sanitized context
   const logEntry = {
     level,
     timestamp: new Date().toISOString(),
@@ -38,7 +105,7 @@ export function logError(
       name: error instanceof Error ? error.name : 'UnknownError',
       stack: error instanceof Error ? error.stack : undefined,
     },
-    context: context || {},
+    context: sanitizeLogContext(context || {}),
     environment: env.NODE_ENV,
     service: 'schwab-rebalancer',
   };
@@ -73,7 +140,7 @@ export function logInfo(message: string, context?: LogContext): void {
     level: 'info' as const,
     timestamp: new Date().toISOString(),
     message,
-    context: context || {},
+    context: sanitizeLogContext(context || {}),
     environment: env.NODE_ENV,
     service: 'schwab-rebalancer',
   };
@@ -96,7 +163,7 @@ export function logWarn(message: string, context?: LogContext): void {
     level: 'warn' as const,
     timestamp: new Date().toISOString(),
     message,
-    context: context || {},
+    context: sanitizeLogContext(context || {}),
     environment: env.NODE_ENV,
     service: 'schwab-rebalancer',
   };
@@ -118,8 +185,11 @@ export async function logSecurityEvent(
 ): Promise<void> {
   try {
     // Enhanced security logging with IP and user agent tracking
+    // Note: Security events intentionally exclude most sensitive data sanitization
+    // to maintain audit trail, but we still sanitize the details
+    const sanitizedDetails = sanitizeLogContext(details);
     const enhancedDetails = {
-      ...details,
+      ...sanitizedDetails,
       eventType,
       category,
       timestamp: new Date().toISOString(),
@@ -167,12 +237,12 @@ export function logPerformance(operation: string, duration: number, context?: Lo
     level: 'info' as const,
     timestamp: new Date().toISOString(),
     message: `Performance: ${operation} took ${duration}ms`,
-    context: {
+    context: sanitizeLogContext({
       ...context,
       operation,
       duration,
       performanceMetric: true,
-    },
+    }),
     environment: env.NODE_ENV,
     service: 'schwab-rebalancer',
   };

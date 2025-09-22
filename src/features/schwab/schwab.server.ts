@@ -156,17 +156,19 @@ async function createSyncLogDetails(
       price: { old: r.oldPrice, new: r.newPrice },
       source: { old: undefined, new: r.source },
     };
-    await getDb().insert(schema.syncLogDetail).values({
-      id: crypto.randomUUID(),
-      logId,
-      entityType: 'SECURITY',
-      entityId: r.ticker,
-      operation: r.success ? 'UPDATE' : 'NOOP',
-      changes: JSON.stringify(changes),
-      success: r.success,
-      message: r.error,
-      createdAt: new Date(),
-    });
+    await getDb()
+      .insert(schema.syncLogDetail)
+      .values({
+        id: crypto.randomUUID(),
+        logId,
+        entityType: 'SECURITY',
+        entityId: r.ticker,
+        operation: r.success ? 'UPDATE' : 'NOOP',
+        changes: JSON.stringify(changes),
+        success: r.success,
+        message: r.error,
+        createdAt: new Date(),
+      });
   }
 }
 
@@ -388,10 +390,8 @@ export const getHeldPositionTickersServerFn = createServerFn({
 
     return uniqueTickers;
   } catch (error) {
-    console.error('❌ [ServerFn] Error details:', {
-      error: error,
+    console.error('❌ [ServerFn] Error occurred:', {
       message: error instanceof Error ? error.message : 'Unknown error',
-      stack: error instanceof Error ? error.stack : undefined,
       timestamp: new Date().toISOString(),
     });
     throw error;
@@ -787,17 +787,19 @@ export const syncSchwabPricesServerFn = createServerFn({ method: 'POST' })
         console.error('❌ [ServerFn] Error syncing prices:', error);
         // Attempt to log error in sync log if we started one
         try {
-          await getDb().insert(schema.syncLog).values({
-            id: crypto.randomUUID(),
-            userId: user.id,
-            syncType: 'SECURITIES',
-            status: 'ERROR',
-            recordsProcessed: 0,
-            errorMessage: error instanceof Error ? error.message : String(error),
-            startedAt: new Date(),
-            completedAt: new Date(),
-            createdAt: new Date(),
-          });
+          await getDb()
+            .insert(schema.syncLog)
+            .values({
+              id: crypto.randomUUID(),
+              userId: user.id,
+              syncType: 'SECURITIES',
+              status: 'ERROR',
+              recordsProcessed: 0,
+              errorMessage: error instanceof Error ? error.message : String(error),
+              startedAt: new Date(),
+              completedAt: new Date(),
+              createdAt: new Date(),
+            });
         } catch (logErr) {
           console.warn('⚠️ [ServerFn] Failed to write error sync log:', logErr);
         }

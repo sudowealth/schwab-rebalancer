@@ -41,7 +41,11 @@ export class SchwabSyncService {
       console.log('📡 [SchwabSync] Fetching accounts from Schwab API');
       const schwabAccounts = await this.schwabApi.getAccounts(userId);
       console.log('📊 [SchwabSync] Retrieved', schwabAccounts.length, 'accounts from Schwab');
-      console.log('📋 [SchwabSync] Account details:', schwabAccounts);
+      console.log(
+        '📋 [SchwabSync] Retrieved account details for',
+        schwabAccounts.length,
+        'accounts',
+      );
 
       // Fetch user preferences to get account nicknames
       console.log('🏷️ [SchwabSync] Fetching user preferences for account nicknames');
@@ -293,10 +297,8 @@ export class SchwabSyncService {
 
           for (const position of positions) {
             console.log(
-              '🔄 [SchwabSync] Processing position:',
+              '🔄 [SchwabSync] Processing position for symbol:',
               position.instrument.symbol,
-              'quantity:',
-              position.longQuantity,
             );
             await this.syncPosition(account.id, position, syncLog.id);
             processedCount++;
@@ -307,7 +309,7 @@ export class SchwabSyncService {
           try {
             const cash = await this.schwabApi.getAccountCashBalance(userId, accountIdentifier);
             const roundedCash = Math.max(0, Number(cash) || 0);
-            console.log('💵 [SchwabSync] Cash balance for account', account.name, ':', roundedCash);
+            console.log('💵 [SchwabSync] Updated cash holding for account', account.name);
             await this.upsertCashHolding(account.id, roundedCash, syncLog.id);
           } catch (cashErr) {
             console.warn(
@@ -797,7 +799,6 @@ export class SchwabSyncService {
     logId?: string,
   ): Promise<void> {
     console.log('📊 [SchwabSync] Syncing individual position for account:', accountId);
-    console.log('📋 [SchwabSync] Position details:', position);
     const now = Date.now();
     const symbol = position.instrument.symbol;
 
@@ -847,7 +848,6 @@ export class SchwabSyncService {
       lastSyncAt: new Date(),
       updatedAt: now,
     };
-    console.log('📝 [SchwabSync] Holding data to sync:', holdingData);
 
     if (existingHolding.length > 0) {
       // Update existing holding

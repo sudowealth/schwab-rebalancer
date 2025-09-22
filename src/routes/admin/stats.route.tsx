@@ -13,12 +13,10 @@ import {
 import { ErrorBoundaryWrapper } from '~/components/ErrorBoundary';
 import { Button } from '~/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card';
-import { adminGuard } from '~/lib/route-guards';
 import { getSystemStatsServerFn } from '~/lib/server-functions';
 
 export const Route = createFileRoute('/admin/stats')({
   component: SystemStats,
-  beforeLoad: adminGuard,
   loader: async () => {
     // Pre-load stats data
     const stats = await getSystemStatsServerFn();

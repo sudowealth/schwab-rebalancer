@@ -17,7 +17,6 @@ import { Route as RegisterRouteImport } from './routes/register'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as DataFeedsRouteImport } from './routes/data-feeds'
-import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as SleevesIndexRouteImport } from './routes/sleeves/index'
 import { Route as RebalancingGroupsIndexRouteImport } from './routes/rebalancing-groups/index'
@@ -28,6 +27,7 @@ import { Route as SettingsSecuritiesRouteImport } from './routes/settings/securi
 import { Route as SchwabCallbackRouteImport } from './routes/schwab/callback'
 import { Route as RebalancingGroupsGroupIdRouteImport } from './routes/rebalancing-groups/$groupId'
 import { Route as ModelsModelIdRouteImport } from './routes/models/$modelId'
+import { Route as AdminAdminRouteImport } from './routes/admin/admin'
 import { Route as AdminUsersRouteRouteImport } from './routes/admin/users.route'
 import { Route as AdminStatsRouteRouteImport } from './routes/admin/stats.route'
 import { Route as ApiWorkersYahooSyncRouteImport } from './routes/api/workers/yahoo-sync'
@@ -66,11 +66,6 @@ const DataFeedsRoute = DataFeedsRouteImport.update({
   path: '/data-feeds',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AdminRoute = AdminRouteImport.update({
-  id: '/admin',
-  path: '/admin',
-  getParentRoute: () => rootRouteImport,
-} as any).lazy(() => import('./routes/admin.lazy').then((d) => d.Route))
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -97,9 +92,9 @@ const DataFeedsIndexRoute = DataFeedsIndexRouteImport.update({
   getParentRoute: () => DataFeedsRoute,
 } as any)
 const AdminIndexRouteRoute = AdminIndexRouteRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => AdminRoute,
+  id: '/admin/',
+  path: '/admin/',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const SettingsSecuritiesRoute = SettingsSecuritiesRouteImport.update({
   id: '/settings/securities',
@@ -122,15 +117,20 @@ const ModelsModelIdRoute = ModelsModelIdRouteImport.update({
   path: '/models/$modelId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminAdminRoute = AdminAdminRouteImport.update({
+  id: '/admin/admin',
+  path: '/admin/admin',
+  getParentRoute: () => rootRouteImport,
+} as any).lazy(() => import('./routes/admin/admin.lazy').then((d) => d.Route))
 const AdminUsersRouteRoute = AdminUsersRouteRouteImport.update({
-  id: '/users',
-  path: '/users',
-  getParentRoute: () => AdminRoute,
+  id: '/admin/users',
+  path: '/admin/users',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const AdminStatsRouteRoute = AdminStatsRouteRouteImport.update({
-  id: '/stats',
-  path: '/stats',
-  getParentRoute: () => AdminRoute,
+  id: '/admin/stats',
+  path: '/admin/stats',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const ApiWorkersYahooSyncRoute = ApiWorkersYahooSyncRouteImport.update({
   id: '/api/workers/yahoo-sync',
@@ -150,7 +150,6 @@ const ApiAuthSplatServerRoute = ApiAuthSplatServerRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/admin': typeof AdminRouteWithChildren
   '/data-feeds': typeof DataFeedsRouteWithChildren
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
@@ -159,11 +158,12 @@ export interface FileRoutesByFullPath {
   '/schwab': typeof SchwabRouteWithChildren
   '/admin/stats': typeof AdminStatsRouteRoute
   '/admin/users': typeof AdminUsersRouteRoute
+  '/admin/admin': typeof AdminAdminRoute
   '/models/$modelId': typeof ModelsModelIdRoute
   '/rebalancing-groups/$groupId': typeof RebalancingGroupsGroupIdRoute
   '/schwab/callback': typeof SchwabCallbackRoute
   '/settings/securities': typeof SettingsSecuritiesRoute
-  '/admin/': typeof AdminIndexRouteRoute
+  '/admin': typeof AdminIndexRouteRoute
   '/data-feeds/': typeof DataFeedsIndexRoute
   '/models': typeof ModelsIndexRoute
   '/rebalancing-groups': typeof RebalancingGroupsIndexRoute
@@ -179,6 +179,7 @@ export interface FileRoutesByTo {
   '/schwab': typeof SchwabRouteWithChildren
   '/admin/stats': typeof AdminStatsRouteRoute
   '/admin/users': typeof AdminUsersRouteRoute
+  '/admin/admin': typeof AdminAdminRoute
   '/models/$modelId': typeof ModelsModelIdRoute
   '/rebalancing-groups/$groupId': typeof RebalancingGroupsGroupIdRoute
   '/schwab/callback': typeof SchwabCallbackRoute
@@ -193,7 +194,6 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/admin': typeof AdminRouteWithChildren
   '/data-feeds': typeof DataFeedsRouteWithChildren
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
@@ -202,6 +202,7 @@ export interface FileRoutesById {
   '/schwab': typeof SchwabRouteWithChildren
   '/admin/stats': typeof AdminStatsRouteRoute
   '/admin/users': typeof AdminUsersRouteRoute
+  '/admin/admin': typeof AdminAdminRoute
   '/models/$modelId': typeof ModelsModelIdRoute
   '/rebalancing-groups/$groupId': typeof RebalancingGroupsGroupIdRoute
   '/schwab/callback': typeof SchwabCallbackRoute
@@ -217,7 +218,6 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/admin'
     | '/data-feeds'
     | '/forgot-password'
     | '/login'
@@ -226,11 +226,12 @@ export interface FileRouteTypes {
     | '/schwab'
     | '/admin/stats'
     | '/admin/users'
+    | '/admin/admin'
     | '/models/$modelId'
     | '/rebalancing-groups/$groupId'
     | '/schwab/callback'
     | '/settings/securities'
-    | '/admin/'
+    | '/admin'
     | '/data-feeds/'
     | '/models'
     | '/rebalancing-groups'
@@ -246,6 +247,7 @@ export interface FileRouteTypes {
     | '/schwab'
     | '/admin/stats'
     | '/admin/users'
+    | '/admin/admin'
     | '/models/$modelId'
     | '/rebalancing-groups/$groupId'
     | '/schwab/callback'
@@ -259,7 +261,6 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
-    | '/admin'
     | '/data-feeds'
     | '/forgot-password'
     | '/login'
@@ -268,6 +269,7 @@ export interface FileRouteTypes {
     | '/schwab'
     | '/admin/stats'
     | '/admin/users'
+    | '/admin/admin'
     | '/models/$modelId'
     | '/rebalancing-groups/$groupId'
     | '/schwab/callback'
@@ -282,16 +284,19 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  AdminRoute: typeof AdminRouteWithChildren
   DataFeedsRoute: typeof DataFeedsRouteWithChildren
   ForgotPasswordRoute: typeof ForgotPasswordRoute
   LoginRoute: typeof LoginRoute
   RegisterRoute: typeof RegisterRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   SchwabRoute: typeof SchwabRouteWithChildren
+  AdminStatsRouteRoute: typeof AdminStatsRouteRoute
+  AdminUsersRouteRoute: typeof AdminUsersRouteRoute
+  AdminAdminRoute: typeof AdminAdminRoute
   ModelsModelIdRoute: typeof ModelsModelIdRoute
   RebalancingGroupsGroupIdRoute: typeof RebalancingGroupsGroupIdRoute
   SettingsSecuritiesRoute: typeof SettingsSecuritiesRoute
+  AdminIndexRouteRoute: typeof AdminIndexRouteRoute
   ModelsIndexRoute: typeof ModelsIndexRoute
   RebalancingGroupsIndexRoute: typeof RebalancingGroupsIndexRoute
   SleevesIndexRoute: typeof SleevesIndexRoute
@@ -367,13 +372,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DataFeedsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/admin': {
-      id: '/admin'
-      path: '/admin'
-      fullPath: '/admin'
-      preLoaderRoute: typeof AdminRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/': {
       id: '/'
       path: '/'
@@ -411,10 +409,10 @@ declare module '@tanstack/react-router' {
     }
     '/admin/': {
       id: '/admin/'
-      path: '/'
-      fullPath: '/admin/'
+      path: '/admin'
+      fullPath: '/admin'
       preLoaderRoute: typeof AdminIndexRouteRouteImport
-      parentRoute: typeof AdminRoute
+      parentRoute: typeof rootRouteImport
     }
     '/settings/securities': {
       id: '/settings/securities'
@@ -444,19 +442,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ModelsModelIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/admin': {
+      id: '/admin/admin'
+      path: '/admin/admin'
+      fullPath: '/admin/admin'
+      preLoaderRoute: typeof AdminAdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/users': {
       id: '/admin/users'
-      path: '/users'
+      path: '/admin/users'
       fullPath: '/admin/users'
       preLoaderRoute: typeof AdminUsersRouteRouteImport
-      parentRoute: typeof AdminRoute
+      parentRoute: typeof rootRouteImport
     }
     '/admin/stats': {
       id: '/admin/stats'
-      path: '/stats'
+      path: '/admin/stats'
       fullPath: '/admin/stats'
       preLoaderRoute: typeof AdminStatsRouteRouteImport
-      parentRoute: typeof AdminRoute
+      parentRoute: typeof rootRouteImport
     }
     '/api/workers/yahoo-sync': {
       id: '/api/workers/yahoo-sync'
@@ -486,20 +491,6 @@ declare module '@tanstack/react-start/server' {
   }
 }
 
-interface AdminRouteChildren {
-  AdminStatsRouteRoute: typeof AdminStatsRouteRoute
-  AdminUsersRouteRoute: typeof AdminUsersRouteRoute
-  AdminIndexRouteRoute: typeof AdminIndexRouteRoute
-}
-
-const AdminRouteChildren: AdminRouteChildren = {
-  AdminStatsRouteRoute: AdminStatsRouteRoute,
-  AdminUsersRouteRoute: AdminUsersRouteRoute,
-  AdminIndexRouteRoute: AdminIndexRouteRoute,
-}
-
-const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
-
 interface DataFeedsRouteChildren {
   DataFeedsIndexRoute: typeof DataFeedsIndexRoute
 }
@@ -525,16 +516,19 @@ const SchwabRouteWithChildren =
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  AdminRoute: AdminRouteWithChildren,
   DataFeedsRoute: DataFeedsRouteWithChildren,
   ForgotPasswordRoute: ForgotPasswordRoute,
   LoginRoute: LoginRoute,
   RegisterRoute: RegisterRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   SchwabRoute: SchwabRouteWithChildren,
+  AdminStatsRouteRoute: AdminStatsRouteRoute,
+  AdminUsersRouteRoute: AdminUsersRouteRoute,
+  AdminAdminRoute: AdminAdminRoute,
   ModelsModelIdRoute: ModelsModelIdRoute,
   RebalancingGroupsGroupIdRoute: RebalancingGroupsGroupIdRoute,
   SettingsSecuritiesRoute: SettingsSecuritiesRoute,
+  AdminIndexRouteRoute: AdminIndexRouteRoute,
   ModelsIndexRoute: ModelsIndexRoute,
   RebalancingGroupsIndexRoute: RebalancingGroupsIndexRoute,
   SleevesIndexRoute: SleevesIndexRoute,

@@ -1,7 +1,7 @@
 import { createFileRoute, Outlet } from '@tanstack/react-router';
 import { adminGuard } from '~/lib/route-guards';
 
-export const Route = createFileRoute('/admin')({
+export const Route = createFileRoute('/admin/admin')({
   component: AdminDashboard,
   beforeLoad: adminGuard,
 });

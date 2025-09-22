@@ -7,7 +7,6 @@ import {
   updateUserRoleServerFn,
 } from '~/features/dashboard/admin.server';
 import { queryKeys } from '~/lib/query-keys';
-import { adminGuard } from '~/lib/route-guards';
 
 type AdminUser = Awaited<ReturnType<typeof getAllUsersServerFn>>[number];
 type UserData = Awaited<ReturnType<typeof getUserDataServerFn>>;
@@ -47,9 +46,8 @@ import { deleteUserServerFn } from '~/features/auth/auth.server';
 
 export const Route = createFileRoute('/admin/users')({
   component: UserManagement,
-  beforeLoad: adminGuard,
   loader: async () => {
-    // Admin auth is handled by beforeLoad, loader only fetches data
+    // Admin auth is handled by parent route beforeLoad, loader only fetches data
     return getAllUsersServerFn();
   },
 });

@@ -22,7 +22,7 @@ export default defineConfig((_env) => {
       react(),
       visualizer({
         filename: 'dist/stats.html',
-        open: true,
+        open: false,
         gzipSize: true,
       }),
     ],

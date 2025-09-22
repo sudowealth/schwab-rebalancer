@@ -441,18 +441,20 @@ export class SchwabApiService {
 
       console.log('💿 [SchwabApi] Inserting new credentials...');
       // Insert new credentials
-      await getDb().insert(schema.schwabCredentials).values({
-        id: crypto.randomUUID(),
-        userId,
-        encryptedAccessToken,
-        encryptedRefreshToken,
-        tokenExpiresAt: new Date(credentials.tokenExpiresAt),
-        refreshTokenExpiresAt: new Date(credentials.refreshTokenExpiresAt),
-        encryptedSchwabClientId,
-        isActive: true,
-        createdAt: now,
-        updatedAt: now,
-      });
+      await getDb()
+        .insert(schema.schwabCredentials)
+        .values({
+          id: crypto.randomUUID(),
+          userId,
+          encryptedAccessToken,
+          encryptedRefreshToken,
+          tokenExpiresAt: new Date(credentials.tokenExpiresAt),
+          refreshTokenExpiresAt: new Date(credentials.refreshTokenExpiresAt),
+          encryptedSchwabClientId,
+          isActive: true,
+          createdAt: now,
+          updatedAt: now,
+        });
 
       console.log('✅ [SchwabApi] Successfully stored new credentials');
     } catch (error) {
@@ -597,10 +599,7 @@ export class SchwabApiService {
             accountValue: securitiesAccount.initialBalances?.accountValue || 0,
           });
 
-          console.log(
-            '✅ [SchwabApi] Successfully fetched account value:',
-            securitiesAccount.initialBalances?.accountValue || 0,
-          );
+          console.log('✅ [SchwabApi] Successfully fetched account details');
         } catch (accountError) {
           console.warn('⚠️ [SchwabApi] Failed to fetch account details:', accountError);
         }
@@ -692,8 +691,6 @@ export class SchwabApiService {
         console.error('❌ [SchwabApi] Account not found:', accountIdentifier);
         throw new Error(`Account not found: ${accountIdentifier}`);
       }
-
-      console.log('📊 [SchwabApi] Raw positions response:', JSON.stringify(positionsData, null, 2));
 
       const positions: SchwabPosition[] = [];
 
