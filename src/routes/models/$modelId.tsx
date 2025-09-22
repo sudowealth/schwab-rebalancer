@@ -9,6 +9,7 @@ import {
 } from '@tanstack/react-table';
 import { ArrowRight, ChevronDown, ChevronsUpDown, ChevronUp, Edit, Trash2 } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
+import { ModelsErrorBoundary } from '~/components/RouteErrorBoundaries';
 import { Badge } from '~/components/ui/badge';
 import { Button } from '~/components/ui/button';
 import type { RebalancingGroup, Sleeve } from '~/features/auth/schemas';
@@ -24,6 +25,7 @@ import {
 
 export const Route = createFileRoute('/models/$modelId')({
   component: ModelDetailComponent,
+  errorComponent: ModelsErrorBoundary,
   beforeLoad: authGuard,
   loader: async ({ params: { modelId } }) => {
     try {

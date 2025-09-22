@@ -3,6 +3,7 @@ import { createFileRoute } from '@tanstack/react-router';
 import { AlertTriangle, Database, Trash2 } from 'lucide-react';
 import { useEffect, useId, useState } from 'react';
 import { ErrorBoundaryWrapper } from '~/components/ErrorBoundary';
+import { AdminErrorBoundary } from '~/components/RouteErrorBoundaries';
 import { Alert, AlertDescription, AlertTitle } from '~/components/ui/alert';
 import { Button } from '~/components/ui/button';
 import { Input } from '~/components/ui/input';
@@ -12,6 +13,7 @@ import { truncateDataServerFn } from '~/lib/server-functions';
 
 export const Route = createFileRoute('/admin/')({
   component: AdminDashboardIndex,
+  errorComponent: AdminErrorBoundary,
 });
 
 function AdminDashboardIndex() {

@@ -1,5 +1,6 @@
 import { createServerFn } from '@tanstack/react-start';
 import { and, eq, inArray } from 'drizzle-orm';
+import { z } from 'zod';
 import * as schema from '~/db/schema';
 // Static imports for rebalancing utilities
 import {
@@ -33,20 +34,45 @@ import {
 import { loadDashboardData } from '../../lib/server-only';
 import { requireAdmin, requireAuth } from '../auth/auth-utils';
 
+// Zod schemas for type safety
+const getSecuritiesDataSchema = z.object({
+  indexId: z.string().optional(),
+  search: z.string().optional(),
+  page: z.number().min(1).optional(),
+  pageSize: z.number().min(1).max(1000).optional(),
+  sortBy: z.string().optional(),
+  sortOrder: z.enum(['asc', 'desc']).optional(),
+});
+
+const getGroupTransactionsSchema = z.object({
+  accountIds: z.array(z.string().min(1)).min(1, 'At least one account ID is required'),
+});
+
+const generateAllocationDataSchema = z.object({
+  allocationView: z.enum(['account', 'sector', 'industry', 'sleeve']),
+  groupId: z.string().min(1, 'Group ID is required'),
+  totalValue: z.number().positive('Total value must be positive'),
+});
+
+const generateTopHoldingsDataSchema = z.object({
+  groupId: z.string().min(1, 'Group ID is required'),
+  totalValue: z.number().positive('Total value must be positive'),
+  limit: z.number().min(1).max(50).optional(),
+});
+
+const getAccountsForRebalancingGroupsSchema = z.object({
+  excludeGroupId: z.string().optional(),
+});
+
+const updateAccountSchema = z.object({
+  accountId: z.string().min(1, 'Account ID is required'),
+  name: z.string().min(1, 'Account name is required'),
+  type: z.enum(['TAXABLE', 'TAX_DEFERRED', 'TAX_EXEMPT', '']).optional().default(''),
+});
+
 // Server function to get securities data with optional filtering and pagination - runs ONLY on server
-export const getSecuritiesDataServerFn = createServerFn({
-  method: 'POST',
-})
-  .validator(
-    (data: {
-      indexId?: string;
-      search?: string;
-      page?: number;
-      pageSize?: number;
-      sortBy?: string;
-      sortOrder?: 'asc' | 'desc';
-    }) => data,
-  )
+export const getSecuritiesDataServerFn = createServerFn({ method: 'POST' })
+  .validator(getSecuritiesDataSchema)
   .handler(async ({ data }) => {
     await requireAuth();
 
@@ -220,10 +246,8 @@ export const getProposedTradesServerFn = createServerFn({ method: 'GET' }).handl
   return getProposedTrades(user.id);
 });
 
-export const getGroupTransactionsServerFn = createServerFn({
-  method: 'POST',
-})
-  .validator((data: { accountIds: string[] }) => data)
+export const getGroupTransactionsServerFn = createServerFn({ method: 'POST' })
+  .validator(getGroupTransactionsSchema)
   .handler(async ({ data }) => {
     const { accountIds } = data;
     const { user } = await requireAuth();
@@ -253,16 +277,8 @@ export const getPortfolioMetricsServerFn = createServerFn({ method: 'GET' }).han
 });
 
 // Server function to generate allocation data for rebalancing groups
-export const generateAllocationDataServerFn = createServerFn({
-  method: 'POST',
-})
-  .validator(
-    (data: {
-      allocationView: 'account' | 'sector' | 'industry' | 'sleeve';
-      groupId: string;
-      totalValue: number;
-    }) => data,
-  )
+export const generateAllocationDataServerFn = createServerFn({ method: 'POST' })
+  .validator(generateAllocationDataSchema)
   .handler(async ({ data }) => {
     const { user } = await requireAuth();
 
@@ -296,10 +312,8 @@ export const generateAllocationDataServerFn = createServerFn({
   });
 
 // Server function to generate top holdings data for rebalancing groups
-export const generateTopHoldingsDataServerFn = createServerFn({
-  method: 'POST',
-})
-  .validator((data: { groupId: string; totalValue: number; limit?: number }) => data)
+export const generateTopHoldingsDataServerFn = createServerFn({ method: 'POST' })
+  .validator(generateTopHoldingsDataSchema)
   .handler(async ({ data }) => {
     const { user } = await requireAuth();
 
@@ -373,10 +387,8 @@ export const getAvailableAccountsServerFn = createServerFn({
 });
 
 // Server function to get accounts for rebalancing groups with assignment status
-export const getAccountsForRebalancingGroupsServerFn = createServerFn({
-  method: 'GET',
-})
-  .validator((data: { excludeGroupId?: string }) => data)
+export const getAccountsForRebalancingGroupsServerFn = createServerFn({ method: 'GET' })
+  .validator(getAccountsForRebalancingGroupsSchema)
 
   .handler(async ({ data }) => {
     const { user } = await requireAuth();
@@ -387,7 +399,7 @@ export const getAccountsForRebalancingGroupsServerFn = createServerFn({
 
 // Server function to update account details - runs ONLY on server
 export const updateAccountServerFn = createServerFn({ method: 'POST' })
-  .validator((data: { accountId: string; name: string; type: string }) => data)
+  .validator(updateAccountSchema)
 
   .handler(async ({ data }) => {
     const { accountId, name, type } = data;

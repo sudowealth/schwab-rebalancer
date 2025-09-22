@@ -11,12 +11,14 @@ import {
   Users,
 } from 'lucide-react';
 import { ErrorBoundaryWrapper } from '~/components/ErrorBoundary';
+import { AdminErrorBoundary } from '~/components/RouteErrorBoundaries';
 import { Button } from '~/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card';
 import { getSystemStatsServerFn } from '~/lib/server-functions';
 
 export const Route = createFileRoute('/admin/stats')({
   component: SystemStats,
+  errorComponent: AdminErrorBoundary,
   loader: async () => {
     // Pre-load stats data
     const stats = await getSystemStatsServerFn();

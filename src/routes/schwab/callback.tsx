@@ -1,12 +1,14 @@
 import { createFileRoute, useRouter } from '@tanstack/react-router';
 import { AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { SchwabErrorBoundary } from '~/components/RouteErrorBoundaries';
 import { Button } from '~/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card';
 import { handleSchwabOAuthCallbackServerFn } from '~/lib/server-functions';
 
 export const Route = createFileRoute('/schwab/callback')({
   component: SchwabCallbackPage,
+  errorComponent: SchwabErrorBoundary,
   validateSearch: (search: Record<string, unknown>) => ({
     code: search.code as string,
     state: search.state as string,

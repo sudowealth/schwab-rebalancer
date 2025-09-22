@@ -35,7 +35,9 @@ interface EditAccountModalProps {
   onAccountUpdated?: () => void;
 }
 
-const ACCOUNT_TYPES = ['TAXABLE', 'TAX_DEFERRED', 'TAX_EXEMPT'];
+type AccountTypeValue = 'NONE' | 'TAXABLE' | 'TAX_DEFERRED' | 'TAX_EXEMPT';
+
+const ACCOUNT_TYPES = ['TAXABLE', 'TAX_DEFERRED', 'TAX_EXEMPT'] as const;
 
 const formatAccountType = (type: string): string => {
   if (!type) return '';
@@ -55,7 +57,7 @@ export function EditAccountModal({
   onAccountUpdated,
 }: EditAccountModalProps) {
   const [accountName, setAccountName] = useState('');
-  const [accountType, setAccountType] = useState('');
+  const [accountType, setAccountType] = useState<AccountTypeValue>('NONE');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const accountNameId = useId();
@@ -64,7 +66,12 @@ export function EditAccountModal({
   useEffect(() => {
     if (account && open) {
       setAccountName(account.accountName);
-      setAccountType(account.accountType || 'NONE');
+      const typeValue = account.accountType as AccountTypeValue;
+      setAccountType(
+        typeValue && ['TAXABLE', 'TAX_DEFERRED', 'TAX_EXEMPT'].includes(typeValue)
+          ? typeValue
+          : 'NONE',
+      );
       setError('');
     }
   }, [account, open]);
@@ -85,7 +92,10 @@ export function EditAccountModal({
         data: {
           accountId: account.accountId,
           name: accountName.trim(),
-          type: accountType === 'NONE' ? '' : accountType,
+          type:
+            accountType === 'NONE'
+              ? ''
+              : (accountType as 'TAXABLE' | 'TAX_DEFERRED' | 'TAX_EXEMPT'),
         },
       });
 
@@ -133,7 +143,11 @@ export function EditAccountModal({
           </div>
           <div className="space-y-2">
             <Label htmlFor="account-type">Account Type</Label>
-            <Select value={accountType} onValueChange={setAccountType} disabled={isLoading}>
+            <Select
+              value={accountType}
+              onValueChange={(value) => setAccountType(value as AccountTypeValue)}
+              disabled={isLoading}
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Select account type (optional)" />
               </SelectTrigger>

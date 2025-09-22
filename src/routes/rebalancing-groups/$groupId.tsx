@@ -3,6 +3,7 @@ import { createFileRoute, Link, useRouter } from '@tanstack/react-router';
 import { Edit, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ErrorBoundaryWrapper } from '~/components/ErrorBoundary';
+import { RebalancingErrorBoundary } from '~/components/RouteErrorBoundaries';
 import { Badge } from '~/components/ui/badge';
 import { Button } from '~/components/ui/button';
 import type { Order } from '~/features/auth/schemas';
@@ -43,6 +44,7 @@ import {
 import type { RebalanceMethod } from '~/types/rebalance';
 
 export const Route = createFileRoute('/rebalancing-groups/$groupId')({
+  errorComponent: RebalancingErrorBoundary,
   beforeLoad: authGuard,
   validateSearch: (search: Record<string, unknown>) => {
     const result: { rebalance?: string } = {};

@@ -1,5 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { useEffect } from 'react';
+import { DataFeedsErrorBoundary } from '~/components/RouteErrorBoundaries';
 import { SeedDataSection } from '~/features/data-feeds/components/SeedDataSection';
 import { SyncHistory } from '~/features/data-feeds/components/SyncHistory';
 import { YahooIntegration } from '~/features/data-feeds/components/YahooIntegration';
@@ -8,6 +9,7 @@ import { authGuard } from '~/lib/route-guards';
 
 export const Route = createFileRoute('/data-feeds/')({
   component: DataFeedsPage,
+  errorComponent: DataFeedsErrorBoundary,
   beforeLoad: authGuard,
 });
 

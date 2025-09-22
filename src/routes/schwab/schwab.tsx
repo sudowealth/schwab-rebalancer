@@ -1,8 +1,10 @@
 import { createFileRoute, Outlet, redirect } from '@tanstack/react-router';
+import { SchwabErrorBoundary } from '~/components/RouteErrorBoundaries';
 import { getDashboardDataServerFn } from '~/lib/server-functions';
 
 export const Route = createFileRoute('/schwab/schwab')({
   component: SchwabLayout,
+  errorComponent: SchwabErrorBoundary,
   beforeLoad: async ({ location }) => {
     // Conditional protection: only protect non-OAuth routes
     if (!location.pathname.includes('/callback')) {

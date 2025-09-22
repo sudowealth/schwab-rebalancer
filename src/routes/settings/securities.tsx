@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { createFileRoute } from '@tanstack/react-router';
 import { useMemo } from 'react';
+import { SettingsErrorBoundary } from '~/components/RouteErrorBoundaries';
 import { ExportButton } from '~/components/ui/export-button';
 import { SecuritiesTable } from '~/features/dashboard/components/securities-table';
 import { getIndices, getSnP500Data } from '~/lib/api';
@@ -10,6 +11,7 @@ import { getDashboardDataServerFn } from '~/lib/server-functions';
 
 export const Route = createFileRoute('/settings/securities')({
   component: SecuritiesComponent,
+  errorComponent: SettingsErrorBoundary,
   beforeLoad: authGuard,
   validateSearch: (search) => ({
     page:

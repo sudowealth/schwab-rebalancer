@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute } from '@tanstack/react-router';
 import { ErrorBoundaryWrapper } from '~/components/ErrorBoundary';
+import { AdminErrorBoundary } from '~/components/RouteErrorBoundaries';
 import {
   getAllUsersServerFn,
   getUserDataServerFn,
@@ -46,6 +47,7 @@ import { deleteUserServerFn } from '~/features/auth/auth.server';
 
 export const Route = createFileRoute('/admin/users')({
   component: UserManagement,
+  errorComponent: AdminErrorBoundary,
   loader: async () => {
     // Admin auth is handled by parent route beforeLoad, loader only fetches data
     return getAllUsersServerFn();

@@ -1,5 +1,6 @@
 import { createServerFn } from '@tanstack/react-start';
 import { and, eq, inArray } from 'drizzle-orm';
+import { z } from 'zod';
 import * as schema from '~/db/schema';
 import type { RebalancingGroup } from '~/features/auth/schemas';
 import type { AccountHoldingsResult } from '~/lib/db-api';
@@ -17,6 +18,31 @@ import {
 import { getDb } from '~/lib/db-config';
 import { throwServerError } from '~/lib/error-utils';
 import { requireAuth } from '../auth/auth-utils';
+
+// Zod schemas for type safety
+const createRebalancingGroupSchema = z.object({
+  name: z.string().min(1, 'Group name is required'),
+  members: z
+    .array(
+      z.object({
+        accountId: z.string().min(1, 'Account ID is required'),
+      }),
+    )
+    .min(1, 'At least one member is required'),
+  updateExisting: z.boolean().optional().default(false),
+});
+
+const updateRebalancingGroupSchema = z.object({
+  groupId: z.string().min(1, 'Group ID is required'),
+  name: z.string().min(1, 'Group name is required'),
+  members: z
+    .array(
+      z.object({
+        accountId: z.string().min(1, 'Account ID is required'),
+      }),
+    )
+    .min(1, 'At least one member is required'),
+});
 
 // Server function to get all rebalancing groups - runs ONLY on server
 export const getRebalancingGroupsServerFn = createServerFn({
@@ -38,10 +64,7 @@ export const getRebalancingGroupsServerFn = createServerFn({
 
 // Server function to create a new rebalancing group - runs ONLY on server
 export const createRebalancingGroupServerFn = createServerFn({ method: 'POST' })
-  .validator(
-    (data: { name: string; members: Array<{ accountId: string }>; updateExisting?: boolean }) =>
-      data,
-  )
+  .validator(createRebalancingGroupSchema)
 
   .handler(async ({ data }) => {
     const { user } = await requireAuth();
@@ -57,9 +80,7 @@ export const createRebalancingGroupServerFn = createServerFn({ method: 'POST' })
 
 // Server function to update a rebalancing group - runs ONLY on server
 export const updateRebalancingGroupServerFn = createServerFn({ method: 'POST' })
-  .validator(
-    (data: { groupId: string; name: string; members: Array<{ accountId: string }> }) => data,
-  )
+  .validator(updateRebalancingGroupSchema)
   .handler(async ({ data }) => {
     const { user } = await requireAuth();
     const _db = getDb();

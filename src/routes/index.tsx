@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { createFileRoute } from '@tanstack/react-router';
-import { useEffect } from 'react';
 import { OnboardingTracker } from '~/components/OnboardingTracker';
+import { DashboardErrorBoundary } from '~/components/RouteErrorBoundaries';
 import { ExportButton } from '~/components/ui/export-button';
 import type { Sleeve } from '~/features/auth/schemas';
 import { DashboardMetrics } from '~/features/dashboard/components/dashboard-metrics';
@@ -15,7 +15,6 @@ import { useDashboardModals } from '~/features/dashboard/hooks/use-dashboard-mod
 import { useDashboardTabs } from '~/features/dashboard/hooks/use-dashboard-tabs';
 import { useOnboardingStatus } from '~/features/dashboard/hooks/use-onboarding-status';
 import { useSecuritiesSeeding } from '~/features/data-feeds/hooks/use-securities-seeding';
-import { seedSecuritiesDataServerFn } from '~/features/data-feeds/import.server';
 import { useExcelExport } from '~/lib/excel-export';
 import { authGuard } from '~/lib/route-guards';
 import {
@@ -67,6 +66,7 @@ function DashboardSkeleton() {
 
 export const Route = createFileRoute('/')({
   component: DashboardComponent,
+  errorComponent: DashboardErrorBoundary,
   pendingMs: 200,
   pendingComponent: () => <DashboardSkeleton />,
   beforeLoad: authGuard,
@@ -135,18 +135,6 @@ function DashboardComponent() {
         securitiesCount: 0,
       }
     : undefined;
-
-  // DEBUG: Directly call seeding function to test
-  useEffect(() => {
-    console.log('🔥 DEBUG: Component mounted, calling seedSecuritiesDataServerFn');
-    seedSecuritiesDataServerFn()
-      .then((result) => {
-        console.log('🔥 DEBUG: Seeding result:', result);
-      })
-      .catch((error) => {
-        console.error('🔥 DEBUG: Seeding error:', error);
-      });
-  }, []); // Run once on mount
 
   // Use the securities seeding hook to automatically import securities when needed
   const { isSeeding, hasError, seedResult, showSuccessMessage } = useSecuritiesSeeding(

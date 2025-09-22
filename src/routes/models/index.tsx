@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from '@tanstack/react-router';
 import { FileText } from 'lucide-react';
 import { ErrorBoundaryWrapper } from '~/components/ErrorBoundary';
+import { ModelsErrorBoundary } from '~/components/RouteErrorBoundaries';
 import { AddModelModal } from '~/features/models/components/add-model-modal';
 import { authGuard } from '~/lib/route-guards';
 import { getModelsServerFn } from '~/lib/server-functions';
@@ -40,6 +41,7 @@ function ModelsSkeleton() {
 
 export const Route = createFileRoute('/models/')({
   component: ModelsComponent,
+  errorComponent: ModelsErrorBoundary,
   pendingMs: 200,
   pendingComponent: () => <ModelsSkeleton />,
   beforeLoad: authGuard,

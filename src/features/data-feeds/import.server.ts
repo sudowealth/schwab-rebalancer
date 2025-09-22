@@ -30,6 +30,12 @@ const truncateDataSchema = z.object({
   confirmText: z.literal('TRUNCATE_ALL_DATA'),
 });
 
+const importNasdaqSecuritiesSchema = z.object({
+  limit: z.number().min(1).max(10000).optional(),
+  skipExisting: z.boolean().optional().default(true),
+  feedType: z.enum(['all', 'nasdaqonly', 'nonnasdaq']).optional().default('all'),
+});
+
 // ================================
 // NASDAQ IMPORT UTILITY FUNCTIONS (Single Responsibility)
 // ================================
@@ -523,16 +529,8 @@ export const seedGlobalEquityModelServerFn = createServerFn({ method: 'POST' }).
 );
 
 // Server function to import Nasdaq securities - runs ONLY on server
-export const importNasdaqSecuritiesServerFn = createServerFn({
-  method: 'POST',
-})
-  .validator(
-    (data: {
-      limit?: number;
-      skipExisting?: boolean;
-      feedType?: 'all' | 'nasdaqonly' | 'nonnasdaq';
-    }) => data,
-  )
+export const importNasdaqSecuritiesServerFn = createServerFn({ method: 'POST' })
+  .validator(importNasdaqSecuritiesSchema)
   .handler(async ({ data }) => {
     await requireAuth();
     const { limit, skipExisting = true, feedType = 'all' } = data;

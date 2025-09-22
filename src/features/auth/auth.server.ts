@@ -29,6 +29,15 @@ const signUpWithFirstAdminSchema = z.object({
   name: z.string().min(1, 'Name is required'),
 });
 
+const invalidateSessionSchema = z.object({
+  sessionId: z.string().min(1, 'Session ID is required'),
+  reason: z.enum(['password_change', 'suspicious_activity', 'admin_action', 'logout_all']),
+});
+
+const logoutAllSessionsSchema = z.object({
+  currentSessionId: z.string().optional(),
+});
+
 // Admin-only functions
 
 // Get all users (admin only)
@@ -322,44 +331,31 @@ export const getActiveSessionsServerFn = createServerFn({
   return sessions;
 });
 
-export const invalidateSessionServerFn = createServerFn({
-  method: 'POST',
-}).handler(async (ctx) => {
-  const { user } = await requireAuth();
-  const data = ctx.data as { sessionId: string; reason: string } | undefined;
+export const invalidateSessionServerFn = createServerFn({ method: 'POST' })
+  .validator(invalidateSessionSchema)
+  .handler(async ({ data }) => {
+    const { user } = await requireAuth();
+    const { sessionId, reason } = data;
 
-  if (!data || !data.sessionId || !data.reason) {
-    throwServerError('Invalid request data', 400);
-  }
+    const count = await SessionManager.invalidateSessions({
+      sessionId,
+      reason,
+      userId: user.id,
+    });
 
-  // At this point, data is guaranteed to be defined due to the check above
-  const validatedData = data as { sessionId: string; reason: string };
-
-  const count = await SessionManager.invalidateSessions({
-    sessionId: validatedData.sessionId,
-    reason: validatedData.reason as
-      | 'password_change'
-      | 'suspicious_activity'
-      | 'admin_action'
-      | 'logout_all',
-    userId: user.id,
+    return { success: true, sessionsInvalidated: count };
   });
 
-  return { success: true, sessionsInvalidated: count };
-});
+export const logoutAllSessionsServerFn = createServerFn({ method: 'POST' })
+  .validator(logoutAllSessionsSchema)
+  .handler(async ({ data }) => {
+    const { user } = await requireAuth();
+    const { currentSessionId } = data || {};
 
-export const logoutAllSessionsServerFn = createServerFn({
-  method: 'POST',
-}).handler(async (ctx) => {
-  const { user } = await requireAuth();
-  const { currentSessionId } = (ctx.data || {}) as {
-    currentSessionId?: string;
-  };
+    await SessionManager.logoutAllSessions(user.id, currentSessionId);
 
-  await SessionManager.logoutAllSessions(user.id, currentSessionId);
-
-  return { success: true, message: 'All sessions have been logged out' };
-});
+    return { success: true, message: 'All sessions have been logged out' };
+  });
 
 export const cleanupExpiredSessionsServerFn = createServerFn({
   method: 'POST',

@@ -2,6 +2,7 @@ import { createFileRoute, Link } from '@tanstack/react-router';
 import { FileText } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { ErrorBoundaryWrapper } from '~/components/ErrorBoundary';
+import { RebalancingErrorBoundary } from '~/components/RouteErrorBoundaries';
 import { Badge } from '~/components/ui/badge';
 import type { RebalancingGroup, RebalancingGroupMember } from '~/features/auth/schemas';
 import { AddRebalancingGroupModal } from '~/features/rebalancing/components/add-rebalancing-group-modal';
@@ -49,6 +50,7 @@ function RebalancingGroupsSkeleton() {
 
 export const Route = createFileRoute('/rebalancing-groups/')({
   component: RebalancingGroupsComponent,
+  errorComponent: RebalancingErrorBoundary,
   pendingMs: 200,
   pendingComponent: () => <RebalancingGroupsSkeleton />,
   validateSearch: (search: Record<string, unknown>) => {

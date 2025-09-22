@@ -2,6 +2,7 @@ import { createFileRoute } from '@tanstack/react-router';
 import { BarChart3, FileText, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { ErrorBoundaryWrapper } from '~/components/ErrorBoundary';
+import { SleevesErrorBoundary } from '~/components/RouteErrorBoundaries';
 import { Button } from '~/components/ui/button';
 import type { Sleeve, Transaction } from '~/features/auth/schemas';
 import { AddSleeveModal } from '~/features/sleeves/components/add-sleeve-modal';
@@ -12,6 +13,7 @@ import { getDashboardDataServerFn } from '~/lib/server-functions';
 
 export const Route = createFileRoute('/sleeves/')({
   component: SleevesComponent,
+  errorComponent: SleevesErrorBoundary,
   beforeLoad: authGuard,
   loader: async () => {
     const data = await getDashboardDataServerFn();
