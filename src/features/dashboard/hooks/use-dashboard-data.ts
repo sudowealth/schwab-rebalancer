@@ -18,7 +18,6 @@ import {
   checkSecuritiesExistServerFn,
   getPortfolioMetricsServerFn,
   getPositionsServerFn,
-  getRebalancingGroupsServerFn,
   getSleevesServerFn,
   getTransactionsServerFn,
 } from '~/lib/server-functions';
@@ -130,26 +129,12 @@ export function useDashboardData(loaderData: LoaderData) {
     refetchOnMount: false, // Use loader data initially
   });
 
-  // Use reactive queries for rebalancing groups status (always enabled for onboarding)
-  const { data: rawRebalancingGroups } = useQuery({
-    queryKey: queryKeys.dashboard.groups(),
-    queryFn: getRebalancingGroupsServerFn,
-    initialData: loaderData.rebalancingGroups,
-    enabled: true, // Always enabled for onboarding status updates
-    staleTime: 5 * 60 * 1000, // 5 minutes for financial data
-    gcTime: 30 * 60 * 1000, // 30 minutes cache time
-    refetchOnWindowFocus: false, // Reduce unnecessary refetching
-    refetchOnMount: false, // Use loader data initially
-  });
-
-  // Transform the data for onboarding status
-  const reactiveRebalancingGroupsStatus: { hasGroups: boolean; groupsCount: number } =
-    rawRebalancingGroups
-      ? {
-          hasGroups: rawRebalancingGroups.length > 0,
-          groupsCount: rawRebalancingGroups.length,
-        }
-      : { hasGroups: false, groupsCount: 0 };
+  // Use fresh route loader data for rebalancing groups and onboarding status
+  // Route loader provides up-to-date data on every navigation
+  const reactiveRebalancingGroupsStatus: { hasGroups: boolean; groupsCount: number } = {
+    hasGroups: loaderData.rebalancingGroups.length > 0,
+    groupsCount: loaderData.rebalancingGroups.length,
+  };
 
   // Execute queries with optimized financial data settings to reduce server load
   const positionsResult = useQuery({
@@ -201,7 +186,8 @@ export function useDashboardData(loaderData: LoaderData) {
   const metrics = metricsResult.data;
   const transactions = transactionsResult.data;
   const sleeves = sleevesResult.data;
-  const rebalancingGroups = rawRebalancingGroups;
+  // Use fresh route loader data for rebalancing groups - route loader provides up-to-date data on navigation
+  const rebalancingGroups = loaderData.rebalancingGroups;
 
   // Simplified loading state management - core states only
   const isLoading =
