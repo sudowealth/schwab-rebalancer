@@ -2,6 +2,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { createFileRoute } from '@tanstack/react-router';
 import { AlertTriangle, Database, Trash2 } from 'lucide-react';
 import { useEffect, useId, useState } from 'react';
+import { ErrorBoundaryWrapper } from '~/components/ErrorBoundary';
 import { Alert, AlertDescription, AlertTitle } from '~/components/ui/alert';
 import { Button } from '~/components/ui/button';
 import { Input } from '~/components/ui/input';
@@ -92,144 +93,155 @@ function AdminDashboardIndex() {
   };
 
   return (
-    <div className="px-4 py-8">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">Admin Dashboard</h1>
-        <p className="mt-2 text-sm text-gray-600">Administrative controls and system management</p>
-      </div>
+    <ErrorBoundaryWrapper
+      title="Admin Dashboard Error"
+      description="Failed to load admin dashboard. This might be due to a temporary system issue."
+    >
+      <div className="px-4 py-8">
+        <div className="mb-8">
+          <h1 className="text-2xl font-bold text-gray-900">Admin Dashboard</h1>
+          <p className="mt-2 text-sm text-gray-600">
+            Administrative controls and system management
+          </p>
+        </div>
 
-      {/* Show truncate result if any */}
-      {truncateResult && (
-        <Alert
-          className={`mb-6 ${truncateResult.success ? 'border-green-200 bg-green-50' : 'border-yellow-200 bg-yellow-50'}`}
-        >
-          <AlertTriangle className="h-4 w-4" />
-          <AlertTitle>{truncateResult.success ? 'Success' : 'Partial Success'}</AlertTitle>
-          <AlertDescription>
-            <div className="space-y-2">
-              <p>{truncateResult.message}</p>
-              {truncateResult.totalTables && truncateResult.failedTables !== undefined && (
-                <div className="text-sm">
-                  <p>
-                    <strong>Results:</strong> {truncateResult.truncatedTables} of{' '}
-                    {truncateResult.totalTables} tables truncated successfully
-                    {truncateResult.failedTables > 0 && (
-                      <>
-                        , {truncateResult.failedTables} failed
-                        {truncateResult.failedTableNames &&
-                          truncateResult.failedTableNames.length > 0 && (
-                            <span className="block mt-1 text-xs text-gray-600">
-                              Failed tables: {truncateResult.failedTableNames.join(', ')}
-                            </span>
-                          )}
-                      </>
-                    )}
+        {/* Show truncate result if any */}
+        {truncateResult && (
+          <Alert
+            className={`mb-6 ${truncateResult.success ? 'border-green-200 bg-green-50' : 'border-yellow-200 bg-yellow-50'}`}
+          >
+            <AlertTriangle className="h-4 w-4" />
+            <AlertTitle>{truncateResult.success ? 'Success' : 'Partial Success'}</AlertTitle>
+            <AlertDescription>
+              <div className="space-y-2">
+                <p>{truncateResult.message}</p>
+                {truncateResult.totalTables && truncateResult.failedTables !== undefined && (
+                  <div className="text-sm">
+                    <p>
+                      <strong>Results:</strong> {truncateResult.truncatedTables} of{' '}
+                      {truncateResult.totalTables} tables truncated successfully
+                      {truncateResult.failedTables > 0 && (
+                        <>
+                          , {truncateResult.failedTables} failed
+                          {truncateResult.failedTableNames &&
+                            truncateResult.failedTableNames.length > 0 && (
+                              <span className="block mt-1 text-xs text-gray-600">
+                                Failed tables: {truncateResult.failedTableNames.join(', ')}
+                              </span>
+                            )}
+                        </>
+                      )}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </AlertDescription>
+          </Alert>
+        )}
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <AdminCard
+            title="User Management"
+            description="Manage users and their roles"
+            href="/admin/users"
+          />
+
+          <AdminCard
+            title="System Statistics"
+            description="View system-wide statistics"
+            href="/admin/stats"
+          />
+
+          <AdminCard
+            title="Truncate Data"
+            description="Reset all financial data for testing"
+            onClick={() => setShowTruncateModal(true)}
+            destructive
+          />
+        </div>
+
+        {/* Truncate Data Confirmation Modal */}
+        {showTruncateModal && (
+          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+            <div className="relative top-20 mx-auto p-5 border w-full max-w-md shadow-lg rounded-md bg-white">
+              <div className="mt-3">
+                <div className="flex items-center mb-4">
+                  <AlertTriangle className="h-6 w-6 text-red-500 mr-3" />
+                  <h3 className="text-lg font-medium text-gray-900">Danger Zone</h3>
+                </div>
+
+                <div className="mb-4">
+                  <p className="text-sm text-gray-600 mb-4">
+                    This will permanently delete ALL financial data from the system, including:
+                  </p>
+                  <ul className="text-sm text-gray-600 list-disc list-inside space-y-1 mb-4">
+                    <li>All securities and price data</li>
+                    <li>All accounts, holdings, and transactions</li>
+                    <li>All sleeves, models, and rebalancing groups</li>
+                    <li>All Schwab import data and credentials</li>
+                    <li>All financial plans and tax brackets</li>
+                    <li>All trading orders and executions</li>
+                  </ul>
+                  <p className="text-sm text-gray-600">
+                    <strong>
+                      User accounts, authentication, and audit logs will be preserved.
+                    </strong>
                   </p>
                 </div>
-              )}
-            </div>
-          </AlertDescription>
-        </Alert>
-      )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <AdminCard
-          title="User Management"
-          description="Manage users and their roles"
-          href="/admin/users"
-        />
+                <div className="mb-4">
+                  <Label htmlFor={confirmTextId} className="text-sm font-medium text-gray-700">
+                    Type{' '}
+                    <code className="bg-gray-100 px-1 py-0.5 rounded text-xs">
+                      TRUNCATE_ALL_DATA
+                    </code>{' '}
+                    to confirm:
+                  </Label>
+                  <Input
+                    id={confirmTextId}
+                    type="text"
+                    value={confirmText}
+                    onChange={(e) => setConfirmText(e.target.value)}
+                    placeholder="TRUNCATE_ALL_DATA"
+                    className="mt-1"
+                  />
+                </div>
 
-        <AdminCard
-          title="System Statistics"
-          description="View system-wide statistics"
-          href="/admin/stats"
-        />
-
-        <AdminCard
-          title="Truncate Data"
-          description="Reset all financial data for testing"
-          onClick={() => setShowTruncateModal(true)}
-          destructive
-        />
-      </div>
-
-      {/* Truncate Data Confirmation Modal */}
-      {showTruncateModal && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-20 mx-auto p-5 border w-full max-w-md shadow-lg rounded-md bg-white">
-            <div className="mt-3">
-              <div className="flex items-center mb-4">
-                <AlertTriangle className="h-6 w-6 text-red-500 mr-3" />
-                <h3 className="text-lg font-medium text-gray-900">Danger Zone</h3>
-              </div>
-
-              <div className="mb-4">
-                <p className="text-sm text-gray-600 mb-4">
-                  This will permanently delete ALL financial data from the system, including:
-                </p>
-                <ul className="text-sm text-gray-600 list-disc list-inside space-y-1 mb-4">
-                  <li>All securities and price data</li>
-                  <li>All accounts, holdings, and transactions</li>
-                  <li>All sleeves, models, and rebalancing groups</li>
-                  <li>All Schwab import data and credentials</li>
-                  <li>All financial plans and tax brackets</li>
-                  <li>All trading orders and executions</li>
-                </ul>
-                <p className="text-sm text-gray-600">
-                  <strong>User accounts, authentication, and audit logs will be preserved.</strong>
-                </p>
-              </div>
-
-              <div className="mb-4">
-                <Label htmlFor={confirmTextId} className="text-sm font-medium text-gray-700">
-                  Type{' '}
-                  <code className="bg-gray-100 px-1 py-0.5 rounded text-xs">TRUNCATE_ALL_DATA</code>{' '}
-                  to confirm:
-                </Label>
-                <Input
-                  id={confirmTextId}
-                  type="text"
-                  value={confirmText}
-                  onChange={(e) => setConfirmText(e.target.value)}
-                  placeholder="TRUNCATE_ALL_DATA"
-                  className="mt-1"
-                />
-              </div>
-
-              <div className="flex justify-end space-x-3">
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setShowTruncateModal(false);
-                    setConfirmText('');
-                  }}
-                  disabled={isTruncating}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  variant="destructive"
-                  onClick={handleTruncateData}
-                  disabled={isTruncating || confirmText !== 'TRUNCATE_ALL_DATA'}
-                >
-                  {isTruncating ? (
-                    <>
-                      <Database className="h-4 w-4 mr-2 animate-spin" />
-                      Truncating...
-                    </>
-                  ) : (
-                    <>
-                      <Trash2 className="h-4 w-4 mr-2" />
-                      Truncate All Data
-                    </>
-                  )}
-                </Button>
+                <div className="flex justify-end space-x-3">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setShowTruncateModal(false);
+                      setConfirmText('');
+                    }}
+                    disabled={isTruncating}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    onClick={handleTruncateData}
+                    disabled={isTruncating || confirmText !== 'TRUNCATE_ALL_DATA'}
+                  >
+                    {isTruncating ? (
+                      <>
+                        <Database className="h-4 w-4 mr-2 animate-spin" />
+                        Truncating...
+                      </>
+                    ) : (
+                      <>
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Truncate All Data
+                      </>
+                    )}
+                  </Button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
-    </div>
+        )}
+      </div>
+    </ErrorBoundaryWrapper>
   );
 }
 

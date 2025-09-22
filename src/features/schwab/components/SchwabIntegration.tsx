@@ -10,6 +10,7 @@ import {
   X,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { ErrorBoundaryWrapper } from '~/components/ErrorBoundary';
 import { Button } from '~/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '~/components/ui/card';
 import { Popover, PopoverContent, PopoverTrigger } from '~/components/ui/popover';
@@ -607,321 +608,332 @@ export function SchwabIntegration() {
     isSyncingYahoo;
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <CardTitle className="flex items-center gap-2">
-              <Landmark className="h-5 w-5" />
-              Schwab
-            </CardTitle>
-            <CardDescription>
-              Connect your Charles Schwab account to automatically import accounts, holdings, and
-              prices.
-            </CardDescription>
-          </div>
+    <ErrorBoundaryWrapper
+      title="Schwab Integration Error"
+      description="Failed to load Schwab integration. This might be due to a temporary connection issue."
+    >
+      <Card>
+        <CardHeader>
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <Landmark className="h-5 w-5" />
+                Schwab
+              </CardTitle>
+              <CardDescription>
+                Connect your Charles Schwab account to automatically import accounts, holdings, and
+                prices.
+              </CardDescription>
+            </div>
 
-          <div className="min-w-[120px] flex items-center justify-end">
-            {statusLoading ? (
-              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-            ) : isConnected ? (
-              <div className="relative inline-flex items-center">
-                <span className="px-3 pr-7 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800 border border-green-200">
-                  Connected
-                </span>
-                <button
-                  type="button"
-                  aria-label="Disconnect Schwab"
-                  onClick={handleDisconnect}
-                  disabled={revokeMutation.isPending}
-                  className="absolute right-0.5 inline-flex h-5 w-5 items-center justify-center rounded-full text-green-700 hover:text-green-900 hover:bg-green-200/70 focus:outline-none disabled:opacity-50"
-                >
-                  {revokeMutation.isPending ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  ) : (
-                    <X className="h-3.5 w-3.5" />
-                  )}
-                </button>
-              </div>
-            ) : (
-              <Button onClick={handleConnect} disabled={isConnecting || oauthMutation.isPending}>
-                {isConnecting || oauthMutation.isPending ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                    Connecting...
-                  </>
-                ) : (
-                  'Connect'
-                )}
-              </Button>
-            )}
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {isConnected && (
-          <div className="space-y-3">
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
-              <Button
-                variant="outline"
-                onClick={() => syncAllMutation.mutate()}
-                disabled={isSyncing}
-                className="w-full"
-              >
-                {syncAllMutation.isPending ? (
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                ) : (
-                  <RefreshCw className="h-4 w-4 mr-2" />
-                )}
-                All
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => handleSync('accounts')}
-                disabled={isSyncing}
-                className="w-full"
-              >
-                {syncAccountsMutation.isPending ? (
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                ) : (
-                  ''
-                )}
-                Accounts
-              </Button>
-
-              <Button
-                variant="outline"
-                onClick={() => handleSync('holdings')}
-                disabled={isSyncing}
-                className="w-full"
-              >
-                {syncHoldingsMutation.isPending ? (
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                ) : (
-                  ''
-                )}
-                Holdings
-              </Button>
-
-              <Button
-                variant="outline"
-                onClick={() => syncTransactionsMutation.mutate()}
-                disabled={isSyncing}
-                className="w-full"
-              >
-                {syncTransactionsMutation.isPending ? (
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                ) : (
-                  ''
-                )}
-                Transactions
-              </Button>
-
-              <Popover open={pricesMenuOpen} onOpenChange={setPricesMenuOpen}>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    onClick={() => handleSync('prices')}
-                    disabled={isSyncing}
-                    aria-haspopup="menu"
-                    aria-expanded={pricesMenuOpen}
-                    className="w-full justify-between"
+            <div className="min-w-[120px] flex items-center justify-end">
+              {statusLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+              ) : isConnected ? (
+                <div className="relative inline-flex items-center">
+                  <span className="px-3 pr-7 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800 border border-green-200">
+                    Connected
+                  </span>
+                  <button
+                    type="button"
+                    aria-label="Disconnect Schwab"
+                    onClick={handleDisconnect}
+                    disabled={revokeMutation.isPending}
+                    className="absolute right-0.5 inline-flex h-5 w-5 items-center justify-center rounded-full text-green-700 hover:text-green-900 hover:bg-green-200/70 focus:outline-none disabled:opacity-50"
                   >
-                    {syncPricesMutation.isPending ? (
-                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    {revokeMutation.isPending ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
                     ) : (
-                      ''
+                      <X className="h-3.5 w-3.5" />
                     )}
-                    <span>Securities</span>
-                    <ChevronDown className="h-4 w-4 ml-2 opacity-70" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent align="start" className="w-56 p-2">
-                  <div className="flex flex-col gap-1">
-                    <Button
-                      variant="ghost"
-                      className="justify-start"
-                      disabled={isSyncing}
-                      onClick={() => {
-                        setPricesMenuOpen(false);
-                        handlePricesSyncAll();
-                      }}
-                    >
-                      All
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      className="justify-start"
-                      disabled={isSyncing}
-                      onClick={() => {
-                        setPricesMenuOpen(false);
-                        handlePricesSyncHeld();
-                      }}
-                    >
-                      Held
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      className="justify-start"
-                      disabled={isSyncing}
-                      onClick={() => {
-                        setPricesMenuOpen(false);
-                        handlePricesSyncHeldAndSleeves();
-                      }}
-                    >
-                      Held & Target
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      className="justify-start"
-                      disabled={isSyncing}
-                      onClick={() => {
-                        setPricesMenuOpen(false);
-                        handlePricesSyncSleeveTargets();
-                      }}
-                    >
-                      Target
-                    </Button>
-                  </div>
-                </PopoverContent>
-              </Popover>
+                  </button>
+                </div>
+              ) : (
+                <Button onClick={handleConnect} disabled={isConnecting || oauthMutation.isPending}>
+                  {isConnecting || oauthMutation.isPending ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      Connecting...
+                    </>
+                  ) : (
+                    'Connect'
+                  )}
+                </Button>
+              )}
             </div>
           </div>
-        )}
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {isConnected && (
+            <div className="space-y-3">
+              <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
+                <Button
+                  variant="outline"
+                  onClick={() => syncAllMutation.mutate()}
+                  disabled={isSyncing}
+                  className="w-full"
+                >
+                  {syncAllMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  ) : (
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                  )}
+                  All
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => handleSync('accounts')}
+                  disabled={isSyncing}
+                  className="w-full"
+                >
+                  {syncAccountsMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  ) : (
+                    ''
+                  )}
+                  Accounts
+                </Button>
 
-        {/* Import Results */}
-        {importResult && (
-          <div
-            className={`relative w-full rounded-lg border p-4 mt-4 ${
-              importResult.success ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'
-            }`}
-          >
-            <div className="flex items-start gap-3">
-              {importResult.success ? (
-                <CheckCircle className="h-5 w-5 text-green-600 mt-0.5 flex-shrink-0" />
-              ) : (
-                <AlertCircle className="h-5 w-5 text-red-600 mt-0.5 flex-shrink-0" />
-              )}
-              <div className="flex-1">
-                <div>
-                  <div className="font-medium mb-2">
-                    {importResult.success ? 'Equities Import Completed!' : 'Equities Import Failed'}
-                  </div>
-                  <div className="space-y-1 text-sm">
-                    <div>Total securities parsed: {importResult.totalParsed.toLocaleString()}</div>
-                    <div>Securities processed: {importResult.totalProcessed.toLocaleString()}</div>
-                    <div className="text-green-700">
-                      Imported: {importResult.imported.toLocaleString()}
+                <Button
+                  variant="outline"
+                  onClick={() => handleSync('holdings')}
+                  disabled={isSyncing}
+                  className="w-full"
+                >
+                  {syncHoldingsMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  ) : (
+                    ''
+                  )}
+                  Holdings
+                </Button>
+
+                <Button
+                  variant="outline"
+                  onClick={() => syncTransactionsMutation.mutate()}
+                  disabled={isSyncing}
+                  className="w-full"
+                >
+                  {syncTransactionsMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  ) : (
+                    ''
+                  )}
+                  Transactions
+                </Button>
+
+                <Popover open={pricesMenuOpen} onOpenChange={setPricesMenuOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      onClick={() => handleSync('prices')}
+                      disabled={isSyncing}
+                      aria-haspopup="menu"
+                      aria-expanded={pricesMenuOpen}
+                      className="w-full justify-between"
+                    >
+                      {syncPricesMutation.isPending ? (
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      ) : (
+                        ''
+                      )}
+                      <span>Securities</span>
+                      <ChevronDown className="h-4 w-4 ml-2 opacity-70" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent align="start" className="w-56 p-2">
+                    <div className="flex flex-col gap-1">
+                      <Button
+                        variant="ghost"
+                        className="justify-start"
+                        disabled={isSyncing}
+                        onClick={() => {
+                          setPricesMenuOpen(false);
+                          handlePricesSyncAll();
+                        }}
+                      >
+                        All
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        className="justify-start"
+                        disabled={isSyncing}
+                        onClick={() => {
+                          setPricesMenuOpen(false);
+                          handlePricesSyncHeld();
+                        }}
+                      >
+                        Held
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        className="justify-start"
+                        disabled={isSyncing}
+                        onClick={() => {
+                          setPricesMenuOpen(false);
+                          handlePricesSyncHeldAndSleeves();
+                        }}
+                      >
+                        Held & Target
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        className="justify-start"
+                        disabled={isSyncing}
+                        onClick={() => {
+                          setPricesMenuOpen(false);
+                          handlePricesSyncSleeveTargets();
+                        }}
+                      >
+                        Target
+                      </Button>
                     </div>
-                    <div className="text-blue-700">
-                      Already exist: {importResult.skipped.toLocaleString()}
+                  </PopoverContent>
+                </Popover>
+              </div>
+            </div>
+          )}
+
+          {/* Import Results */}
+          {importResult && (
+            <div
+              className={`relative w-full rounded-lg border p-4 mt-4 ${
+                importResult.success ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'
+              }`}
+            >
+              <div className="flex items-start gap-3">
+                {importResult.success ? (
+                  <CheckCircle className="h-5 w-5 text-green-600 mt-0.5 flex-shrink-0" />
+                ) : (
+                  <AlertCircle className="h-5 w-5 text-red-600 mt-0.5 flex-shrink-0" />
+                )}
+                <div className="flex-1">
+                  <div>
+                    <div className="font-medium mb-2">
+                      {importResult.success
+                        ? 'Equities Import Completed!'
+                        : 'Equities Import Failed'}
                     </div>
-                    {importResult.errors.length > 0 && (
-                      <div className="text-red-700">
-                        Errors: {importResult.errors.length}
-                        {importResult.errors.length > 0 && (
-                          <details className="mt-1">
-                            <summary className="cursor-pointer text-xs">Show errors</summary>
-                            <ul className="mt-1 space-y-1 max-h-32 overflow-y-auto">
-                              {importResult.errors.map((error) => (
-                                <li key={error} className="text-xs text-red-600">
-                                  {error}
-                                </li>
-                              ))}
-                            </ul>
-                          </details>
-                        )}
+                    <div className="space-y-1 text-sm">
+                      <div>
+                        Total securities parsed: {importResult.totalParsed.toLocaleString()}
                       </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Schwab Price Sync Result */}
-        {schwabSyncResult && (
-          <div
-            className={`relative w-full rounded-lg border p-4 mt-4 ${
-              schwabSyncResult.success ? 'border-blue-200 bg-blue-50' : 'border-red-200 bg-red-50'
-            }`}
-          >
-            <div className="flex items-start gap-3">
-              {schwabSyncResult.success ? (
-                <CheckCircle className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
-              ) : (
-                <AlertCircle className="h-5 w-5 text-red-600 mt-0.5 flex-shrink-0" />
-              )}
-              <div className="flex-1">
-                <div>
-                  <div className="font-medium mb-2">
-                    {schwabSyncResult.success
-                      ? 'Schwab Price Sync Completed!'
-                      : 'Schwab Price Sync Failed'}
-                  </div>
-                  <div className="space-y-1 text-sm">
-                    <div>
-                      Securities updated: {schwabSyncResult.recordsProcessed.toLocaleString()}
+                      <div>
+                        Securities processed: {importResult.totalProcessed.toLocaleString()}
+                      </div>
+                      <div className="text-green-700">
+                        Imported: {importResult.imported.toLocaleString()}
+                      </div>
+                      <div className="text-blue-700">
+                        Already exist: {importResult.skipped.toLocaleString()}
+                      </div>
+                      {importResult.errors.length > 0 && (
+                        <div className="text-red-700">
+                          Errors: {importResult.errors.length}
+                          {importResult.errors.length > 0 && (
+                            <details className="mt-1">
+                              <summary className="cursor-pointer text-xs">Show errors</summary>
+                              <ul className="mt-1 space-y-1 max-h-32 overflow-y-auto">
+                                {importResult.errors.map((error) => (
+                                  <li key={error} className="text-xs text-red-600">
+                                    {error}
+                                  </li>
+                                ))}
+                              </ul>
+                            </details>
+                          )}
+                        </div>
+                      )}
                     </div>
-                    {schwabSyncResult.errorMessage && (
-                      <div className="text-red-700">Error: {schwabSyncResult.errorMessage}</div>
-                    )}
                   </div>
                 </div>
               </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Yahoo Finance Sync Result */}
-        {yahooSyncResult && (
-          <div
-            className={`relative w-full rounded-lg border p-4 mt-4 ${
-              yahooSyncResult.success
-                ? 'border-orange-200 bg-orange-50'
-                : 'border-red-200 bg-red-50'
-            }`}
-          >
-            <div className="flex items-start gap-3">
-              {yahooSyncResult.success ? (
-                <CheckCircle className="h-5 w-5 text-orange-600 mt-0.5 flex-shrink-0" />
-              ) : (
-                <AlertCircle className="h-5 w-5 text-red-600 mt-0.5 flex-shrink-0" />
-              )}
-              <div className="flex-1">
-                <div>
-                  <div className="font-medium mb-2">
-                    {yahooSyncResult.success
-                      ? 'Yahoo Finance Sync Completed!'
-                      : 'Yahoo Finance Sync Failed'}
-                  </div>
-                  <div className="space-y-1 text-sm">
-                    <div>
-                      Securities updated: {yahooSyncResult.recordsProcessed.toLocaleString()}
+          {/* Schwab Price Sync Result */}
+          {schwabSyncResult && (
+            <div
+              className={`relative w-full rounded-lg border p-4 mt-4 ${
+                schwabSyncResult.success ? 'border-blue-200 bg-blue-50' : 'border-red-200 bg-red-50'
+              }`}
+            >
+              <div className="flex items-start gap-3">
+                {schwabSyncResult.success ? (
+                  <CheckCircle className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                ) : (
+                  <AlertCircle className="h-5 w-5 text-red-600 mt-0.5 flex-shrink-0" />
+                )}
+                <div className="flex-1">
+                  <div>
+                    <div className="font-medium mb-2">
+                      {schwabSyncResult.success
+                        ? 'Schwab Price Sync Completed!'
+                        : 'Schwab Price Sync Failed'}
                     </div>
-                    {yahooSyncResult.errorMessage && (
-                      <div className="text-red-700">Error: {yahooSyncResult.errorMessage}</div>
-                    )}
+                    <div className="space-y-1 text-sm">
+                      <div>
+                        Securities updated: {schwabSyncResult.recordsProcessed.toLocaleString()}
+                      </div>
+                      {schwabSyncResult.errorMessage && (
+                        <div className="text-red-700">Error: {schwabSyncResult.errorMessage}</div>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Loading indicator for automatic import */}
-        {(importEquitiesMutation.isPending || isImportingEquities || isSyncingYahoo) && (
-          <div className="flex items-center gap-2 text-sm text-gray-600 mt-4">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            {isSyncingYahoo
-              ? 'Updating fundamentals for held and sleeve securities via Yahoo Finance...'
-              : isImportingEquities
-                ? 'Updating prices for newly imported securities via Schwab...'
-                : 'Importing equities securities from NASDAQ...'}
-          </div>
-        )}
-      </CardContent>
-    </Card>
+          {/* Yahoo Finance Sync Result */}
+          {yahooSyncResult && (
+            <div
+              className={`relative w-full rounded-lg border p-4 mt-4 ${
+                yahooSyncResult.success
+                  ? 'border-orange-200 bg-orange-50'
+                  : 'border-red-200 bg-red-50'
+              }`}
+            >
+              <div className="flex items-start gap-3">
+                {yahooSyncResult.success ? (
+                  <CheckCircle className="h-5 w-5 text-orange-600 mt-0.5 flex-shrink-0" />
+                ) : (
+                  <AlertCircle className="h-5 w-5 text-red-600 mt-0.5 flex-shrink-0" />
+                )}
+                <div className="flex-1">
+                  <div>
+                    <div className="font-medium mb-2">
+                      {yahooSyncResult.success
+                        ? 'Yahoo Finance Sync Completed!'
+                        : 'Yahoo Finance Sync Failed'}
+                    </div>
+                    <div className="space-y-1 text-sm">
+                      <div>
+                        Securities updated: {yahooSyncResult.recordsProcessed.toLocaleString()}
+                      </div>
+                      {yahooSyncResult.errorMessage && (
+                        <div className="text-red-700">Error: {yahooSyncResult.errorMessage}</div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Loading indicator for automatic import */}
+          {(importEquitiesMutation.isPending || isImportingEquities || isSyncingYahoo) && (
+            <div className="flex items-center gap-2 text-sm text-gray-600 mt-4">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              {isSyncingYahoo
+                ? 'Updating fundamentals for held and sleeve securities via Yahoo Finance...'
+                : isImportingEquities
+                  ? 'Updating prices for newly imported securities via Schwab...'
+                  : 'Importing equities securities from NASDAQ...'}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </ErrorBoundaryWrapper>
   );
 }

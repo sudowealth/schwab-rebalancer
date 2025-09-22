@@ -10,6 +10,7 @@ import {
   TrendingUp,
   Users,
 } from 'lucide-react';
+import { ErrorBoundaryWrapper } from '~/components/ErrorBoundary';
 import { Button } from '~/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card';
 import { adminGuard } from '~/lib/route-guards';
@@ -95,72 +96,77 @@ function SystemStats() {
   ];
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">System Statistics</h1>
-          <p className="mt-2 text-sm text-gray-600">
-            Overview of system usage and performance metrics
-          </p>
+    <ErrorBoundaryWrapper
+      title="System Statistics Error"
+      description="Failed to load system statistics. This might be due to a temporary data issue."
+    >
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">System Statistics</h1>
+            <p className="mt-2 text-sm text-gray-600">
+              Overview of system usage and performance metrics
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <Button onClick={() => refetch()} variant="outline">
+              Refresh
+            </Button>
+            <Button onClick={() => window.history.back()}>Back to Admin</Button>
+          </div>
         </div>
-        <div className="flex gap-2">
-          <Button onClick={() => refetch()} variant="outline">
-            Refresh
-          </Button>
-          <Button onClick={() => window.history.back()}>Back to Admin</Button>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {statCards.map((stat) => {
+            const Icon = stat.icon;
+            return (
+              <Card key={stat.title}>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">{stat.title}</CardTitle>
+                  <Icon className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{stat.value.toLocaleString()}</div>
+                  <p className="text-xs text-muted-foreground">{stat.description}</p>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+
+        <div className="mt-8">
+          <Card>
+            <CardHeader>
+              <CardTitle>System Overview</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="text-sm text-muted-foreground">
+                  Last updated: {new Date().toLocaleString()}
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <strong>Average accounts per user:</strong>{' '}
+                    {stats?.users ? (stats.accounts / stats.users).toFixed(1) : '0'}
+                  </div>
+                  <div>
+                    <strong>Average sleeves per user:</strong>{' '}
+                    {stats?.users ? (stats.sleeves / stats.users).toFixed(1) : '0'}
+                  </div>
+                  <div>
+                    <strong>Average models per user:</strong>{' '}
+                    {stats?.users ? (stats.models / stats.users).toFixed(1) : '0'}
+                  </div>
+                  <div>
+                    <strong>Average holdings per account:</strong>{' '}
+                    {stats?.accounts ? (stats.holdings / stats.accounts).toFixed(1) : '0'}
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {statCards.map((stat) => {
-          const Icon = stat.icon;
-          return (
-            <Card key={stat.title}>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">{stat.title}</CardTitle>
-                <Icon className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stat.value.toLocaleString()}</div>
-                <p className="text-xs text-muted-foreground">{stat.description}</p>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
-
-      <div className="mt-8">
-        <Card>
-          <CardHeader>
-            <CardTitle>System Overview</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="text-sm text-muted-foreground">
-                Last updated: {new Date().toLocaleString()}
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                <div>
-                  <strong>Average accounts per user:</strong>{' '}
-                  {stats?.users ? (stats.accounts / stats.users).toFixed(1) : '0'}
-                </div>
-                <div>
-                  <strong>Average sleeves per user:</strong>{' '}
-                  {stats?.users ? (stats.sleeves / stats.users).toFixed(1) : '0'}
-                </div>
-                <div>
-                  <strong>Average models per user:</strong>{' '}
-                  {stats?.users ? (stats.models / stats.users).toFixed(1) : '0'}
-                </div>
-                <div>
-                  <strong>Average holdings per account:</strong>{' '}
-                  {stats?.accounts ? (stats.holdings / stats.accounts).toFixed(1) : '0'}
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
+    </ErrorBoundaryWrapper>
   );
 }

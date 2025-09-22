@@ -147,3 +147,69 @@ export function useErrorReporting() {
 
   return { reportError };
 }
+
+// Higher-order component for wrapping features with consistent error boundaries
+export function withErrorBoundary<P extends object>(
+  Component: React.ComponentType<P>,
+  options: {
+    title?: string;
+    description?: string;
+    showDetails?: boolean;
+    onError?: (error: Error, errorInfo: ErrorInfo) => void;
+  } = {},
+) {
+  const {
+    title = 'Feature Error',
+    description = 'Something went wrong with this feature. Please try again.',
+    showDetails = false,
+    onError,
+  } = options;
+
+  const WrappedComponent = (props: P) => (
+    <ErrorBoundaryWrapper
+      title={title}
+      description={description}
+      showDetails={showDetails}
+      onError={onError}
+    >
+      <Component {...props} />
+    </ErrorBoundaryWrapper>
+  );
+
+  WrappedComponent.displayName = `withErrorBoundary(${Component.displayName || Component.name})`;
+
+  return WrappedComponent;
+}
+
+// Feature-specific error boundary HOCs for common patterns
+export const withDashboardErrorBoundary = <P extends object>(Component: React.ComponentType<P>) =>
+  withErrorBoundary(Component, {
+    title: 'Dashboard Error',
+    description: 'Failed to load dashboard data. This might be due to a temporary data issue.',
+  });
+
+export const withModelErrorBoundary = <P extends object>(Component: React.ComponentType<P>) =>
+  withErrorBoundary(Component, {
+    title: 'Model Error',
+    description: 'Failed to load model data. This might be due to a temporary data issue.',
+  });
+
+export const withRebalancingErrorBoundary = <P extends object>(Component: React.ComponentType<P>) =>
+  withErrorBoundary(Component, {
+    title: 'Rebalancing Error',
+    description: 'Failed to load rebalancing data. This might be due to a temporary data issue.',
+  });
+
+export const withDataFeedsErrorBoundary = <P extends object>(Component: React.ComponentType<P>) =>
+  withErrorBoundary(Component, {
+    title: 'Data Feeds Error',
+    description: 'Failed to load data feeds. This might be due to a temporary connection issue.',
+  });
+
+export const withAdminErrorBoundary = <P extends object>(Component: React.ComponentType<P>) =>
+  withErrorBoundary(Component, {
+    title: 'Admin Error',
+    description:
+      'Failed to load admin functionality. This might be due to a temporary system issue.',
+    showDetails: true, // Show more details for admin features
+  });
