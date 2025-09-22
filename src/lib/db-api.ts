@@ -183,11 +183,16 @@ export const getPositions = async (userId?: string) => {
     throw new ValidationError('User ID is required', 'userId');
   }
 
+  console.log(`🔍 [getPositions] Called with userId: ${userId.substring(0, 10)}...`);
+
   const cacheKey = `positions-${userId}`;
   const cached = getCached<Position[]>(cacheKey);
   if (cached) {
+    console.log('🔍 [getPositions] Returning cached result:', cached.length, 'positions');
     return cached;
   }
+
+  console.log('🔍 [getPositions] Cache miss, querying database...');
 
   try {
     return await withRetry(
@@ -197,6 +202,22 @@ export const getPositions = async (userId?: string) => {
         const priceMap = new Map<string, number>(
           sp500Data.map((stock) => [stock.ticker, stock.price]),
         );
+
+        // Also get prices from securities table for securities not in S&P 500
+        const securitiesData = await getDb()
+          .select({
+            ticker: schema.security.ticker,
+            price: schema.security.price,
+          })
+          .from(schema.security);
+
+        // Merge securities prices into priceMap (S&P 500 takes precedence)
+        for (const security of securitiesData) {
+          if (!priceMap.has(security.ticker) && security.price > 0) {
+            priceMap.set(security.ticker, security.price);
+          }
+        }
+
         // Ensure cash tickers are valued at $1
         priceMap.set('$$$', 1.0);
         priceMap.set('MCASH', 1.0);
@@ -231,7 +252,21 @@ export const getPositions = async (userId?: string) => {
             .from(schema.holding)
             .innerJoin(schema.account, eq(schema.holding.accountId, schema.account.id))
             .where(eq(schema.account.userId, userId));
+
+          console.log('🔍 [getPositions] Query result:', holdings.length, 'holdings found');
+          if (holdings.length > 0) {
+            console.log(
+              '🔍 [getPositions] Sample holdings:',
+              holdings.slice(0, 2).map((h) => ({
+                id: h.id,
+                ticker: h.ticker,
+                accountId: h.accountId,
+                accountName: h.accountName,
+              })),
+            );
+          }
         } catch (_error) {
+          console.log('🔍 [getPositions] Primary query failed, trying fallback query...');
           // If accountNumber column doesn't exist, query without it
           holdings = await getDb()
             .select({
@@ -247,6 +282,12 @@ export const getPositions = async (userId?: string) => {
             .from(schema.holding)
             .innerJoin(schema.account, eq(schema.holding.accountId, schema.account.id))
             .where(eq(schema.account.userId, userId));
+
+          console.log(
+            '🔍 [getPositions] Fallback query result:',
+            holdings.length,
+            'holdings found',
+          );
         }
 
         // Get sleeve information for each ticker

@@ -76,6 +76,7 @@ export function AddRebalancingGroupModal({
   const [selectedAccounts, setSelectedAccounts] = useState<Set<string>>(new Set());
   const [selectedModelId, setSelectedModelId] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isNavigating, setIsNavigating] = useState(false);
   const [error, setError] = useState('');
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [models, setModels] = useState<Model[]>([]);
@@ -215,24 +216,16 @@ export function AddRebalancingGroupModal({
         onGroupCreated();
       }
 
-      // Navigate to the new group's page
+      // Set navigating state and navigate to the newly created group
+      setIsNavigating(true);
       if (result.groupId) {
         router.navigate({ to: `/rebalancing-groups/${result.groupId}` });
       }
-
-      // Reset form and close modal after navigation starts
-      // Use setTimeout to ensure navigation has time to begin before closing modal
-      setTimeout(() => {
-        setGroupName('');
-        setSelectedAccounts(new Set());
-        setSelectedModelId('');
-        setIsOpen(false);
-      }, 100);
     } catch (err: unknown) {
       console.error('Failed to create rebalancing group:', err);
       setError(err instanceof Error ? err.message : 'Failed to create rebalancing group');
-    } finally {
       setIsLoading(false);
+      setIsNavigating(false);
     }
   };
 
@@ -250,6 +243,7 @@ export function AddRebalancingGroupModal({
     setSelectedAccounts(new Set());
     setSelectedModelId('');
     setError('');
+    setIsNavigating(false);
   };
 
   const handleOpenChange = (open: boolean) => {
@@ -284,7 +278,7 @@ export function AddRebalancingGroupModal({
               value={groupName}
               onChange={(e) => setGroupName(e.target.value)}
               placeholder="e.g., Miller, John and Jane - Retirement"
-              disabled={isLoading || accounts.length === 0}
+              disabled={isLoading || isNavigating || accounts.length === 0}
             />
           </div>
           <div className="space-y-2">
@@ -295,7 +289,7 @@ export function AddRebalancingGroupModal({
               selectedAccounts={selectedAccounts}
               accounts={accounts}
               onRemoveAccount={handleAccountToggle}
-              isLoading={isLoading}
+              isLoading={isLoading || isNavigating}
             />
 
             {/* Account Selection Dropdown */}
@@ -336,7 +330,7 @@ export function AddRebalancingGroupModal({
                   setSelectedModelId(value);
                 }
               }}
-              disabled={isLoading || accounts.length === 0}
+              disabled={isLoading || isNavigating || accounts.length === 0}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Select a model for this group" />
@@ -380,11 +374,18 @@ export function AddRebalancingGroupModal({
           )}
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => setIsOpen(false)} disabled={isLoading}>
+          <Button
+            variant="outline"
+            onClick={() => setIsOpen(false)}
+            disabled={isLoading || isNavigating}
+          >
             Cancel
           </Button>
-          <Button onClick={handleSubmit} disabled={isLoading || accounts.length === 0}>
-            {isLoading ? 'Creating...' : 'Create Group'}
+          <Button
+            onClick={handleSubmit}
+            disabled={isLoading || isNavigating || accounts.length === 0}
+          >
+            {isNavigating ? 'Redirecting...' : isLoading ? 'Creating...' : 'Create Group'}
           </Button>
         </DialogFooter>
       </DialogContent>

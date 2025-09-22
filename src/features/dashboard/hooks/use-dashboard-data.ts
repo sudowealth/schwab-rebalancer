@@ -57,6 +57,7 @@ export function useDashboardData(loaderData: LoaderData) {
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const hasOAuthCallback = urlParams.has('code') && urlParams.has('state');
+    const hasSchwabConnected = urlParams.has('schwabConnected');
 
     if (hasOAuthCallback) {
       console.log('🔄 [Dashboard] Detected Schwab OAuth callback, refreshing dashboard data...');
@@ -73,6 +74,19 @@ export function useDashboardData(loaderData: LoaderData) {
       console.log('🔄 [Dashboard] Invalidating queries after Schwab sync...');
       queryInvalidators.composites.afterSchwabSync(queryClient);
       console.log('✅ [Dashboard] Dashboard data refresh initiated after Schwab OAuth callback');
+    } else if (hasSchwabConnected) {
+      console.log(
+        '🔄 [Dashboard] Detected Schwab connection redirect, refreshing dashboard data...',
+      );
+
+      // Clean up URL parameters
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, document.title, newUrl);
+
+      // Use centralized invalidation for Schwab sync
+      console.log('🔄 [Dashboard] Invalidating queries after Schwab connection...');
+      queryInvalidators.composites.afterSchwabSync(queryClient);
+      console.log('✅ [Dashboard] Dashboard data refresh initiated after Schwab connection');
     }
   }, [queryClient]);
 

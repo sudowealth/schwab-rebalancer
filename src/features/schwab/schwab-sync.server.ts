@@ -849,11 +849,22 @@ export class SchwabSyncService {
       symbol,
       'quantity:',
       position.longQuantity,
+      'market value:',
+      position.marketValue,
     );
 
+    // Calculate price per share from market value and quantity
+    const pricePerShare =
+      quantity > 0 && position.marketValue ? position.marketValue / quantity : 0;
+
     // Ensure security exists
-    console.log('🔧 [SchwabSync] Ensuring security exists for symbol:', symbol);
-    await this.ensureSecurityExists(symbol);
+    console.log(
+      '🔧 [SchwabSync] Ensuring security exists for symbol:',
+      symbol,
+      'with price:',
+      pricePerShare,
+    );
+    await this.ensureSecurityExists(symbol, pricePerShare);
 
     // Check if holding already exists
     console.log(
@@ -1093,7 +1104,7 @@ export class SchwabSyncService {
     }
   }
 
-  private async ensureSecurityExists(ticker: string): Promise<void> {
+  private async ensureSecurityExists(ticker: string, currentPrice?: number): Promise<void> {
     console.log('🔍 [SchwabSync] Checking if security exists for ticker:', ticker);
     const existing = await this.getDb()
       .select()
@@ -1114,7 +1125,7 @@ export class SchwabSyncService {
       const insertData = {
         ticker,
         name: ticker, // Will be updated when we get more info
-        price: 0.01, // Small positive price to pass validation, will be updated by price sync
+        price: currentPrice && currentPrice > 0 ? currentPrice : 0.01, // Use provided price or fallback to small positive price
         createdAt: now,
         updatedAt: now,
       };

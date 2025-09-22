@@ -57,7 +57,18 @@ export function SecurityModal({
             <BarChart3 className="h-6 w-6 text-blue-600" />
           </div>
           <h3 className="text-lg font-medium text-gray-900 mb-4 text-center">
-            {ticker} - Security Details
+            {sp500Stock ? (
+              <a
+                href={`https://finance.yahoo.com/quote/${sp500Stock.ticker}/`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
+              >
+                {sp500Stock.name} ({ticker})
+              </a>
+            ) : (
+              `${ticker} - Security Details`
+            )}
           </h3>
 
           <div className="text-left space-y-4">

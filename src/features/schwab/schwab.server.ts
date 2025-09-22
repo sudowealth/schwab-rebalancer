@@ -110,6 +110,10 @@ function clearPricesCache(userId?: string) {
   }
 }
 
+function clearPositionsCache(userId: string) {
+  clearCache(`positions-${userId}`); // Clear positions cache since holdings have changed
+}
+
 // Utility functions for sync logging
 async function createSyncLog(userId: string, syncType: string, logId: string) {
   const startLog = {
@@ -219,11 +223,11 @@ export const handleSchwabOAuthCallbackServerFn = createServerFn({
       redirectUri: data.redirectUri,
     });
 
-    try {
-      const { user } = await requireAuth();
-      const _db = getDb();
-      console.log(`👤 [ServerFn] Using authenticated user ID: ${user.id.substring(0, 10)}...`);
+    const { user } = await requireAuth();
+    const _db = getDb();
+    console.log(`👤 [ServerFn] Using authenticated user ID: ${user.id.substring(0, 10)}...`);
 
+    try {
       // Check for required Schwab environment variables
       const clientId = process.env.SCHWAB_CLIENT_ID;
       const clientSecret = process.env.SCHWAB_CLIENT_SECRET;
@@ -241,12 +245,34 @@ export const handleSchwabOAuthCallbackServerFn = createServerFn({
       console.log('📦 [ServerFn] Getting Schwab API service...');
       const schwabApi = getSchwabApiService();
 
+      // Check if credentials are already valid before attempting callback
+      // This handles the case where multiple OAuth callback calls happen
+      const hasValidCredentials = await schwabApi.hasValidCredentials(user.id);
+      if (hasValidCredentials) {
+        console.log(
+          '✅ [ServerFn] Credentials already valid - OAuth callback already processed successfully',
+        );
+        return { success: true };
+      }
+
       console.log('🔄 [ServerFn] Handling OAuth callback...');
       await schwabApi.handleOAuthCallback(data.code, data.redirectUri, user.id);
 
       console.log('✅ [ServerFn] OAuth callback handled successfully');
       return { success: true };
     } catch (error) {
+      // Check if credentials became valid despite the error
+      // This can happen in race conditions where multiple callbacks are processed
+      const schwabApi = getSchwabApiService();
+      const hasValidCredentials = await schwabApi.hasValidCredentials(user.id).catch(() => false);
+
+      if (hasValidCredentials) {
+        console.log(
+          '⚠️ [ServerFn] OAuth callback failed but credentials are now valid - likely due to concurrent processing',
+        );
+        return { success: true };
+      }
+
       console.error('❌ [ServerFn] Error handling Schwab OAuth callback:', error);
       console.error(
         '❌ [ServerFn] Error stack:',
@@ -340,7 +366,12 @@ async function syncTransactionsCore(
 export const syncSchwabHoldingsServerFn = createServerFn({ method: 'POST' })
   .validator((data: { accountId?: string }) => data)
   .handler(async ({ data }): Promise<SyncResult> => {
-    return orchestrateSchwabSync('Schwab holdings sync', syncHoldingsCore, data);
+    return orchestrateSchwabSync(
+      'Schwab holdings sync',
+      syncHoldingsCore,
+      data,
+      clearPositionsCache,
+    );
   });
 
 // Server function to sync Schwab transactions - orchestrates auth, logging, and cache management

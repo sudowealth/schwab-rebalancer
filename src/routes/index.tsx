@@ -72,7 +72,9 @@ export const Route = createFileRoute('/')({
   pendingMs: 200,
   pendingComponent: () => <DashboardSkeleton />,
   beforeLoad: authGuard,
-  validateSearch: () => ({}),
+  validateSearch: (search: Record<string, unknown>) => ({
+    schwabConnected: search.schwabConnected as string | undefined,
+  }),
   loader: async ({ context: _context }) => {
     // DEBUG: Test seeding function on server side - TEMPORARILY DISABLED
     // console.log('🔥 DEBUG: Calling seedSecuritiesDataServerFn from loader');
@@ -413,7 +415,7 @@ function DashboardComponent() {
         isOpen={showSecurityModal}
         onClose={closeSecurityModal}
         ticker={selectedTicker}
-        sp500Data={[]}
+        sp500Data={loaderData.sp500Data}
         positions={positions}
         transactions={transactions}
       />
