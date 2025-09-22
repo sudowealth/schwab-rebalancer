@@ -15,7 +15,7 @@ import {
 import { getDb } from '~/lib/db-config';
 import { getErrorMessage } from '~/lib/error-handler';
 import { throwServerError } from '~/lib/error-utils';
-import { sanitizeAccountNumber, sanitizeSchwabAccountId } from '~/lib/sanitization';
+import { sanitizeAccountNumber, sanitizeSchwabAccountId, sanitizeUserId } from '~/lib/sanitization';
 import { requireAuth } from '../auth/auth-utils';
 import { getPriceSyncService } from '../data-feeds/price-sync';
 import { getSchwabApiService } from './schwab-api.server';
@@ -714,7 +714,7 @@ export const syncSchwabPricesServerFn = createServerFn({ method: 'POST' })
         console.log('🔧 [ServerFn] Price sync service initialized');
 
         console.log('💰 [ServerFn] Calling priceSyncService.syncPrices with params:', {
-          userId: user.id,
+          userId: sanitizeUserId(user.id),
           symbols: data.symbols,
           symbolsCount: data.symbols?.length || 'all',
           forceRefresh: true,

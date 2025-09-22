@@ -18,6 +18,10 @@ export function useSchwabConnection(
   initialActiveCredentialsStatus?: { hasCredentials: boolean },
   enableSyncTriggering: boolean = true,
 ) {
+  console.log(
+    '🔧 [useSchwabConnection] Hook called with enableSyncTriggering:',
+    enableSyncTriggering,
+  );
   const [isConnecting, setIsConnecting] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncStep, setSyncStep] = useState<string>('');
@@ -84,6 +88,7 @@ export function useSchwabConnection(
   const runFullSync = useCallback(async () => {
     console.log('🔄 [UI] ===== STARTING FULL SCHWAB SYNC AFTER CONNECTION =====');
     console.log('🔄 [UI] Timestamp:', new Date().toISOString());
+    console.log('🔄 [UI] THIS SHOULD NOT BE CALLED IF SYNC IS DISABLED!');
     setIsSyncing(true);
 
     try {
@@ -223,7 +228,7 @@ export function useSchwabConnection(
   };
 
   // Query to check if user has active Schwab credentials (actual OAuth connection)
-  const { data: activeCredentialsStatus } = useQuery({
+  const { data: activeCredentialsStatus, isLoading: activeCredentialsLoading } = useQuery({
     queryKey: queryKeys.integrations.schwab.activeCredentials(),
     queryFn: async () => {
       try {
@@ -238,6 +243,7 @@ export function useSchwabConnection(
     initialData: initialActiveCredentialsStatus,
     enabled: !!credentialsStatus?.hasCredentials, // Only run if env vars are set
     staleTime: 1000 * 60 * 2, // 2 minutes
+    refetchOnMount: false, // Don't refetch immediately on mount to avoid triggering sync
   });
 
   const isConnected = activeCredentialsStatus?.hasCredentials || false;
@@ -258,39 +264,84 @@ export function useSchwabConnection(
       // Check if we need to sync (either never synced or 12 hours have passed)
       const shouldSync = (() => {
         const syncData = localStorage.getItem('schwab-initial-sync-completed');
-        if (!syncData) return true; // Never synced
+        if (!syncData) {
+          console.log('🔄 [UI] No sync data found in localStorage, sync needed');
+          return true; // Never synced
+        }
 
         try {
           const { timestamp } = JSON.parse(syncData);
           const twelveHoursMs = 12 * 60 * 60 * 1000; // 12 hours in milliseconds
           const now = Date.now();
-          return now - timestamp > twelveHoursMs; // More than 12 hours ago
-        } catch {
+          const timeSinceLastSync = now - timestamp;
+          const needsSync = timeSinceLastSync > twelveHoursMs;
+
+          console.log('🔄 [UI] Sync check:', {
+            lastSyncTimestamp: new Date(timestamp).toISOString(),
+            timeSinceLastSync: `${Math.round(timeSinceLastSync / (60 * 60 * 1000))} hours`,
+            twelveHoursMs,
+            needsSync,
+          });
+
+          return needsSync;
+        } catch (error) {
+          console.log('🔄 [UI] Invalid sync data in localStorage, sync needed:', error);
           return true; // Invalid data, sync anyway
         }
       })();
+
+      const localStorageData = localStorage.getItem('schwab-initial-sync-completed');
+      let localStorageInfo = 'none';
+      if (localStorageData) {
+        try {
+          const parsed = JSON.parse(localStorageData);
+          const timeSinceSync = Date.now() - parsed.timestamp;
+          const hoursSinceSync = Math.round(timeSinceSync / (60 * 60 * 1000));
+          localStorageInfo = `${hoursSinceSync} hours ago`;
+        } catch {
+          localStorageInfo = 'invalid';
+        }
+      }
+
+      console.log('🔄 [UI] Sync trigger conditions:', {
+        enableSyncTriggering,
+        isConnected,
+        shouldSync,
+        isSyncing,
+        activeCredentialsLoading,
+        justConnected,
+        returnUrl: !!returnUrl,
+        localStorage: localStorageInfo,
+      });
 
       if (
         enableSyncTriggering &&
         isConnected &&
         shouldSync &&
         !isSyncing &&
-        !justConnected &&
+        !activeCredentialsLoading && // Don't trigger while still loading
+        (!justConnected || !localStorage.getItem('schwab-initial-sync-completed')) && // Allow sync if just connected AND no previous sync data
         !returnUrl
       ) {
-        console.log('🔄 [UI] Detected existing Schwab connection, starting sync');
+        const reason =
+          justConnected && !localStorage.getItem('schwab-initial-sync-completed')
+            ? 'just connected with no previous sync data'
+            : 'existing connection needs refresh';
+        console.log(`🔄 [UI] Detected Schwab connection (${reason}), starting sync`);
         // Store timestamp for 12-hour expiration check
+        const syncTimestamp = Date.now();
         localStorage.setItem(
           'schwab-initial-sync-completed',
           JSON.stringify({
             completed: true,
-            timestamp: Date.now(),
+            timestamp: syncTimestamp,
           }),
         );
+        console.log(`🔄 [UI] Set sync timestamp: ${new Date(syncTimestamp).toISOString()}`);
         runFullSync();
       }
     }
-  }, [isConnected, isSyncing, runFullSync, enableSyncTriggering]);
+  }, [isConnected, isSyncing, activeCredentialsLoading, runFullSync, enableSyncTriggering]);
 
   // Cleanup sessionStorage on unmount (HMR safety)
   useEffect(() => {
@@ -305,11 +356,26 @@ export function useSchwabConnection(
   }, []);
 
   // Clear initial sync flag when Schwab is disconnected
+  // Be very conservative - only clear when we're sure the user actually disconnected
+  // Don't clear during loading states, temporary connection blips, or page reloads
+  const [previousIsConnected, setPreviousIsConnected] = useState<boolean | null>(null);
+
   useEffect(() => {
-    if (!isConnected && typeof window !== 'undefined') {
+    // Track the previous connection state
+    if (previousIsConnected === null) {
+      setPreviousIsConnected(isConnected);
+      return;
+    }
+
+    // Only clear localStorage if we were previously connected and now we're not
+    // AND we have credentials status available (not in a loading state)
+    if (previousIsConnected && !isConnected && credentialsStatus && typeof window !== 'undefined') {
+      console.log('🔄 [UI] Schwab connection lost, clearing sync timestamp');
       localStorage.removeItem('schwab-initial-sync-completed');
     }
-  }, [isConnected]);
+
+    setPreviousIsConnected(isConnected);
+  }, [isConnected, credentialsStatus, previousIsConnected]);
 
   return {
     credentialsStatus,
