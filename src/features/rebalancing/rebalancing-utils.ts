@@ -119,11 +119,16 @@ export const generateAllocationData = (
   sp500Data: SP500Security[],
   totalValue: number,
 ) => {
+  // Handle edge case where totalValue is 0 or invalid
+  if (!totalValue || totalValue <= 0) {
+    return [];
+  }
+
   if (allocationView === 'account') {
     const result = group.members.map((member, index: number) => ({
-      name: member.accountName,
-      value: member.balance,
-      percentage: ((member.balance || 0) / totalValue) * 100,
+      name: member.accountName || 'Unknown Account',
+      value: member.balance || 0,
+      percentage: totalValue > 0 ? ((member.balance || 0) / totalValue) * 100 : 0,
       color: CHART_COLORS[index % CHART_COLORS.length],
     }));
     return result;
@@ -146,6 +151,11 @@ const generateSectorAllocationData = (
   sp500Data: SP500Security[],
   totalValue: number,
 ) => {
+  // Handle edge case where totalValue is 0 or invalid
+  if (!totalValue || totalValue <= 0) {
+    return [];
+  }
+
   const sectorMap = new Map<string, number>();
   const securityInfoMap = new Map();
 
@@ -154,10 +164,12 @@ const generateSectorAllocationData = (
   });
 
   for (const account of accountHoldings) {
+    if (!account.holdings) continue;
     for (const holding of account.holdings) {
+      if (!holding.ticker || !holding.marketValue) continue;
       const securityInfo = securityInfoMap.get(holding.ticker);
       const sector = securityInfo?.sector || 'Unknown';
-      sectorMap.set(sector, (sectorMap.get(sector) || 0) + holding.marketValue);
+      sectorMap.set(sector, (sectorMap.get(sector) || 0) + (holding.marketValue || 0));
     }
   }
 
@@ -166,7 +178,7 @@ const generateSectorAllocationData = (
     .map(([sector, value], index) => ({
       name: sector,
       value,
-      percentage: (value / totalValue) * 100,
+      percentage: totalValue > 0 ? (value / totalValue) * 100 : 0,
       color: CHART_COLORS[index % CHART_COLORS.length],
     }));
 };
@@ -177,6 +189,11 @@ const generateIndustryAllocationData = (
   sp500Data: SP500Security[],
   totalValue: number,
 ) => {
+  // Handle edge case where totalValue is 0 or invalid
+  if (!totalValue || totalValue <= 0) {
+    return [];
+  }
+
   const industryMap = new Map<string, number>();
   const securityInfoMap = new Map();
 
@@ -185,10 +202,12 @@ const generateIndustryAllocationData = (
   });
 
   for (const account of accountHoldings) {
+    if (!account.holdings) continue;
     for (const holding of account.holdings) {
+      if (!holding.ticker || !holding.marketValue) continue;
       const securityInfo = securityInfoMap.get(holding.ticker);
       const industry = securityInfo?.industry || 'Unknown';
-      industryMap.set(industry, (industryMap.get(industry) || 0) + holding.marketValue);
+      industryMap.set(industry, (industryMap.get(industry) || 0) + (holding.marketValue || 0));
     }
   }
 
@@ -197,7 +216,7 @@ const generateIndustryAllocationData = (
     .map(([industry, value], index) => ({
       name: industry,
       value,
-      percentage: (value / totalValue) * 100,
+      percentage: totalValue > 0 ? (value / totalValue) * 100 : 0,
       color: CHART_COLORS[index % CHART_COLORS.length],
     }));
 };
@@ -207,18 +226,35 @@ const generateSleeveAllocationData = (
   accountHoldings: AccountHoldingData[],
   totalValue: number,
 ) => {
+  // Handle edge case where totalValue is 0 or invalid
+  if (!totalValue || totalValue <= 0) {
+    return [];
+  }
+
   const sleeveMap = new Map<string, number>();
 
   for (const account of accountHoldings) {
+    if (!account.holdings) continue;
     for (const holding of account.holdings) {
+      if (!holding.marketValue) continue;
       if (holding.sleeves && holding.sleeves.length > 0) {
         const sleeve = holding.sleeves[0];
-        sleeveMap.set(
-          sleeve.sleeveName,
-          (sleeveMap.get(sleeve.sleeveName) || 0) + holding.marketValue,
-        );
+        if (sleeve?.sleeveName) {
+          sleeveMap.set(
+            sleeve.sleeveName,
+            (sleeveMap.get(sleeve.sleeveName) || 0) + (holding.marketValue || 0),
+          );
+        } else {
+          sleeveMap.set(
+            'Unassigned',
+            (sleeveMap.get('Unassigned') || 0) + (holding.marketValue || 0),
+          );
+        }
       } else {
-        sleeveMap.set('Unassigned', (sleeveMap.get('Unassigned') || 0) + holding.marketValue);
+        sleeveMap.set(
+          'Unassigned',
+          (sleeveMap.get('Unassigned') || 0) + (holding.marketValue || 0),
+        );
       }
     }
   }
@@ -228,7 +264,7 @@ const generateSleeveAllocationData = (
     .map(([sleeveName, value], index) => ({
       name: sleeveName,
       value,
-      percentage: (value / totalValue) * 100,
+      percentage: totalValue > 0 ? (value / totalValue) * 100 : 0,
       color: CHART_COLORS[index % CHART_COLORS.length],
     }));
 };
@@ -239,12 +275,22 @@ export const generateTopHoldingsData = (
   totalValue: number,
   limit?: number,
 ) => {
+  // Handle edge case where totalValue is 0 or invalid
+  if (!totalValue || totalValue <= 0) {
+    return [];
+  }
+
   const holdingsMap = new Map<string, number>();
 
   // Aggregate holdings across all accounts
   for (const account of accountHoldings) {
+    if (!account.holdings) continue;
     for (const holding of account.holdings) {
-      holdingsMap.set(holding.ticker, (holdingsMap.get(holding.ticker) || 0) + holding.marketValue);
+      if (!holding.ticker || !holding.marketValue) continue;
+      holdingsMap.set(
+        holding.ticker,
+        (holdingsMap.get(holding.ticker) || 0) + (holding.marketValue || 0),
+      );
     }
   }
 
@@ -257,7 +303,7 @@ export const generateTopHoldingsData = (
   const result = finalHoldings.map(([ticker, value]) => ({
     ticker,
     value,
-    percentage: (value / totalValue) * 100,
+    percentage: totalValue > 0 ? (value / totalValue) * 100 : 0,
   }));
 
   return result;

@@ -176,15 +176,20 @@ export const generateAllocationDataServerFn = createServerFn({
   .handler(async ({ data }) => {
     const { user } = await requireAuth();
 
+    if (!data.groupId) {
+      throwServerError('Invalid request: groupId is required', 400);
+    }
+
     // Get the group data to verify ownership
-    const group = await getRebalancingGroupById(user.id, data.groupId);
+    const group = await getRebalancingGroupById(data.groupId, user.id);
     if (!group) {
       throwServerError('Group not found or access denied', 404);
     }
 
     // Get account holdings and S&P 500 data in parallel
+    const accountIds = group?.members.map((m) => m.accountId).filter(Boolean) || [];
     const [accountHoldings, sp500Data] = await Promise.all([
-      getAccountHoldings(group?.members.map((m) => m.accountId) || []),
+      getAccountHoldings(accountIds),
       getSnP500Data(),
     ]);
 
@@ -208,14 +213,19 @@ export const generateTopHoldingsDataServerFn = createServerFn({
   .handler(async ({ data }) => {
     const { user } = await requireAuth();
 
+    if (!data.groupId) {
+      throwServerError('Invalid request: groupId is required', 400);
+    }
+
     // Get the group data to verify ownership
-    const group = await getRebalancingGroupById(user.id, data.groupId);
+    const group = await getRebalancingGroupById(data.groupId, user.id);
     if (!group) {
       throwServerError('Group not found or access denied', 404);
     }
 
     // Get account holdings
-    const accountHoldings = await getAccountHoldings(group?.members.map((m) => m.accountId) || []);
+    const accountIds = group?.members.map((m) => m.accountId).filter(Boolean) || [];
+    const accountHoldings = await getAccountHoldings(accountIds);
 
     // Generate top holdings data on server
     const holdingsData = generateTopHoldingsData(accountHoldings, data.totalValue, data.limit);

@@ -41,7 +41,7 @@ export function useSchwabConnection(
     },
     onSuccess: (data: { authUrl?: string }) => {
       if (data.authUrl && typeof window !== 'undefined') {
-        router.navigate({ to: data.authUrl, replace: true });
+        window.location.href = data.authUrl;
       }
     },
     onError: (error) => {
@@ -241,41 +241,29 @@ export function useSchwabConnection(
 
   const isConnected = activeCredentialsStatus?.hasCredentials || false;
 
-  // State for OAuth callback detection - reset on HMR
-  const [hasOAuthCallback, setHasOAuthCallback] = useState(false);
-  const [hasRunInitialSync, setHasRunInitialSync] = useState(false);
-
-  // Check if we just returned from OAuth callback (client-side only)
-  // Reset state on component mount/remount (HMR safe)
+  // State for tracking initial sync after connection
+  // Trigger sync after successful OAuth connection
+  // Only trigger if we have credentials, haven't run sync yet, not currently syncing,
+  // and we're not coming from a fresh OAuth callback (which already triggered sync)
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const urlParams = new URLSearchParams(window.location.search);
-      const hasCallback = urlParams.has('code') || urlParams.has('state');
-      setHasOAuthCallback(hasCallback);
+      const justConnected = urlParams.has('schwabConnected');
 
-      // Reset sync state on fresh mount (HMR safety)
-      if (!hasCallback) {
-        setHasRunInitialSync(false);
+      // Don't trigger sync if we just completed OAuth - the callback route already did it
+      // Also check sessionStorage to see if we just completed OAuth
+      const returnUrl = sessionStorage.getItem('schwabReturnUrl');
+
+      // Use sessionStorage to persist across component re-mounts
+      const hasRunInitialSync = sessionStorage.getItem('schwab-initial-sync-completed') === 'true';
+
+      if (isConnected && !hasRunInitialSync && !isSyncing && !justConnected && !returnUrl) {
+        console.log('🔄 [UI] Detected existing Schwab connection, starting sync');
+        sessionStorage.setItem('schwab-initial-sync-completed', 'true');
+        runFullSync();
       }
     }
-  }, []);
-
-  // Trigger sync after successful OAuth connection
-  useEffect(() => {
-    if (isConnected && hasOAuthCallback && !hasRunInitialSync && !isSyncing) {
-      console.log('🔄 [UI] Detected successful OAuth return, starting initial sync');
-      setHasRunInitialSync(true);
-      runFullSync();
-
-      // Clean up URL parameters (client-side only)
-      if (typeof window !== 'undefined') {
-        const url = new URL(window.location.href);
-        url.searchParams.delete('code');
-        url.searchParams.delete('state');
-        window.history.replaceState({}, document.title, url.pathname + url.hash);
-      }
-    }
-  }, [isConnected, hasOAuthCallback, hasRunInitialSync, isSyncing, runFullSync]);
+  }, [isConnected, isSyncing, runFullSync]);
 
   // Cleanup sessionStorage on unmount (HMR safety)
   useEffect(() => {
@@ -283,9 +271,18 @@ export function useSchwabConnection(
       // Only cleanup if we're navigating away completely, not on HMR
       if (typeof window !== 'undefined' && !import.meta.hot) {
         sessionStorage.removeItem('schwabReturnUrl');
+        // Don't cleanup the initial sync flag - we want it to persist across navigation
+        // It will be reset when the user actually disconnects/reconnects Schwab
       }
     };
   }, []);
+
+  // Clear initial sync flag when Schwab is disconnected
+  useEffect(() => {
+    if (!isConnected && typeof window !== 'undefined') {
+      sessionStorage.removeItem('schwab-initial-sync-completed');
+    }
+  }, [isConnected]);
 
   return {
     credentialsStatus,
@@ -296,7 +293,6 @@ export function useSchwabConnection(
     statusLoading,
     oauthMutation,
     isConnected,
-    hasOAuthCallback,
     handleConnect,
     runFullSync,
   };

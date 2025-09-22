@@ -84,10 +84,11 @@ function SchwabCallbackPage() {
           removeFromSessionStorage('schwabReturnUrl');
           removeFromSessionStorage('schwab_oauth_state');
 
-          // Preserve OAuth callback parameters so the destination page can detect the connection
+          // Redirect with safe indicator that OAuth was just completed
+          // Components can detect this to trigger post-connection actions
           router.navigate({
             to: redirectTo,
-            search: { code, state },
+            search: { schwabConnected: 'true' },
           });
         }, 2000);
       } catch (err) {
@@ -137,9 +138,10 @@ function SchwabCallbackPage() {
                   Your Schwab account has been successfully connected. You can now sync your
                   accounts and holdings.
                 </p>
-                <p className="text-xs text-muted-foreground">
+                <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
+                  <Loader2 className="h-3 w-3 animate-spin" />
                   Redirecting you back to the dashboard...
-                </p>
+                </div>
               </div>
             )}
 

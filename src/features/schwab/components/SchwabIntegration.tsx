@@ -81,7 +81,7 @@ export function SchwabIntegration() {
       if (data.authUrl) {
         console.log('🌐 [UI] Redirecting to Schwab OAuth page');
         // Note: The import will happen after the user returns from OAuth and the connection is established
-        router.navigate({ to: data.authUrl, replace: true });
+        window.location.href = data.authUrl;
       } else {
         console.warn('⚠️ [UI] No auth URL returned from server');
         setIsConnecting(false);
@@ -428,21 +428,23 @@ export function SchwabIntegration() {
 
   // Effect to handle automatic equities import after Schwab connection
   useEffect(() => {
+    // Check if we just completed OAuth (safe parameter from callback route)
     const urlParams = new URLSearchParams(window.location.search);
-    const hasOAuthCallback = urlParams.has('code') && urlParams.has('state');
+    const justConnected = urlParams.has('schwabConnected');
 
-    // If Schwab is connected, we have OAuth callback params, and we haven't triggered auto-import yet
+    // If Schwab is connected, we just completed OAuth, and we haven't triggered auto-import yet
     if (
       credentialsStatus?.hasCredentials &&
-      hasOAuthCallback &&
+      justConnected &&
       !hasTriggeredAutoImport &&
       !importEquitiesMutation.isPending
     ) {
       console.log('🔄 [UI] Detected fresh Schwab connection, triggering automatic equities import');
 
-      // Clean up URL parameters
-      const newUrl = window.location.pathname;
-      window.history.replaceState({}, document.title, newUrl);
+      // Clean up the connection parameter from URL
+      const url = new URL(window.location.href);
+      url.searchParams.delete('schwabConnected');
+      window.history.replaceState({}, document.title, url.pathname + url.hash);
 
       // Trigger automatic import
       setHasTriggeredAutoImport(true);
@@ -932,6 +934,17 @@ export function SchwabIntegration() {
                   : 'Importing equities securities from NASDAQ...'}
             </div>
           )}
+
+          {/* Loading indicator for post-connection sync */}
+          {hasTriggeredAutoImport &&
+            !importEquitiesMutation.isPending &&
+            !isImportingEquities &&
+            !isSyncingYahoo && (
+              <div className="flex items-center gap-2 text-sm text-gray-600 mt-4">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Preparing your Schwab data integration...
+              </div>
+            )}
         </CardContent>
       </Card>
     </ErrorBoundaryWrapper>

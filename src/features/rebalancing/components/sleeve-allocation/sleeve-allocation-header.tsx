@@ -1,9 +1,10 @@
-import { Target } from 'lucide-react';
+import { LoaderCircle, Target } from 'lucide-react';
 import { Button } from '~/components/ui/button';
 import { CardDescription, CardHeader, CardTitle } from '~/components/ui/card';
 
 interface SleeveAllocationHeaderProps {
   onRebalance?: () => void;
+  isRebalancing?: boolean;
   addToBlotter?: {
     onClick: () => void;
     disabled?: boolean;
@@ -14,6 +15,7 @@ interface SleeveAllocationHeaderProps {
 
 export const SleeveAllocationHeader: React.FC<SleeveAllocationHeaderProps> = ({
   onRebalance,
+  isRebalancing = false,
   addToBlotter,
 }) => {
   // Show "Add to Blotter" button when there are trades (active rebalance)
@@ -29,7 +31,18 @@ export const SleeveAllocationHeader: React.FC<SleeveAllocationHeaderProps> = ({
         </div>
 
         <div className="flex items-center gap-2 ml-4">
-          {onRebalance && <Button onClick={onRebalance}>Rebalance</Button>}
+          {onRebalance && (
+            <Button onClick={onRebalance} disabled={isRebalancing}>
+              {isRebalancing ? (
+                <>
+                  <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
+                  Rebalancing...
+                </>
+              ) : (
+                'Rebalance'
+              )}
+            </Button>
+          )}
           {addToBlotter?.visible && (
             <Button onClick={addToBlotter.onClick} disabled={!!addToBlotter.disabled}>
               {addToBlotter.disabled

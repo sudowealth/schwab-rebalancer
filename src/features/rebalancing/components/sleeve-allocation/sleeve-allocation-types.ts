@@ -106,4 +106,5 @@ export interface SleeveAllocationTableProps {
   accountHoldings?: AccountHolding[];
   renderSummaryCards?: () => ReactNode;
   groupId: string;
+  isRebalancing?: boolean;
 }

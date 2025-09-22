@@ -747,6 +747,7 @@ function RebalancingGroupDetail() {
                 />
               )}
               groupId={group.id}
+              isRebalancing={rebalanceLoading}
             />
           )}
 

@@ -14,6 +14,7 @@ import { useDashboardModals } from '~/features/dashboard/hooks/use-dashboard-mod
 import { useDashboardTabs } from '~/features/dashboard/hooks/use-dashboard-tabs';
 import { useOnboardingStatus } from '~/features/dashboard/hooks/use-onboarding-status';
 import { useExcelExport } from '~/lib/excel-export';
+import { authGuard } from '~/lib/route-guards';
 import {
   getDashboardDataServerFn,
   getRebalancingGroupsWithBalancesServerFn,
@@ -76,6 +77,8 @@ export const Route = createFileRoute('/')({
   component: DashboardComponent,
   pendingMs: 200,
   pendingComponent: () => <DashboardSkeleton />,
+  beforeLoad: authGuard,
+  validateSearch: () => ({}),
   loader: async ({ context: _context }) => {
     // Load all dashboard data upfront to prevent waterfalls
     // This includes positions, metrics, transactions, and all status data

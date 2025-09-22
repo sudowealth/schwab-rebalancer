@@ -99,6 +99,8 @@ export const account = pgTable(
   (table) => [
     // Ensure a user cannot have duplicate account numbers; allows multiple NULLs
     unique().on(table.userId, table.accountNumber),
+    // Ensure a user cannot have duplicate Schwab account IDs; allows multiple NULLs
+    unique().on(table.userId, table.schwabAccountId),
   ],
 );
 

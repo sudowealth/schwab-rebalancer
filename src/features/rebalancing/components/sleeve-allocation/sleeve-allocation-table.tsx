@@ -141,6 +141,7 @@ export function SleeveAllocationTable({
   accountHoldings = [],
   renderSummaryCards,
   groupId,
+  isRebalancing = false,
 }: SleeveAllocationTableProps) {
   // Column management state
   const [columns, setColumns] = useState<ColumnConfig[]>(() =>
@@ -1443,6 +1444,7 @@ export function SleeveAllocationTable({
     <Card>
       <SleeveAllocationHeader
         onRebalance={onRebalance}
+        isRebalancing={isRebalancing}
         addToBlotter={{
           onClick: handleAddToBlotter,
           disabled: addingToBlotter,

@@ -21,6 +21,9 @@ import { getSchwabApiService } from './schwab-api.server';
 import { getSchwabSyncService } from './schwab-sync.server';
 
 // Generic orchestrator for Schwab sync operations
+// In-memory lock to prevent concurrent syncs for the same user and operation
+const runningSyncs = new Map<string, boolean>();
+
 async function orchestrateSchwabSync<T extends Record<string, unknown>>(
   operationName: string,
   syncFunction: (userId: string, params?: T) => Promise<SyncResult>,
@@ -32,16 +35,35 @@ async function orchestrateSchwabSync<T extends Record<string, unknown>>(
     const { user } = await requireAuth();
     console.log('👤 [ServerFn] Using user ID:', user.id);
 
-    const result = await syncFunction(user.id, params);
-    console.log(`✅ [ServerFn] ${operationName} completed:`, result);
-
-    // Clear relevant caches after successful sync
-    if (cacheClearFunction && result.success && result.recordsProcessed > 0) {
-      console.log(`🧹 [ServerFn] Clearing caches after successful ${operationName}`);
-      cacheClearFunction(user.id);
+    // Check if a sync of this type is already running for this user
+    const syncKey = `${user.id}-${operationName}`;
+    if (runningSyncs.get(syncKey)) {
+      console.log(`⚠️ [ServerFn] ${operationName} already running for user ${user.id}, skipping`);
+      return {
+        success: false,
+        recordsProcessed: 0,
+        errorMessage: `${operationName} is already running`,
+      };
     }
 
-    return result;
+    // Set the lock
+    runningSyncs.set(syncKey, true);
+
+    try {
+      const result = await syncFunction(user.id, params);
+      console.log(`✅ [ServerFn] ${operationName} completed:`, result);
+
+      // Clear relevant caches after successful sync
+      if (cacheClearFunction && result.success && result.recordsProcessed > 0) {
+        console.log(`🧹 [ServerFn] Clearing caches after successful ${operationName}`);
+        cacheClearFunction(user.id);
+      }
+
+      return result;
+    } finally {
+      // Always release the lock
+      runningSyncs.delete(syncKey);
+    }
   } catch (error) {
     console.error(`❌ [ServerFn] Error in ${operationName}:`, error);
     const errorResult = {

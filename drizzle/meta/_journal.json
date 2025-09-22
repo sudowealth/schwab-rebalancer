@@ -43,6 +43,13 @@
       "when": 1758200000001,
       "tag": "0005_remove_financial_planning",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1758520342429,
+      "tag": "0006_add_account_schwab_unique_constraint",
+      "breakpoints": true
     }
   ]
 }
