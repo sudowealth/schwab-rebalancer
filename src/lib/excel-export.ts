@@ -69,7 +69,7 @@ async function exportTableToExcel<T extends Record<string, unknown>>(
   columns: Array<{
     header: string;
     accessor: keyof T | ((row: T) => unknown);
-    formatter?: (value: unknown) => string;
+    formatter?: (value: unknown) => string | number;
   }>,
   options: ExcelExportOptions = {},
 ) {
@@ -132,9 +132,39 @@ export async function exportPositionsToExcel(positions: Position[], filename = '
     { header: 'Quantity', accessor: 'qty' as const },
     { header: 'Cost Basis', accessor: 'costBasis' as const },
     { header: 'Current Price', accessor: 'currentPrice' as const },
-    { header: 'Market Value', accessor: 'marketValue' as const },
-    { header: 'Dollar Gain/Loss', accessor: 'dollarGainLoss' as const },
-    { header: 'Percent Gain/Loss', accessor: 'percentGainLoss' as const },
+    {
+      header: 'Market Value',
+      accessor: 'marketValue' as const,
+      formatter: (value: unknown) => {
+        // Parse formatted string like "$1,234.56" to number
+        const str = typeof value === 'string' ? value : String(value);
+        return Number.parseFloat(str.replace(/[$,]/g, '')) || 0;
+      },
+    },
+    {
+      header: 'Dollar Gain/Loss',
+      accessor: 'dollarGainLoss' as const,
+      formatter: (value: unknown) => {
+        // Parse formatted string like "$1,234.56" or "-$1,234.56" to number
+        const str = typeof value === 'string' ? value : String(value);
+        const cleaned = str.replace(/[$,]/g, '');
+        const isNegative = cleaned.startsWith('-');
+        const absValue = Number.parseFloat(cleaned.replace(/^-/, '')) || 0;
+        return isNegative ? -absValue : absValue;
+      },
+    },
+    {
+      header: 'Percent Gain/Loss',
+      accessor: 'percentGainLoss' as const,
+      formatter: (value: unknown) => {
+        // Parse formatted string like "12.34%" or "-12.34%" to number
+        const str = typeof value === 'string' ? value : String(value);
+        const cleaned = str.replace(/%/g, '');
+        const isNegative = cleaned.startsWith('-');
+        const absValue = Number.parseFloat(cleaned.replace(/^-/, '')) || 0;
+        return isNegative ? -absValue : absValue;
+      },
+    },
     { header: 'Days Held', accessor: 'daysHeld' as const },
     {
       header: 'Opened At',

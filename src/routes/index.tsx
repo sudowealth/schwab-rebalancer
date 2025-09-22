@@ -263,17 +263,27 @@ function DashboardComponent() {
                     Portfolio Information
                   </h3>
                   <div className="flex space-x-2">
-                    {activeTab === 'positions' && positions && positions.length > 0 && (
-                      <ExportButton
-                        onExport={async () => exportPositionsToExcel(positions)}
-                        label="Export Positions"
-                      />
-                    )}
-                    {activeTab === 'transactions' && transactions && transactions.length > 0 && (
-                      <ExportButton
-                        onExport={async () => exportTransactionsToExcel(transactions)}
-                        label="Export Transactions"
-                      />
+                    {/* Export button placeholder to maintain consistent height across tabs */}
+                    {(activeTab === 'positions' && positions && positions.length > 0) ||
+                    (activeTab === 'transactions' && transactions && transactions.length > 0) ? (
+                      <>
+                        {activeTab === 'positions' && positions && positions.length > 0 && (
+                          <ExportButton
+                            onExport={async () => exportPositionsToExcel(positions)}
+                            label="Export Positions"
+                          />
+                        )}
+                        {activeTab === 'transactions' &&
+                          transactions &&
+                          transactions.length > 0 && (
+                            <ExportButton
+                              onExport={async () => exportTransactionsToExcel(transactions)}
+                              label="Export Transactions"
+                            />
+                          )}
+                      </>
+                    ) : (
+                      <div className="h-9 w-9" aria-hidden="true" />
                     )}
                   </div>
                 </div>
