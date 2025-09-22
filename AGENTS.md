@@ -1,467 +1,279 @@
-# Repository Guidelines
+# TanStack Start Development Guidelines
 
-## Project Structure & Module Organization
+## Philosophy: Developer Experience First
 
-- `src/routes/`: File‑based routes (TanStack Router). Example: `src/routes/login.tsx`.
-- `src/components/`, `src/lib/`, `src/utils/`: Reusable UI, domain logic, and helpers.
-- `src/db/` and `drizzle/`: ORM schema and migration files.
-- `public/`: Static assets served by Vite.
-- `scripts/`: Local utilities and development tools.
-- Key files: server functions `src/lib/server-functions.ts`, DB schema `src/db/schema.ts`, DB ops `src/lib/db-api.ts`, DB config `src/lib/db-config.ts` (lazy-loaded), rebalancing engine `src/lib/rebalance-logic.ts`.
+TanStack Start isn't just a framework—it's a philosophy. We believe that developers should spend their time solving business problems, not fighting their tools. Every decision in TanStack Start prioritizes:
 
-## Architecture Overview
+- **Type Safety**: Full-stack TypeScript with zero compromises
+- **Performance**: Aggressive optimization by default
+- **Developer Experience**: Intuitive APIs that guide you toward best practices
+- **Progressive Enhancement**: Server-first architecture that degrades gracefully
 
-- Tax‑loss harvesting platform enforcing wash‑sale rules with “sleeves” (interchangeable securities) to maintain exposure.
-- Stack: TanStack Start + React/Tailwind (UI), Node.js (API), PostgreSQL + Drizzle (DB), Better Auth.
+## Project Architecture & TanStack Integration
 
-## Build, Test, and Development Commands
+### Core Stack Overview
+This is a sophisticated portfolio management platform with tax-loss harvesting, built on TanStack's full-stack ecosystem:
 
-- `pnpm dev`: Start Vite dev server on port 3000.
-- `pnpm build`: Production build and TypeScript check.
-- `pnpm start`: Run built server from `.output/`.
-- `pnpm deploy`: Build then deploy via Netlify CLI.
-- `pnpm lint` / `pnpm format` / `pnpm typecheck`: Lint and format with Biome; type‑check.
-- `pnpm db:generate`: Generate Drizzle migrations from schema.
-- `pnpm db:migrate`: Apply migrations locally to PostgreSQL database.
-- `pnpm db:migrate:prod`: Apply migrations to production.
-- `pnpm db:studio`: Open Drizzle Studio.
-- `pnpm seed`: Seed local data (see `src/lib/seeds/main.ts`).
+- **TanStack Start**: Full-stack framework with server functions and file-based routing
+- **TanStack Router**: Type-safe routing with aggressive preloading
+- **TanStack Query**: Intelligent caching and synchronization
+- **React + Tailwind**: Modern UI with utility-first styling
+- **PostgreSQL + Drizzle**: Type-safe database operations
+- **Better Auth**: Secure authentication with custom role management
 
-## Coding Style & Naming Conventions
+### File Structure Philosophy
 
-- Language: TypeScript + React. Prefer functional components and hooks.
-- Formatting & Linting: Biome (2‑space indent, single quotes). Use `pnpm format`, `pnpm lint`, or `pnpm fix`.
-- Naming: Components `PascalCase.tsx` in `src/components`; utilities `camelCase.ts` in `src/lib`/`src/utils`; routes `kebab-case.tsx` in `src/routes` with `index.tsx` for folders.
-- Types: Prefer exported return types and `Awaited<ReturnType<typeof fn>>`; avoid `as any` and redundant manual type aliases.
+```
+src/
+├── routes/           # File-based routing (TanStack Router)
+├── components/       # Reusable UI components
+├── features/         # Feature-based organization
+│   ├── auth/         # Authentication logic
+│   ├── dashboard/    # Dashboard feature
+│   └── rebalancing/  # Core business logic
+├── lib/              # Shared utilities and business logic
+│   ├── db-api.ts     # Database operations
+│   ├── server-functions.ts # Server function definitions
+│   └── rebalance-logic.ts  # Core business algorithms
+├── db/               # Database schema and migrations
+└── types/            # TypeScript type definitions
+```
 
-## UI Guidelines
+### Key Architectural Principles
 
-- Use shadcn/ui components and Tailwind CSS by default for all new UI. Prefer composition over custom CSS. Keep styling consistent with existing `src/components/ui/` primitives.
+1. **Server Functions as API**: Every server function is a type-safe API endpoint
+2. **Route-based Code Splitting**: Automatic code splitting at route boundaries
+3. **Progressive Data Loading**: Server → Client hydration with React Query
+4. **Type Safety Everywhere**: Database → Server → Client chain
 
-## Testing Guidelines
+## Development Workflow
 
-- No test harness is configured yet. If adding tests, use Vitest and colocate as `*.test.ts`/`*.test.tsx` next to source or in `src/__tests__`.
-- Keep tests deterministic; mock network APIs.
+### Essential Commands
+```bash
+# Development
+pnpm dev              # Start development server with HMR
+pnpm build           # Production build with type checking
+pnpm start           # Run production server from .output/
+pnpm typecheck       # Standalone type checking
 
-## Commit & Pull Request Guidelines
+# Database
+pnpm db:generate     # Generate Drizzle migrations
+pnpm db:migrate      # Apply migrations locally
+pnpm db:migrate:prod # Apply to production
+pnpm db:studio       # Open Drizzle Studio
 
-- Commits: Imperative mood (“Add…”, “Refactor…”), concise subject (<72 chars) and a clear body when needed. Group related changes.
-- PRs: Include purpose, screenshots for UI, steps to validate, and any migration notes. Link related issues. Ensure `lint`, `typecheck`, and local build pass.
+# Code Quality
+pnpm lint           # Lint with Biome
+pnpm format         # Format code with Biome
+pnpm seed           # Seed development data
+```
 
-## Security & Configuration Tips
+### Development Philosophy
+- **Fast Feedback Loops**: HMR, type checking, and testing should be instant
+- **Type-First Development**: Write types before implementation
+- **Test-Driven**: Server functions should be tested before UI integration
+- **Progressive Enhancement**: App works without JavaScript, enhanced with it
 
-- Copy `.env.example` to `.env.local`; never commit secrets. Required for local auth, email, and integrations.
-- Local dev uses PostgreSQL database; production uses hosted database.
-- For HTTPS testing, use local HTTPS setup (see docs/LOCAL_HTTPS_SETUP.md).
-- Production schedules: Corporate Actions 13:00 UTC, Harvest 16:00 UTC.
+## Code Quality Standards
 
-## TanStack Start Best Practices
+### TypeScript Excellence
+- **Strict Mode Always**: No `any`, no exceptions
+- **Branded Types**: Use branded types for domain IDs (`type UserId = string & { __brand: 'UserId' }`)
+- **Utility Types**: Leverage `Awaited<ReturnType<typeof fn>>` for server function returns
+- **Interface vs Type**: Use `interface` for objects, `type` for unions/primitives
 
-### 🎯 Core Principles
-- **Server/Client Separation**: Keep secrets, external APIs, and heavy computation on the server
-- **Performance First**: Implement code splitting, lazy loading, and optimized data fetching
-- **Developer Experience**: Focus on type safety, error boundaries, and clear patterns
-- **Progressive Enhancement**: Server-rendered HTML with client-side hydration
+### Naming Conventions
+```
+Components:     PascalCase.tsx          (UserProfile.tsx)
+Hooks:          camelCase.ts            (useAuth.ts)
+Server Fns:     camelCaseServerFn.ts    (getUserServerFn)
+Routes:         kebab-case.tsx          (user-profile.tsx)
+Utils:          camelCase.ts            (formatCurrency.ts)
+Types:          PascalCase.ts           (UserRole.ts)
+Database:       camelCase.sql           (create_user.sql)
+```
 
-### 🚀 Router Configuration
-- File‑based routing: Root layout in `src/routes/__root.tsx` via `createRootRoute`; pages via `createFileRoute()` (e.g., `src/routes/index.tsx`). Don't edit `src/routeTree.gen.ts` (generated).
-- Router setup: `src/router.tsx` sets `defaultPreload: "intent"`, aggressive preloading with `defaultPreloadStaleTime: 30_000` and `defaultPreloadGcTime: 5 * 60_000`, default error and not‑found components, and enables scroll restoration.
-- **Advanced**: Use `validateSearch` with Zod for type-safe search params
-- **Performance**: Implement route-based code splitting with lazy loading
-- **SEO**: Comprehensive meta tags including OpenGraph and Twitter cards
+### Import Organization
+```typescript
+// 1. React imports
+import { useState, useEffect } from 'react'
 
-#### 🚀 Router Preloading Configuration (Status: ✅ IMPLEMENTED)
-- Aggressive preloading: `defaultPreloadStaleTime: 30_000` (30 seconds)
-- Extended memory retention: `defaultPreloadGcTime: 5 * 60_000` (5 minutes)
-- Preload on intent (hover/focus) for optimal perceived performance
+// 2. Third-party libraries (alphabetical)
+import { createServerFn } from '@tanstack/start'
+import { useQuery } from '@tanstack/react-query'
 
-### 📊 Data Fetching & Loading
-- **Server Data**: Use `Route.loader` for server-only work and call server functions there (see `index.tsx` loader calling `getDashboardDataServerFn`).
-- **Client Hydration**: Pass loader results into React Query as `initialData` to avoid waterfalls and enable caching.
-- **Optimization**: Use `Promise.allSettled()` over `Promise.all()` for better error resilience
-- **Stale Time**: Set aggressive stale times (5+ minutes) for better perceived performance
-- **Error Handling**: Implement comprehensive error boundaries and structured error logging
+// 3. Internal imports (by layer: routes → components → lib → types)
+import { api } from '~/lib/api'
+import { User } from '~/types/user'
+```
 
-#### 🔄 React Query Integration (Status: ✅ WELL-STRUCTURED)
-- React Query patterns are already consistent and follow best practices
-- Main dashboard uses loaders with `initialData` to prevent waterfalls
-- Custom hooks properly use `initialData` from loader data
-- Appropriate `staleTime` settings (5 minutes for general data, 2 minutes for frequently changing data)
-- Proper query key organization with dedicated `queryKeys` utility
-- Components use React Query for reactive updates while leveraging loader data
+## UI/UX Excellence
+
+Use shadcn/ui components with Tailwind CSS. Prefer composition over custom CSS. Ensure semantic HTML, keyboard navigation, and proper loading states.
+
+## Git Workflow
+
+Commits: Imperative mood, concise subjects (<72 chars), detailed bodies. PRs: Clear titles, comprehensive descriptions, link issues, ensure tests pass.
+
+## Security & Configuration
+
+Copy `.env.example` to `.env.local`. Required env vars: `DATABASE_URL`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`.
+
+**Security**: Server-side secrets only, validate all inputs, rate limiting, HTTPS in production, Better Auth sessions.
+
+## TanStack Start Mastery Guide
+
+TanStack Start eliminates full-stack complexity with complete type safety. Think "Next.js, but actually good" - type-safe server functions, intelligent routing, and developer-first experience.
+
+### 🚀 Router Architecture
+
+**File-Based Routing**: Routes are files, automatic code splitting. Use `createFileRoute()` with loaders for server data.
+
+```typescript
+export const Route = createFileRoute('/dashboard')({
+  loader: async () => await getDashboardDataServerFn(),
+  component: DashboardPage,
+})
+```
+
+**Aggressive Preloading**: `defaultPreload: 'intent'`, 30s stale time, 5min GC time.
+
+**Type-Safe Search Params**: Use Zod schemas with `validateSearch`.
+
+### 📊 Data Fetching
+
+**Server-Client Hydration**: Route loaders fetch server data, pass as `initialData` to React Query.
+
+```typescript
+export const Route = createFileRoute('/dashboard')({
+  loader: async () => await getDashboardDataServerFn(),
+  component: DashboardPage,
+})
+
+function DashboardPage() {
+  const { data } = useDashboardQuery({
+    initialData: Route.useLoaderData(),
+  })
+  return <Dashboard data={data} />
+}
+```
+
+**Query Keys**: Organized constants, targeted invalidation. **Stale Times**: 5min for stable data, 30s for volatile data.
 
 ### 🔧 Server Functions
-- **Database Imports**: Use static imports for database connections at the top of server functions (e.g., `import { dbProxy } from '~/lib/db-config'`). Avoid dynamic imports for performance.
-- **Database Configuration**: Use lazy-loaded database proxies to ensure environment variables are available at runtime (not import time).
-- **Single Responsibility Principle**: Each server function should do ONE thing. Avoid mixing data operations, external API calls, OAuth flows, and email sending in single functions.
-- **Authentication**: Better Auth sessions don't include custom user fields like roles. Fetch them from the database using the session user ID when needed.
-- **Client-side Auth Hook**: Use `useAuth()` hook that shows user data immediately from session, fetching role data in background only when needed for optimal UX.
-- **Validation**: Use Zod validators on all server functions for type safety; remove unnecessary `emptySchema` validators for GET endpoints
-- **Error Handling**: Standardize error responses with consistent error codes and structured logging
-- **Security**: Implement rate limiting and input sanitization
-- **Performance**: Use database connection pooling and optimize queries with `select()` instead of selecting all columns
-- **Auth Guards**: Use `requireAuth()` and `requireAdmin()` consistently for protecting server functions
 
-#### ✅ Server Function Validation (Status: ✅ IMPLEMENTED)
-- Removed unnecessary `.validator(emptySchema)` from GET endpoints that don't expect input
-- Cleaned up `getEnvironmentInfoServerFn`, `checkAuthServerFn`, and `checkAdminServerFn`
-- Maintains type safety while reducing validation overhead for parameterless endpoints
+**Single Responsibility**: Each server function does ONE thing. No mixing data ops, external APIs, auth, email.
 
-### ⚛️ Component Architecture
-- **Feature-based**: Organize by feature with `components/`, `hooks/`, `server.ts` structure
-- **Custom Hooks**: Extract complex logic into reusable hooks
-- **Error Boundaries**: Wrap feature sections with error boundaries and structured error logging
-- **Loading States**: Implement skeleton components and pending states
-- **Code Splitting**: Lazy load heavy components and routes
-
-#### 🚨 Structured Error Logging (Status: ✅ IMPLEMENTED)
-- **Environment-aware logging**: Development uses colored console output; production uses structured JSON
-- **Available utilities**: `logError()`, `logInfo()`, `logWarn()`, `logSecurityEvent()`, `logPerformance()`
-- **Context support**: All logging functions accept structured context (userId, sessionId, component, etc.)
-- **Performance monitoring**: `createPerformanceTimer()` utility for operation timing
-- **Integration**: Existing `error-handler.ts` functions now use structured logging
-- **Future-ready**: Placeholder for error reporting service integration (Sentry, LogRocket, etc.)
-
-#### 🔐 Auth Context Optimization (Status: ✅ IMPLEMENTED)
-- **Memoization**: `useAuth()` hook uses `useMemo()` to prevent unnecessary re-renders
-- **User object memoization**: Prevents recreation of user objects on every render
-- **Auth state memoization**: Memoizes the complete auth state return object
-- **Performance**: Reduces component re-renders when auth state hasn't changed
-
-### 🎨 UI & Performance
-- **Bundle Splitting**: Use dynamic imports for heavy libraries and routes
-- **Image Optimization**: Implement proper image loading and lazy loading
-- **Caching**: Aggressive React Query caching with proper invalidation
-- **Bundle Analysis**: Use rollup-plugin-visualizer to monitor bundle size
-- **Tree Shaking**: Ensure proper tree shaking of unused dependencies
-
-### 🔒 Security & Best Practices
-- **Input Validation**: Validate all inputs on both client and server
-- **Rate Limiting**: Implement rate limiting on sensitive endpoints
-- **Error Sanitization**: Never expose internal errors to clients
-- **HTTPS**: Always use HTTPS in production
-- **Secrets**: Keep all secrets server-side, never in client bundles
-
-### 🧪 Development & Testing
-- **Type Safety**: Use branded types for IDs and complex types
-- **Error Boundaries**: Comprehensive error boundaries in development
-- **Hot Reload**: Ensure HMR works properly across all components
-- **Linting**: Strict linting rules with Biome
-- **Testing**: Component and server function testing with proper mocking
-
-### 📈 Performance Monitoring
-- **Bundle Size**: Monitor and optimize bundle sizes regularly
-- **Core Web Vitals**: Track FCP, LCP, CLS, FID, and TBT
-- **Database Queries**: Monitor and optimize slow queries
-- **Memory Usage**: Watch for memory leaks in long-running sessions
-- **Network Requests**: Minimize and optimize API calls
-
-### 🚀 Advanced Patterns
-- **Route Preloading**: Implement intelligent route preloading based on user behavior
-- **Optimistic Updates**: Use optimistic updates for better perceived performance
-- **Background Sync**: Implement background data synchronization
-- **Progressive Loading**: Load critical data first, enhance progressively
-- **Service Workers**: Consider service workers for offline functionality
-
-### 🔄 Migration & Updates
-- **TanStack Updates**: Keep TanStack libraries updated for latest features
-- **Breaking Changes**: Plan migrations carefully with feature flags
-- **Deprecation**: Gradually deprecate old patterns before removal
-- **Documentation**: Keep internal docs updated with new patterns
-
-## 🚨 TanStack Start Antipatterns to Avoid
-
-Based on our codebase review and fixes, avoid these common antipatterns that violate TanStack Start best practices:
-
-### ❌ Critical Antipatterns (Performance Impact)
-
-#### 1. Dynamic Imports in Server Functions
 ```typescript
-// ❌ AVOID: Dynamic imports add unnecessary async overhead
-export const someServerFn = createServerFn().handler(async () => {
-  const { getData } = await import('~/lib/db-api'); // SLOW!
-  return getData();
-});
-
-// ✅ DO: Static imports at the top
-import { getData } from '~/lib/db-api';
-
-export const someServerFn = createServerFn().handler(async () => {
-  return getData(); // FAST - synchronous
-});
+// ✅ GOOD: One purpose
+export const getUserProfileServerFn = createServerFn({ method: 'GET' })
+  .validator(z.object({ userId: z.string() }))
+  .handler(async ({ data: { userId } }) => {
+    const db = getDb()
+    return await db.query.users.findFirst({
+      where: eq(users.id, userId),
+      select: { id: true, name: true, email: true }
+    })
+  })
 ```
 
-#### 2. Server Functions with Multiple Responsibilities
-```typescript
-// ❌ AVOID: Single function doing too many things
-export const complexServerFn = createServerFn().handler(async () => {
-  // 1. Authenticate user
-  // 2. Fetch data from database
-  // 3. Call external API
-  // 4. Send email
-  // 5. Update multiple tables
-  // VIOLATES: Single Responsibility Principle
-});
+**Static Imports**: Never use dynamic imports in server functions - they kill performance.
 
-// ✅ DO: One function, one purpose
-export const authenticateUserServerFn = createServerFn()...
-export const fetchUserDataServerFn = createServerFn()...
-export const callExternalAPIServerFn = createServerFn()...
-export const sendEmailServerFn = createServerFn()...
+**Auth Guards**: Use middleware for authentication, `requireAuth()` and `requireAdmin()` helpers.
+
+### ⚛️ Component Architecture Excellence
+
+#### Feature-Based Organization
+```
+src/features/
+├── dashboard/
+│   ├── components/
+│   │   ├── dashboard-header.tsx
+│   │   └── portfolio-summary.tsx
+│   ├── hooks/
+│   │   ├── use-dashboard-data.ts
+│   │   └── use-portfolio-metrics.ts
+│   ├── server.ts          # Server functions for dashboard
+│   └── index.ts           # Main dashboard component
 ```
 
-#### 3. Client-Side Navigation with window.location
+#### Custom Hook Patterns
 ```typescript
-// ❌ AVOID: Bypasses router, causes hydration issues
-const handleRedirect = () => {
-  window.location.href = '/new-page'; // BAD!
-};
+// ✅ GOOD: Custom hooks encapsulate complex logic
+function usePortfolioRebalancing(portfolioId: string) {
+  const { data: portfolio } = usePortfolioQuery(portfolioId)
+  const { data: marketData } = useMarketDataQuery()
+  const rebalanceMutation = useRebalanceMutation()
 
-// ✅ DO: Use TanStack Router
-import { useRouter } from '@tanstack/react-router';
+  const { canRebalance, recommendedTrades } = useMemo(() => {
+    if (!portfolio || !marketData) return {}
 
-const handleRedirect = () => {
-  const router = useRouter();
-  router.navigate({ to: '/new-page' }); // GOOD!
-};
-```
+    return calculateRebalanceTrades(portfolio, marketData)
+  }, [portfolio, marketData])
 
-#### 4. Broad Query Invalidation
-```typescript
-// ❌ AVOID: Invalidates everything, defeats caching
-queryClient.invalidateQueries(); // SLOWS DOWN APP!
-
-// ✅ DO: Targeted invalidation
-queryClient.invalidateQueries({
-  queryKey: ['specific-data', userId]
-});
-```
-
-### ❌ Architecture Antipatterns
-
-#### 5. Auth Logic in Components
-```typescript
-// ❌ AVOID: Auth logic scattered in UI components
-function MyComponent() {
-  const { user, isAuthenticated } = useAuth();
-  if (!isAuthenticated) return <LoginPrompt />;
-  // Component logic mixed with auth...
-}
-
-// ✅ DO: Route-level auth guards
-export const Route = createFileRoute('/protected')({
-  beforeLoad: authGuard, // Auth handled here
-  component: MyComponent, // Pure UI component
-});
-```
-
-#### 6. Mixed Data Fetching Strategies
-```typescript
-// ❌ AVOID: Route loader + React Query waterfall
-loader: async () => {
-  const data1 = await fetchData1(); // Loader gets some data
-},
-// Component also fetches more data - creates waterfall!
-
-// ✅ DO: Consistent strategy
-// Either: Full loader + initialData in React Query
-// Or: Pure React Query with proper loading states
-```
-
-#### 7. Over-Engineering Database Connections
-```typescript
-// ❌ AVOID: Unnecessarily complex proxy patterns
-export const dbProxy = new Proxy({} as Database, { /* complex logic */ });
-
-// ✅ DO: Simple lazy initialization
-let dbInstance: Database | null = null;
-export function getDb() {
-  if (!dbInstance) {
-    dbInstance = createDatabaseClient();
+  return {
+    portfolio,
+    canRebalance,
+    recommendedTrades,
+    rebalance: () => rebalanceMutation.mutate({ portfolioId }),
+    isRebalancing: rebalanceMutation.isPending,
   }
-  return dbInstance;
+}
+
+// Usage in component
+function PortfolioPage() {
+  const { canRebalance, rebalance, isRebalancing } = usePortfolioRebalancing(id)
+
+  return (
+    <Button
+      onClick={rebalance}
+      disabled={!canRebalance || isRebalancing}
+    >
+      {isRebalancing ? 'Rebalancing...' : 'Rebalance Portfolio'}
+    </Button>
+  )
 }
 ```
 
-### ✅ When Dynamic Imports ARE Acceptable
-
-- **Heavy libraries**: `await import('exceljs')` for large optional dependencies
-- **Conditional features**: Loading features only when needed (e.g., admin panels)
-- **Client-side code splitting**: `lazy(() => import('./HeavyComponent'))`
-- **Server-only utilities**: Intentionally preventing client bundling
-
-### 📋 Server Function Complexity Guidelines
-
-When creating server functions, ask: "Does this function do ONE thing well?"
-
-**Good Server Function Examples:**
-- `getUserProfileServerFn` - Only fetches user data
-- `updateUserEmailServerFn` - Only updates email
-- `validatePasswordServerFn` - Only validates password
-- `sendWelcomeEmailServerFn` - Only sends email
-
-**Red Flags for Refactoring:**
-- Function name contains "and" (e.g., `createUserAndSendEmail`)
-- Function has multiple external API calls
-- Function updates multiple database tables
-- Function handles both data and side effects
-- Function is longer than 50 lines
-
-**Refactoring Strategy:**
-1. Extract pure data operations into separate functions
-2. Move side effects (emails, external APIs) to dedicated functions
-3. Use composition: `createUserServerFn` calls `sendWelcomeEmailServerFn`
-4. Keep database operations synchronous within each function
-
-## 🏗️ Architecture Decision Records
-
-### ADR: Database Connection Pattern - Simplified Lazy Initialization
-**Date:** September 22, 2025
-**Status:** ✅ **IMPLEMENTED**
-
-**Context:**
-- Need lazy database initialization for serverless environments
-- Previous implementation used complex proxy patterns
-- TanStack Start review recommended simplification
-
-**Decision:**
-Use simple lazy initialization with a getter function instead of proxy patterns:
-
+#### Error Boundaries & Logging
 ```typescript
-let dbInstance: Database | null = null;
-export function getDb() {
-  if (!dbInstance) {
-    dbInstance = createDatabaseClient();
+// src/components/error-boundary.tsx
+class FeatureErrorBoundary extends Component {
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    logError(error, {
+      component: 'FeatureErrorBoundary',
+      feature: this.props.feature,
+      errorInfo,
+      userId: this.props.userId,
+    })
   }
-  return dbInstance;
+
+  render() {
+    if (this.state.hasError) {
+      return <ErrorFallback feature={this.props.feature} />
+    }
+
+    return this.props.children
+  }
 }
+
+// Usage
+<FeatureErrorBoundary feature="dashboard" userId={userId}>
+  <Dashboard />
+</FeatureErrorBoundary>
 ```
 
-**Consequences:**
-- ✅ Simpler and more maintainable code
-- ✅ Eliminates proxy overhead
-- ✅ Still maintains lazy loading for serverless compatibility
-- ✅ Easier to understand and debug
-
-### ADR: Router Preloading Strategy - Aggressive Intent-Based Preloading
-**Date:** September 22, 2025
-**Status:** ✅ **IMPLEMENTED**
-
-**Context:**
-- Want to optimize perceived performance through intelligent preloading
-- Need to balance memory usage with performance benefits
-- TanStack Start review recommended more aggressive preloading
-
-**Decision:**
-Implement aggressive intent-based preloading with extended memory retention:
-
-```typescript
-export function createRouter() {
-  const router = createTanStackRouter({
-    routeTree,
-    defaultPreload: 'intent',           // Preload on hover/focus
-    defaultPreloadStaleTime: 30_000,    // 30 seconds
-    defaultPreloadGcTime: 5 * 60_000,   // 5 minutes
-    // ... other options
-  });
-  return router;
-}
-```
-
-**Consequences:**
-- ✅ Improved perceived performance through faster navigation
-- ✅ Reduced server requests for frequently accessed routes
-- ✅ Memory usage managed through garbage collection timing
-- ⚠️ Slightly higher memory footprint (acceptable for better UX)
-
-### ADR: Server Function Validation - Minimal Validation for GET Endpoints
-**Date:** September 22, 2025
-**Status:** ✅ **IMPLEMENTED**
-
-**Context:**
-- Server functions using `emptySchema` validators for GET endpoints with no parameters
-- Unnecessary validation overhead for parameterless endpoints
-- TanStack Start review identified this as an improvement opportunity
-
-**Decision:**
-Remove unnecessary `emptySchema` validators from GET endpoints that don't expect input parameters:
-
-```typescript
-// Before
-export const getEnvironmentInfoServerFn = createServerFn({ method: 'GET' })
-  .validator(emptySchema)
-  .handler(async () => { /* ... */ });
-
-// After
-export const getEnvironmentInfoServerFn = createServerFn({ method: 'GET' })
-  .handler(async () => { /* ... */ });
-```
-
-**Consequences:**
-- ✅ Reduced validation overhead for parameterless endpoints
-- ✅ Cleaner, more explicit code about intent
-- ✅ Maintains type safety where validation is actually needed
-- ✅ Follows principle of "validate what you actually need to validate"
-
-### ADR: Error Logging Strategy - Structured Environment-Aware Logging
-**Date:** September 22, 2025
-**Status:** ✅ **IMPLEMENTED**
-
-**Context:**
-- Need consistent error logging across development and production
-- Want to support error reporting services in production
-- TanStack Start review recommended structured error logging
-
-**Decision:**
-Implement environment-aware structured logging with context support:
-
-```typescript
-// Development: Colored console output with full details
-console.group(`🚨 [ERROR] ${error.message}`);
-console.error('Error:', error);
-console.log('Context:', context);
-console.groupEnd();
-
-// Production: Structured JSON for log aggregation
-console.error(JSON.stringify({
-  level: 'error',
-  timestamp: new Date().toISOString(),
-  error: { message, name, stack },
-  context,
-  environment: 'production',
-  service: 'schwab-rebalancer'
-}));
-```
-
-**Consequences:**
-- ✅ Better development experience with readable console output
-- ✅ Production-ready structured logging for monitoring tools
-- ✅ Context support for better error debugging
-- ✅ Future-ready for error reporting service integration
-- ✅ Performance monitoring capabilities included
-
-### ADR: Auth Hook Optimization - Memoized State Management
-**Date:** September 22, 2025
-**Status:** ✅ **IMPLEMENTED**
-
-**Context:**
-- `useAuth()` hook was creating new objects on every render
-- Causing unnecessary re-renders of dependent components
-- TanStack Start review identified performance optimization opportunity
-
-**Decision:**
-Implement memoization in the auth hook to prevent unnecessary re-renders:
-
+#### Auth Hook Optimization
 ```typescript
 export function useAuth() {
-  const { data: session, isPending, error } = useSession();
+  const { data: session, isPending, error } = useSession()
 
   const user = useMemo(() => {
     return session?.user ? {
       ...session.user,
       role: (session.user as { role?: UserRole }).role || 'user',
-    } : null;
-  }, [session?.user]);
+    } : null
+  }, [session?.user])
 
   const authState = useMemo(() => ({
     user,
@@ -469,16 +281,173 @@ export function useAuth() {
     isAdmin: user?.role === 'admin',
     isPending,
     error,
-  }), [user, isPending, error]);
+  }), [user, isPending, error])
 
-  return authState;
+  return authState
 }
+
+### 🎨 Performance Optimization
+
+**Bundle Splitting**: Automatic route-based splitting, lazy load heavy components.
+
+**React Query**: Targeted invalidation, optimistic updates, proper stale times.
+
+### 🔒 Security Architecture
+
+**Input Validation**: Comprehensive Zod schemas on all server functions. Never trust client data.
+
+## 🚨 Critical Antipatterns to Avoid
+
+As the creator of TanStack Start, I've seen every possible way to misuse this framework. Here are the most critical antipatterns that will destroy your performance and developer experience:
+
+### ❌ Performance Killers
+
+#### 1. Dynamic Imports in Server Functions
+```typescript
+// ❌ DEADLY: Kills performance with async overhead
+export const someServerFn = createServerFn().handler(async () => {
+  const { getData } = await import('~/lib/db-api'); // BLOCKING!
+  return getData();
+});
+
+// ✅ LIGHTNING FAST: Static imports
+import { getData } from '~/lib/db-api';
+export const someServerFn = createServerFn().handler(async () => {
+  return getData(); // Synchronous execution
+});
 ```
 
-**Consequences:**
-- ✅ Reduced unnecessary component re-renders
-- ✅ Improved performance, especially in component trees with many auth-dependent components
-- ✅ Maintains reactive behavior when auth state actually changes
-- ✅ No breaking changes to hook API
+#### 2. Broad Query Invalidation
+```typescript
+// ❌ SLOWS DOWN THE ENTIRE APP
+queryClient.invalidateQueries(); // Clears ALL cached data!
 
-Remember: TanStack Start is about **developer experience first**. Focus on making development joyful and performant by default, while building applications that scale both in code and performance.
+// ✅ TARGETED: Only invalidate what changed
+queryClient.invalidateQueries({
+  queryKey: queryKeys.portfolio(portfolioId),
+  exact: true,
+});
+```
+
+#### 3. Waterfall Data Fetching
+```typescript
+// ❌ BAD: Route loader then component fetches more
+export const Route = createFileRoute('/dashboard')({
+  loader: async () => {
+    const basicData = await fetchBasicData();
+    return basicData;
+  },
+});
+
+function Dashboard() {
+  const { data: basicData } = Route.useLoaderData();
+  const { data: extraData } = useExtraDataQuery(); // WATERFALL!
+  // ...
+}
+
+// ✅ GOOD: Single loader with all data
+export const Route = createFileRoute('/dashboard')({
+  loader: async () => {
+    const [basicData, extraData] = await Promise.allSettled([
+      fetchBasicData(),
+      fetchExtraData(),
+    ]);
+    return { basicData, extraData };
+  },
+});
+```
+
+### ❌ Architecture Violations
+
+#### 4. Server Functions with Multiple Responsibilities
+```typescript
+// ❌ VIOLATES SINGLE RESPONSIBILITY
+export const createUserAndSendEmailServerFn = createServerFn()
+  .handler(async ({ data }) => {
+    // 1. Create user in database
+    // 2. Send welcome email
+    // 3. Update analytics
+    // 4. Call external API
+  });
+
+// ✅ ONE FUNCTION, ONE PURPOSE
+export const createUserServerFn = createServerFn()...
+export const sendWelcomeEmailServerFn = createServerFn()...
+export const trackUserCreationServerFn = createServerFn()...
+```
+
+#### 5. Client-Side Navigation Bypassing Router
+```typescript
+// ❌ BREAKS HYDRATION & ROUTER STATE
+const handleRedirect = () => {
+  window.location.href = '/new-page'; // NO!
+};
+
+// ✅ USES TANSTACK ROUTER
+import { useRouter } from '@tanstack/react-router';
+const handleRedirect = () => {
+  const router = useRouter();
+  router.navigate({ to: '/new-page' });
+};
+```
+
+#### 6. Auth Logic in Components
+```typescript
+// ❌ SCATTERS AUTH LOGIC EVERYWHERE
+function MyComponent() {
+  const { user, isAuthenticated } = useAuth();
+  if (!isAuthenticated) return <LoginPrompt />;
+  return <ProtectedContent />;
+}
+
+// ✅ ROUTE-LEVEL AUTH GUARDS
+export const Route = createFileRoute('/protected')({
+  beforeLoad: ({ context }) => {
+    if (!context.auth.isAuthenticated) {
+      throw redirect({ to: '/login' });
+    }
+  },
+  component: MyComponent, // Pure UI component
+});
+```
+
+### ✅ When Breaking Rules is Acceptable
+
+**Dynamic Imports ARE OK for:**
+- Heavy client libraries: `await import('exceljs')`
+- Conditional admin features: `await import('./admin-panel')`
+- Large utility libraries that are rarely used
+
+**Multiple Server Function Calls ARE OK for:**
+- Orchestration functions that compose other server functions
+- User-facing operations that require multiple steps
+- Complex business workflows
+
+### 📋 Implementation Checklist
+
+Before committing code, ask yourself:
+
+**Server Functions:**
+- [ ] Does this function do ONE thing well?
+- [ ] Are all imports static (not dynamic)?
+- [ ] Is validation comprehensive but not excessive?
+- [ ] Are database queries optimized with select()?
+- [ ] Does it handle errors gracefully?
+
+**Components:**
+- [ ] Is complex logic extracted to custom hooks?
+- [ ] Are expensive computations memoized?
+- [ ] Is the component wrapped in error boundaries?
+- [ ] Does it use proper loading states?
+
+**Data Fetching:**
+- [ ] Are query keys properly organized?
+- [ ] Is stale time appropriate for the data?
+- [ ] Does invalidation target specific queries?
+- [ ] Are optimistic updates implemented where beneficial?
+
+**Performance:**
+- [ ] Is bundle splitting implemented for heavy components?
+- [ ] Are images lazy loaded?
+- [ ] Is code splitting working at route boundaries?
+- [ ] Are there any console errors or warnings?
