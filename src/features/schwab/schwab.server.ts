@@ -1077,7 +1077,6 @@ export const previewOrderServerFn = createServerFn({ method: 'POST' })
       throwServerError('Access denied: Order not found or does not belong to you', 403);
     }
 
-    const { getSchwabApiService } = await import('~/features/schwab/schwab-api.server');
     const schwab = getSchwabApiService();
 
     // Load order and account
@@ -1370,7 +1369,6 @@ export const submitOrderServerFn = createServerFn({ method: 'POST' })
       throw new Error('Schwab account identifier not available. Link account before submit.');
     }
 
-    const { getSchwabApiService } = await import('~/features/schwab/schwab-api.server');
     const schwab = getSchwabApiService();
 
     let resp: unknown;

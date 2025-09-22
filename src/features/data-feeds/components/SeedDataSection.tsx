@@ -11,6 +11,7 @@ import {
   seedModelsDataServerFn,
   seedSecuritiesDataServerFn,
 } from '~/features/data-feeds/import.server';
+import { queryKeys } from '~/lib/query-keys';
 
 interface ImportResult {
   success: boolean;
@@ -53,10 +54,12 @@ export function SeedDataSection() {
   const seedAllMutation = useMutation({
     mutationFn: seedDemoDataServerFn,
     onSuccess: (_data) => {
-      // Invalidate all queries including models
-      queryClient.invalidateQueries();
-      // Clear cached models data specifically
-      queryClient.removeQueries({ queryKey: ['models'] });
+      // Invalidate relevant queries after seeding demo data
+      queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.all() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.models.all() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.securities.all() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.onboarding.all() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.admin.stats() });
     },
     onError: (error) => {
       console.error('Error seeding all data:', error);
@@ -68,9 +71,9 @@ export function SeedDataSection() {
     onSuccess: async (data: SeedSecuritiesResult) => {
       setSecuritiesResult(data);
       // Invalidate targeted queries after securities seeding
-      queryClient.invalidateQueries({ queryKey: ['securities'] });
-      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
-      queryClient.invalidateQueries({ queryKey: ['onboarding'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.securities.all() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.all() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.onboarding.all() });
 
       // Handle Schwab sync if it was triggered
       if (data.schwabSyncResult) {

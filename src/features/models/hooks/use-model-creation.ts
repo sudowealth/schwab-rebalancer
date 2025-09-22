@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from '@tanstack/react-router';
+import { queryKeys } from '~/lib/query-keys';
 import { seedGlobalEquityModelServerFn } from '~/lib/server-functions';
 
 export function useModelCreation() {
@@ -11,9 +12,9 @@ export function useModelCreation() {
     mutationFn: seedGlobalEquityModelServerFn,
     onSuccess: () => {
       // Invalidate targeted queries after model seeding
-      queryClient.invalidateQueries({ queryKey: ['models'] });
-      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
-      queryClient.invalidateQueries({ queryKey: ['onboarding'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.models.all() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.all() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.onboarding.all() });
       // Invalidate the home route loader to refresh onboarding status
       router.invalidate();
     },

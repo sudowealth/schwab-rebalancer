@@ -1,11 +1,21 @@
 import { createServerFn } from '@tanstack/react-start';
+import { getWebRequest } from '@tanstack/react-start/server';
 import { and, count, eq, inArray, isNull, ne, or, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import * as schema from '~/db/schema';
+import {
+  seedGlobalEquityModelData,
+  seedGlobalEquitySleeves,
+} from '~/db/seeds/global-equity-model-seeder';
+// Static imports for seed functions (previously dynamic)
+import { seedDatabase } from '~/db/seeds/main';
+import { seedSecurities } from '~/db/seeds/securities';
+import { seedModels, seedSleeves, seedSP500Securities } from '~/db/seeds/sp500-model-seeder';
 import { requireAdmin, requireAuth } from '~/features/auth/auth-utils';
 import { CASH_TICKER, isAnyCashTicker } from '~/lib/constants';
 import { clearCache, getPositions } from '~/lib/db-api';
 import { dbProxy } from '~/lib/db-config';
+import { getEnv } from '~/lib/env';
 import { getErrorMessage, ValidationError } from '~/lib/error-handler';
 import { throwServerError } from '~/lib/error-utils';
 import {
@@ -24,7 +34,6 @@ const truncateDataSchema = z.object({
  * Seeds basic securities data
  */
 async function seedBasicSecurities() {
-  const { seedSecurities } = await import('~/db/seeds/securities');
   await seedSecurities();
 }
 
@@ -59,7 +68,6 @@ async function seedSP500SecuritiesIfNeeded() {
 
   if (sp500Index.length === 0) {
     console.log('🔄 S&P 500 index not found, seeding S&P 500 securities...');
-    const { seedSP500Securities } = await import('~/db/seeds/sp500-model-seeder');
     await seedSP500Securities();
     console.log('✅ S&P 500 securities seeding completed');
   } else {
@@ -137,7 +145,6 @@ async function performPriceSyncForImportedSecurities(equitySyncResult: EquitySyn
 export const seedDemoDataServerFn = createServerFn({ method: 'POST' }).handler(async () => {
   const { user } = await requireAuth();
   const _db = dbProxy;
-  const { seedDatabase } = await import('~/db/seeds/main'); // Keep dynamic for seed data
   await seedDatabase(user.id);
 
   return {
@@ -229,8 +236,6 @@ export const seedModelsDataServerFn = createServerFn({ method: 'POST' }).handler
   const { user } = await requireAuth();
   const _db = dbProxy;
 
-  const { seedSleeves, seedModels } = await import('~/db/seeds/sp500-model-seeder');
-
   const sleevesResult = await seedSleeves(user.id);
   const modelsResult = await seedModels(user.id);
 
@@ -247,10 +252,6 @@ export const seedGlobalEquityModelServerFn = createServerFn({ method: 'POST' }).
   async () => {
     const { user } = await requireAuth();
     const _db = dbProxy;
-
-    const { seedGlobalEquitySleeves, seedGlobalEquityModelData } = await import(
-      '~/db/seeds/global-equity-model-seeder'
-    );
 
     const sleevesResult = await seedGlobalEquitySleeves(user.id);
     const modelsResult = await seedGlobalEquityModelData(user.id);
@@ -529,7 +530,6 @@ export const truncateDataServerFn = createServerFn({ method: 'POST' })
       if (!import.meta.env.SSR) {
         throwServerError('truncateDataServerFn is only available on the server', 500);
       }
-      const { getWebRequest } = await import('@tanstack/react-start/server');
       const request = getWebRequest();
 
       // Tables to truncate (all financial data and user-created content)
@@ -767,8 +767,6 @@ export const checkModelsExistServerFn = createServerFn({ method: 'GET' }).handle
 // Check if Schwab API credentials are configured
 export const checkSchwabCredentialsServerFn = createServerFn({ method: 'GET' }).handler(
   async () => {
-    const { getEnv } = await import('~/lib/env');
-
     const env = getEnv();
     const hasClientId = Boolean(env.SCHWAB_CLIENT_ID?.trim());
     const hasClientSecret = Boolean(env.SCHWAB_CLIENT_SECRET?.trim());

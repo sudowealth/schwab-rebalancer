@@ -1,5 +1,6 @@
 import { createServerFn } from '@tanstack/react-start';
 import { and, eq, inArray, isNull, or } from 'drizzle-orm';
+import yahooFinance from 'yahoo-finance2';
 import * as schema from '~/db/schema';
 import { requireAuth } from '~/features/auth/auth-utils';
 import { isAnyCashTicker } from '~/lib/constants';
@@ -65,8 +66,6 @@ export const syncYahooFundamentalsServerFn = createServerFn({ method: 'POST' })
     const { user } = await requireAuth();
     const scope = data.scope;
     const explicitSymbols = data.symbols;
-
-    const yahooFinance = (await import('yahoo-finance2')).default;
 
     // Determine symbols to update
     let symbols: string[] = [];
