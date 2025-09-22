@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { DollarSign, Loader2, RefreshCw } from 'lucide-react';
 import { useState } from 'react';
-import { ErrorBoundaryWrapper } from '~/components/ErrorBoundary';
+import { ErrorBoundaryWrapper, withDataFeedsErrorBoundary } from '~/components/ErrorBoundary';
 import { Button } from '~/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '~/components/ui/card';
 import {
@@ -14,7 +14,7 @@ import {
 import type { SyncYahooFundamentalsResult } from '~/features/data-feeds/yahoo.server';
 import { getYahooSyncCountsServerFn, syncYahooFundamentalsServerFn } from '~/lib/server-functions';
 
-export function YahooIntegration() {
+function YahooIntegrationComponent() {
   const queryClient = useQueryClient();
   const [lastSummary, setLastSummary] = useState<SyncYahooFundamentalsResult | null>(null);
   const [selectedScope, setSelectedScope] = useState<string>('all-securities');
@@ -190,3 +190,5 @@ export function YahooIntegration() {
     </ErrorBoundaryWrapper>
   );
 }
+
+export const YahooIntegration = withDataFeedsErrorBoundary(YahooIntegrationComponent);

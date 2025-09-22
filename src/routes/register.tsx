@@ -63,7 +63,7 @@ function RegisterPage() {
 
         // Navigate to home after showing success message
         setTimeout(() => {
-          navigate({ to: '/' });
+          navigate({ to: '/', search: { schwabConnected: undefined } });
         }, 2000);
       } catch (error: unknown) {
         console.error('❌ Registration error:', error);
@@ -92,7 +92,7 @@ function RegisterPage() {
 
   // Redirect if already logged in
   if (session?.user) {
-    navigate({ to: '/' });
+    navigate({ to: '/', search: { schwabConnected: undefined } });
     return null;
   }
 

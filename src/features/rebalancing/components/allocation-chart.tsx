@@ -1,5 +1,6 @@
 import { PieChartIcon } from 'lucide-react';
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
+import { withRebalancingErrorBoundary } from '~/components/ErrorBoundary';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '~/components/ui/card';
 import {
   Select,
@@ -22,7 +23,7 @@ export interface AllocationChartProps {
   onSleeveClick?: (sleeveName: string) => void;
 }
 
-export function AllocationChart({
+function AllocationChartComponent({
   allocationData,
   allocationView,
   onAllocationViewChange,
@@ -159,3 +160,5 @@ export function AllocationChart({
     </Card>
   );
 }
+
+export const AllocationChart = withRebalancingErrorBoundary(AllocationChartComponent);

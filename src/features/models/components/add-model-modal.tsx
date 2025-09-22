@@ -2,6 +2,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useRouter } from '@tanstack/react-router';
 import { FileDown, Plus, Upload, X } from 'lucide-react';
 import { useEffect, useId, useState } from 'react';
+import { withModelErrorBoundary } from '~/components/ErrorBoundary';
 import { Button } from '~/components/ui/button';
 import {
   Dialog,
@@ -38,7 +39,7 @@ interface AddModelModalProps {
   onModelCreated?: () => void;
 }
 
-export function AddModelModal({
+function AddModelModalComponent({
   buttonText = 'Add Model',
   size = 'default',
   variant = 'default',
@@ -632,3 +633,7 @@ S&P 500 Tech, Semiconductors - 1, 25.5"
     </Dialog>
   );
 }
+
+export const AddModelModal = withModelErrorBoundary(
+  AddModelModalComponent,
+) as React.ComponentType<AddModelModalProps>;

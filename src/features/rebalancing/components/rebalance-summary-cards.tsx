@@ -1,4 +1,5 @@
 import { DollarSign, Target, TrendingDown, TrendingUp } from 'lucide-react';
+import { withRebalancingErrorBoundary } from '~/components/ErrorBoundary';
 import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card';
 import { CASH_TICKER } from '~/lib/constants';
 import { cn, formatCurrency, formatPercent } from '~/lib/utils';
@@ -68,7 +69,7 @@ interface RebalanceSummaryCardsProps {
   className?: string;
 }
 
-export function RebalanceSummaryCards({
+function RebalanceSummaryCardsComponent({
   trades = [],
   sleeveTableData = [],
   group,
@@ -317,3 +318,5 @@ export function RebalanceSummaryCards({
     </div>
   );
 }
+
+export const RebalanceSummaryCards = withRebalancingErrorBoundary(RebalanceSummaryCardsComponent);

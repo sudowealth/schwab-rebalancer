@@ -1,5 +1,6 @@
 import { and, eq, inArray } from 'drizzle-orm';
 import * as schema from '~/db/schema';
+import { clearCache } from '~/lib/db-api';
 import { getDb } from '~/lib/db-config';
 
 // Global Equity Model data structure
@@ -276,7 +277,6 @@ export async function seedGlobalEquitySleeves(userId?: string) {
   );
 
   // Clear cache for this user to ensure fresh data
-  const { clearCache } = await import('~/lib/db-api');
   clearCache(`sleeves-${userId || 'demo-user'}`);
 
   return {
@@ -435,7 +435,6 @@ export async function seedGlobalEquityModelData(userId?: string) {
   );
 
   // Clear cache for this user to ensure fresh data
-  const { clearCache } = await import('~/lib/db-api');
   clearCache(`models-${userId || 'demo-user'}`);
 
   return {

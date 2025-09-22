@@ -733,7 +733,7 @@ export const getPortfolioMetrics = async (userId?: string) => {
     };
   }
 
-  console.log('📊 [getPortfolioMetrics] Called for userId:', userId.substring(0, 10) + '...');
+  console.log('📊 [getPortfolioMetrics] Called for userId:', `${userId.substring(0, 10)}...`);
 
   const cacheKey = `portfolio-metrics-${userId}`;
   const cached = getCached<PortfolioMetrics>(cacheKey);

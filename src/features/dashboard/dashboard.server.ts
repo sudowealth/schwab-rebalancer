@@ -22,6 +22,7 @@ import {
   getPositions,
   getProposedTrades,
   getRebalancingGroupById,
+  getRebalancingGroups,
   getRestrictedSecurities,
   getSnP500Data,
   getTransactions,
@@ -63,6 +64,95 @@ export const getSecuritiesDataServerFn = createServerFn({
       ...securitiesData,
     };
   });
+
+// Atomic server function that loads ALL dashboard data in parallel
+export const getCompleteDashboardDataServerFn = createServerFn({
+  method: 'GET',
+}).handler(async () => {
+  // Handle unauthenticated requests gracefully during SSR
+
+  try {
+    const { user } = await requireAuth();
+    const userId = user.id;
+
+    // Load all dashboard data and rebalancing groups in parallel
+    const [dashboardData, rebalancingGroups] = await Promise.all([
+      // Load all dashboard data (positions, metrics, transactions, etc.)
+      loadDashboardData(userId, user),
+      // Load rebalancing groups with calculated balances
+      getRebalancingGroups(userId).then(async (groups) => {
+        // Collect all account IDs from all groups
+        const allAccountIds = groups.flatMap((group) =>
+          group.members.map((member) => member.accountId),
+        );
+
+        // Get account holdings for all accounts in a single query
+        const accountHoldings =
+          allAccountIds.length > 0 ? await getAccountHoldings(allAccountIds) : [];
+
+        // Update group members with calculated balances from holdings
+        return groups.map((group) => {
+          const updatedMembers = group.members.map((member) => {
+            const accountData = accountHoldings.find((ah) => ah.accountId === member.accountId);
+            return {
+              ...member,
+              balance: accountData ? accountData.accountBalance : member.balance,
+            };
+          });
+
+          return {
+            ...group,
+            members: updatedMembers,
+          };
+        });
+      }),
+    ]);
+
+    return {
+      ...dashboardData,
+      rebalancingGroups,
+    };
+  } catch (error) {
+    // Handle authentication errors gracefully during SSR
+    console.warn('Complete dashboard data load failed during SSR, returning empty data:', error);
+    // Don't re-throw during SSR - return fallback data instead
+
+    return {
+      positions: [],
+      metrics: {
+        totalMarketValue: 0,
+        totalCostBasis: 0,
+        unrealizedGain: 0,
+        unrealizedGainPercent: 0,
+        realizedGain: 0,
+        realizedGainPercent: 0,
+        totalGain: 0,
+        totalGainPercent: 0,
+        ytdHarvestedLosses: 0,
+        harvestablelosses: 0,
+        harvestingTarget: {
+          year1Target: 0.03,
+          steadyStateTarget: 0.02,
+          currentProgress: 0,
+        },
+      },
+      transactions: [],
+      sp500Data: [],
+      proposedTrades: [],
+      sleeves: [],
+      indices: [],
+      indexMembers: [],
+      user: null,
+      schwabCredentialsStatus: { hasCredentials: false },
+      schwabOAuthStatus: { hasCredentials: false },
+      accountsCount: 0,
+      securitiesStatus: { hasSecurities: false, securitiesCount: 0 },
+      modelsStatus: { hasModels: false, modelsCount: 0 },
+      rebalancingGroupsStatus: { hasGroups: false, groupsCount: 0 },
+      rebalancingGroups: [],
+    };
+  }
+});
 
 export const getDashboardDataServerFn = createServerFn({
   method: 'GET',

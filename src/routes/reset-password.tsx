@@ -42,7 +42,7 @@ function ResetPasswordPage() {
     if (session?.user && success) {
       console.log('✅ User is now logged in after password reset, redirecting to dashboard');
       setTimeout(() => {
-        router.navigate({ to: '/' });
+        router.navigate({ to: '/', search: { schwabConnected: undefined } });
       }, 1000);
     }
   }, [session, success, router]);
@@ -121,7 +121,7 @@ function ResetPasswordPage() {
         });
 
         setTimeout(() => {
-          router.navigate({ to: '/' });
+          router.navigate({ to: '/', search: { schwabConnected: undefined } });
         }, 1000);
         return;
       } catch (loginError) {

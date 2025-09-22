@@ -1,4 +1,5 @@
 import { Flame, TrendingUp, Wallet } from 'lucide-react';
+import { withDashboardErrorBoundary } from '~/components/ErrorBoundary';
 
 interface PortfolioMetrics {
   totalMarketValue: number;
@@ -15,7 +16,7 @@ interface DashboardMetricsProps {
   metrics: PortfolioMetrics | null;
 }
 
-export function DashboardMetrics({ metrics }: DashboardMetricsProps) {
+function DashboardMetricsComponent({ metrics }: DashboardMetricsProps) {
   return (
     <div className="grid grid-cols-1 gap-5 sm:grid-cols-3 mb-8">
       <div className="bg-white overflow-hidden shadow rounded-lg">
@@ -111,3 +112,5 @@ export function DashboardMetrics({ metrics }: DashboardMetricsProps) {
     </div>
   );
 }
+
+export const DashboardMetrics = withDashboardErrorBoundary(DashboardMetricsComponent);

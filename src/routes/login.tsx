@@ -64,7 +64,7 @@ function LoginPage() {
         if (data) {
           // Small delay to ensure session is established
           setTimeout(() => {
-            navigate({ to: '/' });
+            navigate({ to: '/', search: { schwabConnected: undefined } });
           }, 100);
         } else {
           setError('An unexpected error occurred. Please try again.');
@@ -112,7 +112,7 @@ function LoginPage() {
 
   useEffect(() => {
     if (session?.user) {
-      navigate({ to: '/' });
+      navigate({ to: '/', search: { schwabConnected: undefined } });
     }
   }, [session, navigate]);
 

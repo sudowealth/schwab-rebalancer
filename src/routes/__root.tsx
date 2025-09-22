@@ -111,6 +111,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
                     <div className="hidden md:flex items-center space-x-1">
                       <Link
                         to="/"
+                        search={{ schwabConnected: undefined }}
                         className={cn(navigationMenuTriggerStyle(), 'no-underline')}
                         activeOptions={{ exact: true }}
                       >

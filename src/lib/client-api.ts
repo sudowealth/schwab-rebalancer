@@ -11,6 +11,18 @@ import type {
   Trade,
   Transaction,
 } from '~/features/auth/schemas';
+import {
+  getIndexMembers as _getIndexMembers,
+  getIndices as _getIndices,
+  getPortfolioMetrics as _getPortfolioMetrics,
+  getPositions as _getPositions,
+  getProposedTrades as _getProposedTrades,
+  getRestrictedSecurities as _getRestrictedSecurities,
+  getSecuritiesByIndex as _getSecuritiesByIndex,
+  getSleeves as _getSleeves,
+  getSnP500Data as _getSnP500Data,
+  getTransactions as _getTransactions,
+} from './db-api';
 
 // Check if we're running on the server
 const isServer = typeof window === 'undefined';
@@ -18,8 +30,7 @@ const isServer = typeof window === 'undefined';
 // Server-side functions that can be called from client
 export const getPositions = async (): Promise<Position[]> => {
   if (isServer) {
-    const { getPositions } = await import('./db-api');
-    return getPositions();
+    return _getPositions();
   }
   // For client-side, we'll need to implement proper API calls
   // For now, return empty array to avoid the promisify error
@@ -28,16 +39,14 @@ export const getPositions = async (): Promise<Position[]> => {
 
 export const getTransactions = async (userId?: string): Promise<Transaction[]> => {
   if (isServer) {
-    const { getTransactions } = await import('./db-api');
-    return getTransactions(userId || '');
+    return _getTransactions(userId || '');
   }
   return [];
 };
 
 export const getPortfolioMetrics = async (): Promise<PortfolioMetrics> => {
   if (isServer) {
-    const { getPortfolioMetrics } = await import('./db-api');
-    return getPortfolioMetrics();
+    return _getPortfolioMetrics();
   }
   return {
     totalMarketValue: 0,
@@ -60,32 +69,28 @@ export const getPortfolioMetrics = async (): Promise<PortfolioMetrics> => {
 
 export const getSleeves = async (): Promise<Sleeve[]> => {
   if (isServer) {
-    const { getSleeves } = await import('./db-api');
-    return getSleeves();
+    return _getSleeves();
   }
   return [];
 };
 
 export const getRestrictedSecurities = async (): Promise<RestrictedSecurity[]> => {
   if (isServer) {
-    const { getRestrictedSecurities } = await import('./db-api');
-    return getRestrictedSecurities();
+    return _getRestrictedSecurities();
   }
   return [];
 };
 
 export const getProposedTrades = async (): Promise<Trade[]> => {
   if (isServer) {
-    const { getProposedTrades } = await import('./db-api');
-    return getProposedTrades();
+    return _getProposedTrades();
   }
   return [];
 };
 
 export const getSnP500Data = async (): Promise<SP500Stock[]> => {
   if (isServer) {
-    const { getSnP500Data } = await import('./db-api');
-    return getSnP500Data();
+    return _getSnP500Data();
   }
   return [];
 };
@@ -102,16 +107,14 @@ export const seedDemoData = async () => {
 
 export const getIndices = async (): Promise<Array<{ id: string; name: string }>> => {
   if (isServer) {
-    const { getIndices } = await import('./db-api');
-    return getIndices();
+    return _getIndices();
   }
   return [];
 };
 
 export const getSecuritiesByIndex = async (indexId?: string): Promise<SP500Stock[]> => {
   if (isServer) {
-    const { getSecuritiesByIndex } = await import('./db-api');
-    return getSecuritiesByIndex(indexId);
+    return _getSecuritiesByIndex(indexId);
   }
   return [];
 };
@@ -120,8 +123,7 @@ export const getIndexMembers = async (): Promise<
   Array<{ indexId: string; securityId: string }>
 > => {
   if (isServer) {
-    const { getIndexMembers } = await import('./db-api');
-    return getIndexMembers();
+    return _getIndexMembers();
   }
   return [];
 };

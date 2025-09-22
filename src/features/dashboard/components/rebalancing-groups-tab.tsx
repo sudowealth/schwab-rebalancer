@@ -9,6 +9,7 @@ import {
 } from '@tanstack/react-table';
 import { ArrowRight, ChevronDown, ChevronsUpDown, ChevronUp } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
+import { withDashboardErrorBoundary } from '~/components/ErrorBoundary';
 import { Badge } from '~/components/ui/badge';
 import { Button } from '~/components/ui/button';
 import type { RebalancingGroup } from '~/features/auth/schemas';
@@ -17,7 +18,7 @@ interface RebalancingGroupsTabProps {
   groups: RebalancingGroup[];
 }
 
-export function RebalancingGroupsTab({ groups }: RebalancingGroupsTabProps) {
+function RebalancingGroupsTabComponent({ groups }: RebalancingGroupsTabProps) {
   const [sorting, setSorting] = useState<SortingState>([{ id: 'group', desc: false }]);
 
   // Helper to format account balance
@@ -207,3 +208,5 @@ export function RebalancingGroupsTab({ groups }: RebalancingGroupsTabProps) {
     </div>
   );
 }
+
+export const RebalancingGroupsTab = withDashboardErrorBoundary(RebalancingGroupsTabComponent);

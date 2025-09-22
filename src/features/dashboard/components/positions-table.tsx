@@ -10,6 +10,7 @@ import {
 } from '@tanstack/react-table';
 import { AlertTriangle, ChevronDown, ChevronsUpDown, ChevronUp, Flame } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import { withDashboardErrorBoundary } from '~/components/ErrorBoundary';
 import { SimpleTooltip } from '~/components/ui/simple-tooltip';
 import type { Position, Trade } from '~/features/auth/schemas';
 import { formatCurrency, formatQuantity } from '~/lib/utils';
@@ -21,7 +22,7 @@ interface PositionsTableProps {
   onSleeveClick: (sleeveId: string) => void;
 }
 
-export function PositionsTable({
+function PositionsTableComponent({
   positions,
   proposedTrades,
   onTickerClick,
@@ -244,3 +245,5 @@ export function PositionsTable({
     </div>
   );
 }
+
+export const PositionsTable = withDashboardErrorBoundary(PositionsTableComponent);

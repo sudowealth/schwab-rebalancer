@@ -1,8 +1,22 @@
 // Server-only wrapper to prevent client-side imports
-// This file uses dynamic imports to ensure database modules are never bundled for client
+// Database modules are statically imported for optimal performance
 
 import { eq, sql } from 'drizzle-orm';
 import * as schema from '~/db/schema';
+import {
+  getSchwabApiService,
+  hasSchwabCredentialsConfigured,
+} from '../features/schwab/schwab-api.server';
+import {
+  getIndexMembers,
+  getIndices,
+  getPortfolioMetrics,
+  getPositions,
+  getProposedTrades,
+  getSleeves,
+  getSnP500Data,
+  getTransactions,
+} from './db-api';
 import { getDb } from './db-config';
 
 export async function loadDashboardData(
@@ -47,9 +61,7 @@ export async function loadDashboardData(
   }
 
   try {
-    // Dynamic import to prevent client-side bundling
-    const dbApiModule = await import('./db-api');
-
+    // Static imports for optimal performance
     // Ensure userId is defined for functions that require it
     const safeUserId = userId || '';
 
@@ -63,22 +75,19 @@ export async function loadDashboardData(
       indices,
       indexMembers,
     ] = await Promise.all([
-      dbApiModule.getPositions(safeUserId),
-      dbApiModule.getPortfolioMetrics(safeUserId),
-      dbApiModule.getTransactions(safeUserId),
-      dbApiModule.getSnP500Data(),
-      dbApiModule.getProposedTrades(safeUserId),
-      dbApiModule.getSleeves(safeUserId),
-      dbApiModule.getIndices(),
-      dbApiModule.getIndexMembers(),
+      getPositions(safeUserId),
+      getPortfolioMetrics(safeUserId),
+      getTransactions(safeUserId),
+      getSnP500Data(),
+      getProposedTrades(safeUserId),
+      getSleeves(safeUserId),
+      getIndices(),
+      getIndexMembers(),
     ]);
 
     // Load Schwab environment variables status (for "Configure" step)
     let schwabCredentialsStatus = { hasCredentials: false };
     try {
-      const { hasSchwabCredentialsConfigured } = await import(
-        '../features/schwab/schwab-api.server'
-      );
       const hasCredentials = hasSchwabCredentialsConfigured();
       schwabCredentialsStatus = { hasCredentials };
     } catch (error) {
@@ -104,7 +113,6 @@ export async function loadDashboardData(
           );
           schwabOAuthStatus = { hasCredentials: false };
         } else {
-          const { getSchwabApiService } = await import('../features/schwab/schwab-api.server');
           const schwabApi = getSchwabApiService();
           const hasOAuthCredentials = await schwabApi.hasValidCredentials(userId);
           schwabOAuthStatus = { hasCredentials: hasOAuthCredentials };
@@ -134,11 +142,10 @@ export async function loadDashboardData(
     let securitiesStatus = { hasSecurities: false, securitiesCount: 0 };
     try {
       if (userId) {
-        const { ne, sql } = await import('drizzle-orm');
         const result = await getDb()
           .select({ count: sql<number>`count(*)` })
           .from(schema.security)
-          .where(ne(schema.security.ticker, '$$$'));
+          .where(sql`${schema.security.ticker} != '$$$'`);
         securitiesStatus = {
           hasSecurities: (result[0]?.count || 0) > 0,
           securitiesCount: result[0]?.count || 0,

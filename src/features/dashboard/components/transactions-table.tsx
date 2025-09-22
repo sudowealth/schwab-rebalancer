@@ -10,6 +10,7 @@ import {
 } from '@tanstack/react-table';
 import { ChevronDown, ChevronsUpDown, ChevronUp } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import { withDashboardErrorBoundary } from '~/components/ErrorBoundary';
 import type { Transaction } from '~/features/auth/schemas';
 import { formatQuantity } from '~/lib/utils';
 
@@ -19,7 +20,7 @@ interface TransactionsTableProps {
   onSleeveClick: (sleeveId: string) => void;
 }
 
-export function TransactionsTable({
+function TransactionsTableComponent({
   transactions,
   onTickerClick,
   onSleeveClick,
@@ -223,3 +224,5 @@ export function TransactionsTable({
     </div>
   );
 }
+
+export const TransactionsTable = withDashboardErrorBoundary(TransactionsTableComponent);
