@@ -1143,25 +1143,7 @@ export class SchwabSyncService {
       `🔍 [SchwabSync] Mapping account type: schwabType="${schwabType}", accountName="${accountName}"`,
     );
 
-    const typeMap: Record<string, string> = {
-      CASH: 'TAXABLE',
-      MARGIN: 'TAXABLE',
-      IRA: 'TAX_DEFERRED',
-      ROTH_IRA: 'TAX_EXEMPT',
-      ROLLOVER_IRA: 'TAX_DEFERRED',
-      SEP_IRA: 'TAX_DEFERRED',
-      SIMPLE_IRA: 'TAX_DEFERRED',
-      '401K': 'TAX_DEFERRED',
-      ROTH_401K: 'TAX_EXEMPT',
-    };
-
-    // Check if we have a direct mapping
-    if (typeMap[schwabType]) {
-      console.log(`✅ [SchwabSync] Direct type mapping: ${schwabType} → ${typeMap[schwabType]}`);
-      return typeMap[schwabType];
-    }
-
-    // If no direct mapping, try to infer from account name for retirement accounts
+    // First, try to infer from account name for retirement accounts (prioritize this over direct mapping)
     if (accountName) {
       const nameUpper = accountName.toUpperCase();
       if (nameUpper.includes('IRA') || nameUpper.includes('ROLLOVER')) {
@@ -1178,6 +1160,25 @@ export class SchwabSyncService {
         }
         return 'TAX_DEFERRED';
       }
+    }
+
+    // Then check for direct mapping from Schwab type
+    const typeMap: Record<string, string> = {
+      CASH: 'TAXABLE', // This is used for taxable brokerage accounts
+      MARGIN: 'TAXABLE',
+      IRA: 'TAX_DEFERRED',
+      ROTH_IRA: 'TAX_EXEMPT',
+      ROLLOVER_IRA: 'TAX_DEFERRED',
+      SEP_IRA: 'TAX_DEFERRED',
+      SIMPLE_IRA: 'TAX_DEFERRED',
+      '401K': 'TAX_DEFERRED',
+      ROTH_401K: 'TAX_EXEMPT',
+    };
+
+    // Check if we have a direct mapping
+    if (typeMap[schwabType]) {
+      console.log(`✅ [SchwabSync] Direct type mapping: ${schwabType} → ${typeMap[schwabType]}`);
+      return typeMap[schwabType];
     }
 
     // Last resort: default to UNKNOWN instead of TAXABLE to avoid incorrect tax treatment
