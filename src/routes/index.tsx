@@ -1,5 +1,4 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { useState } from 'react';
 import { ErrorBoundaryWrapper } from '~/components/ErrorBoundary';
 import { OnboardingTracker } from '~/components/OnboardingTracker';
 import { ExportButton } from '~/components/ui/export-button';
@@ -11,6 +10,8 @@ import { SecurityModal } from '~/features/dashboard/components/security-modal';
 import { SleeveModal } from '~/features/dashboard/components/sleeve-modal';
 import { TransactionsTable } from '~/features/dashboard/components/transactions-table';
 import { useDashboardData } from '~/features/dashboard/hooks/use-dashboard-data';
+import { useDashboardModals } from '~/features/dashboard/hooks/use-dashboard-modals';
+import { useDashboardTabs } from '~/features/dashboard/hooks/use-dashboard-tabs';
 import { useExcelExport } from '~/lib/excel-export';
 import {
   getDashboardDataServerFn,
@@ -83,17 +84,22 @@ export const Route = createFileRoute('/')({
 
 function DashboardComponent() {
   const loaderData = Route.useLoaderData();
-  const [activeTab, setActiveTab] = useState<'positions' | 'transactions' | 'rebalancing-groups'>(
-    'rebalancing-groups',
-  );
 
   // Note: loaderData.user is available as fallback for session?.user if needed
   // Note: Server-side auth check in loader ensures user is authenticated
 
-  const [selectedSleeve, setSelectedSleeve] = useState<string | null>(null);
-  const [showSleeveModal, setShowSleeveModal] = useState(false);
-  const [selectedTicker, setSelectedTicker] = useState<string | null>(null);
-  const [showSecurityModal, setShowSecurityModal] = useState(false);
+  // Custom hooks for state management
+  const { activeTab, setActiveTab } = useDashboardTabs();
+  const {
+    selectedSleeve,
+    showSleeveModal,
+    handleSleeveClick,
+    closeSleeveModal,
+    selectedTicker,
+    showSecurityModal,
+    handleTickerClick,
+    closeSecurityModal,
+  } = useDashboardModals();
 
   // Use the custom hook to manage all dashboard data and logic
   const {
@@ -113,16 +119,6 @@ function DashboardComponent() {
 
   // Lazy-loaded Excel export functions
   const { exportPositionsToExcel, exportTransactionsToExcel } = useExcelExport();
-
-  const handleTickerClick = (ticker: string) => {
-    setSelectedTicker(ticker);
-    setShowSecurityModal(true);
-  };
-
-  const handleSleeveClick = (sleeveId: string) => {
-    setSelectedSleeve(sleeveId);
-    setShowSleeveModal(true);
-  };
 
   if (isLoading) {
     return (
@@ -165,7 +161,8 @@ function DashboardComponent() {
               const schwabCredentialsComplete =
                 reactiveSchwabCredentialsStatus?.hasCredentials || false;
               const modelsComplete = reactiveModelsStatus?.hasModels || false;
-              const rebalancingGroupsComplete = (reactiveRebalancingGroupsStatus as { hasGroups?: boolean })?.hasGroups || false;
+              const rebalancingGroupsComplete =
+                (reactiveRebalancingGroupsStatus as { hasGroups?: boolean })?.hasGroups || false;
 
               const isFullyOnboarded =
                 securitiesComplete &&
@@ -193,7 +190,9 @@ function DashboardComponent() {
       <OnboardingTracker
         schwabCredentialsStatusProp={reactiveSchwabCredentialsStatus}
         schwabOAuthStatusProp={{ hasCredentials: schwabOAuthComplete }}
-        rebalancingGroupsStatus={reactiveRebalancingGroupsStatus as { hasGroups: boolean; groupsCount: number } | undefined}
+        rebalancingGroupsStatus={
+          reactiveRebalancingGroupsStatus as { hasGroups: boolean; groupsCount: number } | undefined
+        }
         securitiesStatusProp={reactiveSecuritiesStatus}
         modelsStatusProp={reactiveModelsStatus}
       />
@@ -306,7 +305,7 @@ function DashboardComponent() {
 
       <SleeveModal
         isOpen={showSleeveModal}
-        onClose={() => setShowSleeveModal(false)}
+        onClose={closeSleeveModal}
         sleeve={
           selectedSleeve ? sleeves?.find((s: Sleeve) => s.id === selectedSleeve) || null : null
         }
@@ -314,7 +313,7 @@ function DashboardComponent() {
 
       <SecurityModal
         isOpen={showSecurityModal}
-        onClose={() => setShowSecurityModal(false)}
+        onClose={closeSecurityModal}
         ticker={selectedTicker}
         sp500Data={[]}
         positions={positions}
