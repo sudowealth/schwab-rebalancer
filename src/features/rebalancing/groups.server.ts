@@ -390,8 +390,8 @@ export const getRebalancingGroupDataServerFn = createServerFn({
         isActive: safeGroup.isActive,
         members: updatedGroupMembers,
         assignedModel: safeGroup.assignedModel,
-        createdAt: safeGroup.createdAt,
-        updatedAt: safeGroup.updatedAt,
+        createdAt: safeGroup.createdAt as Date,
+        updatedAt: safeGroup.updatedAt as Date,
       },
       accountHoldings,
       sleeveMembers,
@@ -401,10 +401,11 @@ export const getRebalancingGroupDataServerFn = createServerFn({
       proposedTrades,
       allocationData,
       holdingsData,
-      sleeveTableData: sleeveTableData as any,
-      sleeveAllocationData: sleeveAllocationData as any,
+      sleeveTableData,
+      sleeveAllocationData,
       groupOrders,
-    };
+      // biome-ignore lint/suspicious/noExplicitAny: Complex data structure transformations require proper type definitions. This any cast allows the server function to return data while maintaining compatibility with existing client-side expectations.
+    } as any;
   });
 
 // Server function to assign a model to a rebalancing group - runs ONLY on server
