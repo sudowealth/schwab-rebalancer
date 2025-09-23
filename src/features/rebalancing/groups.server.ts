@@ -3,15 +3,23 @@ import { and, eq, inArray } from 'drizzle-orm';
 import { z } from 'zod';
 import * as schema from '~/db/schema';
 import type { RebalancingGroup } from '~/features/auth/schemas';
+import {
+  generateAllocationData,
+  generateTopHoldingsData,
+} from '~/features/rebalancing/rebalancing-utils';
 import type { AccountHoldingsResult } from '~/lib/db-api';
 import {
   assignModelToGroup,
   createRebalancingGroup,
   deleteRebalancingGroup,
   getAccountHoldings,
+  getGroupTransactions,
+  getPositions,
+  getProposedTrades,
   getRebalancingGroupById,
   getRebalancingGroups,
   getSleeveMembers,
+  getSnP500Data,
   unassignModelFromGroup,
   updateRebalancingGroup,
 } from '~/lib/db-api';
@@ -252,6 +260,105 @@ export const getRebalancingGroupsWithBalancesServerFn = createServerFn({
 });
 
 export type SleeveMember = Awaited<ReturnType<typeof getSleeveMembersServerFn>>[number];
+
+// Server function to get complete rebalancing group data with all related information - runs ONLY on server
+export const getRebalancingGroupDataServerFn = createServerFn({
+  method: 'POST',
+})
+  .validator((data: { groupId: string }) => data)
+  .handler(async ({ data }) => {
+    const { user } = await requireAuth();
+    const { groupId } = data;
+
+    if (!groupId) {
+      throwServerError('Invalid request: groupId required', 400);
+    }
+
+    // Get the group first to extract account IDs and check for assigned model
+    const group = await getRebalancingGroupById(groupId, user.id);
+    if (!group) {
+      throwServerError('Rebalancing group not found', 404);
+    }
+
+    // TypeScript needs explicit assertion after async operation
+    const safeGroup = group as NonNullable<typeof group>;
+    const accountIds = safeGroup.members.map((member) => member.accountId);
+
+    // Get sleeve members (target securities) if there's an assigned model
+    let sleeveMembers: Awaited<ReturnType<typeof getSleeveMembersServerFn>> = [];
+    if (safeGroup.assignedModel?.members && safeGroup.assignedModel.members.length > 0) {
+      const sleeveIds = safeGroup.assignedModel.members.map((member) => member.sleeveId);
+      if (sleeveIds.length > 0) {
+        sleeveMembers = await getSleeveMembers(sleeveIds);
+      }
+    }
+
+    // Fetch all data in parallel to eliminate waterfall loading
+    const [
+      accountHoldingsResult,
+      transactionsResult,
+      sp500DataResult,
+      positionsResult,
+      proposedTradesResult,
+    ] = await Promise.allSettled([
+      accountIds.length > 0 ? getAccountHoldings(accountIds) : Promise.resolve([]),
+      accountIds.length > 0 ? getGroupTransactions(accountIds) : Promise.resolve([]),
+      getSnP500Data(),
+      getPositions(),
+      getProposedTrades(),
+    ]);
+
+    // Extract successful results, fallback to empty arrays for failed promises
+    const accountHoldings =
+      accountHoldingsResult.status === 'fulfilled' ? accountHoldingsResult.value : [];
+    const transactions = transactionsResult.status === 'fulfilled' ? transactionsResult.value : [];
+    const sp500Data = sp500DataResult.status === 'fulfilled' ? sp500DataResult.value : [];
+    const positions = positionsResult.status === 'fulfilled' ? positionsResult.value : [];
+    const proposedTrades =
+      proposedTradesResult.status === 'fulfilled' ? proposedTradesResult.value : [];
+
+    // Update group members with calculated balances from holdings
+    const updatedGroupMembers = safeGroup.members.map((member) => {
+      const accountData = accountHoldings.find((ah) => ah.accountId === member.accountId);
+      return {
+        ...member,
+        balance: accountData ? accountData.accountBalance : 0,
+      };
+    });
+
+    // Calculate total portfolio value server-side
+    const totalValue = updatedGroupMembers.reduce((sum, member) => sum + (member.balance || 0), 0);
+
+    // Fetch allocation and holdings data with the calculated total value
+    const [allocationDataResult, holdingsDataResult] = await Promise.allSettled([
+      generateAllocationData('sleeve', safeGroup, accountHoldings, sp500Data, totalValue),
+      generateTopHoldingsData(accountHoldings, totalValue),
+    ]);
+
+    const allocationData =
+      allocationDataResult.status === 'fulfilled' ? allocationDataResult.value : [];
+    const holdingsData = holdingsDataResult.status === 'fulfilled' ? holdingsDataResult.value : [];
+
+    return {
+      group: {
+        id: safeGroup.id,
+        name: safeGroup.name,
+        isActive: safeGroup.isActive,
+        members: updatedGroupMembers,
+        assignedModel: safeGroup.assignedModel,
+        createdAt: safeGroup.createdAt,
+        updatedAt: safeGroup.updatedAt,
+      },
+      accountHoldings,
+      sleeveMembers,
+      sp500Data,
+      transactions,
+      positions,
+      proposedTrades,
+      allocationData,
+      holdingsData,
+    };
+  });
 
 // Server function to assign a model to a rebalancing group - runs ONLY on server
 export const assignModelToGroupServerFn = createServerFn({ method: 'POST' })

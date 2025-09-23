@@ -103,6 +103,7 @@ export {
   getGroupAccountHoldingsServerFn,
   getHoldingsForMultipleGroupsServerFn,
   getRebalancingGroupByIdServerFn,
+  getRebalancingGroupDataServerFn,
   getRebalancingGroupsServerFn,
   getSleeveMembersServerFn,
   unassignModelFromGroupServerFn,

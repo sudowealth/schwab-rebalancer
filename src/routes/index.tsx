@@ -1,4 +1,3 @@
-import { useQuery } from '@tanstack/react-query';
 import { createFileRoute } from '@tanstack/react-router';
 import { lazy, Suspense, useEffect } from 'react';
 import { OnboardingTracker } from '~/components/OnboardingTracker';
@@ -27,10 +26,7 @@ import { useOnboardingStatus } from '~/features/dashboard/hooks/use-onboarding-s
 import { useSecuritiesSeeding } from '~/features/data-feeds/hooks/use-securities-seeding';
 import { useExcelExport } from '~/lib/excel-export';
 import { authGuard } from '~/lib/route-guards';
-import {
-  checkSecuritiesExistServerFn,
-  getCompleteDashboardDataServerFn,
-} from '~/lib/server-functions';
+import { getCompleteDashboardDataServerFn } from '~/lib/server-functions';
 
 // Dashboard skeleton component for route-level loading states
 function DashboardSkeleton() {
@@ -150,33 +146,13 @@ function DashboardComponent() {
     rebalancingGroups,
   } = useDashboardData(loaderData);
 
-  // Query for securities status with full query metadata for seeding hook
-  const {
-    data: securitiesStatusForSeeding,
-    status: securitiesQueryStatus,
-    fetchStatus: securitiesFetchStatus,
-    isFetchedAfterMount: securitiesFetchedAfterMount,
-  } = useQuery({
-    queryKey: ['dashboard-securities-status'],
-    queryFn: () => checkSecuritiesExistServerFn(),
-    staleTime: 1000 * 60 * 5, // 5 minutes
-  });
-
-  // DEBUG: Force hasSecurities to false to test automatic import
-  const debugSecuritiesStatus = securitiesStatusForSeeding
-    ? {
-        ...securitiesStatusForSeeding,
-        hasSecurities: false,
-        securitiesCount: 0,
-      }
-    : undefined;
-
-  // Use the securities seeding hook to automatically import securities when needed
+  // Use the securities seeding hook with data from the dashboard hook
+  // This eliminates the redundant query and waterfall issue
   const { isSeeding, hasError, seedResult, showSuccessMessage } = useSecuritiesSeeding(
-    debugSecuritiesStatus,
-    securitiesQueryStatus,
-    securitiesFetchStatus,
-    securitiesFetchedAfterMount,
+    reactiveSecuritiesStatus,
+    'success', // reactiveSecuritiesStatus comes from a successful query
+    'idle', // it's not actively fetching
+    true, // it has been fetched
   );
 
   // Use the onboarding status hook for clean conditional rendering

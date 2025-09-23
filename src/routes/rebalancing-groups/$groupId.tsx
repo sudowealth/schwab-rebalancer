@@ -27,17 +27,8 @@ import { useSortingState } from '~/features/rebalancing/hooks/use-sorting-state'
 import { useTradeManagement } from '~/features/rebalancing/hooks/use-trade-management';
 import { authGuard } from '~/lib/route-guards';
 import {
-  generateAllocationDataServerFn,
-  generateTopHoldingsDataServerFn,
-  type getCompleteDashboardDataServerFn,
-  getGroupAccountHoldingsServerFn,
   getGroupOrdersServerFn,
-  getGroupTransactionsServerFn,
-  getPositionsServerFn,
-  getProposedTradesServerFn,
-  getRebalancingGroupByIdServerFn,
-  getSleeveMembersServerFn,
-  getSp500DataServerFn,
+  getRebalancingGroupDataServerFn,
   rebalancePortfolioServerFn,
   syncGroupPricesIfNeededServerFn,
   syncSchwabPricesServerFn,
@@ -47,8 +38,25 @@ import type { RebalanceMethod } from '~/types/rebalance';
 // Memoized OrdersBlotter component to prevent unnecessary re-renders
 const MemoizedOrdersBlotter = React.memo<{
   groupId: string;
-  accountHoldings: Awaited<ReturnType<typeof getGroupAccountHoldingsServerFn>>;
-  sp500Data: Awaited<ReturnType<typeof getCompleteDashboardDataServerFn>>['sp500Data'];
+  accountHoldings: Array<{
+    accountId: string;
+    accountBalance: number;
+    accountName?: string;
+    accountType?: string;
+    holdings: Array<{
+      ticker: string;
+      qty: number;
+      currentPrice?: number;
+      marketValue: number;
+      costBasisPerShare?: number;
+      unrealizedGain?: number;
+      openedAt?: Date;
+    }>;
+  }>;
+  sp500Data: Array<{
+    ticker: string;
+    price: number;
+  }>;
   groupMembers: Array<{
     id: string;
     accountId: string;
@@ -103,106 +111,9 @@ export const Route = createFileRoute('/rebalancing-groups/$groupId')({
     }
     return result;
   },
-  loader: async ({
-    params,
-  }): Promise<{
-    group: NonNullable<Awaited<ReturnType<typeof getRebalancingGroupByIdServerFn>>> & {
-      members: Array<{
-        balance: number;
-        id: string;
-        accountId: string;
-        isActive: boolean;
-        accountName?: string;
-        accountType?: string;
-        accountNumber?: string;
-      }>;
-    };
-    accountHoldings: Awaited<ReturnType<typeof getGroupAccountHoldingsServerFn>>;
-    sleeveMembers: Awaited<ReturnType<typeof getSleeveMembersServerFn>>;
-    sp500Data: Awaited<ReturnType<typeof getCompleteDashboardDataServerFn>>['sp500Data'];
-    positions: Awaited<ReturnType<typeof getPositionsServerFn>>;
-    transactions: Awaited<ReturnType<typeof getCompleteDashboardDataServerFn>>['transactions'];
-    proposedTrades: Awaited<ReturnType<typeof getProposedTradesServerFn>>;
-    allocationData: Awaited<ReturnType<typeof generateAllocationDataServerFn>>;
-    holdingsData: Awaited<ReturnType<typeof generateTopHoldingsDataServerFn>>;
-  }> => {
-    // Auth is handled by beforeLoad
-    const group = await getRebalancingGroupByIdServerFn({
-      data: { groupId: params.groupId },
-    });
-    if (!group) {
-      throw new Error('Rebalancing group not found');
-    }
-
-    // Get account holdings
-    const accountIds = group.members.map((member) => member.accountId);
-    // Get sleeve members (target securities) if there's an assigned model
-    let sleeveMembers: Awaited<ReturnType<typeof getSleeveMembersServerFn>> = [];
-    if (group.assignedModel?.members && group.assignedModel.members.length > 0) {
-      const sleeveIds = group.assignedModel.members.map((member) => member.sleeveId);
-      if (sleeveIds.length > 0) {
-        sleeveMembers = await getSleeveMembersServerFn({
-          data: { sleeveIds },
-        });
-      }
-    }
-
-    // Get basic data first (account holdings needed to calculate total value)
-    const [accountHoldings, transactions, sp500Data, positions, proposedTrades] = await Promise.all(
-      [
-        getGroupAccountHoldingsServerFn({ data: { accountIds } }),
-        getGroupTransactionsServerFn({ data: { accountIds } }),
-        getSp500DataServerFn(),
-        getPositionsServerFn(),
-        getProposedTradesServerFn(),
-      ],
-    );
-
-    // Update group members with calculated balances from holdings
-    const updatedGroupMembers = group.members.map((member) => {
-      const accountData = Array.isArray(accountHoldings)
-        ? accountHoldings.find((ah) => ah.accountId === member.accountId)
-        : undefined;
-      return {
-        ...member,
-        balance: accountData ? accountData.accountBalance : 0,
-      };
-    });
-
-    // Calculate total portfolio value
-    const totalValue = updatedGroupMembers.reduce((sum, member) => sum + (member.balance || 0), 0);
-
-    // Now get allocation and holdings data with correct total value
-    const [allocationData, holdingsData] = await Promise.all([
-      generateAllocationDataServerFn({
-        data: {
-          allocationView: 'sleeve',
-          groupId: params.groupId,
-          totalValue,
-        },
-      }),
-      generateTopHoldingsDataServerFn({
-        data: {
-          groupId: params.groupId,
-          totalValue,
-        },
-      }),
-    ]);
-
-    return {
-      group: {
-        ...group,
-        members: updatedGroupMembers,
-      },
-      accountHoldings,
-      sleeveMembers,
-      sp500Data,
-      transactions,
-      positions,
-      proposedTrades,
-      allocationData,
-      holdingsData,
-    };
+  loader: async ({ params }) => {
+    // Single server function call eliminates waterfall loading
+    return getRebalancingGroupDataServerFn({ data: { groupId: params.groupId } });
   },
   component: RebalancingGroupDetail,
 });
@@ -368,9 +279,12 @@ function RebalancingGroupDetail() {
   const filteredAllocationData = useMemo(
     () =>
       allocationData.filter(
-        (
-          item,
-        ): item is {
+        (item: {
+          name: string | null | undefined;
+          value: number | null | undefined;
+          percentage: number | null | undefined;
+          color: string | null | undefined;
+        }): item is {
           name: string;
           value: number;
           percentage: number;
