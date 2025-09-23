@@ -12,19 +12,23 @@ export function useSleeveAllocations(
   selectedAccountFilter: string,
   totalValue: number,
 ) {
-  const sleeveAllocationData = useMemo(() => {
-    // Type-safe adapters instead of casting
-    const adaptedGroup = {
-      ...group,
-      members: group.members.map((member) => ({
-        ...member,
-        accountName: member.accountName || '',
-        balance: member.balance || 0,
-      })),
-    };
+  // Create a stable reference for the group with only the assignedModel to avoid
+  // unnecessary recalculations when other group properties change
+  const stableGroupRef = useMemo(
+    () => ({
+      assignedModel: group.assignedModel,
+    }),
+    [group.assignedModel],
+  );
 
-    return calculateSleeveAllocations(adaptedGroup, accountHoldings, sleeveMembers, transactions);
-  }, [group, accountHoldings, sleeveMembers, transactions]);
+  const sleeveAllocationData = useMemo(() => {
+    return calculateSleeveAllocations(
+      stableGroupRef as Parameters<typeof calculateSleeveAllocations>[0],
+      accountHoldings,
+      sleeveMembers,
+      transactions,
+    );
+  }, [stableGroupRef, accountHoldings, sleeveMembers, transactions]);
 
   const sleeveTableData = useMemo(() => {
     return generateSleeveTableData(sleeveAllocationData, selectedAccountFilter, totalValue);
@@ -34,4 +38,11 @@ export function useSleeveAllocations(
     sleeveAllocationData,
     sleeveTableData,
   };
+}
+
+export function useAvailableCash(sleeveTableData: Array<{ sleeveId: string; currentValue?: number }>) {
+  return useMemo(() => {
+    const sleeveData = sleeveTableData.find((sleeve) => sleeve.sleeveId === 'cash');
+    return sleeveData?.currentValue || 0;
+  }, [sleeveTableData]);
 }

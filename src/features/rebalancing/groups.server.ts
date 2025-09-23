@@ -14,6 +14,7 @@ import {
   deleteRebalancingGroup,
   getAccountHoldings,
   getGroupTransactions,
+  getOrdersForAccounts,
   getPositions,
   getProposedTrades,
   getRebalancingGroupById,
@@ -26,6 +27,41 @@ import {
 import { getDb } from '~/lib/db-config';
 import { throwServerError } from '~/lib/error-utils';
 import { requireAuth } from '../auth/auth-utils';
+
+// Helper functions for focused responsibilities
+
+/**
+ * Calculates analytics data for a rebalancing group
+ * Separated from data fetching for better separation of concerns
+ */
+function calculateRebalancingGroupAnalytics(
+  group: NonNullable<Awaited<ReturnType<typeof getRebalancingGroupById>>>,
+  accountHoldings: AccountHoldingsResult,
+  sp500Data: Awaited<ReturnType<typeof getSnP500Data>>,
+) {
+  // Update group members with calculated balances from holdings
+  const updatedGroupMembers = group.members.map((member) => {
+    const accountData = accountHoldings.find((ah) => ah.accountId === member.accountId);
+    return {
+      ...member,
+      balance: accountData ? accountData.accountBalance : 0,
+    };
+  });
+
+  // Calculate total portfolio value server-side
+  const totalValue = updatedGroupMembers.reduce((sum, member) => sum + (member.balance || 0), 0);
+
+  // Fetch allocation and holdings data with the calculated total value
+  const allocationData = generateAllocationData('sleeve', group, accountHoldings, sp500Data, totalValue);
+  const holdingsData = generateTopHoldingsData(accountHoldings, totalValue);
+
+  return {
+    updatedGroupMembers,
+    totalValue,
+    allocationData,
+    holdingsData,
+  };
+}
 
 // Zod schemas for type safety
 const createRebalancingGroupSchema = z.object({
@@ -293,19 +329,21 @@ export const getRebalancingGroupDataServerFn = createServerFn({
       }
     }
 
-    // Fetch all data in parallel to eliminate waterfall loading
+    // Fetch all raw data in parallel to eliminate waterfall loading
     const [
       accountHoldingsResult,
       transactionsResult,
       sp500DataResult,
       positionsResult,
       proposedTradesResult,
+      groupOrdersResult,
     ] = await Promise.allSettled([
       accountIds.length > 0 ? getAccountHoldings(accountIds) : Promise.resolve([]),
       accountIds.length > 0 ? getGroupTransactions(accountIds) : Promise.resolve([]),
       getSnP500Data(),
       getPositions(),
       getProposedTrades(),
+      getOrdersForAccounts(accountIds),
     ]);
 
     // Extract successful results, fallback to empty arrays for failed promises
@@ -316,28 +354,14 @@ export const getRebalancingGroupDataServerFn = createServerFn({
     const positions = positionsResult.status === 'fulfilled' ? positionsResult.value : [];
     const proposedTrades =
       proposedTradesResult.status === 'fulfilled' ? proposedTradesResult.value : [];
+    const groupOrders = groupOrdersResult.status === 'fulfilled' ? groupOrdersResult.value : [];
 
-    // Update group members with calculated balances from holdings
-    const updatedGroupMembers = safeGroup.members.map((member) => {
-      const accountData = accountHoldings.find((ah) => ah.accountId === member.accountId);
-      return {
-        ...member,
-        balance: accountData ? accountData.accountBalance : 0,
-      };
-    });
-
-    // Calculate total portfolio value server-side
-    const totalValue = updatedGroupMembers.reduce((sum, member) => sum + (member.balance || 0), 0);
-
-    // Fetch allocation and holdings data with the calculated total value
-    const [allocationDataResult, holdingsDataResult] = await Promise.allSettled([
-      generateAllocationData('sleeve', safeGroup, accountHoldings, sp500Data, totalValue),
-      generateTopHoldingsData(accountHoldings, totalValue),
-    ]);
-
-    const allocationData =
-      allocationDataResult.status === 'fulfilled' ? allocationDataResult.value : [];
-    const holdingsData = holdingsDataResult.status === 'fulfilled' ? holdingsDataResult.value : [];
+    // Calculate analytics data (separated for better separation of concerns)
+    const { updatedGroupMembers, allocationData, holdingsData } = calculateRebalancingGroupAnalytics(
+      safeGroup,
+      accountHoldings,
+      sp500Data,
+    );
 
     return {
       group: {
@@ -357,6 +381,7 @@ export const getRebalancingGroupDataServerFn = createServerFn({
       proposedTrades,
       allocationData,
       holdingsData,
+      groupOrders,
     };
   });
 

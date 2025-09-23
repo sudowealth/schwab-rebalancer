@@ -64,10 +64,9 @@ export const queryKeys = {
     groups: {
       all: () => ['rebalancing', 'groups'] as const,
       detail: (id: string) => ['rebalancing', 'groups', id] as const,
-      allocationData: (groupId: string, allocationView: string, totalValue: number) =>
-        ['rebalancing', 'groups', groupId, 'allocation', allocationView, totalValue] as const,
-      topHoldings: (groupId: string, totalValue: number) =>
-        ['rebalancing', 'groups', groupId, 'top-holdings', totalValue] as const,
+      allocationData: (groupId: string, allocationView: string) =>
+        ['rebalancing', 'groups', groupId, 'allocation', allocationView] as const,
+      topHoldings: (groupId: string) => ['rebalancing', 'groups', groupId, 'top-holdings'] as const,
     },
   },
 
@@ -201,23 +200,14 @@ export const queryInvalidators = {
         queryClient: import('@tanstack/react-query').QueryClient,
         groupId: string,
         allocationView: string,
-        totalValue: number,
       ) => {
         queryClient.invalidateQueries({
-          queryKey: queryKeys.rebalancing.groups.allocationData(
-            groupId,
-            allocationView,
-            totalValue,
-          ),
+          queryKey: queryKeys.rebalancing.groups.allocationData(groupId, allocationView),
         });
       },
-      topHoldings: (
-        queryClient: import('@tanstack/react-query').QueryClient,
-        groupId: string,
-        totalValue: number,
-      ) => {
+      topHoldings: (queryClient: import('@tanstack/react-query').QueryClient, groupId: string) => {
         queryClient.invalidateQueries({
-          queryKey: queryKeys.rebalancing.groups.topHoldings(groupId, totalValue),
+          queryKey: queryKeys.rebalancing.groups.topHoldings(groupId),
         });
       },
     },

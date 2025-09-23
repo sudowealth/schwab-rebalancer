@@ -1,12 +1,11 @@
-import { useMutation } from '@tanstack/react-query';
+import { useIsMutating, useMutation, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute, Link, useRouter } from '@tanstack/react-router';
 import { Edit, Trash2 } from 'lucide-react';
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ErrorBoundaryWrapper } from '~/components/ErrorBoundary';
 import { RebalancingErrorBoundary } from '~/components/RouteErrorBoundaries';
 import { Badge } from '~/components/ui/badge';
 import { Button } from '~/components/ui/button';
-import type { Order } from '~/features/auth/schemas';
 import { SecurityModal } from '~/features/dashboard/components/security-modal';
 import { SleeveModal } from '~/features/dashboard/components/sleeve-modal';
 import { AccountSummary } from '~/features/rebalancing/components/account-summary';
@@ -22,15 +21,14 @@ import { TopHoldings } from '~/features/rebalancing/components/top-holdings';
 import { useExpansionState } from '~/features/rebalancing/hooks/use-expansion-state';
 import { useModalState } from '~/features/rebalancing/hooks/use-modal-state';
 import { useRebalancingState } from '~/features/rebalancing/hooks/use-rebalancing-state';
-import { useSleeveAllocations } from '~/features/rebalancing/hooks/use-sleeve-allocations';
+import { useAvailableCash, useSleeveAllocations } from '~/features/rebalancing/hooks/use-sleeve-allocations';
 import { useSortingState } from '~/features/rebalancing/hooks/use-sorting-state';
 import { useTradeManagement } from '~/features/rebalancing/hooks/use-trade-management';
+import { queryInvalidators } from '~/lib/query-keys';
 import { authGuard } from '~/lib/route-guards';
 import {
-  getGroupOrdersServerFn,
   getRebalancingGroupDataServerFn,
   rebalancePortfolioServerFn,
-  syncGroupPricesIfNeededServerFn,
   syncSchwabPricesServerFn,
 } from '~/lib/server-functions';
 import type { RebalanceMethod } from '~/types/rebalance';
@@ -137,13 +135,6 @@ function RebalancingGroupDetail() {
     'account' | 'sector' | 'industry' | 'sleeve'
   >('sleeve');
   const [groupingMode, setGroupingMode] = useState<'sleeve' | 'account'>('sleeve');
-  const [, setOrdersCountByBucket] = useState<{
-    draft: number;
-    pending: number;
-    open: number;
-    done: number;
-    failed: number;
-  } | null>(null);
 
   // Custom hooks for state management
   const expansionState = useExpansionState();
@@ -152,7 +143,13 @@ function RebalancingGroupDetail() {
   const tradeManagement = useTradeManagement(group.members);
   const rebalancingState = useRebalancingState();
 
-  // Mutations for server operations - optimized with proper cleanup and retry logic
+  // Query client for invalidation
+  const queryClient = useQueryClient();
+
+  // Global mutation state awareness
+  const isAnyMutationRunning = useIsMutating() > 0;
+
+  // Self-contained mutations that focus only on data operations
   const rebalanceMutation = useMutation({
     mutationFn: async (params: { method: RebalanceMethod; cashAmount?: number }) =>
       rebalancePortfolioServerFn({
@@ -163,81 +160,64 @@ function RebalancingGroupDetail() {
         },
       }),
     onSuccess: (result) => {
+      console.log('📊 [GroupComponent] Rebalance completed successfully');
+      // Update trade data in UI state
       tradeManagement.setTrades(result.trades);
-      rebalancingState.setRebalanceLoading(false);
+      // Invalidate related queries to refresh data
+      queryInvalidators.rebalancing.groups.detail(queryClient, group.id);
     },
     onError: (error) => {
-      console.error('Error generating trades:', error);
-      rebalancingState.setRebalanceLoading(false);
+      console.error('❌ [GroupComponent] Rebalance failed:', error);
+      // Clear any partial trade state on error to prevent stale data
+      tradeManagement.clearTrades();
+      // Show user-friendly error (could be handled by error boundary or toast)
     },
-    onSettled: () => {
-      rebalancingState.setRebalanceLoading(false);
+    onMutate: () => {
+      console.log('🔄 [GroupComponent] Starting rebalance operation...');
     },
-    retry: false, // Rebalance operations shouldn't be retried automatically
+    retry: (failureCount, error: unknown) => {
+      // Only retry on network errors, not on validation or business logic errors
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorCode = (error as { code?: string })?.code;
+      const isRetryableError =
+        errorMessage?.includes('network') ||
+        errorMessage?.includes('timeout') ||
+        errorCode === 'ECONNRESET';
+      return failureCount < 1 && isRetryableError;
+    },
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 5000), // Exponential backoff, max 5s
     gcTime: 5 * 60 * 1000, // Keep in cache for 5 minutes
   });
 
   const syncPricesMutation = useMutation({
     mutationFn: async (symbols: string[]) => syncSchwabPricesServerFn({ data: { symbols } }),
     onSuccess: () => {
-      console.log('🔄 [GroupComponent] Manual price sync completed, updating UI...');
-      router.invalidate(); // Manual sync should update UI immediately
-      rebalancingState.setSyncingPrices(false);
+      console.log('🔄 [GroupComponent] Price sync completed successfully, updating UI...');
+      // Invalidate queries that depend on price data
+      queryInvalidators.rebalancing.groups.detail(queryClient, group.id);
     },
     onError: (error) => {
-      console.error('Error syncing prices:', error);
-      rebalancingState.setSyncingPrices(false);
+      console.error('❌ [GroupComponent] Price sync failed:', error);
+      // Could show user notification here
     },
-    onSettled: () => {
-      rebalancingState.setSyncingPrices(false);
+    onMutate: () => {
+      console.log('🔄 [GroupComponent] Starting price sync operation...');
     },
-    retry: (failureCount, error) => {
+    retry: (failureCount, error: unknown) => {
       // Retry up to 2 times for network-related errors, but not for auth errors
-      return failureCount < 2 && !error?.message?.includes('unauthorized');
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorCode = (error as { code?: string })?.code;
+      const isRetryableError =
+        !errorMessage?.includes('unauthorized') &&
+        !errorMessage?.includes('forbidden') &&
+        (errorMessage?.includes('network') ||
+          errorMessage?.includes('timeout') ||
+          errorCode === 'ECONNRESET' ||
+          errorCode === 'ETIMEDOUT');
+      return failureCount < 2 && isRetryableError;
     },
-    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000), // Exponential backoff
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000), // Exponential backoff, max 10s
     gcTime: 10 * 60 * 1000, // Keep price sync results in cache for 10 minutes
-  });
-
-  const syncGroupPricesMutation = useMutation({
-    mutationFn: async (groupId: string) => syncGroupPricesIfNeededServerFn({ data: { groupId } }),
-    onSuccess: (result) => {
-      if (result.synced && result.updatedCount && result.updatedCount > 0) {
-        console.log('🔄 [GroupComponent] Prices updated automatically');
-        // Note: Removed router.invalidate() to prevent sync loops.
-        // Prices will be reflected on next manual refresh or navigation.
-      }
-    },
-    onError: (error) => {
-      console.warn('⚠️ [GroupComponent] Automatic price sync failed:', error);
-    },
-    retry: false, // Don't retry automatic background sync - keep it lightweight
-    gcTime: 30 * 60 * 1000, // Keep automatic sync results in cache for 30 minutes
-  });
-
-  const getGroupOrdersMutation = useMutation({
-    mutationFn: async (groupId: string) => getGroupOrdersServerFn({ data: { groupId } }),
-    onSuccess: (orders) => {
-      // Simple bucketing by status text
-      const statusOf = (s: string | undefined) => (s || 'DRAFT').toUpperCase();
-      const counts = { draft: 0, pending: 0, open: 0, done: 0, failed: 0 };
-      for (const o of orders as Order[]) {
-        const st = statusOf(o.status);
-        if (st === 'DRAFT') counts.draft++;
-        else if (st.startsWith('PREVIEW_')) counts.pending++;
-        else if (['ACCEPTED', 'WORKING', 'PARTIALLY_FILLED', 'REPLACED'].includes(st))
-          counts.open++;
-        else if (['FILLED', 'CANCELED'].includes(st)) counts.done++;
-        else if (['REJECTED', 'EXPIRED'].includes(st)) counts.failed++;
-      }
-      setOrdersCountByBucket(counts);
-    },
-    onError: (error) => {
-      console.error('Error loading orders:', error);
-    },
-    retry: 1, // Retry once for order status loading
-    retryDelay: 1000, // Wait 1 second before retry
-    gcTime: 2 * 60 * 1000, // Keep order counts in cache for 2 minutes
   });
 
   // Memoize total portfolio value calculation
@@ -246,22 +226,9 @@ function RebalancingGroupDetail() {
     [group.members],
   );
 
-  // Memoize group data for sleeve allocations
-  const sleeveAllocationsGroupData = useMemo(
-    () => ({
-      ...group,
-      members: group.members.map((member) => ({
-        ...member,
-        accountName: member.accountName || '',
-        balance: member.balance || 0,
-      })),
-    }),
-    [group],
-  );
-
   // Use custom hook for sleeve allocations
   const { sleeveTableData, sleeveAllocationData } = useSleeveAllocations(
-    sleeveAllocationsGroupData,
+    group,
     accountHoldings,
     sleeveMembers,
     transactions,
@@ -269,11 +236,8 @@ function RebalancingGroupDetail() {
     totalValue,
   );
 
-  // Memoize available cash calculation
-  const availableCash = useMemo(() => {
-    const sleeveData = sleeveTableData.find((sleeve) => sleeve.sleeveId === 'cash');
-    return sleeveData?.currentValue || 0;
-  }, [sleeveTableData]);
+  // Extract available cash calculation to custom hook
+  const availableCash = useAvailableCash(sleeveTableData);
 
   // Memoize filtered allocation data
   const filteredAllocationData = useMemo(
@@ -294,18 +258,114 @@ function RebalancingGroupDetail() {
     [allocationData],
   );
 
+  // Memoize account summary members to prevent object creation on every render
+  const accountSummaryMembers = useMemo(
+    () =>
+      group.members.map((member) => ({
+        id: member.id,
+        accountId: member.accountId,
+        accountName: member.accountName || '',
+        accountType: member.accountType || '',
+        accountNumber: (member as { accountNumber?: string }).accountNumber,
+        balance: member.balance || 0,
+      })),
+    [group.members],
+  );
+
+  // Memoize sleeve table group members to prevent object creation on every render
+  const sleeveTableGroupMembers = useMemo(
+    () =>
+      group.members.map((member) => ({
+        ...member,
+        accountName: member.accountName || '',
+        accountType: member.accountType || '',
+      })),
+    [group.members],
+  );
+
+  // Memoize sleeve table data transformation to prevent object creation on every render
+  const transformedSleeveTableData = useMemo(
+    () =>
+      sleeveTableData.map((sleeve) => ({
+        ...sleeve,
+        targetPercent:
+          'targetPercent' in sleeve && typeof sleeve.targetPercent === 'number'
+            ? sleeve.targetPercent
+            : 0,
+      })),
+    [sleeveTableData],
+  );
+
+  // Memoize sleeve allocation data transformation to prevent object creation on every render
+  const transformedSleeveAllocationData = useMemo(
+    () =>
+      sleeveAllocationData.map((account) => ({
+        ...account,
+        sleeves: account.sleeves.map((sleeve) => ({
+          ...sleeve,
+          targetPercent:
+            'targetPercent' in sleeve && typeof sleeve.targetPercent === 'number'
+              ? sleeve.targetPercent
+              : 0,
+          securities: (sleeve.securities || []).map((security) => ({
+            ...security,
+            targetPercent: security.targetPercent || 0,
+            accountNames: Array.from(security.accountNames || []),
+          })),
+        })),
+      })),
+    [sleeveAllocationData],
+  );
+
+  // Memoize account holdings data transformation to prevent object creation on every render
+  const transformedAccountHoldings = useMemo(
+    () =>
+      Array.isArray(accountHoldings)
+        ? accountHoldings.flatMap((account) =>
+            Array.isArray(account.holdings)
+              ? account.holdings.map((holding) => ({
+                  accountId: account.accountId,
+                  ticker: holding.ticker,
+                  qty: holding.qty || 0,
+                  costBasis: holding.costBasisPerShare || 0,
+                  marketValue: holding.marketValue || 0,
+                  unrealizedGain: holding.unrealizedGain || 0,
+                  isTaxable: account.accountType === 'taxable',
+                  purchaseDate: holding.openedAt || new Date(),
+                }))
+              : [],
+          )
+        : [],
+    [accountHoldings],
+  );
+
+  // Memoize rebalance summary trades transformation to prevent object creation on every render
+  const summaryTrades = useMemo(
+    () =>
+      tradeManagement.rebalanceTrades
+        .filter((trade) => trade.securityId || trade.ticker)
+        .map((trade) => ({
+          ...trade,
+          securityId: trade.securityId || trade.ticker || '',
+        })),
+    [tradeManagement.rebalanceTrades],
+  );
+
   // Memoized event handlers to prevent unnecessary re-renders
   const handleManualCashUpdate = useCallback(() => {
-    router.invalidate();
-  }, [router]);
+    console.log('💰 [GroupComponent] Manual cash update completed, refreshing data...');
+    queryInvalidators.rebalancing.groups.detail(queryClient, group.id);
+  }, [queryClient, group.id]);
 
   const handleAccountUpdate = useCallback(() => {
-    router.invalidate();
-  }, [router]);
+    console.log('🏦 [GroupComponent] Account update completed, refreshing data...');
+    queryInvalidators.rebalancing.groups.detail(queryClient, group.id);
+  }, [queryClient, group.id]);
 
   const handlePricesUpdated = useCallback(() => {
-    router.invalidate();
-  }, [router]);
+    console.log('💹 [GroupComponent] Price update completed, refreshing data...');
+    queryInvalidators.rebalancing.groups.detail(queryClient, group.id);
+  }, [queryClient, group.id]);
 
   const handleTickerClick = useCallback(
     (ticker: string) => {
@@ -356,8 +416,9 @@ function RebalancingGroupDetail() {
 
   const handleEditModalClose = useCallback(() => {
     modalState.closeEditModal();
-    router.invalidate();
-  }, [modalState, router]);
+    console.log('✏️ [GroupComponent] Group edit completed, refreshing data...');
+    queryInvalidators.rebalancing.groups.detail(queryClient, group.id);
+  }, [modalState, queryClient, group.id]);
 
   const handleDeleteModalClose = useCallback(() => {
     modalState.closeDeleteModal();
@@ -366,21 +427,46 @@ function RebalancingGroupDetail() {
 
   const handleGenerateTrades = useCallback(
     async (method: RebalanceMethod, cashAmount?: number, fetchPricesSelected?: boolean) => {
-      if (fetchPricesSelected && rebalancingState.syncingPrices) {
-        // Queue the rebalance until sync completes
-        rebalancingState.setWaitingForSync(true);
-        rebalancingState.setPendingMethod(method);
-        rebalancingState.setPendingCashAmount(cashAmount);
-        return;
-      }
+      try {
+        // Prevent concurrent operations by checking if any mutation is currently running
+        if (isAnyMutationRunning) {
+          console.warn(
+            '⚠️ [GroupComponent] Skipping rebalance generation - another operation is in progress',
+          );
+          return;
+        }
 
-      rebalancingState.setRebalanceLoading(true);
-      rebalanceMutation.mutate({ method, cashAmount });
+        // If price sync is requested, ensure it completes before rebalancing
+        if (fetchPricesSelected) {
+          // Check current sync status at execution time to avoid race conditions
+          if (syncPricesMutation.isPending) {
+            console.log('🔄 [GroupComponent] Waiting for existing price sync to complete...');
+            await syncPricesMutation.mutateAsync([]);
+          } else {
+            // Trigger new price sync
+            console.log('🔄 [GroupComponent] Starting price sync before rebalance...');
+            await syncPricesMutation.mutateAsync([]);
+          }
+        }
+
+        // Execute rebalance after price sync (if requested) completes
+        console.log('📊 [GroupComponent] Starting rebalance calculation...');
+        rebalanceMutation.mutate({ method, cashAmount });
+      } catch (error) {
+        console.error('❌ [GroupComponent] Error in handleGenerateTrades:', error);
+        // Don't proceed with rebalance if price sync failed
+      }
     },
-    [rebalancingState.syncingPrices, rebalancingState, rebalanceMutation],
+    [syncPricesMutation, rebalanceMutation, isAnyMutationRunning],
   );
 
   const handleFetchPrices = useCallback(() => {
+    // Prevent price sync if rebalancing is in progress to avoid data conflicts
+    if (rebalanceMutation.isPending) {
+      console.warn('⚠️ [GroupComponent] Skipping price sync - rebalance operation in progress');
+      return;
+    }
+
     // Collect held tickers and model tickers for this group
     const heldTickers = new Set<string>();
     if (Array.isArray(accountHoldings)) {
@@ -404,57 +490,22 @@ function RebalancingGroupDetail() {
 
     const symbols = Array.from(new Set([...heldTickers, ...modelTickers])).filter(Boolean);
     if (symbols.length > 0) {
-      rebalancingState.setSyncingPrices(true);
+      console.log(`🔄 [GroupComponent] Syncing prices for ${symbols.length} symbols...`);
       syncPricesMutation.mutate(symbols);
+    } else {
+      console.log('ℹ️ [GroupComponent] No symbols to sync');
     }
-  }, [accountHoldings, sleeveMembers, rebalancingState, syncPricesMutation]);
+  }, [accountHoldings, sleeveMembers, syncPricesMutation, rebalanceMutation.isPending]);
 
-  // Trigger automatic price sync when component mounts (if user is connected to Schwab)
-  // Only run once per component lifecycle to prevent endless sync loops
-  const hasSyncedPricesRef = useRef(false);
+  // Price sync and order loading are now handled server-side in the route loader
+  // No client-side data fetching needed
+
+  // Simplified effect: Close modal when rebalance completes successfully
   useEffect(() => {
-    if (!hasSyncedPricesRef.current) {
-      hasSyncedPricesRef.current = true;
-      syncGroupPricesMutation.mutate(group.id);
+    if (rebalanceMutation.isSuccess) {
+      rebalancingState.setRebalanceModalOpen(false);
     }
-  }, [group.id, syncGroupPricesMutation]);
-
-  // Load group orders summary (counts) after mount and when trades change
-  // No cleanup needed: mutations handle their own lifecycle and cleanup
-  useEffect(() => {
-    getGroupOrdersMutation.mutate(group.id);
-  }, [group.id, getGroupOrdersMutation]);
-
-  // If a rebalance was queued and sync finished, run it and close modal
-  // No cleanup needed: async operation completes naturally, mutations handle cleanup
-  useEffect(() => {
-    if (
-      !rebalancingState.syncingPrices &&
-      rebalancingState.waitingForSync &&
-      rebalancingState.pendingMethod
-    ) {
-      (async () => {
-        if (rebalancingState.pendingMethod) {
-          await handleGenerateTrades(
-            rebalancingState.pendingMethod,
-            rebalancingState.pendingCashAmount,
-            false,
-          );
-        }
-        rebalancingState.setWaitingForSync(false);
-        rebalancingState.setPendingMethod(null);
-        rebalancingState.setPendingCashAmount(undefined);
-        rebalancingState.setRebalanceModalOpen(false);
-      })();
-    }
-  }, [
-    rebalancingState.syncingPrices,
-    rebalancingState.waitingForSync,
-    rebalancingState.pendingMethod,
-    rebalancingState.pendingCashAmount,
-    handleGenerateTrades,
-    rebalancingState,
-  ]);
+  }, [rebalanceMutation.isSuccess, rebalancingState]);
 
   // Handle URL parameter to open rebalance modal
   useEffect(() => {
@@ -530,14 +581,7 @@ function RebalancingGroupDetail() {
 
         {/* Account Summary Section */}
         <AccountSummary
-          members={group.members.map((member) => ({
-            id: member.id,
-            accountId: member.accountId,
-            accountName: member.accountName || '',
-            accountType: member.accountType || '',
-            accountNumber: (member as { accountNumber?: string }).accountNumber,
-            balance: member.balance || 0,
-          }))}
+          members={accountSummaryMembers}
           selectedAccount={modalState.selectedAccount}
           totalValue={totalValue}
           onAccountSelect={modalState.setSelectedAccount}
@@ -547,101 +591,61 @@ function RebalancingGroupDetail() {
 
         {/* Current vs Target Allocation Table */}
         {group.assignedModel && (
-          <SleeveAllocationTable
-            sleeveTableData={sleeveTableData.map((sleeve) => ({
-              ...sleeve,
-              targetPercent:
-                'targetPercent' in sleeve && typeof sleeve.targetPercent === 'number'
-                  ? sleeve.targetPercent
-                  : 0,
-            }))}
-            expandedSleeves={expansionState.expandedSleeves}
-            expandedAccounts={expansionState.expandedAccounts}
-            groupMembers={group.members.map((member) => ({
-              ...member,
-              accountName: member.accountName || '',
-              accountType: member.accountType || '',
-            }))}
-            sleeveAllocationData={sleeveAllocationData.map((account) => ({
-              ...account,
-              sleeves: account.sleeves.map((sleeve) => ({
-                ...sleeve,
-                targetPercent:
-                  'targetPercent' in sleeve && typeof sleeve.targetPercent === 'number'
-                    ? sleeve.targetPercent
-                    : 0,
-                securities: (sleeve.securities || []).map((security) => ({
-                  ...security,
-                  targetPercent: security.targetPercent || 0,
-                  accountNames: Array.from(security.accountNames || []),
-                })),
-              })),
-            }))}
-            groupingMode={groupingMode}
-            onGroupingModeChange={setGroupingMode}
-            onSleeveExpansionToggle={expansionState.toggleSleeveExpansion}
-            onAccountExpansionToggle={expansionState.toggleAccountExpansion}
-            onTickerClick={handleTickerClick}
-            onSleeveClick={handleSleeveClick}
-            onRebalance={handleRebalance}
-            onToggleExpandAll={handleToggleExpandAll}
-            isAllExpanded={expansionState.isAllExpanded}
-            trades={tradeManagement.rebalanceTrades}
-            sortField={sortingState.sortField}
-            sortDirection={sortingState.sortDirection}
-            onSort={handleSort}
-            onTradeQtyChange={handleTradeQtyChange}
-            accountHoldings={
-              Array.isArray(accountHoldings)
-                ? accountHoldings.flatMap((account) =>
-                    Array.isArray(account.holdings)
-                      ? account.holdings.map((holding) => ({
-                          accountId: account.accountId,
-                          ticker: holding.ticker,
-                          qty: holding.qty || 0,
-                          costBasis: holding.costBasisPerShare || 0,
-                          marketValue: holding.marketValue || 0,
-                          unrealizedGain: holding.unrealizedGain || 0,
-                          isTaxable: account.accountType === 'taxable',
-                          purchaseDate: holding.openedAt || new Date(),
-                        }))
-                      : [],
-                  )
-                : []
-            }
-            renderSummaryCards={() => (
-              <RebalanceSummaryCards
-                trades={tradeManagement.rebalanceTrades
-                  .filter((trade) => trade.securityId || trade.ticker)
-                  .map((trade) => ({
-                    ...trade,
-                    securityId: trade.securityId || trade.ticker || '',
-                  }))}
-                sleeveTableData={sleeveTableData}
-                group={group}
-                accountHoldings={
-                  Array.isArray(accountHoldings)
-                    ? accountHoldings.flatMap((account) =>
-                        Array.isArray(account.holdings)
-                          ? account.holdings.map((holding) => ({
-                              accountId: account.accountId,
-                              ticker: holding.ticker,
-                              qty: holding.qty || 0,
-                              costBasis: holding.costBasisPerShare || 0,
-                              marketValue: holding.marketValue || 0,
-                              unrealizedGain: holding.unrealizedGain || 0,
-                              isTaxable: account.accountType === 'taxable',
-                              purchaseDate: holding.openedAt || new Date(),
-                            }))
-                          : [],
-                      )
-                    : []
-                }
-              />
+          <div className="relative">
+            {/* Loading overlay for rebalancing operations */}
+            {(rebalanceMutation.isPending || syncPricesMutation.isPending) && (
+              <div className="absolute inset-0 bg-background/80 backdrop-blur-sm z-10 flex items-center justify-center rounded-lg border">
+                <div className="flex flex-col items-center gap-3 p-6">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                  <div className="text-center">
+                    <p className="font-medium">
+                      {rebalanceMutation.isPending
+                        ? 'Rebalancing Portfolio...'
+                        : 'Syncing Prices...'}
+                    </p>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      {rebalanceMutation.isPending
+                        ? 'Calculating optimal trades based on your target allocation'
+                        : 'Fetching latest security prices for accurate calculations'}
+                    </p>
+                  </div>
+                </div>
+              </div>
             )}
-            groupId={group.id}
-            isRebalancing={rebalancingState.rebalanceLoading}
-          />
+
+            <SleeveAllocationTable
+              sleeveTableData={transformedSleeveTableData}
+              expandedSleeves={expansionState.expandedSleeves}
+              expandedAccounts={expansionState.expandedAccounts}
+              groupMembers={sleeveTableGroupMembers}
+              sleeveAllocationData={transformedSleeveAllocationData}
+              groupingMode={groupingMode}
+              onGroupingModeChange={setGroupingMode}
+              onSleeveExpansionToggle={expansionState.toggleSleeveExpansion}
+              onAccountExpansionToggle={expansionState.toggleAccountExpansion}
+              onTickerClick={handleTickerClick}
+              onSleeveClick={handleSleeveClick}
+              onRebalance={handleRebalance}
+              onToggleExpandAll={handleToggleExpandAll}
+              isAllExpanded={expansionState.isAllExpanded}
+              trades={tradeManagement.rebalanceTrades}
+              sortField={sortingState.sortField}
+              sortDirection={sortingState.sortDirection}
+              onSort={handleSort}
+              onTradeQtyChange={handleTradeQtyChange}
+              accountHoldings={transformedAccountHoldings}
+              renderSummaryCards={() => (
+                <RebalanceSummaryCards
+                  trades={summaryTrades}
+                  sleeveTableData={sleeveTableData}
+                  group={group}
+                  accountHoldings={transformedAccountHoldings}
+                />
+              )}
+              groupId={group.id}
+              isRebalancing={rebalanceMutation.isPending || isAnyMutationRunning}
+            />
+          </div>
         )}
 
         <MemoizedOrdersBlotter
@@ -701,11 +705,11 @@ function RebalancingGroupDetail() {
           onOpenChange={rebalancingState.setRebalanceModalOpen}
           onGenerateTrades={handleGenerateTrades}
           onFetchPrices={handleFetchPrices}
-          isLoading={rebalancingState.rebalanceLoading}
+          isLoading={rebalanceMutation.isPending}
           availableCash={availableCash}
-          isSyncing={rebalancingState.syncingPrices}
+          isSyncing={syncPricesMutation.isPending}
           syncMessage={
-            rebalancingState.waitingForSync && rebalancingState.syncingPrices
+            syncPricesMutation.isPending
               ? 'Fetching updated security prices. Once completed, the rebalance will begin automatically.'
               : undefined
           }
