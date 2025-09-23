@@ -39,8 +39,12 @@ import { useExpansionState } from '~/features/rebalancing/hooks/use-expansion-st
 import { useModalState } from '~/features/rebalancing/hooks/use-modal-state';
 import { useRebalancingState } from '~/features/rebalancing/hooks/use-rebalancing-state';
 import {
+  useAccountSummaryMembers,
   useAvailableCash,
+  useFilteredAllocationData,
   useSleeveAllocations,
+  useSleeveTableGroupMembers,
+  useSummaryTrades,
   useTransformedAccountHoldings,
   useTransformedSleeveAllocationData,
   useTransformedSleeveTableData,
@@ -403,62 +407,10 @@ function RebalancingGroupDetail() {
   const transformedSleeveTableData = useTransformedSleeveTableData(sleeveTableData);
   const transformedSleeveAllocationData = useTransformedSleeveAllocationData(sleeveAllocationData);
   const transformedAccountHoldings = useTransformedAccountHoldings(accountHoldings);
-
-  // Memoize filtered allocation data
-  const filteredAllocationData = useMemo(
-    () =>
-      allocationData.filter(
-        (item: {
-          name: string | null | undefined;
-          value: number | null | undefined;
-          percentage: number | null | undefined;
-          color: string | null | undefined;
-        }): item is {
-          name: string;
-          value: number;
-          percentage: number;
-          color: string;
-        } => item.name != null && item.value != null,
-      ),
-    [allocationData],
-  );
-
-  // Memoize account summary members to prevent object creation on every render
-  const accountSummaryMembers = useMemo(
-    () =>
-      group.members.map((member) => ({
-        id: member.id,
-        accountId: member.accountId,
-        accountName: member.accountName || '',
-        accountType: member.accountType || '',
-        accountNumber: (member as { accountNumber?: string }).accountNumber,
-        balance: member.balance || 0,
-      })),
-    [group.members],
-  );
-
-  // Memoize sleeve table group members to prevent object creation on every render
-  const sleeveTableGroupMembers = useMemo(
-    () =>
-      group.members.map((member) => ({
-        ...member,
-        accountName: member.accountName || '',
-        accountType: member.accountType || '',
-      })),
-    [group.members],
-  );
-
-  // Memoize rebalance summary trades transformation to prevent object creation on every render
-  const summaryTrades = useMemo(
-    () =>
-      tradeManagement.rebalanceTrades
-        .filter((trade) => trade.securityId || trade.ticker)
-        .map((trade) => ({
-          ...trade,
-          securityId: trade.securityId || trade.ticker || '',
-        })),
-    [tradeManagement.rebalanceTrades],
-  );
+  const filteredAllocationData = useFilteredAllocationData(allocationData);
+  const accountSummaryMembers = useAccountSummaryMembers(group.members);
+  const sleeveTableGroupMembers = useSleeveTableGroupMembers(group.members);
+  const summaryTrades = useSummaryTrades(tradeManagement.rebalanceTrades);
 
   // Memoized event handlers to prevent unnecessary re-renders
   const handleManualCashUpdate = useCallback(() => {

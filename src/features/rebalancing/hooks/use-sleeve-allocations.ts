@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import type {
   SleeveAllocationData,
   SleeveTableData,
+  Trade,
 } from '~/features/rebalancing/components/sleeve-allocation/sleeve-allocation-types';
 import {
   calculateSleeveAllocations,
@@ -128,5 +129,91 @@ export function useTransformedAccountHoldings(
           )
         : [],
     [accountHoldings],
+  );
+}
+
+export function useFilteredAllocationData(
+  allocationData: Array<{
+    name?: string | null;
+    value?: number | null;
+    percentage?: number | null;
+    color?: string | null;
+    [key: string]: unknown;
+  }>,
+) {
+  return useMemo(
+    () =>
+      allocationData.filter(
+        (
+          item,
+        ): item is {
+          name: string;
+          value: number;
+          percentage: number;
+          color: string;
+          [key: string]: unknown;
+        } => item.name != null && item.value != null,
+      ),
+    [allocationData],
+  );
+}
+
+export function useAccountSummaryMembers(
+  groupMembers: Array<{
+    id: string;
+    accountId: string;
+    accountName?: string;
+    accountType?: string;
+    accountNumber?: string;
+    balance?: number;
+    [key: string]: unknown;
+  }>,
+) {
+  return useMemo(
+    () =>
+      groupMembers.map((member) => ({
+        id: member.id,
+        accountId: member.accountId,
+        accountName: member.accountName || '',
+        accountType: member.accountType || '',
+        accountNumber: (member as { accountNumber?: string }).accountNumber,
+        balance: member.balance || 0,
+      })),
+    [groupMembers],
+  );
+}
+
+export function useSleeveTableGroupMembers(
+  groupMembers: Array<{
+    id: string;
+    accountId: string;
+    accountName?: string;
+    accountType?: string;
+    isActive: boolean;
+    balance?: number;
+    [key: string]: unknown;
+  }>,
+) {
+  return useMemo(
+    () =>
+      groupMembers.map((member) => ({
+        ...member,
+        accountName: member.accountName || '',
+        accountType: member.accountType || '',
+      })),
+    [groupMembers],
+  );
+}
+
+export function useSummaryTrades(rebalanceTrades: Trade[]) {
+  return useMemo(
+    () =>
+      rebalanceTrades
+        .filter((trade) => trade.securityId || trade.ticker)
+        .map((trade) => ({
+          ...trade,
+          securityId: trade.securityId || trade.ticker || '',
+        })),
+    [rebalanceTrades],
   );
 }
