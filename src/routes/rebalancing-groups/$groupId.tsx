@@ -61,7 +61,7 @@ import {
 import type { RebalanceMethod } from '~/types/rebalance';
 
 // Component for the rebalancing group header section
-function RebalancingGroupHeader({
+const RebalancingGroupHeader = React.memo(function RebalancingGroupHeader({
   group,
   onEditClick,
   onDeleteClick,
@@ -106,10 +106,12 @@ function RebalancingGroupHeader({
       </div>
     </div>
   );
-}
+});
+
+RebalancingGroupHeader.displayName = 'RebalancingGroupHeader';
 
 // Component for the sleeve allocation table section
-function SleeveAllocationSection({
+const SleeveAllocationSection = React.memo(function SleeveAllocationSection({
   sleeveTableData,
   expandedSleeves,
   expandedAccounts,
@@ -195,7 +197,9 @@ function SleeveAllocationSection({
       </React.Suspense>
     </div>
   );
-}
+});
+
+SleeveAllocationSection.displayName = 'SleeveAllocationSection';
 
 // Memoized OrdersBlotter component to prevent unnecessary re-renders
 const MemoizedOrdersBlotter = React.memo<{
