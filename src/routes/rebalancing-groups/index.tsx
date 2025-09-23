@@ -7,7 +7,7 @@ import { Badge } from '~/components/ui/badge';
 import type { RebalancingGroup, RebalancingGroupMember } from '~/features/auth/schemas';
 import { AddRebalancingGroupModal } from '~/features/rebalancing/components/add-rebalancing-group-modal';
 // Static import for server function
-import { getHoldingsForMultipleGroupsServerFn } from '~/features/rebalancing/groups.server';
+import { getHoldingsForMultipleGroupsServerFn } from '~/features/rebalancing/server/groups.server';
 import { authGuard } from '~/lib/route-guards';
 
 // Rebalancing groups skeleton component for route-level loading states

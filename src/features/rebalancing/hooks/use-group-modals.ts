@@ -2,7 +2,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useRouter } from '@tanstack/react-router';
 import { useCallback } from 'react';
 import { queryInvalidators } from '~/lib/query-keys';
-import type { SleeveMember } from '../groups.server';
+import type { SleeveMember } from '../server/groups.server';
 import { useModalState } from './use-modal-state';
 
 export function useGroupModals(groupId: string, sleeveMembers?: SleeveMember[]) {

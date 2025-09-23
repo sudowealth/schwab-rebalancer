@@ -1,4 +1,4 @@
-import { Suspense } from 'react';
+import { Suspense, useMemo } from 'react';
 import { OrdersBlotter } from './blotter/orders-blotter';
 import { GroupAccountSummarySection } from './group-account-summary-section';
 import { GroupChartsSection } from './group-charts-section';
@@ -38,6 +38,42 @@ export function RebalancingGroupPage() {
     trades,
   } = useRebalancingGroup();
 
+  // Memoize expensive computations (must be before any early returns)
+  const totalValue = useMemo(() => {
+    if (!data?.group?.members) return 0;
+    return data.group.members.reduce((sum: number, member) => sum + (member.balance || 0), 0);
+  }, [data?.group?.members]);
+
+  const accountLookup = useMemo(() => {
+    if (!data?.accountHoldings) return {};
+    return (data.accountHoldings || []).reduce(
+      (acc: Record<string, { name: string; number: string }>, account: any) => {
+        acc[account.accountId] = {
+          name: account.accountName,
+          number: account.accountNumber,
+        };
+        return acc;
+      },
+      {},
+    );
+  }, [data?.accountHoldings]);
+
+  const accountSummaryMembers = useMemo(() => {
+    if (!data?.group?.members) return [];
+    return data.group.members.map((member: any) => {
+      const accountInfo = accountLookup[member.accountId];
+      return {
+        id: member.id,
+        accountId: member.accountId,
+        isActive: true, // Assume active
+        balance: member.balance,
+        accountName: member.accountName,
+        accountNumber: accountInfo?.number || '', // Get account number from accountHoldings
+        accountType: member.accountType,
+      };
+    }) as any; // Type mismatch
+  }, [data?.group?.members, accountLookup]);
+
   if (!data) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -48,36 +84,9 @@ export function RebalancingGroupPage() {
 
   const { group, allocationData, holdingsData } = data;
 
-  // Calculate total value
-  const totalValue = group.members.reduce((sum: number, member) => sum + (member.balance || 0), 0);
-
   // Data is now pre-transformed server-side for optimal performance
 
   const filteredAllocationData = allocationData || [];
-  // Create account lookup map from accountHoldings for account numbers
-  const accountLookup = (data.accountHoldings || []).reduce(
-    (acc: Record<string, { name: string; number: string }>, account: any) => {
-      acc[account.accountId] = {
-        name: account.accountName,
-        number: account.accountNumber,
-      };
-      return acc;
-    },
-    {},
-  );
-
-  const accountSummaryMembers = group.members.map((member: any) => {
-    const accountInfo = accountLookup[member.accountId];
-    return {
-      id: member.id,
-      accountId: member.accountId,
-      isActive: true, // Assume active
-      balance: member.balance,
-      accountName: member.accountName,
-      accountNumber: accountInfo?.number || '', // Get account number from accountHoldings
-      accountType: member.accountType,
-    };
-  }) as any; // Type mismatch
 
   const sleeveTableGroupMembers = accountSummaryMembers;
 

@@ -94,7 +94,7 @@ export {
 export type {
   GroupAccountHoldingsResult,
   SleeveMember,
-} from '~/features/rebalancing/groups.server';
+} from '~/features/rebalancing/server/groups.server';
 // Rebalancing group operations
 export {
   assignModelToGroupServerFn,
@@ -108,19 +108,19 @@ export {
   getSleeveMembersServerFn,
   unassignModelFromGroupServerFn,
   updateRebalancingGroupServerFn,
-} from '~/features/rebalancing/groups.server';
-export type { RebalancePortfolioServerFnResult } from '~/features/rebalancing/portfolio.server';
+} from '~/features/rebalancing/server/groups.server';
+export type { RebalancePortfolioServerFnResult } from '~/features/rebalancing/server/portfolio.server';
 // Portfolio management and rebalancing
 export {
   calculateTradeMetricsServerFn,
   getManualCashServerFn,
   rebalancePortfolioServerFn,
   updateManualCashServerFn,
-} from '~/features/rebalancing/portfolio.server';
+} from '~/features/rebalancing/server/portfolio.server';
 export type {
   RebalanceSecurityData,
   RebalanceSleeveDataNew,
-} from '~/features/rebalancing/rebalance-logic.server';
+} from '~/features/rebalancing/server/rebalance-logic.server';
 // Schwab integration functions
 export {
   addGroupTradesToBlotterServerFn,

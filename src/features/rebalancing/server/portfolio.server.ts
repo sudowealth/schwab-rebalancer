@@ -11,7 +11,7 @@ import {
 import { clearCache } from '~/lib/db-api';
 import { getDb } from '~/lib/db-config';
 import { getErrorMessage } from '~/lib/error-handler';
-import { requireAuth } from '../auth/auth-utils';
+import { requireAuth } from '../../auth/auth-utils';
 import type { RebalanceSecurityData, RebalanceSleeveDataNew } from './rebalance-logic.server';
 import { executeRebalance } from './rebalance-logic.server';
 

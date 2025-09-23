@@ -10,7 +10,7 @@ import type { AccountHoldingsResult, SP500DataResult } from '~/lib/db-api';
 import {
   type Transaction as BaseTransaction,
   checkTransactionHistoryForWashSale,
-} from './restrictions-utils';
+} from '../utils/restrictions-utils';
 
 // Internal security data structure used in rebalancing calculations
 export interface SecurityData {

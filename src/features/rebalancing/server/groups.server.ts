@@ -11,7 +11,7 @@ import {
   transformAccountHoldingsForClient,
   transformSleeveAllocationDataForClient,
   transformSleeveTableDataForClient,
-} from '~/features/rebalancing/rebalancing-utils';
+} from '~/features/rebalancing/utils/rebalancing-utils';
 import type { AccountHoldingsResult } from '~/lib/db-api';
 import {
   assignModelToGroup,
@@ -31,7 +31,7 @@ import {
 } from '~/lib/db-api';
 import { getDb } from '~/lib/db-config';
 import { throwServerError } from '~/lib/error-utils';
-import { requireAuth } from '../auth/auth-utils';
+import { requireAuth } from '../../auth/auth-utils';
 
 // Helper functions for focused responsibilities
 

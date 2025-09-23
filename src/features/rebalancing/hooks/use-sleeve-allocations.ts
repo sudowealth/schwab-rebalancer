@@ -7,7 +7,7 @@ import type {
 import {
   calculateSleeveAllocations,
   generateSleeveTableData,
-} from '~/features/rebalancing/rebalancing-utils';
+} from '~/features/rebalancing/utils/rebalancing-utils';
 
 export function useSleeveAllocations(
   group: Parameters<typeof calculateSleeveAllocations>[0],

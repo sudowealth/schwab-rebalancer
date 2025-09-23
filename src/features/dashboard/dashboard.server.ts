@@ -6,7 +6,7 @@ import * as schema from '~/db/schema';
 import {
   generateAllocationData,
   generateTopHoldingsData,
-} from '~/features/rebalancing/rebalancing-utils';
+} from '~/features/rebalancing/utils/rebalancing-utils';
 import { getDb } from '~/lib/db-config';
 import { throwServerError } from '~/lib/error-utils';
 
