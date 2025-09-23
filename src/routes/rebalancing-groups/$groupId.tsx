@@ -21,7 +21,10 @@ import { TopHoldings } from '~/features/rebalancing/components/top-holdings';
 import { useExpansionState } from '~/features/rebalancing/hooks/use-expansion-state';
 import { useModalState } from '~/features/rebalancing/hooks/use-modal-state';
 import { useRebalancingState } from '~/features/rebalancing/hooks/use-rebalancing-state';
-import { useAvailableCash, useSleeveAllocations } from '~/features/rebalancing/hooks/use-sleeve-allocations';
+import {
+  useAvailableCash,
+  useSleeveAllocations,
+} from '~/features/rebalancing/hooks/use-sleeve-allocations';
 import { useSortingState } from '~/features/rebalancing/hooks/use-sorting-state';
 import { useTradeManagement } from '~/features/rebalancing/hooks/use-trade-management';
 import { queryInvalidators } from '~/lib/query-keys';

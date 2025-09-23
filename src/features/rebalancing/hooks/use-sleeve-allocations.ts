@@ -40,7 +40,9 @@ export function useSleeveAllocations(
   };
 }
 
-export function useAvailableCash(sleeveTableData: Array<{ sleeveId: string; currentValue?: number }>) {
+export function useAvailableCash(
+  sleeveTableData: Array<{ sleeveId: string; currentValue?: number }>,
+) {
   return useMemo(() => {
     const sleeveData = sleeveTableData.find((sleeve) => sleeve.sleeveId === 'cash');
     return sleeveData?.currentValue || 0;

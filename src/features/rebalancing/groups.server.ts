@@ -52,7 +52,13 @@ function calculateRebalancingGroupAnalytics(
   const totalValue = updatedGroupMembers.reduce((sum, member) => sum + (member.balance || 0), 0);
 
   // Fetch allocation and holdings data with the calculated total value
-  const allocationData = generateAllocationData('sleeve', group, accountHoldings, sp500Data, totalValue);
+  const allocationData = generateAllocationData(
+    'sleeve',
+    group,
+    accountHoldings,
+    sp500Data,
+    totalValue,
+  );
   const holdingsData = generateTopHoldingsData(accountHoldings, totalValue);
 
   return {
@@ -357,11 +363,8 @@ export const getRebalancingGroupDataServerFn = createServerFn({
     const groupOrders = groupOrdersResult.status === 'fulfilled' ? groupOrdersResult.value : [];
 
     // Calculate analytics data (separated for better separation of concerns)
-    const { updatedGroupMembers, allocationData, holdingsData } = calculateRebalancingGroupAnalytics(
-      safeGroup,
-      accountHoldings,
-      sp500Data,
-    );
+    const { updatedGroupMembers, allocationData, holdingsData } =
+      calculateRebalancingGroupAnalytics(safeGroup, accountHoldings, sp500Data);
 
     return {
       group: {
