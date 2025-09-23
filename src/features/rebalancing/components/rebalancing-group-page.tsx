@@ -51,39 +51,7 @@ export function RebalancingGroupPage() {
   // Calculate total value
   const totalValue = group.members.reduce((sum: number, member) => sum + (member.balance || 0), 0);
 
-  // Transform data for components (server data structures don't exactly match component expectations)
-  const transformedSleeveTableData = (data.sleeveTableData || []).map((item: any) => ({
-    ...item,
-    securities: item.securities.map((sec: any) => ({
-      ...sec,
-      isHeld: true, // Assume held for now - would need proper logic
-      accountNames: sec.accountNames || [],
-    })),
-  })) as any; // Type mismatch requires transformation
-
-  const transformedSleeveAllocationData = (data.sleeveAllocationData || []).map((account: any) => ({
-    ...account,
-    sleeves: account.sleeves.map((sleeve: any) => ({
-      ...sleeve,
-      securities: sleeve.securities.map((sec: any) => ({
-        ...sec,
-        isHeld: true,
-        accountNames: sec.accountNames || [],
-      })),
-    })),
-  })) as any; // Type mismatch requires transformation
-  const transformedAccountHoldings = (data.accountHoldings || []).flatMap((account: any) =>
-    account.holdings.map((holding: any) => ({
-      accountId: account.accountId,
-      ticker: holding.ticker,
-      qty: holding.qty,
-      costBasis: holding.costBasis,
-      marketValue: holding.marketValue,
-      unrealizedGain: holding.unrealizedGainLoss || 0,
-      isTaxable: account.accountType === 'taxable',
-      purchaseDate: holding.purchaseDate || new Date(),
-    })),
-  ) as any; // Simplified transformation
+  // Data is now pre-transformed server-side for optimal performance
 
   const filteredAllocationData = allocationData || [];
   // Create account lookup map from accountHoldings for account numbers
@@ -166,11 +134,11 @@ export function RebalancingGroupPage() {
               }
             >
               <SleeveAllocationTable
-                sleeveTableData={transformedSleeveTableData}
+                sleeveTableData={data.sleeveTableData}
                 expandedSleeves={ui.expandedSleeves}
                 expandedAccounts={ui.expandedAccounts}
                 groupMembers={sleeveTableGroupMembers}
-                sleeveAllocationData={transformedSleeveAllocationData}
+                sleeveAllocationData={data.sleeveAllocationData}
                 groupingMode={ui.groupingMode}
                 onGroupingModeChange={setGroupingMode}
                 onSleeveExpansionToggle={toggleSleeveExpansion}
@@ -185,7 +153,7 @@ export function RebalancingGroupPage() {
                 sortDirection={ui.sortDirection}
                 onSort={setSort}
                 onTradeQtyChange={handleTradeQtyChange}
-                accountHoldings={transformedAccountHoldings}
+                accountHoldings={data.transformedAccountHoldings}
                 renderSummaryCards={() => (
                   <RebalanceSummaryCards
                     trades={trades
@@ -194,7 +162,7 @@ export function RebalancingGroupPage() {
                         ...trade,
                         ticker: trade.securityId, // Map securityId to ticker for compatibility
                       }))}
-                    sleeveTableData={transformedSleeveTableData}
+                    sleeveTableData={data.sleeveTableData}
                     group={{
                       ...group,
                       members: group.members.map((member: any) => ({
@@ -203,7 +171,7 @@ export function RebalancingGroupPage() {
                       })),
                       assignedModel: group.assignedModel || undefined, // Handle nullable assignedModel
                     }}
-                    accountHoldings={transformedAccountHoldings}
+                    accountHoldings={data.transformedAccountHoldings}
                   />
                 )}
                 groupId={group.id}

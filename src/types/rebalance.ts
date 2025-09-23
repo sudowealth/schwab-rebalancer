@@ -189,7 +189,11 @@ export interface RebalancingGroupData {
     shortTermGainLoss: number;
     securities: Array<{
       accountNames: string[];
+      isHeld: boolean;
       ticker: string;
+      isTarget?: boolean;
+      hasWashSaleRisk?: boolean;
+      washSaleInfo?: unknown;
       targetValue: number;
       targetPercent: number;
       currentValue: number;
@@ -240,6 +244,11 @@ export interface RebalancingGroupData {
       differencePercent: number;
       securities: Array<{
         ticker: string;
+        isHeld: boolean;
+        accountNames: string[];
+        isTarget?: boolean;
+        hasWashSaleRisk?: boolean;
+        washSaleInfo?: unknown;
         qty: number;
         currentValue: number;
         targetValue: number;
@@ -289,5 +298,15 @@ export interface RebalancingGroupData {
     batchLabel?: string;
     estimatedCommission?: number;
     estimatedFees?: number;
+  }>;
+  transformedAccountHoldings: Array<{
+    accountId: string;
+    ticker: string;
+    qty: number;
+    costBasis: number;
+    marketValue: number;
+    unrealizedGain: number;
+    isTaxable: boolean;
+    purchaseDate: Date;
   }>;
 }

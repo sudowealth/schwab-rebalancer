@@ -31,7 +31,6 @@ export interface Security extends Record<string, unknown> {
   accountName?: string;
   sleeveId?: string;
   accountId?: string;
-  securities?: Security[];
 }
 
 export interface SleeveTableData extends Record<string, unknown> {

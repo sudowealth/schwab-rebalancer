@@ -885,6 +885,58 @@ interface SleeveAllocationDataWithSleeves {
   [key: string]: unknown;
 }
 
+/**
+ * Transforms sleeve table data to match component expectations
+ * This eliminates client-side transformations and improves performance
+ */
+export const transformSleeveTableDataForClient = (
+  sleeveTableData: ReturnType<typeof generateSleeveTableData>,
+) => {
+  return sleeveTableData.map((item) => ({
+    ...item,
+    securities: item.securities.map((sec) => ({
+      ...sec,
+      isHeld: true, // Assume held for now - would need proper logic
+      accountNames: Array.isArray(sec.accountNames) ? sec.accountNames : [],
+    })),
+  }));
+};
+
+/**
+ * Transforms sleeve allocation data to match component expectations
+ */
+export const transformSleeveAllocationDataForClient = (sleeveAllocationData: any[]) => {
+  return sleeveAllocationData.map((account) => ({
+    ...account,
+    sleeves: account.sleeves.map((sleeve: any) => ({
+      ...sleeve,
+      securities: sleeve.securities.map((sec: any) => ({
+        ...sec,
+        isHeld: true,
+        accountNames: sec.accountNames || [],
+      })),
+    })),
+  }));
+};
+
+/**
+ * Transforms account holdings data to match component expectations
+ */
+export const transformAccountHoldingsForClient = (accountHoldings: any[]) => {
+  return accountHoldings.flatMap((account) =>
+    account.holdings.map((holding: any) => ({
+      accountId: account.accountId,
+      ticker: holding.ticker,
+      qty: holding.qty,
+      costBasis: holding.costBasis,
+      marketValue: holding.marketValue,
+      unrealizedGain: holding.unrealizedGainLoss || 0,
+      isTaxable: account.accountType === 'taxable',
+      purchaseDate: holding.purchaseDate || new Date(),
+    })),
+  );
+};
+
 export const generateSleeveTableData = (
   sleeveAllocationData: SleeveAllocationDataWithSleeves[],
   selectedAccountFilter: string,

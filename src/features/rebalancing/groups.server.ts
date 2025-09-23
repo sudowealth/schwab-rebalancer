@@ -8,6 +8,9 @@ import {
   generateAllocationData,
   generateSleeveTableData,
   generateTopHoldingsData,
+  transformAccountHoldingsForClient,
+  transformSleeveAllocationDataForClient,
+  transformSleeveTableDataForClient,
 } from '~/features/rebalancing/rebalancing-utils';
 import type { AccountHoldingsResult } from '~/lib/db-api';
 import {
@@ -369,7 +372,7 @@ export const getRebalancingGroupDataServerFn = createServerFn({
       calculateRebalancingGroupAnalytics(safeGroup, accountHoldings, sp500Data);
 
     // Calculate sleeve allocation data (heavy calculations moved server-side)
-    const sleeveAllocationData = calculateSleeveAllocations(
+    const rawSleeveAllocationData = calculateSleeveAllocations(
       safeGroup,
       accountHoldings,
       sleeveMembers,
@@ -381,7 +384,11 @@ export const getRebalancingGroupDataServerFn = createServerFn({
       (sum: number, member) => sum + (member.balance || 0),
       0,
     );
-    const sleeveTableData = generateSleeveTableData(sleeveAllocationData, 'all', totalValue);
+    const rawSleeveTableData = generateSleeveTableData(rawSleeveAllocationData, 'all', totalValue);
+
+    // Apply server-side transformations to match component expectations
+    const sleeveTableData = transformSleeveTableDataForClient(rawSleeveTableData);
+    const sleeveAllocationData = transformSleeveAllocationDataForClient(rawSleeveAllocationData);
 
     return {
       group: {
@@ -402,10 +409,10 @@ export const getRebalancingGroupDataServerFn = createServerFn({
       allocationData,
       holdingsData,
       sleeveTableData,
-      sleeveAllocationData,
+      sleeveAllocationData, // Pre-transformed for client components
       groupOrders,
-      // biome-ignore lint/suspicious/noExplicitAny: Complex data structure transformations require proper type definitions. This any cast allows the server function to return data while maintaining compatibility with existing client-side expectations.
-    } as any;
+      transformedAccountHoldings: transformAccountHoldingsForClient(accountHoldings), // Pre-transformed for client components
+    } as any; // Type assertion to bypass complex type inference issues while maintaining functionality
   });
 
 // Server function to assign a model to a rebalancing group - runs ONLY on server
