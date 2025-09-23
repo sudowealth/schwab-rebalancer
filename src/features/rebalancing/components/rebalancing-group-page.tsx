@@ -1,14 +1,19 @@
-import { useId } from 'react';
+import { Suspense } from 'react';
+import { OrdersBlotter } from './blotter/orders-blotter';
+import { GroupAccountSummarySection } from './group-account-summary-section';
+import { GroupChartsSection } from './group-charts-section';
+import { GroupHeader } from './group-header';
 import { RebalanceModal } from './rebalance-modal';
-import { AccountSummaryErrorBoundary } from './rebalancing-error-boundary';
+import { RebalanceSummaryCards } from './rebalance-summary-cards';
+import {
+  AccountSummaryErrorBoundary,
+  ChartsErrorBoundary,
+  SleeveAllocationErrorBoundary,
+} from './rebalancing-error-boundary';
 import { useRebalancingGroup } from './rebalancing-group-context';
-import type { SortField } from './sleeve-allocation/sleeve-allocation-table-headers';
+import { SleeveAllocationTable } from './sleeve-allocation/sleeve-allocation-table';
 
 export function RebalancingGroupPage() {
-  const allocationViewId = useId();
-  const groupingModeId = useId();
-  const sortFieldId = useId();
-
   const {
     data,
     ui,
@@ -17,154 +22,231 @@ export function RebalancingGroupPage() {
     isSyncingPrices,
     setAllocationView,
     setGroupingMode,
+    toggleSleeveExpansion,
+    toggleAccountExpansion,
     toggleExpandAll,
+    setSelectedAccount,
     setSort,
+    handleTradeQtyChange,
+    openSecurityModal,
+    openSleeveModal,
     setRebalanceModal,
     handleRebalance,
     handlePriceSync,
     openEditModal,
     openDeleteModal,
+    trades,
   } = useRebalancingGroup();
 
   if (!data) {
-    return <div>Loading...</div>;
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
   }
 
-  const { group } = data;
+  const { group, allocationData, holdingsData } = data;
+
+  // Calculate total value
+  const totalValue = group.members.reduce((sum: number, member) => sum + (member.balance || 0), 0);
+
+  // Transform data for components (server data structures don't exactly match component expectations)
+  const transformedSleeveTableData = (data.sleeveTableData || []).map((item: any) => ({
+    ...item,
+    securities: item.securities.map((sec: any) => ({
+      ...sec,
+      isHeld: true, // Assume held for now - would need proper logic
+      accountNames: sec.accountNames || [],
+    })),
+  })) as any; // Type mismatch requires transformation
+
+  const transformedSleeveAllocationData = (data.sleeveAllocationData || []).map((account: any) => ({
+    ...account,
+    sleeves: account.sleeves.map((sleeve: any) => ({
+      ...sleeve,
+      securities: sleeve.securities.map((sec: any) => ({
+        ...sec,
+        isHeld: true,
+        accountNames: sec.accountNames || [],
+      })),
+    })),
+  })) as any; // Type mismatch requires transformation
+  const transformedAccountHoldings = (data.accountHoldings || []).flatMap((account: any) =>
+    account.holdings.map((holding: any) => ({
+      accountId: account.accountId,
+      ticker: holding.ticker,
+      qty: holding.qty,
+      costBasis: holding.costBasis,
+      marketValue: holding.marketValue,
+      unrealizedGain: holding.unrealizedGainLoss || 0,
+      isTaxable: account.accountType === 'taxable',
+      purchaseDate: holding.purchaseDate || new Date(),
+    })),
+  ) as any; // Simplified transformation
+
+  const filteredAllocationData = allocationData || [];
+  // Create account lookup map from accountHoldings for account numbers
+  const accountLookup = (data.accountHoldings || []).reduce(
+    (acc: Record<string, { name: string; number: string }>, account: any) => {
+      acc[account.accountId] = {
+        name: account.accountName,
+        number: account.accountNumber,
+      };
+      return acc;
+    },
+    {},
+  );
+
+  const accountSummaryMembers = group.members.map((member: any) => {
+    const accountInfo = accountLookup[member.accountId];
+    return {
+      id: member.id,
+      accountId: member.accountId,
+      isActive: true, // Assume active
+      balance: member.balance,
+      accountName: member.accountName,
+      accountNumber: accountInfo?.number || '', // Get account number from accountHoldings
+      accountType: member.accountType,
+    };
+  }) as any; // Type mismatch
+
+  const sleeveTableGroupMembers = accountSummaryMembers;
 
   return (
     <div className="container mx-auto p-6 space-y-6">
-      {/* Group Header - demonstrates new architecture */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">{group.name}</h1>
-          <p className="text-muted-foreground">
-            {group.members.length} account{group.members.length !== 1 ? 's' : ''} • Active:{' '}
-            {group.isActive ? 'Yes' : 'No'}
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={openEditModal}
-            className="px-4 py-2 border rounded hover:bg-gray-50"
-          >
-            Edit Group
-          </button>
-          <button
-            type="button"
-            onClick={openDeleteModal}
-            className="px-4 py-2 border border-red-200 text-red-600 rounded hover:bg-red-50"
-          >
-            Delete Group
-          </button>
-        </div>
-      </div>
+      {/* Group Header */}
+      <GroupHeader
+        // biome-ignore lint/suspicious/noExplicitAny: Type mismatch until proper RebalancingGroup interface is created to match server data
+        group={group as any}
+        onEdit={openEditModal}
+        onDelete={openDeleteModal}
+      />
 
-      {/* UI State Controls - demonstrates consolidated state management */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 border rounded">
-        <div>
-          <label htmlFor={allocationViewId} className="block text-sm font-medium">
-            Allocation View
-          </label>
-          <select
-            id={allocationViewId}
-            value={ui.allocationView}
-            onChange={(e) =>
-              setAllocationView(e.target.value as 'account' | 'sector' | 'industry' | 'sleeve')
-            }
-            className="w-full p-2 border rounded"
-          >
-            <option value="sleeve">Sleeve</option>
-            <option value="account">Account</option>
-            <option value="sector">Sector</option>
-            <option value="industry">Industry</option>
-          </select>
-        </div>
-        <div>
-          <label htmlFor={groupingModeId} className="block text-sm font-medium">
-            Grouping Mode
-          </label>
-          <select
-            id={groupingModeId}
-            value={ui.groupingMode}
-            onChange={(e) => setGroupingMode(e.target.value as 'sleeve' | 'account')}
-            className="w-full p-2 border rounded"
-          >
-            <option value="sleeve">Sleeve</option>
-            <option value="account">Account</option>
-          </select>
-        </div>
-        <div>
-          <label htmlFor={sortFieldId} className="block text-sm font-medium">
-            Sort Field
-          </label>
-          <select
-            id={sortFieldId}
-            value={ui.sortField || ''}
-            onChange={(e) => setSort(e.target.value as SortField)}
-            className="w-full p-2 border rounded"
-          >
-            <option value="">None</option>
-            <option value="ticker">Ticker</option>
-            <option value="value">Value</option>
-          </select>
-        </div>
-        <div>
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={toggleExpandAll}
-              className="px-3 py-1 text-sm border rounded"
-            >
-              {ui.isAllExpanded ? 'Collapse' : 'Expand'} All
-            </button>
-            <button
-              type="button"
-              onClick={() => setRebalanceModal(true)}
-              className="px-3 py-1 text-sm bg-blue-500 text-white rounded"
-            >
-              Rebalance
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Architecture Status */}
+      {/* Account Summary Section */}
       <AccountSummaryErrorBoundary>
-        <div className="p-6 border rounded bg-green-50">
-          <h2 className="text-lg font-semibold text-green-800 mb-2">
-            ✅ Feature-Level State Machine Implemented
-          </h2>
-          <div className="text-sm text-green-700 space-y-1">
-            <p>• Consolidated 8+ individual hooks into single feature hook</p>
-            <p>• Eliminated prop drilling with React Context</p>
-            <p>• Full type safety from server to client (no 'as any')</p>
-            <p>• Single source of truth for all group state</p>
-            <p>• Reducer-based state management for predictable updates</p>
-          </div>
-          <div className="mt-4 text-xs text-green-600">
-            <strong>Next Steps:</strong> Create data transformation adapters to connect existing UI
-            components with new server data structures.
-          </div>
-        </div>
+        <GroupAccountSummarySection
+          members={accountSummaryMembers}
+          selectedAccount={ui.selectedAccount}
+          totalValue={totalValue}
+          onAccountSelect={setSelectedAccount}
+          onManualCashUpdate={() => console.log('Manual cash update')} // Would need proper handler
+          onAccountUpdate={() => console.log('Account update')} // Would need proper handler
+        />
       </AccountSummaryErrorBoundary>
 
-      {/* Feature-Level Error Boundaries Demo */}
-      <div className="p-4 border rounded bg-blue-50">
-        <h3 className="text-sm font-medium text-blue-800 mb-2">Error Boundary Protection</h3>
-        <p className="text-xs text-blue-700">
-          Each feature section is now wrapped with specialized error boundaries that:
-        </p>
-        <ul className="text-xs text-blue-700 mt-1 space-y-1">
-          <li>• Catch and log feature-specific errors</li>
-          <li>• Provide user-friendly error messages</li>
-          <li>• Allow users to retry failed operations</li>
-          <li>• Display development error details when appropriate</li>
-        </ul>
-      </div>
+      {/* Current vs Target Allocation Table */}
+      {group.assignedModel && (
+        <div className="relative">
+          {/* Loading overlay for rebalancing operations */}
+          {(isRebalancing || isSyncingPrices) && (
+            <div className="absolute inset-0 bg-background/80 backdrop-blur-sm z-10 flex items-center justify-center rounded-lg border">
+              <div className="flex flex-col items-center gap-3 p-6">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                <div className="text-center">
+                  <p className="font-medium">
+                    {isRebalancing ? 'Rebalancing Portfolio...' : 'Syncing Prices...'}
+                  </p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {isRebalancing
+                      ? 'Calculating optimal trades based on your target allocation'
+                      : 'Fetching latest security prices for accurate calculations'}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
 
-      {/* Rebalance Modal - demonstrates working modal system */}
+          <SleeveAllocationErrorBoundary>
+            <Suspense
+              fallback={
+                <div className="flex items-center justify-center h-64">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                </div>
+              }
+            >
+              <SleeveAllocationTable
+                sleeveTableData={transformedSleeveTableData}
+                expandedSleeves={ui.expandedSleeves}
+                expandedAccounts={ui.expandedAccounts}
+                groupMembers={sleeveTableGroupMembers}
+                sleeveAllocationData={transformedSleeveAllocationData}
+                groupingMode={ui.groupingMode}
+                onGroupingModeChange={setGroupingMode}
+                onSleeveExpansionToggle={toggleSleeveExpansion}
+                onAccountExpansionToggle={toggleAccountExpansion}
+                onTickerClick={openSecurityModal}
+                onSleeveClick={openSleeveModal}
+                onRebalance={() => setRebalanceModal(true)}
+                onToggleExpandAll={toggleExpandAll}
+                isAllExpanded={ui.isAllExpanded}
+                trades={trades}
+                sortField={ui.sortField}
+                sortDirection={ui.sortDirection}
+                onSort={setSort}
+                onTradeQtyChange={handleTradeQtyChange}
+                accountHoldings={transformedAccountHoldings}
+                renderSummaryCards={() => (
+                  <RebalanceSummaryCards
+                    trades={trades
+                      .filter((trade) => trade.securityId)
+                      .map((trade) => ({
+                        ...trade,
+                        ticker: trade.securityId, // Map securityId to ticker for compatibility
+                      }))}
+                    sleeveTableData={transformedSleeveTableData}
+                    group={{
+                      ...group,
+                      members: group.members.map((member: any) => ({
+                        ...member,
+                        balance: member.balance || 0,
+                      })),
+                      assignedModel: group.assignedModel || undefined, // Handle nullable assignedModel
+                    }}
+                    accountHoldings={transformedAccountHoldings}
+                  />
+                )}
+                groupId={group.id}
+                isRebalancing={isRebalancing}
+              />
+            </Suspense>
+          </SleeveAllocationErrorBoundary>
+        </div>
+      )}
+
+      {/* Orders Blotter */}
+      <OrdersBlotter
+        groupId={group.id}
+        accounts={accountSummaryMembers.reduce(
+          (acc: Record<string, { name: string; number?: string | null }>, member: any) => {
+            acc[member.accountId] = {
+              name: member.accountName,
+              number: member.accountNumber || null,
+            };
+            return acc;
+          },
+          {},
+        )}
+        onPricesUpdated={() => handlePriceSync()}
+      />
+
+      {/* Charts & Analytics Section */}
+      <ChartsErrorBoundary>
+        <GroupChartsSection
+          allocationData={filteredAllocationData}
+          allocationView={ui.allocationView}
+          onAllocationViewChange={setAllocationView}
+          onSleeveClick={openSleeveModal}
+          onTickerClick={openSecurityModal}
+          holdingsData={holdingsData}
+        />
+      </ChartsErrorBoundary>
+
+      {/* Modals - handled by individual modal components */}
+      {/* GroupModals would need proper modal state from useGroupModals hook */}
+      {/* For now, modal functionality is handled by individual components */}
+
+      {/* Rebalance Modal */}
       <RebalanceModal
         open={ui.rebalanceModalOpen}
         onOpenChange={setRebalanceModal}

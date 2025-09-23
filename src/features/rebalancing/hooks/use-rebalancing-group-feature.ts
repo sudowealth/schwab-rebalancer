@@ -251,9 +251,11 @@ function rebalancingGroupReducer(
         },
       };
 
-    case 'REBALANCE_SUCCESS':
+    case 'REBALANCE_SUCCESS': {
+      const rebalanceResult = action.payload as { trades?: any[] };
       return {
         ...state,
+        trades: rebalanceResult.trades || [],
         mutations: {
           ...state.mutations,
           rebalance: {
@@ -270,6 +272,7 @@ function rebalancingGroupReducer(
           rebalanceModalOpen: false, // Close modal on success
         },
       };
+    }
 
     case 'REBALANCE_ERROR':
       return {
