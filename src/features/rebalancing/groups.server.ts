@@ -4,7 +4,9 @@ import { z } from 'zod';
 import * as schema from '~/db/schema';
 import type { RebalancingGroup } from '~/features/auth/schemas';
 import {
+  calculateSleeveAllocations,
   generateAllocationData,
+  generateSleeveTableData,
   generateTopHoldingsData,
 } from '~/features/rebalancing/rebalancing-utils';
 import type { AccountHoldingsResult } from '~/lib/db-api';
@@ -366,6 +368,21 @@ export const getRebalancingGroupDataServerFn = createServerFn({
     const { updatedGroupMembers, allocationData, holdingsData } =
       calculateRebalancingGroupAnalytics(safeGroup, accountHoldings, sp500Data);
 
+    // Calculate sleeve allocation data (heavy calculations moved server-side)
+    const sleeveAllocationData = calculateSleeveAllocations(
+      safeGroup,
+      accountHoldings,
+      sleeveMembers,
+      transactions,
+    );
+
+    // Calculate sleeve table data
+    const totalValue = safeGroup.members.reduce(
+      (sum: number, member) => sum + (member.balance || 0),
+      0,
+    );
+    const sleeveTableData = generateSleeveTableData(sleeveAllocationData, 'all', totalValue);
+
     return {
       group: {
         id: safeGroup.id,
@@ -384,6 +401,8 @@ export const getRebalancingGroupDataServerFn = createServerFn({
       proposedTrades,
       allocationData,
       holdingsData,
+      sleeveTableData: sleeveTableData as any,
+      sleeveAllocationData: sleeveAllocationData as any,
       groupOrders,
     };
   });

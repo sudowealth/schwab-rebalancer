@@ -69,7 +69,9 @@ export const checkTransactionHistoryForWashSale = (
       (a, b) => b.executedAt.getTime() - a.executedAt.getTime(),
     )[0];
 
-    const daysAgo = Math.floor((now.getTime() - mostRecent.executedAt.getTime()) / (24 * 60 * 60 * 1000));
+    const daysAgo = Math.floor(
+      (now.getTime() - mostRecent.executedAt.getTime()) / (24 * 60 * 60 * 1000),
+    );
 
     const blockedUntil = new Date(mostRecent.executedAt.getTime() + 31 * 24 * 60 * 60 * 1000);
 
