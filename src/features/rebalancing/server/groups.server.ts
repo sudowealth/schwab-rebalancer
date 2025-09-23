@@ -13,6 +13,7 @@ import {
   transformSleeveTableDataForClient,
 } from '~/features/rebalancing/utils/rebalancing-utils';
 import type { AccountHoldingsResult } from '~/lib/db-api';
+
 import {
   assignModelToGroup,
   createRebalancingGroup,
@@ -390,6 +391,19 @@ export const getRebalancingGroupDataServerFn = createServerFn({
     const sleeveTableData = transformSleeveTableDataForClient(rawSleeveTableData);
     const sleeveAllocationData = transformSleeveAllocationDataForClient(rawSleeveAllocationData);
 
+    const transformedAccountHoldings = accountHoldings.flatMap((account) =>
+      account.holdings.map((holding) => ({
+        accountId: account.accountId,
+        ticker: holding.ticker,
+        qty: holding.qty,
+        costBasis: holding.costBasisTotal,
+        marketValue: holding.marketValue,
+        unrealizedGain: holding.unrealizedGain || 0,
+        isTaxable: account.accountType === 'taxable',
+        purchaseDate: holding.openedAt,
+      })),
+    );
+
     return {
       group: {
         id: safeGroup.id,
@@ -400,7 +414,7 @@ export const getRebalancingGroupDataServerFn = createServerFn({
         createdAt: safeGroup.createdAt as Date,
         updatedAt: safeGroup.updatedAt as Date,
       },
-      accountHoldings,
+      accountHoldings: transformAccountHoldingsForClient(accountHoldings),
       sleeveMembers,
       sp500Data,
       transactions,
@@ -410,10 +424,16 @@ export const getRebalancingGroupDataServerFn = createServerFn({
       holdingsData,
       sleeveTableData,
       sleeveAllocationData, // Pre-transformed for client components
-      groupOrders,
-      transformedAccountHoldings: transformAccountHoldingsForClient(accountHoldings), // Pre-transformed for client components
-    } as any; // Type assertion to bypass complex type inference issues while maintaining functionality
+      groupOrders: groupOrders.map((order) => ({
+        ...order,
+        avgFillPrice: order.avgFillPrice || undefined,
+        batchLabel: order.batchLabel || undefined,
+      })),
+      transformedAccountHoldings,
+    };
   });
+
+export type RebalancingGroupData = Awaited<ReturnType<typeof getRebalancingGroupDataServerFn>>;
 
 // Server function to assign a model to a rebalancing group - runs ONLY on server
 export const assignModelToGroupServerFn = createServerFn({ method: 'POST' })

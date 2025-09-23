@@ -32,6 +32,16 @@ export interface AccountHolding {
   purchaseDate: Date;
 }
 
+export interface AccountSummaryMember {
+  id: string;
+  accountId: string;
+  isActive: boolean;
+  balance: number;
+  accountName: string;
+  accountNumber: string;
+  accountType: string;
+}
+
 export interface WashSaleRestriction {
   ticker: string;
   restrictedUntil: Date;

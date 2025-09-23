@@ -2,11 +2,9 @@ import { createFileRoute } from '@tanstack/react-router';
 import { useEffect } from 'react';
 import { ErrorBoundaryWrapper } from '~/components/ErrorBoundary';
 import { RebalancingErrorBoundary } from '~/components/RouteErrorBoundaries';
-import {
-  RebalancingGroupProvider,
-  useRebalancingGroup,
-} from '~/features/rebalancing/components/rebalancing-group-context';
 import { RebalancingGroupPage } from '~/features/rebalancing/components/rebalancing-group-page';
+import { RebalancingGroupProvider } from '~/features/rebalancing/contexts/rebalancing-group-provider';
+import { useRebalancingUI } from '~/features/rebalancing/contexts/rebalancing-ui-context';
 import { authGuard } from '~/lib/route-guards';
 import { getRebalancingGroupDataServerFn } from '~/lib/server-functions';
 
@@ -23,8 +21,7 @@ export const Route = createFileRoute('/rebalancing-groups/$groupId')({
   loader: async ({ params }) => {
     // Single server function call eliminates waterfall loading
     const result = await getRebalancingGroupDataServerFn({ data: { groupId: params.groupId } });
-    // biome-ignore lint/suspicious/noExplicitAny: Cast to any due to complex data transformation requirements between server and client types
-    return result as any;
+    return result;
   },
   component: RebalancingGroupDetail,
 });
@@ -51,7 +48,7 @@ function RebalancingGroupDetailWithProvider({
 }: {
   searchParams: { rebalance?: string };
 }) {
-  const { setRebalanceModal } = useRebalancingGroup();
+  const { setRebalanceModal } = useRebalancingUI();
 
   // Handle URL-based rebalance modal opening
   useEffect(() => {

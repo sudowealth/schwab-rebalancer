@@ -207,7 +207,7 @@ export function SleeveAllocationTable({
   // Create a function to render cells based on column ID and data type
   const renderCell = (
     columnId: string,
-    item: Record<string, unknown> & Partial<Security & SleeveData & AccountData>,
+    item: Partial<Security & SleeveData & AccountData>,
     itemType: 'sleeve' | 'security' | 'account',
     className?: string,
   ) => {
@@ -1003,16 +1003,14 @@ export function SleeveAllocationTable({
           {isSleeveExpanded &&
             (() => {
               const relatedAccounts = sleeveAllocationData.filter((account) =>
-                (account.sleeves || []).some(
-                  (accSleeve: SleeveData) => accSleeve.sleeveId === sleeve.sleeveId,
-                ),
+                (account.sleeves || []).some((accSleeve) => accSleeve.sleeveId === sleeve.sleeveId),
               );
 
               if (hasSingleAccount) {
                 const account = relatedAccounts[0];
                 const accountSleeve = account?.sleeves.find(
-                  (accSleeve: SleeveData) => accSleeve.sleeveId === sleeve.sleeveId,
-                ) as SleeveData | undefined;
+                  (accSleeve) => accSleeve.sleeveId === sleeve.sleeveId,
+                );
 
                 if (!account || !accountSleeve) {
                   return null;
@@ -1066,8 +1064,8 @@ export function SleeveAllocationTable({
                 const compositeKey = `${sleeveKey}-${accountKey}`;
                 const isAccountExpanded = expandedAccounts.has(compositeKey);
                 const accountSleeve = (account.sleeves || []).find(
-                  (accSleeve: SleeveData) => accSleeve.sleeveId === sleeve.sleeveId,
-                ) as SleeveData | undefined;
+                  (accSleeve) => accSleeve.sleeveId === sleeve.sleeveId,
+                );
                 if (!accountSleeve) return null;
 
                 return (
@@ -1148,7 +1146,11 @@ export function SleeveAllocationTable({
 
                           return (
                             <React.Fragment key={columnId}>
-                              {renderCell(columnId, aggregatedData, 'sleeve')}
+                              {renderCell(
+                                columnId,
+                                aggregatedData as Partial<Security & SleeveData & AccountData>,
+                                'sleeve',
+                              )}
                             </React.Fragment>
                           );
                         }
@@ -1165,7 +1167,11 @@ export function SleeveAllocationTable({
 
                         return (
                           <React.Fragment key={columnId}>
-                            {renderCell(columnId, sleeveDataForAccount, 'sleeve')}
+                            {renderCell(
+                              columnId,
+                              sleeveDataForAccount as Partial<Security & SleeveData & AccountData>,
+                              'sleeve',
+                            )}
                           </React.Fragment>
                         );
                       })}
@@ -1268,7 +1274,7 @@ export function SleeveAllocationTable({
 
           {/* Sleeve Rows under Account */}
           {isAccountExpanded &&
-            (account.sleeves || []).map((sleeve: SleeveData) => (
+            (account.sleeves || []).map((sleeve) => (
               <Fragment key={`${accountKey}-${sleeve.sleeveId}`}>
                 <tr className="bg-blue-50">
                   {getVisibleColumnIds().map((columnId) => {
@@ -1353,7 +1359,11 @@ export function SleeveAllocationTable({
 
                       return (
                         <React.Fragment key={columnId}>
-                          {renderCell(columnId, aggregatedData, 'sleeve')}
+                          {renderCell(
+                            columnId,
+                            aggregatedData as Partial<Security & SleeveData & AccountData>,
+                            'sleeve',
+                          )}
                         </React.Fragment>
                       );
                     }
@@ -1369,7 +1379,11 @@ export function SleeveAllocationTable({
 
                     return (
                       <React.Fragment key={columnId}>
-                        {renderCell(columnId, sleeveData, 'sleeve')}
+                        {renderCell(
+                          columnId,
+                          sleeveData as Partial<Security & SleeveData & AccountData>,
+                          'sleeve',
+                        )}
                       </React.Fragment>
                     );
                   })}

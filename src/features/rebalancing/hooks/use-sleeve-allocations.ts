@@ -55,7 +55,7 @@ export function useAvailableCash(
 }
 
 export function useTransformedSleeveTableData(
-  sleeveTableData: Record<string, unknown>[],
+  sleeveTableData: SleeveTableData[],
 ): SleeveTableData[] {
   return useMemo(
     () =>
@@ -65,7 +65,7 @@ export function useTransformedSleeveTableData(
           'targetPercent' in sleeve && typeof sleeve.targetPercent === 'number'
             ? sleeve.targetPercent
             : 0,
-      })) as SleeveTableData[],
+      })),
     [sleeveTableData],
   );
 }

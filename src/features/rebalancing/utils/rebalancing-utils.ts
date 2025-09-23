@@ -28,10 +28,15 @@ export interface SecurityData {
   isTarget?: boolean;
   hasWashSaleRisk?: boolean;
   washSaleInfo?: unknown;
-  accountNames: Set<string>; // Internal calculations use Set, UI uses array
+  accountNames?: string[]; // UI-facing uses array
+}
+
+// Internal security data structure used in calculations (extends SecurityData)
+interface InternalSecurityData extends Omit<SecurityData, 'accountNames'> {
+  accountNames: Set<string>; // Internal calculations use Set
   costBasis?: number;
   costBasisPerShare?: number;
-  openedAt?: Date | null; // Internal can be null
+  openedAt?: Date | null;
   totalGainLoss?: number;
   longTermGainLoss?: number;
   shortTermGainLoss?: number;
@@ -47,7 +52,12 @@ export interface AggregatedSleeveData {
   currentValue: number;
   targetPercent: number;
   currentPercent: number;
-  securities: Map<string, SecurityData>;
+  difference: number;
+  differencePercent: number;
+  totalGainLoss: number;
+  longTermGainLoss: number;
+  shortTermGainLoss: number;
+  securities: Map<string, InternalSecurityData>;
   accountNames: Set<string>;
 }
 
@@ -380,7 +390,7 @@ export const calculateSleeveAllocations = (
         currentPercent: number;
         difference: number;
         differencePercent: number;
-        securities: SecurityData[];
+        securities: InternalSecurityData[];
       }>,
     };
 
@@ -667,7 +677,7 @@ export const calculateSleeveAllocations = (
     const availableCash = accountData.totalValue - holdingsValue;
 
     // Build cash securities from actual cash holdings
-    const cashSecurities: SecurityData[] = [];
+    const cashSecurities: InternalSecurityData[] = [];
 
     // Get base cash holdings ($$$)
     const regularCashHoldings = account.holdings.filter((h: Holding) => isBaseCashTicker(h.ticker));
@@ -737,7 +747,7 @@ export const calculateSleeveAllocations = (
       difference: availableCash, // All current cash is "excess"
       differencePercent: (availableCash / accountData.totalValue) * 100,
       securities: cashSecurities.map((sec) => ({
-        ...sec,
+        ...(sec as InternalSecurityData),
         targetValue: 0, // Each cash security targets $0
         targetPercent: 0, // Each cash security targets 0%
         difference: sec.currentValue, // All current value is "excess"
@@ -795,7 +805,7 @@ const calculateSleeveTargetSecurities = (
   targetValue: number,
   transactions: Transaction[],
   totalAccountValue: number,
-) => {
+): InternalSecurityData[] => {
   const targetSecurities = [];
   const sleeveTargetData = sleeveMembersMap.get(modelMember.sleeveId);
 
@@ -879,7 +889,7 @@ interface SleeveAllocationDataWithSleeves {
     sleeveName: string;
     targetValue: number;
     currentValue: number;
-    securities: SecurityData[];
+    securities: InternalSecurityData[];
     [key: string]: unknown;
   }[];
   [key: string]: unknown;
@@ -895,46 +905,130 @@ export const transformSleeveTableDataForClient = (
   return sleeveTableData.map((item) => ({
     ...item,
     securities: item.securities.map((sec) => ({
-      ...sec,
+      ticker: sec.ticker,
+      targetValue: sec.targetValue,
+      targetPercent: sec.targetPercent,
+      currentValue: sec.currentValue,
+      currentPercent: sec.currentPercent,
+      difference: sec.difference,
+      differencePercent: sec.differencePercent,
+      qty: sec.qty,
+      currentPrice: sec.currentPrice || undefined,
+      costBasis: sec.costBasis,
+      costBasisPerShare: sec.costBasisPerShare,
+      totalGainLoss: sec.totalGainLoss,
+      longTermGainLoss: sec.longTermGainLoss,
+      shortTermGainLoss: sec.shortTermGainLoss,
+      realizedGainLoss: sec.realizedGainLoss,
+      realizedLongTermGainLoss: sec.realizedLongTermGainLoss,
+      realizedShortTermGainLoss: sec.realizedShortTermGainLoss,
+      rank: sec.rank,
+      isTarget: sec.isTarget,
+      hasWashSaleRisk: sec.hasWashSaleRisk,
       isHeld: true, // Assume held for now - would need proper logic
       accountNames: Array.isArray(sec.accountNames) ? sec.accountNames : [],
+      washSaleInfo: {},
+      openedAt: sec.openedAt === null ? undefined : sec.openedAt,
     })),
   }));
 };
 
+// Type for raw sleeve allocation data from calculateSleeveAllocations
+interface RawSleeveAllocationData {
+  accountId: string;
+  accountName: string;
+  accountType: string;
+  accountNumber: string;
+  totalValue: number;
+  sleeves: Array<{
+    sleeveId: string;
+    sleeveName: string;
+    targetPercent: number;
+    targetValue: number;
+    currentValue: number;
+    currentPercent: number;
+    difference: number;
+    securities: InternalSecurityData[];
+  }>;
+}
+
 /**
  * Transforms sleeve allocation data to match component expectations
  */
-export const transformSleeveAllocationDataForClient = (sleeveAllocationData: any[]) => {
+export const transformSleeveAllocationDataForClient = (
+  sleeveAllocationData: RawSleeveAllocationData[],
+) => {
   return sleeveAllocationData.map((account) => ({
     ...account,
-    sleeves: account.sleeves.map((sleeve: any) => ({
+    sleeves: account.sleeves.map((sleeve) => ({
       ...sleeve,
-      securities: sleeve.securities.map((sec: any) => ({
+      securities: sleeve.securities.map((sec: InternalSecurityData) => ({
         ...sec,
         isHeld: true,
-        accountNames: sec.accountNames || [],
+        accountNames: Array.from(sec.accountNames),
+        washSaleInfo: {},
       })),
     })),
   }));
 };
 
+// Type for raw account holdings data from database queries
+interface RawAccountHolding {
+  accountId: string;
+  accountName: string;
+  accountType: string;
+  accountNumber: string;
+  totalValue: number;
+  accountBalance: number;
+  holdings: Array<{
+    id: string;
+    ticker: string;
+    qty: number;
+    currentPrice: number;
+    marketValue: number;
+    costBasisPerShare: number;
+    costBasisTotal: number;
+    unrealizedGain: number;
+    unrealizedGainPercent: number;
+    sleeves: unknown[];
+    sector: string;
+    industry: string;
+    openedAt: Date;
+  }>;
+}
+
 /**
  * Transforms account holdings data to match component expectations
  */
-export const transformAccountHoldingsForClient = (accountHoldings: any[]) => {
-  return accountHoldings.flatMap((account) =>
-    account.holdings.map((holding: any) => ({
-      accountId: account.accountId,
+export const transformAccountHoldingsForClient = (accountHoldings: RawAccountHolding[]) => {
+  return accountHoldings.map((account) => ({
+    accountBalance: account.accountBalance,
+    accountId: account.accountId,
+    accountName: account.accountName,
+    accountType: account.accountType,
+    accountNumber: account.accountNumber,
+    totalValue: account.totalValue,
+    holdings: account.holdings.map((holding) => ({
+      id: holding.id,
       ticker: holding.ticker,
       qty: holding.qty,
-      costBasis: holding.costBasis,
+      currentPrice: holding.currentPrice,
+      costBasis: holding.costBasisTotal,
       marketValue: holding.marketValue,
-      unrealizedGain: holding.unrealizedGainLoss || 0,
+      unrealizedGainLoss: holding.unrealizedGain || 0,
       isTaxable: account.accountType === 'taxable',
-      purchaseDate: holding.purchaseDate || new Date(),
+      purchaseDate: holding.openedAt,
+      openedAt: holding.openedAt,
+      totalGainLoss: holding.unrealizedGain || 0,
+      longTermGainLoss: 0,
+      shortTermGainLoss: 0,
+      realizedGainLoss: 0,
+      realizedLongTermGainLoss: 0,
+      realizedShortTermGainLoss: 0,
+      costBasisPerShare: holding.costBasisPerShare,
+      washSaleInfo: {} as Record<string, never>,
     })),
-  );
+  }));
 };
 
 export const generateSleeveTableData = (
@@ -956,7 +1050,12 @@ export const generateSleeveTableData = (
             currentValue: 0,
             targetPercent: 0,
             currentPercent: 0,
-            securities: new Map<string, SecurityData>(),
+            difference: 0,
+            differencePercent: 0,
+            totalGainLoss: 0,
+            longTermGainLoss: 0,
+            shortTermGainLoss: 0,
+            securities: new Map<string, InternalSecurityData>(),
             accountNames: new Set<string>(),
           });
         }
@@ -976,7 +1075,9 @@ export const generateSleeveTableData = (
               accountNames: new Set<string>(),
             });
           }
-          const aggSec = aggregatedSleeve.securities.get(secKey) as SecurityData | undefined;
+          const aggSec = aggregatedSleeve.securities.get(secKey) as
+            | InternalSecurityData
+            | undefined;
           if (!aggSec) continue;
           aggSec.currentValue += security.currentValue;
           aggSec.targetValue += security.targetValue;

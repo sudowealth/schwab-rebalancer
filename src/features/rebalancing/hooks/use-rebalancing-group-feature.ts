@@ -1,9 +1,10 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useReducer } from 'react';
 import type { SortField } from '~/features/rebalancing/components/sleeve-allocation/sleeve-allocation-table-headers';
+import type { RebalancingGroupData } from '~/features/rebalancing/server/groups.server';
+import type { RebalancePortfolioServerFnResult } from '~/features/rebalancing/server/portfolio.server';
 import { queryInvalidators } from '~/lib/query-keys';
 import { rebalancePortfolioServerFn, syncSchwabPricesServerFn } from '~/lib/server-functions';
-import type { RebalancingGroupData } from '~/types/rebalance';
 
 // State machine types
 interface RebalancingGroupUIState {
@@ -63,7 +64,7 @@ type RebalancingGroupAction =
   | { type: 'SET_SORT'; payload: { field: SortField; direction: 'asc' | 'desc' | null } }
   | { type: 'SET_REBALANCE_MODAL'; payload: boolean }
   | { type: 'START_REBALANCE' }
-  | { type: 'REBALANCE_SUCCESS'; payload: unknown }
+  | { type: 'REBALANCE_SUCCESS'; payload: RebalancePortfolioServerFnResult }
   | { type: 'REBALANCE_ERROR'; payload: unknown }
   | { type: 'START_PRICE_SYNC' }
   | { type: 'PRICE_SYNC_SUCCESS' }
@@ -252,10 +253,9 @@ function rebalancingGroupReducer(
       };
 
     case 'REBALANCE_SUCCESS': {
-      const rebalanceResult = action.payload as { trades?: any[] };
       return {
         ...state,
-        trades: rebalanceResult.trades || [],
+        trades: action.payload.trades,
         mutations: {
           ...state.mutations,
           rebalance: {

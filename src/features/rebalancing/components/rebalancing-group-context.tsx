@@ -1,6 +1,6 @@
 import { createContext, type ReactNode, useContext } from 'react';
 import type { SortField } from '~/features/rebalancing/components/sleeve-allocation/sleeve-allocation-table-headers';
-import type { RebalancingGroupData } from '~/types/rebalance';
+import type { RebalancingGroupData } from '~/features/rebalancing/server/groups.server';
 import { useRebalancingGroupFeature } from '../hooks/use-rebalancing-group-feature';
 
 interface RebalancingGroupFeature {

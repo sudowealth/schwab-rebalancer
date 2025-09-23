@@ -42,6 +42,7 @@ interface Security {
   washSaleInfo?: unknown;
 }
 
+// Legacy interfaces (kept for backward compatibility)
 interface SleeveItem {
   sleeveId: string;
   sleeveName?: string;
@@ -54,13 +55,9 @@ interface SleeveItem {
   totalGainLoss?: number;
   longTermGainLoss?: number;
   shortTermGainLoss?: number;
-  ticker?: never;
 }
 
-interface SecurityItem extends Security {
-  sleeveId?: undefined;
-  securities?: undefined;
-}
+interface SecurityItem extends Security {}
 
 interface AccountItem {
   accountId: string;
@@ -68,20 +65,22 @@ interface AccountItem {
   accountType?: string;
   totalValue?: number;
   sleeves?: SleeveItem[];
-  ticker?: undefined;
-  securities?: undefined;
-  sleeveId?: undefined;
 }
 
+// Discriminated union for trade items
 export type TradeItem = SleeveItem | SecurityItem | AccountItem;
 
-// Type guards
-function isSleeveItem(item: TradeItem): item is SleeveItem {
-  return 'securities' in item && item.securities !== undefined;
+// Type predicates for discriminated unions (backward compatible)
+export function isSleeveItem(item: TradeItem): item is SleeveItem {
+  return 'securities' in item && Array.isArray((item as SleeveItem).securities);
 }
 
-function isSecurityItem(item: TradeItem): item is SecurityItem {
+export function isSecurityItem(item: TradeItem): item is SecurityItem {
   return 'ticker' in item && !('securities' in item) && !('accountId' in item);
+}
+
+export function isAccountItem(item: TradeItem): item is AccountItem {
+  return 'accountId' in item && !('securities' in item) && !('ticker' in item);
 }
 
 interface TradeCellProps extends CellProps {
@@ -158,7 +157,7 @@ export const ActionCell: React.FC<TradeCellProps> = ({
   if (trades.length === 0) return null;
 
   // Cash always shows "-" for action
-  if (itemType === 'sleeve' && item.sleeveId === 'cash') {
+  if (itemType === 'sleeve' && 'sleeveId' in item && (item as SleeveItem).sleeveId === 'cash') {
     return (
       <td className={`p-2 text-center ${className}`}>
         {onClick ? (
@@ -173,7 +172,11 @@ export const ActionCell: React.FC<TradeCellProps> = ({
   }
 
   // Cash security always shows "-" for action
-  if (itemType === 'security' && item.ticker === CASH_TICKER) {
+  if (
+    itemType === 'security' &&
+    'ticker' in item &&
+    (item as SecurityItem).ticker === CASH_TICKER
+  ) {
     return (
       <td className={`p-2 text-center ${className}`}>
         {onClick ? (
@@ -189,12 +192,12 @@ export const ActionCell: React.FC<TradeCellProps> = ({
 
   const tickers =
     itemType === 'sleeve'
-      ? isSleeveItem(item)
-        ? item.securities.map((s: Security) => s.ticker)
+      ? 'securities' in item
+        ? (item as SleeveItem).securities.map((s: Security) => s.ticker)
         : []
-      : isSleeveItem(item)
+      : 'securities' in item
         ? []
-        : [item.ticker];
+        : [(item as SecurityItem).ticker];
 
   // Filter out cash trades for non-cash sleeves/securities
   const relevantTrades = trades.filter((t: Trade) => {
@@ -317,7 +320,7 @@ export const TradeQtyCell: React.FC<
   if (trades.length === 0) return null;
 
   // Cash always shows "-" for quantity
-  if (itemType === 'sleeve' && item.sleeveId === 'cash') {
+  if (itemType === 'sleeve' && (item as SleeveItem).sleeveId === 'cash') {
     return (
       <td className={`p-2 text-right ${className}`}>
         {onClick ? (
@@ -332,7 +335,7 @@ export const TradeQtyCell: React.FC<
   }
 
   // Cash security always shows "-" for quantity
-  if (itemType === 'security' && item.ticker === CASH_TICKER) {
+  if (itemType === 'security' && (item as SecurityItem).ticker === CASH_TICKER) {
     return (
       <td className={`p-2 text-right ${className}`}>
         {onClick ? (
@@ -348,12 +351,12 @@ export const TradeQtyCell: React.FC<
 
   const tickers =
     itemType === 'sleeve'
-      ? isSleeveItem(item)
-        ? item.securities.map((s: Security) => s.ticker)
+      ? 'securities' in item
+        ? (item as SleeveItem).securities.map((s: Security) => s.ticker)
         : []
-      : isSleeveItem(item)
+      : 'securities' in item
         ? []
-        : [item.ticker];
+        : [(item as SecurityItem).ticker];
 
   // Filter out cash trades for non-cash sleeves/securities
   const relevantTrades = trades.filter((t: Trade) => {
@@ -391,16 +394,16 @@ export const TradeQtyCell: React.FC<
       // Show preview in real-time
       const newQty = Number.parseInt(value, 10) || 0;
       const finalQty = netQty < 0 ? -newQty : newQty;
-      if (onTradeQtyChange && item.ticker) {
-        onTradeQtyChange(item.ticker, finalQty, true); // true indicates preview
+      if (onTradeQtyChange && (item as SecurityItem).ticker) {
+        onTradeQtyChange((item as SecurityItem).ticker, finalQty, true); // true indicates preview
       }
     };
 
     const handleSave = () => {
       const newQty = Number.parseInt(editValue, 10) || 0;
       const finalQty = netQty < 0 ? -newQty : newQty;
-      if (onTradeQtyChange && item.ticker) {
-        onTradeQtyChange(item.ticker, finalQty, false); // false indicates final save
+      if (onTradeQtyChange && (item as SecurityItem).ticker) {
+        onTradeQtyChange((item as SecurityItem).ticker, finalQty, false); // false indicates final save
       }
       setIsEditing(false);
     };
@@ -416,8 +419,8 @@ export const TradeQtyCell: React.FC<
         setIsEditing(false);
         setEditValue('');
         // Reset to original value
-        if (onTradeQtyChange && item.ticker) {
-          onTradeQtyChange(item.ticker, netQty, false);
+        if (onTradeQtyChange && (item as SecurityItem).ticker) {
+          onTradeQtyChange((item as SecurityItem).ticker, netQty, false);
         }
       }
     };
@@ -474,7 +477,7 @@ export const CurrentQtyCell: React.FC<{
   onClick?: () => void;
 }> = ({ item, itemType, className = '', onClick }) => {
   if (itemType === 'sleeve') {
-    if (item.sleeveId === 'cash') {
+    if ((item as SleeveItem).sleeveId === 'cash') {
       return (
         <td className={`p-2 text-right ${className}`}>
           {onClick ? (
@@ -488,12 +491,13 @@ export const CurrentQtyCell: React.FC<{
       );
     }
 
-    const totalQty = isSleeveItem(item)
-      ? item.securities?.reduce(
-          (total: number, security: { qty?: number }) => total + (security.qty || 0),
-          0,
-        ) || 0
-      : 0;
+    const totalQty =
+      'securities' in item
+        ? (item as SleeveItem).securities?.reduce(
+            (total: number, security: { qty?: number }) => total + (security.qty || 0),
+            0,
+          ) || 0
+        : 0;
 
     return (
       <td className={`p-2 text-right ${className}`}>
@@ -527,10 +531,10 @@ export const CurrentQtyCell: React.FC<{
     <td className={`p-2 text-right ${className}`}>
       {onClick ? (
         <button type="button" className="w-full text-right bg-transparent" onClick={onClick}>
-          {formatQuantity((isSecurityItem(item) ? item.qty : 0) || 0)}
+          {formatQuantity(('ticker' in item ? item.qty : 0) || 0)}
         </button>
       ) : (
-        formatQuantity((isSecurityItem(item) ? item.qty : 0) || 0)
+        formatQuantity(('ticker' in item ? item.qty : 0) || 0)
       )}
     </td>
   );
@@ -546,7 +550,7 @@ export const TradeValueCell: React.FC<TradeCellProps> = ({
   if (trades.length === 0) return null;
 
   // Cash always shows "-" for trade value
-  if (itemType === 'sleeve' && item.sleeveId === 'cash') {
+  if (itemType === 'sleeve' && (item as SleeveItem).sleeveId === 'cash') {
     return (
       <td className={`p-2 text-right ${className}`}>
         {onClick ? (
@@ -561,7 +565,7 @@ export const TradeValueCell: React.FC<TradeCellProps> = ({
   }
 
   // Cash security always shows "-" for trade value
-  if (itemType === 'security' && item.ticker === CASH_TICKER) {
+  if (itemType === 'security' && (item as SecurityItem).ticker === CASH_TICKER) {
     return (
       <td className={`p-2 text-right ${className}`}>
         {onClick ? (
@@ -577,12 +581,12 @@ export const TradeValueCell: React.FC<TradeCellProps> = ({
 
   const tickers =
     itemType === 'sleeve'
-      ? isSleeveItem(item)
-        ? item.securities.map((s: Security) => s.ticker)
+      ? 'securities' in item
+        ? (item as SleeveItem).securities.map((s: Security) => s.ticker)
         : []
-      : isSleeveItem(item)
+      : 'securities' in item
         ? []
-        : [item.ticker];
+        : [(item as SecurityItem).ticker];
 
   // Filter out cash trades for non-cash sleeves/securities
   const relevantTrades = trades.filter((t: Trade) => {
@@ -819,7 +823,7 @@ export const CostBasisCell: React.FC<{
   className?: string;
   onClick?: () => void;
 }> = ({ item, className = '', onClick }) => {
-  const costBasis = (isSecurityItem(item) ? item.costBasis : 0) || 0;
+  const costBasis = ('ticker' in item ? item.costBasis : 0) || 0;
 
   const cb = costBasis > 0 ? formatCurrency(costBasis) : '-';
   return (
@@ -841,7 +845,7 @@ export const OpenedAtCell: React.FC<{
   className?: string;
   onClick?: () => void;
 }> = ({ item, className = '', onClick }) => {
-  const openedAt = isSecurityItem(item) ? item.openedAt : undefined;
+  const openedAt = 'ticker' in item ? item.openedAt : undefined;
 
   const oa = openedAt ? openedAt.toLocaleDateString() : '-';
   return (
@@ -863,7 +867,7 @@ export const TotalGainLossCell: React.FC<{
   className?: string;
   onClick?: () => void;
 }> = ({ item, className = '', onClick }) => {
-  const totalGainLoss = (isSecurityItem(item) || isSleeveItem(item) ? item.totalGainLoss : 0) || 0;
+  const totalGainLoss = ('ticker' in item || 'securities' in item ? item.totalGainLoss : 0) || 0;
   const colorClass = totalGainLoss >= 0 ? 'text-green-600' : 'text-red-600';
 
   const tgl = totalGainLoss !== 0 ? formatCurrency(totalGainLoss) : '-';
@@ -887,7 +891,7 @@ export const LongTermGainLossCell: React.FC<{
   onClick?: () => void;
 }> = ({ item, className = '', onClick }) => {
   const longTermGainLoss =
-    (isSecurityItem(item) || isSleeveItem(item) ? item.longTermGainLoss : 0) || 0;
+    ('ticker' in item || 'securities' in item ? item.longTermGainLoss : 0) || 0;
   const colorClass = longTermGainLoss >= 0 ? 'text-green-600' : 'text-red-600';
 
   const lt = longTermGainLoss !== 0 ? formatCurrency(longTermGainLoss) : '-';
@@ -911,7 +915,7 @@ export const ShortTermGainLossCell: React.FC<{
   onClick?: () => void;
 }> = ({ item, className = '', onClick }) => {
   const shortTermGainLoss =
-    (isSecurityItem(item) || isSleeveItem(item) ? item.shortTermGainLoss : 0) || 0;
+    ('ticker' in item || 'securities' in item ? item.shortTermGainLoss : 0) || 0;
   const colorClass = shortTermGainLoss >= 0 ? 'text-green-600' : 'text-red-600';
 
   const st = shortTermGainLoss !== 0 ? formatCurrency(shortTermGainLoss) : '-';
@@ -935,8 +939,7 @@ export const RealizedGainLossCell: React.FC<{
   onClick?: () => void;
 }> = ({ item, className = '', onClick }) => {
   const realizedGainLoss =
-    (isSecurityItem(item) ? item.realizedGainLoss : (item as Partial<SleeveItem>).totalGainLoss) ||
-    0;
+    ('ticker' in item ? item.realizedGainLoss : (item as Partial<SleeveItem>).totalGainLoss) || 0;
   const colorClass = realizedGainLoss >= 0 ? 'text-green-600' : 'text-red-600';
 
   const rg = realizedGainLoss !== 0 ? formatCurrency(realizedGainLoss) : '-';
@@ -960,7 +963,7 @@ export const RealizedLongTermGainLossCell: React.FC<{
   onClick?: () => void;
 }> = ({ item, className = '', onClick }) => {
   const realizedLongTermGainLoss =
-    (isSecurityItem(item)
+    ('ticker' in item
       ? item.realizedLongTermGainLoss
       : (item as Partial<SleeveItem> & { realizedLongTermGainLoss?: number })
           .realizedLongTermGainLoss) || 0;
@@ -987,7 +990,7 @@ export const RealizedShortTermGainLossCell: React.FC<{
   onClick?: () => void;
 }> = ({ item, className = '', onClick }) => {
   const realizedShortTermGainLoss =
-    (isSecurityItem(item)
+    ('ticker' in item
       ? item.realizedShortTermGainLoss
       : (item as Partial<SleeveItem> & { realizedShortTermGainLoss?: number })
           .realizedShortTermGainLoss) || 0;

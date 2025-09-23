@@ -33,37 +33,9 @@ export interface Security extends Record<string, unknown> {
   accountId?: string;
 }
 
-export interface SleeveTableData extends Record<string, unknown> {
-  sleeveId: string;
-  sleeveName?: string;
-  currentValue: number;
-  targetValue: number;
-  currentPercent?: number;
-  targetPercent: number;
-  difference?: number;
-  differencePercent?: number;
-  securities?: Security[];
-  accountName?: string;
-  ticker?: string;
-  accountId?: string;
-  totalValue?: number;
-  hasWashSaleRisk?: boolean;
-  washSaleInfo?: unknown;
-  currentPrice?: number;
-  totalGainLoss?: number;
-  longTermGainLoss?: number;
-  shortTermGainLoss?: number;
-  accountNames?: string[];
-}
+export type SleeveTableData = RebalancingGroupData['sleeveTableData'][number];
 
-export interface SleeveAllocationData extends Record<string, unknown> {
-  accountId: string;
-  accountName: string;
-  accountType?: string;
-  accountNumber?: string;
-  totalValue?: number;
-  sleeves: SleeveTableData[];
-}
+export type SleeveAllocationData = RebalancingGroupData['sleeveAllocationData'][number];
 
 import type { RebalancingGroupsResult } from '~/lib/db-api';
 export type GroupMember = RebalancingGroupsResult[number]['members'][number] & {
@@ -71,6 +43,7 @@ export type GroupMember = RebalancingGroupsResult[number]['members'][number] & {
   balance?: number; // Make balance optional
 };
 
+import type { RebalancingGroupData } from '~/features/rebalancing/server/groups.server';
 // Import base types from central location
 import type { AccountHolding as BaseAccountHolding, Trade as BaseTrade } from '~/types/rebalance';
 
