@@ -254,17 +254,6 @@ export const getPositions = async (userId?: string) => {
             .where(eq(schema.account.userId, userId));
 
           console.log('🔍 [getPositions] Query result:', holdings.length, 'holdings found');
-          if (holdings.length > 0) {
-            console.log(
-              '🔍 [getPositions] Sample holdings:',
-              holdings.slice(0, 2).map((h) => ({
-                id: h.id,
-                ticker: h.ticker,
-                accountId: h.accountId,
-                accountName: h.accountName,
-              })),
-            );
-          }
         } catch (_error) {
           console.log('🔍 [getPositions] Primary query failed, trying fallback query...');
           // If accountNumber column doesn't exist, query without it

@@ -4,6 +4,7 @@
  * Set up local development environment with secrets and configuration.
  * - DB_ENCRYPTION_KEY: 32 bytes for AES-256 encryption of Schwab API credentials
  * - BETTER_AUTH_SECRET: 32 bytes for session signing
+ * - BETTER_AUTH_URL: Base URL for Better Auth (https://127.0.0.1 for local HTTPS)
  * Run: npm run setup
  */
 
@@ -19,6 +20,9 @@ async function main() {
     generateSecret(32), // BETTER_AUTH_SECRET: 32 bytes for session signing
   ]);
 
+  // BETTER_AUTH_URL: Base URL for Better Auth (HTTPS for local development with Schwab OAuth)
+  const authUrl = 'https://127.0.0.1';
+
   const envPath = join(process.cwd(), '.env.local');
 
   // Check if .env.local already exists
@@ -28,6 +32,7 @@ async function main() {
     console.log('────────────────────────────────────────────────');
     console.log(`DB_ENCRYPTION_KEY=${encryptionKey}`);
     console.log(`BETTER_AUTH_SECRET=${authSecret}`);
+    console.log(`BETTER_AUTH_URL=${authUrl}`);
     console.log('────────────────────────────────────────────────\n');
     console.log('📝 Add these to your existing .env.local file.');
     return;
@@ -47,6 +52,9 @@ DB_ENCRYPTION_KEY=${encryptionKey}
 
 # Signs JWTs for authentication
 BETTER_AUTH_SECRET=${authSecret}
+
+# Base URL for Better Auth (HTTPS required for Schwab OAuth)
+BETTER_AUTH_URL=${authUrl}
 
 # ==========================================
 # REQUIRED DEFAULTS
@@ -88,6 +96,7 @@ NODE_ENV=development
   console.log('🔑 Generated Secrets:');
   console.log(`   DB_ENCRYPTION_KEY: ${encryptionKey.substring(0, 10)}...`);
   console.log(`   BETTER_AUTH_SECRET: ${authSecret.substring(0, 10)}...`);
+  console.log(`   BETTER_AUTH_URL: ${authUrl}`);
   console.log('────────────────────────────────────────────────\n');
   console.log('🚀 Ready to develop!');
   console.log('   1. Review the generated .env.local file');
