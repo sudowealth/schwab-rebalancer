@@ -1,11 +1,19 @@
 import { useIsMutating, useMutation, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute, Link, useRouter } from '@tanstack/react-router';
 import { Edit, Trash2 } from 'lucide-react';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { ErrorBoundaryWrapper } from '~/components/ErrorBoundary';
 import { RebalancingErrorBoundary } from '~/components/RouteErrorBoundaries';
 import { Badge } from '~/components/ui/badge';
 import { Button } from '~/components/ui/button';
+
+// Lazy load heavy components
+const SleeveAllocationTable = lazy(() =>
+  import('~/features/rebalancing/components/sleeve-allocation/sleeve-allocation-table').then(
+    (module) => ({ default: module.SleeveAllocationTable }),
+  ),
+);
+
 import { SecurityModal } from '~/features/dashboard/components/security-modal';
 import { SleeveModal } from '~/features/dashboard/components/sleeve-modal';
 import { AccountSummary } from '~/features/rebalancing/components/account-summary';
@@ -15,8 +23,17 @@ import { EditRebalancingGroupModal } from '~/features/rebalancing/components/edi
 import { LazyAllocationChart } from '~/features/rebalancing/components/lazy-allocation-chart';
 import { RebalanceModal } from '~/features/rebalancing/components/rebalance-modal';
 import { RebalanceSummaryCards } from '~/features/rebalancing/components/rebalance-summary-cards';
-import { SleeveAllocationTable } from '~/features/rebalancing/components/sleeve-allocation/sleeve-allocation-table';
-import type { SortField } from '~/features/rebalancing/components/sleeve-allocation/sleeve-allocation-table-headers';
+import type {
+  SortDirection,
+  SortField,
+} from '~/features/rebalancing/components/sleeve-allocation/sleeve-allocation-table-headers';
+import type {
+  AccountHolding,
+  GroupMember,
+  SleeveAllocationData,
+  SleeveTableData,
+  Trade,
+} from '~/features/rebalancing/components/sleeve-allocation/sleeve-allocation-types';
 import { TopHoldings } from '~/features/rebalancing/components/top-holdings';
 import { useExpansionState } from '~/features/rebalancing/hooks/use-expansion-state';
 import { useModalState } from '~/features/rebalancing/hooks/use-modal-state';
@@ -24,6 +41,9 @@ import { useRebalancingState } from '~/features/rebalancing/hooks/use-rebalancin
 import {
   useAvailableCash,
   useSleeveAllocations,
+  useTransformedAccountHoldings,
+  useTransformedSleeveAllocationData,
+  useTransformedSleeveTableData,
 } from '~/features/rebalancing/hooks/use-sleeve-allocations';
 import { useSortingState } from '~/features/rebalancing/hooks/use-sorting-state';
 import { useTradeManagement } from '~/features/rebalancing/hooks/use-trade-management';
@@ -35,6 +55,143 @@ import {
   syncSchwabPricesServerFn,
 } from '~/lib/server-functions';
 import type { RebalanceMethod } from '~/types/rebalance';
+
+// Component for the rebalancing group header section
+function RebalancingGroupHeader({
+  group,
+  onEditClick,
+  onDeleteClick,
+}: {
+  group: {
+    id: string;
+    name: string;
+    assignedModel?: { id: string; name: string } | null;
+  };
+  onEditClick: () => void;
+  onDeleteClick: () => void;
+}) {
+  return (
+    <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-2">
+        <h1 className="text-2xl font-bold text-gray-900">{group.name}</h1>
+        <div className="flex flex-col items-start gap-1">
+          {group.assignedModel ? (
+            <Link
+              to="/models/$modelId"
+              params={{ modelId: group.assignedModel.id }}
+              className="inline-flex"
+            >
+              <Badge variant="default" className="cursor-pointer">
+                {group.assignedModel.name}
+              </Badge>
+            </Link>
+          ) : (
+            <Badge variant="outline">No Model</Badge>
+          )}
+        </div>
+      </div>
+      <div className="flex gap-2">
+        <Button variant="outline" size="sm" onClick={onEditClick}>
+          <Edit className="mr-1 h-4 w-4" />
+          Edit
+        </Button>
+        <Button variant="outline" size="sm" className="text-destructive" onClick={onDeleteClick}>
+          <Trash2 className="mr-1 h-4 w-4" />
+          Delete
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+// Component for the sleeve allocation table section
+function SleeveAllocationSection({
+  sleeveTableData,
+  expandedSleeves,
+  expandedAccounts,
+  groupMembers,
+  sleeveAllocationData,
+  groupingMode,
+  onGroupingModeChange,
+  onSleeveExpansionToggle,
+  onAccountExpansionToggle,
+  onTickerClick,
+  onSleeveClick,
+  onRebalance,
+  onToggleExpandAll,
+  isAllExpanded,
+  trades,
+  sortField,
+  sortDirection,
+  onSort,
+  onTradeQtyChange,
+  accountHoldings,
+  renderSummaryCards,
+  groupId,
+  isRebalancing,
+}: {
+  sleeveTableData: SleeveTableData[];
+  expandedSleeves: Set<string>;
+  expandedAccounts: Set<string>;
+  groupMembers: GroupMember[];
+  sleeveAllocationData: SleeveAllocationData[];
+  groupingMode: 'sleeve' | 'account';
+  onGroupingModeChange: (mode: 'sleeve' | 'account') => void;
+  onSleeveExpansionToggle: (sleeveId: string) => void;
+  onAccountExpansionToggle: (accountId: string) => void;
+  onTickerClick: (ticker: string) => void;
+  onSleeveClick: (sleeveId: string) => void;
+  onRebalance: () => void;
+  onToggleExpandAll: () => void;
+  isAllExpanded: boolean;
+  trades: Trade[];
+  sortField: SortField | undefined;
+  sortDirection: SortDirection;
+  onSort: (field: SortField) => void;
+  onTradeQtyChange: (ticker: string, qty: number, isPreview?: boolean) => void;
+  accountHoldings: AccountHolding[];
+  renderSummaryCards: () => React.ReactNode;
+  groupId: string;
+  isRebalancing: boolean;
+}) {
+  return (
+    <div className="relative">
+      <React.Suspense
+        fallback={
+          <div className="flex items-center justify-center h-64">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+          </div>
+        }
+      >
+        <SleeveAllocationTable
+          sleeveTableData={sleeveTableData}
+          expandedSleeves={expandedSleeves}
+          expandedAccounts={expandedAccounts}
+          groupMembers={groupMembers}
+          sleeveAllocationData={sleeveAllocationData}
+          groupingMode={groupingMode}
+          onGroupingModeChange={onGroupingModeChange}
+          onSleeveExpansionToggle={onSleeveExpansionToggle}
+          onAccountExpansionToggle={onAccountExpansionToggle}
+          onTickerClick={onTickerClick}
+          onSleeveClick={onSleeveClick}
+          onRebalance={onRebalance}
+          onToggleExpandAll={onToggleExpandAll}
+          isAllExpanded={isAllExpanded}
+          trades={trades}
+          sortField={sortField}
+          sortDirection={sortDirection}
+          onSort={onSort}
+          onTradeQtyChange={onTradeQtyChange}
+          accountHoldings={accountHoldings}
+          renderSummaryCards={renderSummaryCards}
+          groupId={groupId}
+          isRebalancing={isRebalancing}
+        />
+      </React.Suspense>
+    </div>
+  );
+}
 
 // Memoized OrdersBlotter component to prevent unnecessary re-renders
 const MemoizedOrdersBlotter = React.memo<{
@@ -242,6 +399,11 @@ function RebalancingGroupDetail() {
   // Extract available cash calculation to custom hook
   const availableCash = useAvailableCash(sleeveTableData);
 
+  // Use custom hooks for data transformations to prevent cascading re-renders
+  const transformedSleeveTableData = useTransformedSleeveTableData(sleeveTableData);
+  const transformedSleeveAllocationData = useTransformedSleeveAllocationData(sleeveAllocationData);
+  const transformedAccountHoldings = useTransformedAccountHoldings(accountHoldings);
+
   // Memoize filtered allocation data
   const filteredAllocationData = useMemo(
     () =>
@@ -284,62 +446,6 @@ function RebalancingGroupDetail() {
         accountType: member.accountType || '',
       })),
     [group.members],
-  );
-
-  // Memoize sleeve table data transformation to prevent object creation on every render
-  const transformedSleeveTableData = useMemo(
-    () =>
-      sleeveTableData.map((sleeve) => ({
-        ...sleeve,
-        targetPercent:
-          'targetPercent' in sleeve && typeof sleeve.targetPercent === 'number'
-            ? sleeve.targetPercent
-            : 0,
-      })),
-    [sleeveTableData],
-  );
-
-  // Memoize sleeve allocation data transformation to prevent object creation on every render
-  const transformedSleeveAllocationData = useMemo(
-    () =>
-      sleeveAllocationData.map((account) => ({
-        ...account,
-        sleeves: account.sleeves.map((sleeve) => ({
-          ...sleeve,
-          targetPercent:
-            'targetPercent' in sleeve && typeof sleeve.targetPercent === 'number'
-              ? sleeve.targetPercent
-              : 0,
-          securities: (sleeve.securities || []).map((security) => ({
-            ...security,
-            targetPercent: security.targetPercent || 0,
-            accountNames: Array.from(security.accountNames || []),
-          })),
-        })),
-      })),
-    [sleeveAllocationData],
-  );
-
-  // Memoize account holdings data transformation to prevent object creation on every render
-  const transformedAccountHoldings = useMemo(
-    () =>
-      Array.isArray(accountHoldings)
-        ? accountHoldings.flatMap((account) =>
-            Array.isArray(account.holdings)
-              ? account.holdings.map((holding) => ({
-                  accountId: account.accountId,
-                  ticker: holding.ticker,
-                  qty: holding.qty || 0,
-                  costBasis: holding.costBasisPerShare || 0,
-                  marketValue: holding.marketValue || 0,
-                  unrealizedGain: holding.unrealizedGain || 0,
-                  isTaxable: account.accountType === 'taxable',
-                  purchaseDate: holding.openedAt || new Date(),
-                }))
-              : [],
-          )
-        : [],
-    [accountHoldings],
   );
 
   // Memoize rebalance summary trades transformation to prevent object creation on every render
@@ -545,42 +651,12 @@ function RebalancingGroupDetail() {
       description="Failed to load rebalancing group details. This might be due to a temporary data issue."
     >
       <div className="container mx-auto p-6 space-y-6">
-        {/* Breadcrumb and Navigation */}
-        <div className="flex items-center justify-between">
-          <div className="flex flex-col gap-2">
-            <h1 className="text-2xl font-bold text-gray-900">{group.name}</h1>
-            <div className="flex flex-col items-start gap-1">
-              {group.assignedModel ? (
-                <Link
-                  to="/models/$modelId"
-                  params={{ modelId: group.assignedModel.id }}
-                  className="inline-flex"
-                >
-                  <Badge variant="default" className="cursor-pointer">
-                    {group.assignedModel.name}
-                  </Badge>
-                </Link>
-              ) : (
-                <Badge variant="outline">No Model</Badge>
-              )}
-            </div>
-          </div>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={modalState.openEditModal}>
-              <Edit className="mr-1 h-4 w-4" />
-              Edit
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="text-destructive"
-              onClick={modalState.openDeleteModal}
-            >
-              <Trash2 className="mr-1 h-4 w-4" />
-              Delete
-            </Button>
-          </div>
-        </div>
+        {/* Header Section */}
+        <RebalancingGroupHeader
+          group={group}
+          onEditClick={modalState.openEditModal}
+          onDeleteClick={modalState.openDeleteModal}
+        />
 
         {/* Account Summary Section */}
         <AccountSummary
@@ -616,7 +692,7 @@ function RebalancingGroupDetail() {
               </div>
             )}
 
-            <SleeveAllocationTable
+            <SleeveAllocationSection
               sleeveTableData={transformedSleeveTableData}
               expandedSleeves={expansionState.expandedSleeves}
               expandedAccounts={expansionState.expandedAccounts}
