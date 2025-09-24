@@ -151,17 +151,11 @@ export function AddRebalancingGroupModal({
   useEffect(() => {
     if (isOpen) {
       // Clear cache to ensure fresh data
-      queryClient.invalidateQueries({
-        queryKey: ['accounts-for-rebalancing'],
-        exact: false,
-      });
-      queryClient.invalidateQueries({
-        queryKey: ['models'],
-        exact: false,
-      });
+      queryInvalidators.rebalancing.accountsForRebalancing(queryClient);
+      queryInvalidators.models.all(queryClient);
       loadData();
     }
-  }, [isOpen, loadData, queryClient, externalIsOpen, internalIsOpen]);
+  }, [isOpen, loadData, queryClient]);
 
   // Auto-select single options when data is loaded and autoSelectSingleOptions is enabled
   useEffect(() => {

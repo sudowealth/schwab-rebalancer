@@ -61,6 +61,7 @@ export const queryKeys = {
 
   // Rebalancing - all rebalancing-related queries
   rebalancing: {
+    accountsForRebalancing: () => ['accounts-for-rebalancing'] as const,
     groups: {
       all: () => ['rebalancing', 'groups'] as const,
       detail: (id: string) => ['rebalancing', 'groups', id] as const,
@@ -200,6 +201,12 @@ export const queryInvalidators = {
 
   // Rebalancing invalidation helpers
   rebalancing: {
+    accountsForRebalancing: (queryClient: import('@tanstack/react-query').QueryClient) => {
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.rebalancing.accountsForRebalancing(),
+        exact: false,
+      });
+    },
     groups: {
       all: (queryClient: import('@tanstack/react-query').QueryClient) => {
         queryClient.invalidateQueries({ queryKey: queryKeys.rebalancing.groups.all() });
@@ -290,6 +297,45 @@ export const queryInvalidators = {
       queryInvalidators.securities.all(queryClient);
       queryInvalidators.dashboard.all(queryClient);
       queryInvalidators.onboarding.securities(queryClient);
+    },
+
+    // Invalidate all data that changes after securities seeding
+    afterSecuritiesSeeding: (queryClient: import('@tanstack/react-query').QueryClient) => {
+      queryInvalidators.securities.all(queryClient);
+      queryInvalidators.dashboard.all(queryClient);
+      queryInvalidators.onboarding.all(queryClient);
+    },
+
+    // Invalidate all data that changes after model creation/operations
+    afterModelCreation: (queryClient: import('@tanstack/react-query').QueryClient) => {
+      queryInvalidators.models.all(queryClient);
+      queryInvalidators.dashboard.all(queryClient);
+      queryInvalidators.onboarding.all(queryClient);
+    },
+
+    // Invalidate all data that changes after demo data seeding
+    afterDemoDataSeeding: (queryClient: import('@tanstack/react-query').QueryClient) => {
+      queryInvalidators.dashboard.all(queryClient);
+      queryInvalidators.models.all(queryClient);
+      queryInvalidators.securities.all(queryClient);
+      queryInvalidators.onboarding.all(queryClient);
+      queryInvalidators.admin.stats(queryClient);
+    },
+
+    // Invalidate data that changes after Yahoo fundamentals sync
+    afterYahooFundamentalsSync: (queryClient: import('@tanstack/react-query').QueryClient) => {
+      queryInvalidators.securities.syncLogs(queryClient);
+      queryInvalidators.securities.yahooSyncCounts(queryClient);
+    },
+
+    // Invalidate data that changes after admin user operations
+    afterAdminUserOperation: (queryClient: import('@tanstack/react-query').QueryClient) => {
+      queryInvalidators.admin.users(queryClient);
+    },
+
+    // Invalidate data that changes after Schwab credential revocation
+    afterSchwabCredentialRevocation: (queryClient: import('@tanstack/react-query').QueryClient) => {
+      queryInvalidators.schwab.credentials(queryClient);
     },
 
     // Invalidate all onboarding-related data

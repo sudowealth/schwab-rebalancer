@@ -282,9 +282,7 @@ export function SchwabIntegration() {
     },
     onSuccess: () => {
       console.log('✅ [UI] Credentials revoked successfully');
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.integrations.schwab.credentials(),
-      });
+      queryInvalidators.composites.afterSchwabCredentialRevocation(queryClient);
       router.invalidate();
     },
     onError: (error) => {

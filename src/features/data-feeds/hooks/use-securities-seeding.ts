@@ -2,7 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
 import type { SyncYahooFundamentalsResult } from '~/features/data-feeds/yahoo.server';
-import { queryKeys } from '~/lib/query-keys';
+import { queryInvalidators } from '~/lib/query-keys';
 import { seedSecuritiesDataServerFn } from '~/lib/server-functions';
 
 interface SeedSecuritiesResult {
@@ -55,9 +55,7 @@ export function useSecuritiesSeeding(
     onSuccess: (_data: SeedSecuritiesResult) => {
       setShowSuccessMessage(true);
       // Invalidate targeted queries after securities seeding
-      queryClient.invalidateQueries({ queryKey: queryKeys.securities.all() });
-      queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.all() });
-      queryClient.invalidateQueries({ queryKey: queryKeys.onboarding.all() });
+      queryInvalidators.composites.afterSecuritiesSeeding(queryClient);
       // Invalidate the home route loader to refresh onboarding status
       router.invalidate();
     },

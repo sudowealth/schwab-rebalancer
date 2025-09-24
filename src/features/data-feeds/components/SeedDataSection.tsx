@@ -11,7 +11,7 @@ import {
   seedModelsDataServerFn,
   seedSecuritiesDataServerFn,
 } from '~/features/data-feeds/import.server';
-import { queryKeys } from '~/lib/query-keys';
+import { queryInvalidators } from '~/lib/query-keys';
 
 interface ImportResult {
   success: boolean;
@@ -55,11 +55,7 @@ export function SeedDataSection() {
     mutationFn: seedDemoDataServerFn,
     onSuccess: (_data) => {
       // Invalidate relevant queries after seeding demo data
-      queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.all() });
-      queryClient.invalidateQueries({ queryKey: queryKeys.models.all() });
-      queryClient.invalidateQueries({ queryKey: queryKeys.securities.all() });
-      queryClient.invalidateQueries({ queryKey: queryKeys.onboarding.all() });
-      queryClient.invalidateQueries({ queryKey: queryKeys.admin.stats() });
+      queryInvalidators.composites.afterDemoDataSeeding(queryClient);
     },
     onError: (error) => {
       console.error('Error seeding all data:', error);
@@ -71,9 +67,7 @@ export function SeedDataSection() {
     onSuccess: async (data: SeedSecuritiesResult) => {
       setSecuritiesResult(data);
       // Invalidate targeted queries after securities seeding
-      queryClient.invalidateQueries({ queryKey: queryKeys.securities.all() });
-      queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.all() });
-      queryClient.invalidateQueries({ queryKey: queryKeys.onboarding.all() });
+      queryInvalidators.composites.afterSecuritiesSeeding(queryClient);
 
       // Handle Schwab sync if it was triggered
       if (data.schwabSyncResult) {
@@ -93,10 +87,7 @@ export function SeedDataSection() {
     onSuccess: (data: SeedModelsResult) => {
       setModelsResult(data);
       // Invalidate models and dashboard queries since model seeding may include price syncs
-      queryClient.invalidateQueries({ queryKey: ['models'] });
-      queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.all() });
-      // Also clear any cached models data
-      queryClient.removeQueries({ queryKey: ['models'] });
+      queryInvalidators.composites.afterModelCreation(queryClient);
     },
     onError: (error) => {
       console.error('Error seeding models data:', error);
@@ -109,10 +100,7 @@ export function SeedDataSection() {
     onSuccess: (data: SeedModelsResult) => {
       setGlobalEquityResult(data);
       // Invalidate models and dashboard queries since Global Equity seeding includes price syncs
-      queryClient.invalidateQueries({ queryKey: ['models'] });
-      queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.all() });
-      // Also clear any cached models data
-      queryClient.removeQueries({ queryKey: ['models'] });
+      queryInvalidators.composites.afterModelCreation(queryClient);
     },
     onError: (error) => {
       console.error('Error seeding Global Equity Model data:', error);

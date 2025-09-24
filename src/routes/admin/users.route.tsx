@@ -7,7 +7,7 @@ import {
   getUserDataServerFn,
   updateUserRoleServerFn,
 } from '~/features/dashboard/admin.server';
-import { queryKeys } from '~/lib/query-keys';
+import { queryInvalidators, queryKeys } from '~/lib/query-keys';
 
 type AdminUser = Awaited<ReturnType<typeof getAllUsersServerFn>>[number];
 type UserData = Awaited<ReturnType<typeof getUserDataServerFn>>;
@@ -80,7 +80,7 @@ function UserManagement() {
     mutationFn: (variables: { userId: string; role: 'user' | 'admin' }) =>
       updateUserRoleServerFn({ data: variables }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin', 'users'] });
+      queryInvalidators.composites.afterAdminUserOperation(queryClient);
     },
   });
 
@@ -88,7 +88,7 @@ function UserManagement() {
     mutationFn: (variables: { userId: string; confirmation: string }) =>
       deleteUserServerFn({ data: variables }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin', 'users'] });
+      queryInvalidators.composites.afterAdminUserOperation(queryClient);
       setShowDeleteDialog(false);
       setSelectedUserId(null);
       setDeleteConfirmation('');

@@ -12,6 +12,7 @@ import {
   SelectValue,
 } from '~/components/ui/select';
 import type { SyncYahooFundamentalsResult } from '~/features/data-feeds/yahoo.server';
+import { queryInvalidators, queryKeys } from '~/lib/query-keys';
 import { getYahooSyncCountsServerFn, syncYahooFundamentalsServerFn } from '~/lib/server-functions';
 
 function YahooIntegrationComponent() {
@@ -21,7 +22,7 @@ function YahooIntegrationComponent() {
 
   // Fetch counts for each sync scope
   const { data: counts, isLoading: countsLoading } = useQuery({
-    queryKey: ['yahoo-sync-counts'],
+    queryKey: queryKeys.securities.yahooSyncCounts(),
     queryFn: async () => {
       const result = await getYahooSyncCountsServerFn();
       return result as Record<YahooScope, number>;
@@ -36,8 +37,7 @@ function YahooIntegrationComponent() {
     },
     onSuccess: (data: SyncYahooFundamentalsResult) => {
       setLastSummary(data);
-      queryClient.invalidateQueries({ queryKey: ['sync-logs'] });
-      queryClient.invalidateQueries({ queryKey: ['yahoo-sync-counts'] });
+      queryInvalidators.composites.afterYahooFundamentalsSync(queryClient);
     },
   });
 

@@ -16,6 +16,7 @@ import {
 import { Input } from '~/components/ui/input';
 import { type Option, VirtualizedSelect } from '~/components/ui/virtualized-select';
 import { AddSleeveModal } from '~/features/sleeves/components/add-sleeve-modal';
+import { queryInvalidators } from '~/lib/query-keys';
 import { createModelServerFn, getAvailableSleevesServerFn } from '~/lib/server-functions';
 import { cn } from '~/lib/utils';
 
@@ -230,7 +231,7 @@ function AddModelModalComponent({
       onModelCreated?.();
 
       // Invalidate models query and route loader to refresh the UI immediately
-      queryClient.invalidateQueries({ queryKey: ['models'] });
+      queryInvalidators.composites.afterModelCreation(queryClient);
       router.invalidate();
 
       // Set navigating state and navigate to the newly created model
@@ -368,7 +369,7 @@ function AddModelModalComponent({
       onModelCreated?.();
 
       // Invalidate models query and route loader to refresh the UI immediately
-      queryClient.invalidateQueries({ queryKey: ['models'] });
+      queryInvalidators.composites.afterModelCreation(queryClient);
       router.invalidate();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
