@@ -215,6 +215,7 @@ function DashboardComponent() {
         schwabOAuthStatusProp={{ hasCredentials: schwabOAuthComplete }}
         securitiesStatusProp={reactiveSecuritiesStatus}
         modelsStatusProp={reactiveModelsStatus}
+        rebalancingGroupsStatusProp={loaderData.rebalancingGroupsStatus}
         securitiesSeedingState={{ isSeeding, hasError, seedResult, showSuccessMessage }}
       />
 

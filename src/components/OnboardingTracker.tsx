@@ -1,4 +1,3 @@
-import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import {
   AlertCircle,
@@ -18,12 +17,6 @@ import { SimpleTooltip } from '~/components/ui/simple-tooltip';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '~/components/ui/tabs';
 import { useModelCreation } from '~/features/models/hooks/use-model-creation';
 import { useSchwabConnection } from '~/features/schwab/hooks/use-schwab-connection';
-import { queryKeys } from '~/lib/query-keys';
-import {
-  checkModelsExistServerFn,
-  checkRebalancingGroupsExistServerFn,
-  checkSchwabCredentialsServerFn,
-} from '~/lib/server-functions';
 
 interface OnboardingTask {
   id: string;
@@ -62,9 +55,9 @@ interface SecuritiesSeedingState {
 interface OnboardingTrackerProps {
   schwabCredentialsStatusProp?: { hasCredentials: boolean };
   schwabOAuthStatusProp?: { hasCredentials: boolean };
-  // rebalancingGroupsStatus removed - now queried reactively
   securitiesStatusProp?: { hasSecurities: boolean; securitiesCount: number };
   modelsStatusProp?: { hasModels: boolean; modelsCount: number };
+  rebalancingGroupsStatusProp?: { hasGroups: boolean; groupsCount: number };
   securitiesSeedingState?: SecuritiesSeedingState;
 }
 
@@ -73,6 +66,7 @@ export function OnboardingTracker({
   schwabOAuthStatusProp,
   securitiesStatusProp,
   modelsStatusProp,
+  rebalancingGroupsStatusProp,
   securitiesSeedingState,
 }: OnboardingTrackerProps) {
   const navigate = useNavigate();
@@ -88,33 +82,10 @@ export function OnboardingTracker({
     handleConnect,
   } = useSchwabConnection(schwabCredentialsStatusProp, schwabOAuthStatusProp, false);
 
-  // Query for reactive models status
-  const { data: reactiveModelsStatus } = useQuery({
-    queryKey: queryKeys.onboarding.models(),
-    queryFn: () => checkModelsExistServerFn(),
-    initialData: modelsStatusProp,
-    staleTime: 1000 * 60 * 5, // 5 minutes
-  });
-
-  // Query for reactive Schwab credentials status
-  const { data: schwabCredentialsStatus } = useQuery({
-    queryKey: queryKeys.onboarding.schwab(),
-    queryFn: () => checkSchwabCredentialsServerFn(),
-    initialData: schwabCredentialsStatusProp,
-    staleTime: 1000 * 60 * 2, // 2 minutes - still reactive but prevents immediate refetch
-    gcTime: 1000 * 60 * 10, // 10 minutes cache
-    refetchOnMount: false, // Don't refetch immediately on mount if we have initialData
-    refetchOnWindowFocus: true,
-  });
-
-  // Query for reactive rebalancing groups status
-  const { data: reactiveGroupsStatus } = useQuery({
-    queryKey: queryKeys.onboarding.groups(),
-    queryFn: () => checkRebalancingGroupsExistServerFn(),
-    staleTime: 1000 * 60 * 2, // 2 minutes - reactive but prevents immediate refetch
-    gcTime: 1000 * 60 * 10, // 10 minutes cache
-    refetchOnWindowFocus: true,
-  });
+  // Use props directly instead of making queries to prevent flash during refresh
+  const reactiveModelsStatus = modelsStatusProp;
+  const schwabCredentialsStatus = schwabCredentialsStatusProp;
+  const reactiveGroupsStatus = rebalancingGroupsStatusProp;
 
   // Use securities seeding state passed from parent
   const { isSeeding, hasError, seedResult, showSuccessMessage } = securitiesSeedingState || {
