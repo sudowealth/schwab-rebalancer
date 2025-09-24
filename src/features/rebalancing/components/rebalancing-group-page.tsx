@@ -1,4 +1,7 @@
-import { useRebalancingData } from '../contexts/rebalancing-data-context';
+import {
+  useRebalancingData,
+  useRebalancingDataLoadingState,
+} from '../contexts/rebalancing-data-context';
 import { RebalancingGroupAnalytics } from './rebalancing-group-analytics';
 import { RebalancingGroupHeader } from './rebalancing-group-header';
 import { RebalancingGroupModals } from './rebalancing-group-modals';
@@ -9,7 +12,8 @@ import { RebalancingGroupModals } from './rebalancing-group-modals';
  * Eliminates the God Component anti-pattern by delegating to specialized components
  */
 export function RebalancingGroupPage() {
-  const { data, isLoading } = useRebalancingData();
+  const { data, groupId } = useRebalancingData();
+  const { isLoading } = useRebalancingDataLoadingState(groupId);
 
   if (isLoading || !data) {
     return (

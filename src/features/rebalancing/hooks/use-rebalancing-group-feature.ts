@@ -489,13 +489,15 @@ export function useRebalancingGroupFeature(groupId: string) {
     if (!state.data?.sleeveTableData) return 0;
     // Calculate available cash from sleeve table data
     // This is a simplified version - would need proper logic
-    return state.data.sleeveTableData.reduce((sum, item) => {
+    return state.data.sleeveTableData.reduce((sum: number, item: any) => {
       // Check securities for cash holdings
       if (item.securities) {
         const cashSecurities = item.securities.filter(
-          (sec) => sec.ticker === 'CASH' || sec.ticker === 'Cash',
+          (sec: any) => sec.ticker === 'CASH' || sec.ticker === 'Cash',
         );
-        return sum + cashSecurities.reduce((secSum, sec) => secSum + sec.currentValue, 0);
+        return (
+          sum + cashSecurities.reduce((secSum: number, sec: any) => secSum + sec.currentValue, 0)
+        );
       }
       return sum;
     }, 0);

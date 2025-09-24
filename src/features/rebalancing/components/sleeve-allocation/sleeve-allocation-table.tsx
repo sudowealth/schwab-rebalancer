@@ -612,7 +612,7 @@ export function SleeveAllocationTable({
         }
         // Filter out cash trades for non-cash sleeves/securities
         const nonCashTickers = tickers.filter(
-          (t): t is string => typeof t === 'string' && t !== CASH_TICKER,
+          (t: string): t is string => typeof t === 'string' && t !== CASH_TICKER,
         );
         const nonCashTrades = trades.filter((t) => {
           const id = t.securityId || t.ticker || '';
@@ -630,7 +630,7 @@ export function SleeveAllocationTable({
         }
         // Filter out cash trades for non-cash sleeves/securities
         const nonCashTickers = tickers.filter(
-          (t): t is string => typeof t === 'string' && t !== CASH_TICKER,
+          (t: string): t is string => typeof t === 'string' && t !== CASH_TICKER,
         );
         const nonCashTrades = trades.filter((t) => {
           const id = t.securityId || t.ticker || '';
@@ -645,7 +645,7 @@ export function SleeveAllocationTable({
         }
         // Filter out cash trades for non-cash sleeves/securities
         const nonCashTickers = tickers.filter(
-          (t): t is string => typeof t === 'string' && t !== CASH_TICKER,
+          (t: string): t is string => typeof t === 'string' && t !== CASH_TICKER,
         );
         const nonCashTrades = trades.filter((t) => {
           const id = t.securityId || t.ticker || '';
@@ -661,7 +661,7 @@ export function SleeveAllocationTable({
         const { postTradePercent } = calculateTradeMetrics.getPostTradeMetrics(
           item.currentValue || 0,
           trades,
-          tickers.filter((t): t is string => typeof t === 'string'),
+          tickers.filter((t: string): t is string => typeof t === 'string'),
           totalCurrentValue,
         );
         return postTradePercent;
@@ -671,7 +671,7 @@ export function SleeveAllocationTable({
           item.currentValue || 0,
           item.targetValue || 0,
           trades,
-          tickers.filter((t): t is string => typeof t === 'string'),
+          tickers.filter((t: string): t is string => typeof t === 'string'),
           groupingMode === 'sleeve' && item.sleeveId === 'cash',
         );
       case 'postTradeDiffPercent': {
@@ -682,7 +682,7 @@ export function SleeveAllocationTable({
         const { postTradePercent: postPercent } = calculateTradeMetrics.getPostTradeMetrics(
           item.currentValue || 0,
           trades,
-          tickers.filter((t): t is string => typeof t === 'string'),
+          tickers.filter((t: string): t is string => typeof t === 'string'),
           totalValue,
         );
         const targetPercent = item.targetPercent || 0;
@@ -1003,13 +1003,15 @@ export function SleeveAllocationTable({
           {isSleeveExpanded &&
             (() => {
               const relatedAccounts = sleeveAllocationData.filter((account) =>
-                (account.sleeves || []).some((accSleeve) => accSleeve.sleeveId === sleeve.sleeveId),
+                (account.sleeves || []).some(
+                  (accSleeve: any) => accSleeve.sleeveId === sleeve.sleeveId,
+                ),
               );
 
               if (hasSingleAccount) {
                 const account = relatedAccounts[0];
                 const accountSleeve = account?.sleeves.find(
-                  (accSleeve) => accSleeve.sleeveId === sleeve.sleeveId,
+                  (accSleeve: any) => accSleeve.sleeveId === sleeve.sleeveId,
                 );
 
                 if (!account || !accountSleeve) {
@@ -1064,7 +1066,7 @@ export function SleeveAllocationTable({
                 const compositeKey = `${sleeveKey}-${accountKey}`;
                 const isAccountExpanded = expandedAccounts.has(compositeKey);
                 const accountSleeve = (account.sleeves || []).find(
-                  (accSleeve) => accSleeve.sleeveId === sleeve.sleeveId,
+                  (accSleeve: any) => accSleeve.sleeveId === sleeve.sleeveId,
                 );
                 if (!accountSleeve) return null;
 
@@ -1274,7 +1276,7 @@ export function SleeveAllocationTable({
 
           {/* Sleeve Rows under Account */}
           {isAccountExpanded &&
-            (account.sleeves || []).map((sleeve) => (
+            (account.sleeves || []).map((sleeve: any) => (
               <Fragment key={`${accountKey}-${sleeve.sleeveId}`}>
                 <tr className="bg-blue-50">
                   {getVisibleColumnIds().map((columnId) => {

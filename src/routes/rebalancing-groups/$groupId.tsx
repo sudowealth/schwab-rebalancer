@@ -6,12 +6,15 @@ import { requireAuth } from '~/features/auth/auth-utils';
 import { RebalancingGroupPage } from '~/features/rebalancing/components/rebalancing-group-page';
 import { RebalancingGroupProvider } from '~/features/rebalancing/contexts/rebalancing-group-provider';
 import { useRebalancingUI } from '~/features/rebalancing/contexts/rebalancing-ui-context';
+import type { SleeveMember } from '~/features/rebalancing/server/groups.server';
 import {
+  calculateSleeveAllocations,
   generateAllocationData,
+  generateSleeveTableData,
   generateTopHoldingsData,
   transformAccountHoldingsForClient,
-  type transformSleeveAllocationDataForClient,
-  type transformSleeveTableDataForClient,
+  transformSleeveAllocationDataForClient,
+  transformSleeveTableDataForClient,
 } from '~/features/rebalancing/utils/rebalancing-utils';
 import {
   getAccountHoldings,
@@ -32,9 +35,14 @@ function calculateRebalancingGroupAnalytics(
   accountHoldings: Awaited<ReturnType<typeof getAccountHoldings>>,
   sp500Data: Awaited<ReturnType<typeof getSnP500Data>>,
 ) {
+  // Create a Map for O(1) account lookups instead of O(n) linear search
+  const accountHoldingsMap = new Map(
+    accountHoldings.map((holding) => [holding.accountId, holding]),
+  );
+
   // Update group members with calculated balances from holdings
   const updatedGroupMembers = group.members.map((member) => {
-    const accountData = accountHoldings.find((ah) => ah.accountId === member.accountId);
+    const accountData = accountHoldingsMap.get(member.accountId);
     return {
       ...member,
       balance: accountData ? accountData.accountBalance : 0,
@@ -133,9 +141,39 @@ export const Route = createFileRoute('/rebalancing-groups/$groupId')({
     const analyticsData = calculateRebalancingGroupAnalytics(safeGroup, accountHoldings, sp500Data);
 
     // Generate sleeve data if model is assigned
-    // TODO: Implement proper sleeve data calculation to eliminate server function waterfall
-    const sleeveTableData: ReturnType<typeof transformSleeveTableDataForClient> = [];
-    const sleeveAllocationData: ReturnType<typeof transformSleeveAllocationDataForClient> = [];
+    let sleeveTableData: ReturnType<typeof transformSleeveTableDataForClient> = [];
+    let sleeveAllocationData: ReturnType<typeof transformSleeveAllocationDataForClient> = [];
+
+    if (safeGroup.assignedModel) {
+      // Get sleeve members for the assigned model
+      let sleeveMembers: SleeveMember[] = [];
+      if (safeGroup.assignedModel.members && safeGroup.assignedModel.members.length > 0) {
+        const sleeveIds = safeGroup.assignedModel.members.map((member) => member.sleeveId);
+        if (sleeveIds.length > 0) {
+          const sleeveMembersResult = await getSleeveMembers(sleeveIds);
+          sleeveMembers = sleeveMembersResult;
+        }
+      }
+
+      // Calculate sleeve allocation data
+      const rawSleeveAllocationData = calculateSleeveAllocations(
+        safeGroup,
+        accountHoldings,
+        sleeveMembers,
+        transactions,
+      );
+
+      // Calculate sleeve table data
+      const rawSleeveTableData = generateSleeveTableData(
+        rawSleeveAllocationData,
+        'all',
+        analyticsData.totalValue,
+      );
+
+      // Apply transformations
+      sleeveTableData = transformSleeveTableDataForClient(rawSleeveTableData);
+      sleeveAllocationData = transformSleeveAllocationDataForClient(rawSleeveAllocationData);
+    }
 
     // Transform data for client consumption
     const transformedAccountHoldings = accountHoldings.flatMap((account) =>

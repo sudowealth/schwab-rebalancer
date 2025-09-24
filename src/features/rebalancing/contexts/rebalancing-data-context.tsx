@@ -3,14 +3,13 @@ import { useRebalancingGroupQuery } from '~/features/rebalancing/hooks/use-rebal
 import type { RebalancingGroupPageData } from '~/features/rebalancing/server/groups.server';
 
 /**
- * Data context for rebalancing group data
- * Contains server data from React Query
+ * Stable data context for rebalancing group data
+ * Contains only stable data values to prevent unnecessary re-renders
  */
 interface RebalancingDataContextValue {
-  data: RebalancingGroupPageData | undefined;
+  data: RebalancingGroupPageData | null | undefined;
   availableCash: number;
-  isLoading: boolean;
-  error: unknown;
+  groupId: string;
 }
 
 const RebalancingDataContext = createContext<RebalancingDataContextValue | null>(null);
@@ -38,14 +37,14 @@ export function RebalancingDataProvider({
     );
   }, [query.data]);
 
+  // Stable context value - only includes stable data
   const contextValue = useMemo(
     () => ({
       data: query.data,
       availableCash,
-      isLoading: query.isLoading,
-      error: query.error,
+      groupId,
     }),
-    [query.data, availableCash, query.isLoading, query.error],
+    [query.data, availableCash, groupId],
   );
 
   return (
@@ -61,6 +60,17 @@ export function useRebalancingData(): RebalancingDataContextValue {
     throw new Error('useRebalancingData must be used within a RebalancingDataProvider');
   }
   return context;
+}
+
+/**
+ * Hook for accessing volatile loading/error states
+ * Use this when you need loading or error states to avoid re-renders of stable data consumers
+ */
+export function useRebalancingDataLoadingState(
+  groupId: string,
+  initialData?: RebalancingGroupPageData,
+) {
+  return useRebalancingGroupQuery(groupId, initialData);
 }
 
 export { RebalancingDataContext };

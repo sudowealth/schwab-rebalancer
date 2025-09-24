@@ -596,10 +596,37 @@ export const getRebalancingGroupPageDataServerFn = createServerFn({
     };
   });
 
-// Server function to get complete rebalancing group data with all related information - runs ONLY on server
-export type RebalancingGroupPageData = Awaited<
-  ReturnType<typeof getRebalancingGroupPageDataServerFn>
->;
+// Type for rebalancing group page data - matches actual route loader output
+export type RebalancingGroupPageData = {
+  group: {
+    id: string;
+    name: string;
+    isActive: boolean;
+    members: {
+      balance: number;
+      id: string;
+      accountId: string;
+      isActive: boolean;
+      accountName?: string;
+      accountType?: string;
+    }[];
+    assignedModel?: any;
+    createdAt: Date;
+    updatedAt: Date;
+  };
+  accountHoldings: any[]; // Transformed by transformAccountHoldingsForClient
+  sleeveMembers: any[];
+  sp500Data: any[];
+  transactions: any[];
+  positions: any[];
+  proposedTrades: any[];
+  allocationData: any[];
+  holdingsData: any[];
+  sleeveTableData: any[]; // Transformed sleeve table data
+  sleeveAllocationData: any[]; // Transformed sleeve allocation data
+  groupOrders: any[];
+  transformedAccountHoldings: any[]; // Additional transformed holdings
+};
 
 // Server function to assign a model to a rebalancing group - runs ONLY on server
 export const assignModelToGroupServerFn = createServerFn({ method: 'POST' })
