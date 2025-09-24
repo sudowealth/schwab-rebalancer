@@ -51,6 +51,83 @@ function handleServerFunctionError(error: unknown, context: string): never {
   throw new Error(`Failed to load ${context.toLowerCase()}. Please try again.`);
 }
 
+// Base data fetcher to eliminate redundant database calls
+// This fetches the core data that multiple functions need
+async function fetchBaseGroupData(groupId: string, userId: string) {
+  // Get the group first (required for all operations)
+  const group = await getRebalancingGroupById(groupId, userId);
+  if (!group) {
+    throwServerError('Rebalancing group not found', 404);
+  }
+
+  const safeGroup = group as NonNullable<typeof group>;
+  const accountIds = safeGroup.members.map((member) => member.accountId);
+
+  // Fetch core data in parallel (single round-trip for shared data)
+  const [accountHoldingsResult, sp500DataResult] = await Promise.allSettled([
+    accountIds.length > 0 ? getAccountHoldings(accountIds) : Promise.resolve([]),
+    getSnP500Data(),
+  ]);
+
+  const accountHoldings =
+    accountHoldingsResult.status === 'fulfilled' ? accountHoldingsResult.value : [];
+  const sp500Data = sp500DataResult.status === 'fulfilled' ? sp500DataResult.value : [];
+
+  return {
+    group: safeGroup,
+    accountHoldings,
+    sp500Data,
+    accountIds,
+  };
+}
+
+// Type for transformed account holdings
+interface TransformedHolding {
+  accountId: string;
+  ticker: string;
+  qty: number;
+  costBasis: number;
+  marketValue: number;
+  unrealizedGain: number;
+  isTaxable: boolean;
+  purchaseDate: Date;
+}
+
+// Cached transformed account holdings to avoid duplicate transformations
+const transformedHoldingsCache = new Map<string, TransformedHolding[]>();
+let holdingsCacheTimestamp = 0;
+const HOLDINGS_CACHE_TTL = 30_000; // 30 seconds
+
+async function getTransformedAccountHoldingsCached(accountHoldings: AccountHoldingsResult) {
+  const cacheKey = JSON.stringify(
+    accountHoldings.map((h) => ({ accountId: h.accountId, holdings: h.holdings.length })),
+  );
+  const now = Date.now();
+
+  if (transformedHoldingsCache.has(cacheKey) && now - holdingsCacheTimestamp < HOLDINGS_CACHE_TTL) {
+    return transformedHoldingsCache.get(cacheKey) as TransformedHolding[];
+  }
+
+  // Transform account holdings for client (server-side caching)
+  const transformed = accountHoldings.flatMap((account) =>
+    account.holdings.map((holding) => ({
+      accountId: account.accountId,
+      ticker: holding.ticker,
+      qty: holding.qty,
+      costBasis: holding.costBasisTotal,
+      marketValue: holding.marketValue,
+      unrealizedGain: holding.unrealizedGain || 0,
+      isTaxable: account.accountType === 'taxable',
+      purchaseDate: holding.openedAt,
+    })),
+  );
+
+  transformedHoldingsCache.set(cacheKey, transformed);
+  holdingsCacheTimestamp = now;
+
+  return transformed;
+}
+
 // Helper functions for focused responsibilities
 
 /**
@@ -365,28 +442,12 @@ export const getRebalancingGroupAnalyticsServerFn = createServerFn({
     const { user } = await requireAuth();
     const { groupId } = data;
 
-    // Get the group first
-    const group = await getRebalancingGroupById(groupId, user.id);
-    if (!group) {
-      throwServerError('Rebalancing group not found', 404);
-    }
+    // Use base data fetcher to get core data (eliminates redundant DB calls)
+    const { group, accountHoldings, sp500Data } = await fetchBaseGroupData(groupId, user.id);
 
-    const safeGroup = group as NonNullable<typeof group>;
-    const accountIds = safeGroup.members.map((member) => member.accountId);
-
-    // Get required data for analytics
-    const [accountHoldingsResult, sp500DataResult] = await Promise.allSettled([
-      accountIds.length > 0 ? getAccountHoldings(accountIds) : Promise.resolve([]),
-      getSnP500Data(),
-    ]);
-
-    const accountHoldings =
-      accountHoldingsResult.status === 'fulfilled' ? accountHoldingsResult.value : [];
-    const sp500Data = sp500DataResult.status === 'fulfilled' ? sp500DataResult.value : [];
-
-    // Calculate analytics data
+    // Calculate analytics data using shared base data
     const { updatedGroupMembers, allocationData, holdingsData } =
-      calculateRebalancingGroupAnalytics(safeGroup, accountHoldings, sp500Data);
+      calculateRebalancingGroupAnalytics(group, accountHoldings, sp500Data);
 
     return {
       updatedGroupMembers,
@@ -408,44 +469,35 @@ export const getRebalancingGroupSleeveDataServerFn = createServerFn({
     const { user } = await requireAuth();
     const { groupId } = data;
 
-    // Get the group first
-    const group = await getRebalancingGroupById(groupId, user.id);
-    if (!group) {
-      throwServerError('Rebalancing group not found', 404);
-    }
-
-    const safeGroup = group as NonNullable<typeof group>;
-    const accountIds = safeGroup.members.map((member) => member.accountId);
+    // Use base data fetcher to get core data
+    const { group, accountHoldings, accountIds } = await fetchBaseGroupData(groupId, user.id);
 
     // Get sleeve members if there's an assigned model
     let sleeveMembers: Awaited<ReturnType<typeof getSleeveMembersServerFn>> = [];
-    if (safeGroup.assignedModel?.members && safeGroup.assignedModel.members.length > 0) {
-      const sleeveIds = safeGroup.assignedModel.members.map((member) => member.sleeveId);
+    if (group.assignedModel?.members && group.assignedModel.members.length > 0) {
+      const sleeveIds = group.assignedModel.members.map((member) => member.sleeveId);
       if (sleeveIds.length > 0) {
         sleeveMembers = await getSleeveMembers(sleeveIds);
       }
     }
 
-    // Get required data for sleeve calculations
-    const [accountHoldingsResult, transactionsResult] = await Promise.allSettled([
-      accountIds.length > 0 ? getAccountHoldings(accountIds) : Promise.resolve([]),
+    // Get transactions data (additional data needed for sleeve calculations)
+    const transactionsResult = await Promise.allSettled([
       accountIds.length > 0 ? getGroupTransactions(accountIds) : Promise.resolve([]),
     ]);
+    const transactions =
+      transactionsResult[0].status === 'fulfilled' ? transactionsResult[0].value : [];
 
-    const accountHoldings =
-      accountHoldingsResult.status === 'fulfilled' ? accountHoldingsResult.value : [];
-    const transactions = transactionsResult.status === 'fulfilled' ? transactionsResult.value : [];
-
-    // Calculate sleeve allocation data
+    // Calculate sleeve allocation data using shared base data
     const rawSleeveAllocationData = calculateSleeveAllocations(
-      safeGroup,
+      group,
       accountHoldings,
       sleeveMembers,
       transactions,
     );
 
     // Calculate sleeve table data
-    const totalValue = safeGroup.members.reduce(
+    const totalValue = group.members.reduce(
       (sum: number, member) => sum + (member.balance || 0),
       0,
     );
@@ -494,31 +546,15 @@ export const getRebalancingGroupCompleteDataServerFn = createServerFn({
     const { user } = await requireAuth();
     const { groupId } = data;
 
-    // Get the group first (single fetch)
-    const group = await getRebalancingGroupById(groupId, user.id);
-    if (!group) {
-      throwServerError('Rebalancing group not found', 404);
-    }
+    // Use base data fetcher to get core data (eliminates redundant DB calls)
+    const { group, accountHoldings, sp500Data } = await fetchBaseGroupData(groupId, user.id);
 
-    const safeGroup = group as NonNullable<typeof group>;
-    const accountIds = safeGroup.members.map((member) => member.accountId);
-
-    // Fetch all required data in parallel (single round-trip for core data)
-    const [accountHoldingsResult, sp500DataResult] = await Promise.allSettled([
-      accountIds.length > 0 ? getAccountHoldings(accountIds) : Promise.resolve([]),
-      getSnP500Data(),
-    ]);
-
-    const accountHoldings =
-      accountHoldingsResult.status === 'fulfilled' ? accountHoldingsResult.value : [];
-    const sp500Data = sp500DataResult.status === 'fulfilled' ? sp500DataResult.value : [];
-
-    // Calculate analytics data using the already-fetched data
+    // Calculate analytics data using shared base data
     const { updatedGroupMembers, allocationData, holdingsData } =
-      calculateRebalancingGroupAnalytics(safeGroup, accountHoldings, sp500Data);
+      calculateRebalancingGroupAnalytics(group, accountHoldings, sp500Data);
 
     return {
-      group: safeGroup,
+      group,
       accountHoldings,
       sp500Data,
       updatedGroupMembers,
@@ -678,42 +714,32 @@ export const getRebalancingGroupAllDataServerFn = createServerFn({
   .handler(async ({ data: { groupId } }) => {
     const { user } = await requireAuth();
 
-    // 1. Get group data (single call)
-    const group = await getRebalancingGroupById(groupId, user.id);
-    if (!group) {
-      throwServerError('Rebalancing group not found', 404);
-    }
+    // 1. Use base data fetcher to get core data (eliminates redundant DB calls)
+    const { group, accountHoldings, sp500Data, accountIds } = await fetchBaseGroupData(
+      groupId,
+      user.id,
+    );
 
-    const safeGroup = group as NonNullable<typeof group>;
-    const accountIds = safeGroup.members.map((member) => member.accountId);
-
-    // 2. Fetch ALL required data in parallel (single round-trip)
+    // 2. Fetch additional required data in parallel
     const [
-      accountHoldingsResult,
-      sp500DataResult,
       transactionsResult,
       positionsResult,
       proposedTradesResult,
       groupOrdersResult,
       sleeveMembersResult,
     ] = await Promise.allSettled([
-      accountIds.length > 0 ? getAccountHoldings(accountIds) : Promise.resolve([]),
-      getSnP500Data(),
       accountIds.length > 0 ? getGroupTransactions(accountIds) : Promise.resolve([]),
       getPositions(),
       getProposedTrades(),
       getOrdersForAccounts(accountIds),
 
       // Conditional: only fetch if model assigned
-      safeGroup.assignedModel?.members && safeGroup.assignedModel.members.length > 0
-        ? getSleeveMembers(safeGroup.assignedModel.members.map((member) => member.sleeveId))
+      group.assignedModel?.members && group.assignedModel.members.length > 0
+        ? getSleeveMembers(group.assignedModel.members.map((member) => member.sleeveId))
         : Promise.resolve([]),
     ]);
 
     // 3. Extract results with error handling
-    const accountHoldings =
-      accountHoldingsResult.status === 'fulfilled' ? accountHoldingsResult.value : [];
-    const sp500Data = sp500DataResult.status === 'fulfilled' ? sp500DataResult.value : [];
     const transactions = transactionsResult.status === 'fulfilled' ? transactionsResult.value : [];
     const positions = positionsResult.status === 'fulfilled' ? positionsResult.value : [];
     const proposedTrades =
@@ -722,12 +748,12 @@ export const getRebalancingGroupAllDataServerFn = createServerFn({
     const sleeveMembers =
       sleeveMembersResult.status === 'fulfilled' ? sleeveMembersResult.value : [];
 
-    // 4. Calculate derived data using shared data
+    // 4. Calculate derived data using shared base data
     const { updatedGroupMembers, allocationData, holdingsData } =
-      calculateRebalancingGroupAnalytics(safeGroup, accountHoldings, sp500Data);
+      calculateRebalancingGroupAnalytics(group, accountHoldings, sp500Data);
 
     const rawSleeveAllocationData = calculateSleeveAllocations(
-      safeGroup,
+      group,
       accountHoldings,
       sleeveMembers,
       transactions,
@@ -736,13 +762,14 @@ export const getRebalancingGroupAllDataServerFn = createServerFn({
     const totalValue = updatedGroupMembers.reduce((sum, member) => sum + (member.balance || 0), 0);
     const rawSleeveTableData = generateSleeveTableData(rawSleeveAllocationData, 'all', totalValue);
 
-    // 5. Transform for client
+    // 5. Transform for client (using cached transformation)
+    const transformedAccountHoldings = await getTransformedAccountHoldingsCached(accountHoldings);
     const sleeveTableData = transformSleeveTableDataForClient(rawSleeveTableData);
     const sleeveAllocationData = transformSleeveAllocationDataForClient(rawSleeveAllocationData);
 
     return {
       // Complete data (original function 1)
-      group: safeGroup,
+      group,
       accountHoldings,
       sp500Data,
       updatedGroupMembers,
@@ -763,6 +790,9 @@ export const getRebalancingGroupAllDataServerFn = createServerFn({
         avgFillPrice: order.avgFillPrice || undefined,
         batchLabel: order.batchLabel || undefined,
       })),
+
+      // Cached transformed holdings (eliminates duplicate client-side transformations)
+      transformedAccountHoldings,
     };
   });
 

@@ -2,8 +2,8 @@ import { useQuery } from '@tanstack/react-query';
 import type { RebalancingGroupPageData } from '~/features/rebalancing/server/groups.server';
 import {
   getGroupAccountHoldingsServerFn,
+  getRebalancingGroupAllDataServerFn,
   getRebalancingGroupAnalyticsServerFn,
-  getRebalancingGroupCompleteDataServerFn,
   getRebalancingGroupMarketDataServerFn,
   getRebalancingGroupSleeveDataServerFn,
   getRebalancingGroupTradesDataServerFn,
@@ -22,8 +22,8 @@ export function useRebalancingGroupQuery(groupId: string, initialData?: Rebalanc
   return useQuery({
     queryKey: queryKeys.rebalancing.groups.detail(groupId),
     queryFn: async () => {
-      // Use the optimized combined server function
-      const completeData = await getRebalancingGroupCompleteDataServerFn({ data: { groupId } });
+      // Use the optimized ALL data server function (eliminates multiple round trips)
+      const allData = await getRebalancingGroupAllDataServerFn({ data: { groupId } });
       const {
         group,
         accountHoldings,
@@ -31,27 +31,15 @@ export function useRebalancingGroupQuery(groupId: string, initialData?: Rebalanc
         updatedGroupMembers,
         allocationData,
         holdingsData,
-      } = completeData;
-
-      // Load remaining data in parallel (sleeve and trades data)
-      const [sleeveData, tradesData] = await Promise.all([
-        getRebalancingGroupSleeveDataServerFn({ data: { groupId } }),
-        getRebalancingGroupTradesDataServerFn({ data: { groupId } }),
-      ]);
-
-      // Transform account holdings for client (keeping existing logic)
-      const transformedAccountHoldings = accountHoldings.flatMap((account) =>
-        account.holdings.map((holding) => ({
-          accountId: account.accountId,
-          ticker: holding.ticker,
-          qty: holding.qty,
-          costBasis: holding.costBasisTotal,
-          marketValue: holding.marketValue,
-          unrealizedGain: holding.unrealizedGain || 0,
-          isTaxable: account.accountType === 'taxable',
-          purchaseDate: holding.openedAt,
-        })),
-      );
+        sleeveMembers,
+        sleeveTableData,
+        sleeveAllocationData,
+        transactions,
+        positions,
+        proposedTrades,
+        groupOrders,
+        transformedAccountHoldings, // Now provided by server with caching
+      } = allData;
 
       return {
         group: {
@@ -64,17 +52,17 @@ export function useRebalancingGroupQuery(groupId: string, initialData?: Rebalanc
           updatedAt: group.updatedAt as Date,
         },
         accountHoldings: transformAccountHoldingsForClient(accountHoldings),
-        sleeveMembers: sleeveData.sleeveMembers,
+        sleeveMembers,
         sp500Data,
-        transactions: tradesData.transactions,
-        positions: tradesData.positions,
-        proposedTrades: tradesData.proposedTrades,
+        transactions,
+        positions,
+        proposedTrades,
         allocationData,
         holdingsData,
-        sleeveTableData: sleeveData.sleeveTableData,
-        sleeveAllocationData: sleeveData.sleeveAllocationData,
-        groupOrders: tradesData.groupOrders,
-        transformedAccountHoldings,
+        sleeveTableData,
+        sleeveAllocationData,
+        groupOrders,
+        transformedAccountHoldings, // Server-provided with caching
       } as RebalancingGroupPageData;
     },
     initialData,
@@ -108,6 +96,7 @@ export function useGroupAccountHoldingsQuery(accountIds: string[]) {
 
 /**
  * React Query hook for group analytics data
+ * Now uses optimized server function that leverages shared base data
  */
 export function useRebalancingGroupAnalyticsQuery(groupId: string) {
   return useQuery({
@@ -128,6 +117,7 @@ export function useRebalancingGroupAnalyticsQuery(groupId: string) {
 
 /**
  * React Query hook for group sleeve data
+ * Now uses optimized server function that leverages shared base data
  */
 export function useRebalancingGroupSleeveDataQuery(groupId: string) {
   return useQuery({

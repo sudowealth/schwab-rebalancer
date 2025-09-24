@@ -163,10 +163,29 @@ export function OrdersBlotter({
 
   const summary = useMemo(() => summarize(orders), [orders]);
   const filtered = useMemo(() => {
-    if (!activeBucket) return orders;
-    const set = new Set(BUCKETS[activeBucket]);
-    return orders.filter((o) => set.has(o.status));
-  }, [orders, activeBucket]);
+    let filteredOrders = activeBucket
+      ? orders.filter((o) => new Set(BUCKETS[activeBucket]).has(o.status))
+      : orders;
+
+    // Sort by Account name, then by Side (BUY before SELL)
+    filteredOrders = [...filteredOrders].sort((a, b) => {
+      // First, sort by account name
+      const accountA = accounts?.[a.accountId]?.name || '';
+      const accountB = accounts?.[b.accountId]?.name || '';
+
+      const accountCompare = accountA.localeCompare(accountB);
+      if (accountCompare !== 0) return accountCompare;
+
+      // Then sort by side (BUY before SELL)
+      const sideOrder = { BUY: 0, SELL: 1 };
+      const sideA = sideOrder[a.side as keyof typeof sideOrder] ?? 2;
+      const sideB = sideOrder[b.side as keyof typeof sideOrder] ?? 2;
+
+      return sideA - sideB;
+    });
+
+    return filteredOrders;
+  }, [orders, activeBucket, accounts]);
 
   return (
     <div className="space-y-3">

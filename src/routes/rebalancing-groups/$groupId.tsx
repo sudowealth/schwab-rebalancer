@@ -1,5 +1,6 @@
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { z } from 'zod';
 import { ErrorBoundaryWrapper } from '~/components/ErrorBoundary';
 import { RebalancingErrorBoundary } from '~/components/RouteErrorBoundaries';
@@ -8,7 +9,9 @@ import { RebalancingGroupProvider } from '~/features/rebalancing/contexts/rebala
 import { useRebalancingUI } from '~/features/rebalancing/contexts/rebalancing-ui-context';
 import { getRebalancingGroupAllDataServerFn } from '~/features/rebalancing/server/groups.server';
 import { transformAccountHoldingsForClient } from '~/features/rebalancing/utils/rebalancing-utils';
+import { queryInvalidators } from '~/lib/query-keys';
 import { authGuard } from '~/lib/route-guards';
+import { syncGroupPricesIfNeededServerFn } from '~/lib/server-functions';
 
 export const Route = createFileRoute('/rebalancing-groups/$groupId')({
   errorComponent: RebalancingErrorBoundary,
@@ -21,7 +24,7 @@ export const Route = createFileRoute('/rebalancing-groups/$groupId')({
     const { groupId } = params;
     console.log('🔄 Loading rebalancing group page for groupId:', groupId);
 
-    // SINGLE consolidated call to get ALL data (replaces 3 separate calls)
+    // SINGLE optimized call to get ALL data (eliminates redundant DB calls and transformations)
     const allData = await getRebalancingGroupAllDataServerFn({ data: { groupId } });
     const {
       group,
@@ -37,23 +40,10 @@ export const Route = createFileRoute('/rebalancing-groups/$groupId')({
       positions,
       proposedTrades,
       groupOrders,
+      transformedAccountHoldings, // Now provided by server with caching
     } = allData;
 
     console.log('✅ Group loaded:', group.name, 'with', group.members.length, 'members');
-
-    // Transform account holdings for client (keeping existing logic)
-    const transformedAccountHoldings = accountHoldings.flatMap((account) =>
-      account.holdings.map((holding) => ({
-        accountId: account.accountId,
-        ticker: holding.ticker,
-        qty: holding.qty,
-        costBasis: holding.costBasisTotal,
-        marketValue: holding.marketValue,
-        unrealizedGain: holding.unrealizedGain || 0,
-        isTaxable: account.accountType === 'taxable',
-        purchaseDate: holding.openedAt,
-      })),
-    );
 
     return {
       group: {
@@ -65,7 +55,7 @@ export const Route = createFileRoute('/rebalancing-groups/$groupId')({
         createdAt: group.createdAt as Date,
         updatedAt: group.updatedAt as Date,
       },
-      accountHoldings: transformAccountHoldingsForClient(accountHoldings),
+      accountHoldings: transformAccountHoldingsForClient(accountHoldings), // Keep for backward compatibility
       sleeveMembers,
       sp500Data,
       transactions,
@@ -106,6 +96,27 @@ function RebalancingGroupDetailWithProvider({
   const { setRebalanceModal } = useRebalancingUI();
   const navigate = useNavigate();
   const params = Route.useParams();
+  const queryClient = useQueryClient();
+  const backgroundSyncTriggered = useRef(false);
+
+  // Mutation for background price sync
+  const backgroundPriceSyncMutation = useMutation({
+    mutationFn: async (groupId: string) => {
+      return await syncGroupPricesIfNeededServerFn({ data: { groupId } });
+    },
+    onSuccess: (result) => {
+      console.log('🔄 Background price sync completed:', result);
+      if (result.synced && result.updatedCount && result.updatedCount > 0) {
+        console.log('🔄 Prices updated, refreshing group data...');
+        // Invalidate the group route loader to refresh all data
+        queryInvalidators.rebalancing.groups.detail(queryClient, params.groupId);
+      }
+    },
+    onError: (error) => {
+      console.warn('⚠️ Background price sync failed:', error);
+      // Don't show error to user - this is background operation
+    },
+  });
 
   // Handle URL-based rebalance modal opening
   useEffect(() => {
@@ -119,6 +130,15 @@ function RebalancingGroupDetailWithProvider({
       });
     }
   }, [searchParams.rebalance, setRebalanceModal, navigate, params.groupId]);
+
+  // Trigger background price sync on component mount (non-blocking)
+  useEffect(() => {
+    if (!backgroundSyncTriggered.current) {
+      backgroundSyncTriggered.current = true;
+      console.log('🔄 Triggering background price sync for group securities...');
+      backgroundPriceSyncMutation.mutate(params.groupId);
+    }
+  }, [params.groupId, backgroundPriceSyncMutation]);
 
   return <RebalancingGroupPage />;
 }
