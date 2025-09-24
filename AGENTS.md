@@ -167,7 +167,7 @@ function DashboardPage() {
 ```typescript
 // ✅ GOOD: One purpose
 export const getUserProfileServerFn = createServerFn({ method: 'GET' })
-  .validator(z.object({ userId: z.string() }))
+  .inputValidator(z.object({ userId: z.string() }))
   .handler(async ({ data: { userId } }) => {
     const db = getDb()
     return await db.query.users.findFirst({
