@@ -1,5 +1,6 @@
-import { useIsMutating, useMutation } from '@tanstack/react-query';
+import { useIsMutating, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useCallback } from 'react';
+import { queryInvalidators } from '~/lib/query-keys';
 import { rebalancePortfolioServerFn, syncSchwabPricesServerFn } from '~/lib/server-functions';
 import type { RebalanceMethod } from '~/types/rebalance';
 
@@ -30,6 +31,7 @@ export function useGroupMutations({
   sleeveMembers,
   onTradesUpdate,
 }: UseGroupMutationsProps) {
+  const queryClient = useQueryClient();
   const isAnyMutationRunning = useIsMutating() > 0;
 
   // Self-contained mutations that focus only on data operations
@@ -48,8 +50,8 @@ export function useGroupMutations({
       if (result?.trades && onTradesUpdate) {
         onTradesUpdate(result.trades);
       }
-      // Note: No query invalidation needed since data comes from route loader
-      // and we only need to update trades in UI state
+      // ✅ USE GRANULAR INVALIDATION - only invalidate what trade execution affects
+      queryInvalidators.composites.afterTradeExecution(queryClient, groupId);
     },
     onError: (error) => {
       console.error('❌ [GroupComponent] Rebalance failed:', error);
@@ -76,8 +78,10 @@ export function useGroupMutations({
     mutationFn: async (symbols: string[]) => syncSchwabPricesServerFn({ data: { symbols } }),
     onSuccess: () => {
       console.log('🔄 [GroupComponent] Price sync completed successfully, updating UI...');
-      // Note: No query invalidation needed since data comes from route loader
-      // Price updates will be reflected on next page load/navigation
+      // ✅ USE GRANULAR INVALIDATION - only invalidate what price sync affects
+      queryInvalidators.rebalancing.groups.analytics(queryClient, groupId);
+      queryInvalidators.rebalancing.groups.sleeveData(queryClient, groupId);
+      queryInvalidators.rebalancing.groups.tradesData(queryClient, groupId);
     },
     onError: (error) => {
       console.error('❌ [GroupComponent] Price sync failed:', error);

@@ -212,12 +212,12 @@ export function AddRebalancingGroupModal({
             groupId: result.groupId,
           },
         });
+        // ✅ USE GRANULAR INVALIDATION - only invalidate what model assignment affects
+        queryInvalidators.composites.afterModelAssignment(queryClient, result.groupId);
       }
 
-      // Invalidate dashboard queries so the dashboard knows a rebalancing group now exists
-      queryInvalidators.dashboard.groups(queryClient);
-      queryInvalidators.onboarding.all(queryClient);
-      queryInvalidators.onboarding.groups(queryClient);
+      // ✅ USE GRANULAR INVALIDATION - only invalidate what group creation affects
+      queryInvalidators.composites.afterRebalancingGroupCreate(queryClient);
       // Also invalidate route loader data
       router.invalidate();
 

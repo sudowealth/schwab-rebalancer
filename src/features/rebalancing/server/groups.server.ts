@@ -1,6 +1,5 @@
 import { createServerFn } from '@tanstack/react-start';
 import { and, eq, inArray } from 'drizzle-orm';
-import { z } from 'zod';
 import * as schema from '~/db/schema';
 import type { RebalancingGroup } from '~/features/auth/schemas';
 import {
@@ -13,7 +12,6 @@ import {
   transformSleeveTableDataForClient,
 } from '~/features/rebalancing/utils/rebalancing-utils';
 import type { AccountHoldingsResult } from '~/lib/db-api';
-
 import {
   assignModelToGroup,
   createRebalancingGroup,
@@ -32,6 +30,13 @@ import {
 } from '~/lib/db-api';
 import { getDb } from '~/lib/db-config';
 import { throwServerError } from '~/lib/error-utils';
+import {
+  validateAccountIds,
+  validateCreateGroup,
+  validateGroupId,
+  validateModelAssignment,
+  validateUpdateGroup,
+} from '~/lib/runtime-validation';
 import { requireAuth } from '../../auth/auth-utils';
 
 // Helper functions for focused responsibilities
@@ -75,30 +80,7 @@ function calculateRebalancingGroupAnalytics(
   };
 }
 
-// Zod schemas for type safety
-const createRebalancingGroupSchema = z.object({
-  name: z.string().min(1, 'Group name is required'),
-  members: z
-    .array(
-      z.object({
-        accountId: z.string().min(1, 'Account ID is required'),
-      }),
-    )
-    .min(1, 'At least one member is required'),
-  updateExisting: z.boolean().optional().default(false),
-});
-
-const updateRebalancingGroupSchema = z.object({
-  groupId: z.string().min(1, 'Group ID is required'),
-  name: z.string().min(1, 'Group name is required'),
-  members: z
-    .array(
-      z.object({
-        accountId: z.string().min(1, 'Account ID is required'),
-      }),
-    )
-    .min(1, 'At least one member is required'),
-});
+// Legacy Zod schemas - now using runtime validation from ~/lib/runtime-validation
 
 // Server function to get all rebalancing groups - runs ONLY on server
 export const getRebalancingGroupsServerFn = createServerFn({
@@ -120,47 +102,37 @@ export const getRebalancingGroupsServerFn = createServerFn({
 
 // Server function to create a new rebalancing group - runs ONLY on server
 export const createRebalancingGroupServerFn = createServerFn({ method: 'POST' })
-  .validator(createRebalancingGroupSchema)
+  .validator((data: unknown) => validateCreateGroup(data))
 
   .handler(async ({ data }) => {
     const { user } = await requireAuth();
     const _db = getDb();
     const { name, members, updateExisting } = data;
 
-    if (!name || !members || !Array.isArray(members)) {
-      throwServerError('Invalid request: name and members array required', 400);
-    }
     const groupId = await createRebalancingGroup({ name, members, updateExisting }, user.id);
     return { success: true, groupId };
   });
 
 // Server function to update a rebalancing group - runs ONLY on server
 export const updateRebalancingGroupServerFn = createServerFn({ method: 'POST' })
-  .validator(updateRebalancingGroupSchema)
+  .validator((data: unknown) => validateUpdateGroup(data))
   .handler(async ({ data }) => {
     const { user } = await requireAuth();
     const _db = getDb();
     const { groupId, name, members } = data;
 
-    if (!groupId || !name || !members || !Array.isArray(members)) {
-      throwServerError('Invalid request: groupId, name and members array required', 400);
-    }
     await updateRebalancingGroup(groupId, { name, members }, user.id);
     return { success: true };
   });
 
 // Server function to delete a rebalancing group - runs ONLY on server
 export const deleteRebalancingGroupServerFn = createServerFn({ method: 'POST' })
-  .validator((data: { groupId: string }) => data)
+  .validator((data: unknown) => validateGroupId(data))
 
   .handler(async ({ data }) => {
     const { user } = await requireAuth();
     const _db = getDb();
     const { groupId } = data;
-
-    if (!groupId) {
-      throwServerError('Invalid request: groupId required', 400);
-    }
 
     await deleteRebalancingGroup(groupId, user.id);
     return { success: true };
@@ -170,16 +142,12 @@ export const deleteRebalancingGroupServerFn = createServerFn({ method: 'POST' })
 export const getRebalancingGroupByIdServerFn = createServerFn({
   method: 'POST',
 })
-  .validator((data: { groupId: string }) => data)
+  .validator((data: unknown) => validateGroupId(data))
 
   .handler(async ({ data }) => {
     const { user } = await requireAuth();
     const _db = getDb();
     const { groupId } = data;
-
-    if (!groupId) {
-      throwServerError('Invalid request: groupId required', 400);
-    }
 
     const group = await getRebalancingGroupById(groupId, user.id);
     return group;
@@ -189,13 +157,9 @@ export const getRebalancingGroupByIdServerFn = createServerFn({
 export const getGroupAccountHoldingsServerFn = createServerFn({
   method: 'POST',
 })
-  .validator((data: { accountIds: string[] }) => data)
+  .validator((data: unknown) => validateAccountIds(data))
   .handler(async ({ data }): Promise<AccountHoldingsResult> => {
     const { accountIds } = data;
-
-    if (!accountIds || accountIds.length === 0) {
-      throwServerError('Invalid request: accountIds required', 400);
-    }
 
     // Handle unauthenticated requests gracefully during SSR
 
@@ -307,20 +271,14 @@ export const getRebalancingGroupsWithBalancesServerFn = createServerFn({
   }
 });
 
-export type SleeveMember = Awaited<ReturnType<typeof getSleeveMembersServerFn>>[number];
-
 // Server function to get rebalancing group analytics data - runs ONLY on server
 export const getRebalancingGroupAnalyticsServerFn = createServerFn({
   method: 'POST',
 })
-  .validator((data: { groupId: string }) => data)
+  .validator((data: unknown) => validateGroupId(data))
   .handler(async ({ data }) => {
     const { user } = await requireAuth();
     const { groupId } = data;
-
-    if (!groupId) {
-      throwServerError('Invalid request: groupId required', 400);
-    }
 
     // Get the group first
     const group = await getRebalancingGroupById(groupId, user.id);
@@ -356,14 +314,10 @@ export const getRebalancingGroupAnalyticsServerFn = createServerFn({
 export const getRebalancingGroupSleeveDataServerFn = createServerFn({
   method: 'POST',
 })
-  .validator((data: { groupId: string }) => data)
+  .validator((data: unknown) => validateGroupId(data))
   .handler(async ({ data }) => {
     const { user } = await requireAuth();
     const { groupId } = data;
-
-    if (!groupId) {
-      throwServerError('Invalid request: groupId required', 400);
-    }
 
     // Get the group first
     const group = await getRebalancingGroupById(groupId, user.id);
@@ -423,14 +377,8 @@ export const getRebalancingGroupSleeveDataServerFn = createServerFn({
 export const getRebalancingGroupMarketDataServerFn = createServerFn({
   method: 'POST',
 })
-  .validator((data: { groupId: string }) => data)
-  .handler(async ({ data }) => {
-    const { groupId } = data;
-
-    if (!groupId) {
-      throwServerError('Invalid request: groupId required', 400);
-    }
-
+  .validator((data: unknown) => validateGroupId(data))
+  .handler(async () => {
     // Get S&P 500 data
     const sp500Data = await getSnP500Data();
 
@@ -443,14 +391,10 @@ export const getRebalancingGroupMarketDataServerFn = createServerFn({
 export const getRebalancingGroupTradesDataServerFn = createServerFn({
   method: 'POST',
 })
-  .validator((data: { groupId: string }) => data)
+  .validator((data: unknown) => validateGroupId(data))
   .handler(async ({ data }) => {
     const { user } = await requireAuth();
     const { groupId } = data;
-
-    if (!groupId) {
-      throwServerError('Invalid request: groupId required', 400);
-    }
 
     // Get the group to extract account IDs
     const group = await getRebalancingGroupById(groupId, user.id);
@@ -492,14 +436,10 @@ export const getRebalancingGroupTradesDataServerFn = createServerFn({
 export const getRebalancingGroupPageDataServerFn = createServerFn({
   method: 'POST',
 })
-  .validator((data: { groupId: string }) => data)
+  .validator((data: unknown) => validateGroupId(data))
   .handler(async ({ data }) => {
     const { user } = await requireAuth();
     const { groupId } = data;
-
-    if (!groupId) {
-      throwServerError('Invalid request: groupId required', 400);
-    }
 
     // Get the group first
     const group = await getRebalancingGroupById(groupId, user.id);
@@ -510,18 +450,15 @@ export const getRebalancingGroupPageDataServerFn = createServerFn({
     const safeGroup = group as NonNullable<typeof group>;
     const accountIds = safeGroup.members.map((member) => member.accountId);
 
-    // Fetch all data in parallel using focused server functions
-    const [
-      groupResult,
-      holdingsResult,
-      analyticsResult,
-      sleeveDataResult,
-      marketDataResult,
-      tradesDataResult,
-    ] = await Promise.allSettled([
+    // Phase 1: Load critical data first (group + holdings + analytics)
+    const [groupResult, holdingsResult, analyticsResult] = await Promise.allSettled([
       getRebalancingGroupByIdServerFn({ data: { groupId } }),
       getGroupAccountHoldingsServerFn({ data: { accountIds } }),
       getRebalancingGroupAnalyticsServerFn({ data: { groupId } }),
+    ]);
+
+    // Phase 2: Load secondary data in parallel (sleeve + market + trades)
+    const [sleeveDataResult, marketDataResult, tradesDataResult] = await Promise.allSettled([
       getRebalancingGroupSleeveDataServerFn({ data: { groupId } }),
       getRebalancingGroupMarketDataServerFn({ data: { groupId } }),
       getRebalancingGroupTradesDataServerFn({ data: { groupId } }),
@@ -596,48 +533,30 @@ export const getRebalancingGroupPageDataServerFn = createServerFn({
     };
   });
 
-// Type for rebalancing group page data - matches actual route loader output
-export type RebalancingGroupPageData = {
-  group: {
-    id: string;
-    name: string;
-    isActive: boolean;
-    members: {
-      balance: number;
-      id: string;
-      accountId: string;
-      isActive: boolean;
-      accountName?: string;
-      accountType?: string;
-    }[];
-    assignedModel?: any;
-    createdAt: Date;
-    updatedAt: Date;
-  };
-  accountHoldings: any[]; // Transformed by transformAccountHoldingsForClient
-  sleeveMembers: any[];
-  sp500Data: any[];
-  transactions: any[];
-  positions: any[];
-  proposedTrades: any[];
-  allocationData: any[];
-  holdingsData: any[];
-  sleeveTableData: any[]; // Transformed sleeve table data
-  sleeveAllocationData: any[]; // Transformed sleeve allocation data
-  groupOrders: any[];
-  transformedAccountHoldings: any[]; // Additional transformed holdings
-};
+// Derive types from actual server function return values for perfect type safety
+export type RebalancingGroupPageData = Awaited<
+  ReturnType<typeof getRebalancingGroupPageDataServerFn>
+>;
+
+// Export component data types derived from server functions
+export type SleeveTableData = RebalancingGroupPageData['sleeveTableData'][number];
+export type SleeveAllocationData = RebalancingGroupPageData['sleeveAllocationData'][number];
+export type SleeveMember = RebalancingGroupPageData['sleeveMembers'][number];
+export type AccountHoldingsData = RebalancingGroupPageData['accountHoldings'];
+export type TransactionsData = RebalancingGroupPageData['transactions'];
+export type PositionsData = RebalancingGroupPageData['positions'];
+export type ProposedTradesData = RebalancingGroupPageData['proposedTrades'];
+export type AllocationData = RebalancingGroupPageData['allocationData'];
+export type HoldingsData = RebalancingGroupPageData['holdingsData'];
+export type GroupOrdersData = RebalancingGroupPageData['groupOrders'];
+export type TransformedAccountHoldingsData = RebalancingGroupPageData['transformedAccountHoldings'];
 
 // Server function to assign a model to a rebalancing group - runs ONLY on server
 export const assignModelToGroupServerFn = createServerFn({ method: 'POST' })
-  .validator((data: { modelId: string; groupId: string }) => data)
+  .validator((data: unknown) => validateModelAssignment(data))
 
   .handler(async ({ data }) => {
     const { modelId, groupId } = data;
-
-    if (!modelId || !groupId) {
-      throwServerError('Invalid request: modelId and groupId required', 400);
-    }
 
     const { user } = await requireAuth();
     const _db = getDb();
@@ -647,13 +566,9 @@ export const assignModelToGroupServerFn = createServerFn({ method: 'POST' })
 
 // Server function to unassign a model from a rebalancing group - runs ONLY on server
 export const unassignModelFromGroupServerFn = createServerFn({ method: 'POST' })
-  .validator((data: { modelId: string; groupId: string }) => data)
+  .validator((data: unknown) => validateModelAssignment(data))
   .handler(async ({ data }) => {
     const { modelId, groupId } = data;
-
-    if (!modelId || !groupId) {
-      throwServerError('Invalid request: modelId and groupId required', 400);
-    }
 
     const { user } = await requireAuth();
     const _db = getDb();

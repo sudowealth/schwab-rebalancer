@@ -33,11 +33,13 @@ export interface Security extends Record<string, unknown> {
   accountId?: string;
 }
 
-import type { RebalancingGroupPageData } from '~/features/rebalancing/server/groups.server';
+import type {
+  SleeveAllocationData,
+  SleeveTableData,
+} from '~/features/rebalancing/server/groups.server';
 
-export type SleeveTableData = RebalancingGroupPageData['sleeveTableData'][number];
-
-export type SleeveAllocationData = RebalancingGroupPageData['sleeveAllocationData'][number];
+// Re-export for backward compatibility
+export type { SleeveTableData, SleeveAllocationData };
 
 import type { RebalancingGroupsResult } from '~/lib/db-api';
 export type GroupMember = RebalancingGroupsResult[number]['members'][number] & {

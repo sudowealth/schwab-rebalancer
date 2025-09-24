@@ -1,4 +1,4 @@
-import { Suspense } from 'react';
+import { memo, Suspense, useMemo } from 'react';
 import { useRebalancingActions } from '../contexts/rebalancing-actions-context';
 import { useRebalancingData } from '../contexts/rebalancing-data-context';
 import { useRebalancingUI } from '../contexts/rebalancing-ui-context';
@@ -13,8 +13,9 @@ import { SleeveAllocationTable } from './sleeve-allocation/sleeve-allocation-tab
 /**
  * Pure UI component for the analytics section
  * Contains account summary, allocation table, and charts
+ * Memoized to prevent unnecessary re-renders
  */
-export function RebalancingGroupAnalytics() {
+export const RebalancingGroupAnalytics = memo(function RebalancingGroupAnalytics() {
   const { data } = useRebalancingData();
   const {
     ui,
@@ -38,6 +39,48 @@ export function RebalancingGroupAnalytics() {
     data?.group?.members,
     data?.accountHoldings,
   );
+
+  // Memoize expensive computations for trade summary cards
+  const tradeSummaryCards = useMemo(() => {
+    if (!trades || !data?.sleeveTableData || !data?.group) return null;
+
+    const filteredTrades = trades.filter((trade) => trade.securityId);
+
+    return (
+      <RebalanceSummaryCards
+        trades={filteredTrades.map((trade) => ({
+          ...trade,
+          ticker: trade.securityId, // Map securityId to ticker for compatibility
+        }))}
+        sleeveTableData={data.sleeveTableData}
+        group={{
+          ...data.group,
+          members: data.group.members.map((member) => ({
+            ...member,
+            balance: member.balance || 0,
+          })),
+          assignedModel: data.group.assignedModel || undefined, // Handle nullable assignedModel
+        }}
+        accountHoldings={data.transformedAccountHoldings}
+      />
+    );
+  }, [trades, data?.sleeveTableData, data?.group, data?.transformedAccountHoldings]);
+
+  // Memoize orders blotter accounts computation
+  const ordersBlotterAccounts = useMemo(() => {
+    if (!accountSummaryMembers) return {};
+
+    return accountSummaryMembers.reduce(
+      (acc: Record<string, { name: string; number?: string | null }>, member) => {
+        acc[member.accountId] = {
+          name: member.accountName,
+          number: member.accountNumber || null,
+        };
+        return acc;
+      },
+      {},
+    );
+  }, [accountSummaryMembers]);
 
   if (!data) {
     return null;
@@ -107,26 +150,7 @@ export function RebalancingGroupAnalytics() {
               onSort={setSort}
               onTradeQtyChange={handleTradeQtyChange}
               accountHoldings={data.transformedAccountHoldings}
-              renderSummaryCards={() => (
-                <RebalanceSummaryCards
-                  trades={trades
-                    .filter((trade) => trade.securityId)
-                    .map((trade) => ({
-                      ...trade,
-                      ticker: trade.securityId, // Map securityId to ticker for compatibility
-                    }))}
-                  sleeveTableData={data.sleeveTableData}
-                  group={{
-                    ...group,
-                    members: group.members.map((member) => ({
-                      ...member,
-                      balance: member.balance || 0,
-                    })),
-                    assignedModel: group.assignedModel || undefined, // Handle nullable assignedModel
-                  }}
-                  accountHoldings={data.transformedAccountHoldings}
-                />
-              )}
+              renderSummaryCards={() => tradeSummaryCards}
               groupId={group.id}
               isRebalancing={isRebalancing}
             />
@@ -137,16 +161,7 @@ export function RebalancingGroupAnalytics() {
       {/* Orders Blotter */}
       <OrdersBlotter
         groupId={group.id}
-        accounts={accountSummaryMembers.reduce(
-          (acc: Record<string, { name: string; number?: string | null }>, member) => {
-            acc[member.accountId] = {
-              name: member.accountName,
-              number: member.accountNumber || null,
-            };
-            return acc;
-          },
-          {},
-        )}
+        accounts={ordersBlotterAccounts}
         onPricesUpdated={() => handlePriceSync()}
       />
 
@@ -163,4 +178,4 @@ export function RebalancingGroupAnalytics() {
       </ChartsErrorBoundary>
     </>
   );
-}
+});

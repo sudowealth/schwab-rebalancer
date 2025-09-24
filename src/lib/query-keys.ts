@@ -66,6 +66,10 @@ export const queryKeys = {
       detail: (id: string) => ['rebalancing', 'groups', id] as const,
       holdings: (groupIds: string[]) =>
         ['rebalancing', 'groups', 'holdings', ...groupIds.sort()] as const,
+      analytics: (groupId: string) => ['rebalancing', 'groups', groupId, 'analytics'] as const,
+      sleeveData: (groupId: string) => ['rebalancing', 'groups', groupId, 'sleeve-data'] as const,
+      marketData: (groupId: string) => ['rebalancing', 'groups', groupId, 'market-data'] as const,
+      tradesData: (groupId: string) => ['rebalancing', 'groups', groupId, 'trades-data'] as const,
       allocationData: (groupId: string, allocationView: string) =>
         ['rebalancing', 'groups', groupId, 'allocation', allocationView] as const,
       topHoldings: (groupId: string) => ['rebalancing', 'groups', groupId, 'top-holdings'] as const,
@@ -212,6 +216,26 @@ export const queryInvalidators = {
           queryKey: queryKeys.rebalancing.groups.allocationData(groupId, allocationView),
         });
       },
+      analytics: (queryClient: import('@tanstack/react-query').QueryClient, groupId: string) => {
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.rebalancing.groups.analytics(groupId),
+        });
+      },
+      sleeveData: (queryClient: import('@tanstack/react-query').QueryClient, groupId: string) => {
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.rebalancing.groups.sleeveData(groupId),
+        });
+      },
+      marketData: (queryClient: import('@tanstack/react-query').QueryClient, groupId: string) => {
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.rebalancing.groups.marketData(groupId),
+        });
+      },
+      tradesData: (queryClient: import('@tanstack/react-query').QueryClient, groupId: string) => {
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.rebalancing.groups.tradesData(groupId),
+        });
+      },
       topHoldings: (queryClient: import('@tanstack/react-query').QueryClient, groupId: string) => {
         queryClient.invalidateQueries({
           queryKey: queryKeys.rebalancing.groups.topHoldings(groupId),
@@ -259,6 +283,47 @@ export const queryInvalidators = {
       queryInvalidators.securities.all(queryClient);
       queryInvalidators.schwab.credentials(queryClient);
       queryInvalidators.dashboard.groups(queryClient);
+    },
+
+    // Granular rebalancing group operations
+    afterRebalancingGroupCreate: (queryClient: import('@tanstack/react-query').QueryClient) => {
+      queryInvalidators.dashboard.groups(queryClient);
+      queryInvalidators.onboarding.groups(queryClient);
+    },
+
+    afterRebalancingGroupUpdate: (
+      queryClient: import('@tanstack/react-query').QueryClient,
+      groupId: string,
+    ) => {
+      queryInvalidators.rebalancing.groups.detail(queryClient, groupId);
+      queryInvalidators.rebalancing.groups.analytics(queryClient, groupId);
+      queryInvalidators.rebalancing.groups.sleeveData(queryClient, groupId);
+      queryInvalidators.dashboard.groups(queryClient);
+    },
+
+    afterRebalancingGroupDelete: (queryClient: import('@tanstack/react-query').QueryClient) => {
+      queryInvalidators.dashboard.groups(queryClient);
+      queryInvalidators.onboarding.groups(queryClient);
+    },
+
+    afterModelAssignment: (
+      queryClient: import('@tanstack/react-query').QueryClient,
+      groupId: string,
+    ) => {
+      queryInvalidators.rebalancing.groups.detail(queryClient, groupId);
+      queryInvalidators.rebalancing.groups.sleeveData(queryClient, groupId);
+      queryInvalidators.rebalancing.groups.allocationData(queryClient, groupId, 'sleeve');
+      queryInvalidators.rebalancing.groups.analytics(queryClient, groupId);
+    },
+
+    afterTradeExecution: (
+      queryClient: import('@tanstack/react-query').QueryClient,
+      groupId: string,
+    ) => {
+      queryInvalidators.rebalancing.groups.tradesData(queryClient, groupId);
+      queryInvalidators.rebalancing.groups.analytics(queryClient, groupId);
+      queryInvalidators.dashboard.transactions(queryClient);
+      queryInvalidators.dashboard.metrics(queryClient);
     },
 
     // Complete data refresh (use sparingly)
