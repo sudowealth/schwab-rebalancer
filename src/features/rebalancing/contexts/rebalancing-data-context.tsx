@@ -1,4 +1,5 @@
-import { createContext, type ReactNode, useContext } from 'react';
+import { createContext, type ReactNode, useContext, useMemo } from 'react';
+import { useRebalancingGroupQuery } from '~/features/rebalancing/hooks/use-rebalancing-group-query';
 import type { RebalancingGroupPageData } from '~/features/rebalancing/server/groups.server';
 
 /**
@@ -16,12 +17,41 @@ const RebalancingDataContext = createContext<RebalancingDataContextValue | null>
 
 interface RebalancingDataProviderProps {
   children: ReactNode;
-  value: RebalancingDataContextValue;
+  groupId: string;
+  initialData?: RebalancingGroupPageData;
 }
 
-export function RebalancingDataProvider({ children, value }: RebalancingDataProviderProps) {
+export function RebalancingDataProvider({
+  children,
+  groupId,
+  initialData,
+}: RebalancingDataProviderProps) {
+  const query = useRebalancingGroupQuery(groupId, initialData);
+
+  const availableCash = useMemo(() => {
+    if (!query.data) return 0;
+    return query.data.accountHoldings.reduce(
+      (total: number, account: { accountBalance?: number }) => {
+        return total + (account.accountBalance || 0);
+      },
+      0,
+    );
+  }, [query.data]);
+
+  const contextValue = useMemo(
+    () => ({
+      data: query.data,
+      availableCash,
+      isLoading: query.isLoading,
+      error: query.error,
+    }),
+    [query.data, availableCash, query.isLoading, query.error],
+  );
+
   return (
-    <RebalancingDataContext.Provider value={value}>{children}</RebalancingDataContext.Provider>
+    <RebalancingDataContext.Provider value={contextValue}>
+      {children}
+    </RebalancingDataContext.Provider>
   );
 }
 

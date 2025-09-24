@@ -1,5 +1,6 @@
-import { createContext, type ReactNode, useContext } from 'react';
+import { createContext, type ReactNode, useContext, useMemo } from 'react';
 import type { SortField } from '~/features/rebalancing/components/sleeve-allocation/sleeve-allocation-table-headers';
+import { useRebalancingGroupState } from '~/features/rebalancing/hooks/use-rebalancing-group-state';
 
 /**
  * UI context for rebalancing group UI state
@@ -43,11 +44,23 @@ const RebalancingUIContext = createContext<RebalancingUIContextValue | null>(nul
 
 interface RebalancingUIProviderProps {
   children: ReactNode;
-  value: RebalancingUIContextValue;
+  groupId: string;
 }
 
-export function RebalancingUIProvider({ children, value }: RebalancingUIProviderProps) {
-  return <RebalancingUIContext.Provider value={value}>{children}</RebalancingUIContext.Provider>;
+export function RebalancingUIProvider({ children, groupId }: RebalancingUIProviderProps) {
+  const { uiState, uiActions } = useRebalancingGroupState(groupId);
+
+  const contextValue = useMemo(
+    () => ({
+      ui: uiState,
+      ...uiActions,
+    }),
+    [uiState, uiActions],
+  );
+
+  return (
+    <RebalancingUIContext.Provider value={contextValue}>{children}</RebalancingUIContext.Provider>
+  );
 }
 
 export function useRebalancingUI(): RebalancingUIContextValue {

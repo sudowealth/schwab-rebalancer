@@ -1,4 +1,7 @@
-import { createContext, type ReactNode, useContext } from 'react';
+import { createContext, type ReactNode, useContext, useMemo } from 'react';
+import { useGroupMutations } from '~/features/rebalancing/hooks/use-group-mutations';
+import { useRebalancingGroupQuery } from '~/features/rebalancing/hooks/use-rebalancing-group-query';
+import { useRebalancingGroupState } from '~/features/rebalancing/hooks/use-rebalancing-group-state';
 import type { RebalanceMethod } from '~/types/rebalance';
 
 /**
@@ -56,12 +59,41 @@ const RebalancingActionsContext = createContext<RebalancingActionsContextValue |
 
 interface RebalancingActionsProviderProps {
   children: ReactNode;
-  value: RebalancingActionsContextValue;
+  groupId: string;
 }
 
-export function RebalancingActionsProvider({ children, value }: RebalancingActionsProviderProps) {
+export function RebalancingActionsProvider({ children, groupId }: RebalancingActionsProviderProps) {
+  const query = useRebalancingGroupQuery(groupId);
+  const { trades, tradeActions } = useRebalancingGroupState(groupId);
+
+  const mutations = useGroupMutations({
+    groupId,
+    accountHoldings: query.data?.accountHoldings || [],
+    sleeveMembers: query.data?.sleeveMembers || [],
+    onTradesUpdate: tradeActions.updateTrades,
+  });
+
+  const contextValue = useMemo(
+    () => ({
+      mutations: {
+        rebalanceMutation: mutations.rebalanceMutation,
+        syncPricesMutation: mutations.syncPricesMutation,
+        handleGenerateTrades: mutations.handleGenerateTrades,
+        handleFetchPrices: mutations.handleFetchPrices,
+      },
+      trades,
+      isRebalancing: mutations.rebalanceMutation.isPending,
+      isSyncingPrices: mutations.syncPricesMutation.isPending,
+      handleRebalance: mutations.handleGenerateTrades,
+      handlePriceSync: mutations.handleFetchPrices,
+      updateTrades: tradeActions.updateTrades,
+      handleTradeQtyChange: tradeActions.handleTradeQtyChange,
+    }),
+    [mutations, trades, tradeActions],
+  );
+
   return (
-    <RebalancingActionsContext.Provider value={value}>
+    <RebalancingActionsContext.Provider value={contextValue}>
       {children}
     </RebalancingActionsContext.Provider>
   );

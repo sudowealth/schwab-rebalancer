@@ -180,7 +180,7 @@ export const GroupContentLayout = React.memo(function GroupContentLayout({
         <div className="relative">
           {/* Loading overlay for rebalancing operations */}
           {(isRebalancing || isSyncingPrices) && (
-            <div className="absolute inset-0 bg-background/80 backdrop-blur-sm z-10 flex items-center justify-center rounded-lg border">
+            <div className="absolute inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center rounded-lg border">
               <div className="flex flex-col items-center gap-3 p-6">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
                 <div className="text-center">
