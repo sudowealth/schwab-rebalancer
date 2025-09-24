@@ -49,8 +49,7 @@ export const Route = createFileRoute('/admin/users')({
   component: UserManagement,
   errorComponent: AdminErrorBoundary,
   loader: async () => {
-    // Admin auth is handled by parent route beforeLoad, loader only fetches data
-    return getAllUsersServerFn();
+    return await getAllUsersServerFn();
   },
 });
 

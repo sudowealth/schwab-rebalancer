@@ -1,6 +1,7 @@
 // Polyfills for Node.js built-ins
 import { NodeGlobalsPolyfillPlugin } from '@esbuild-plugins/node-globals-polyfill';
 import { NodeModulesPolyfillPlugin } from '@esbuild-plugins/node-modules-polyfill';
+import netlify from '@netlify/vite-plugin-tanstack-start';
 import tailwindcss from '@tailwindcss/vite';
 import { tanstackStart } from '@tanstack/react-start/plugin/vite';
 import react from '@vitejs/plugin-react';
@@ -55,10 +56,8 @@ export default defineConfig((_env) => {
       tsConfigPaths({ projects: ['./tsconfig.json'] }),
       logHttpsUrl(),
       tailwindcss(),
-      tanstackStart({
-        target: 'netlify',
-        customViteReactPlugin: true,
-      }),
+      tanstackStart(),
+      netlify(),
       react(),
       visualizer({
         filename: 'dist/stats.html',

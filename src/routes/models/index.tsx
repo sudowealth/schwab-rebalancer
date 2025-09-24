@@ -46,16 +46,13 @@ export const Route = createFileRoute('/models/')({
   pendingComponent: () => <ModelsSkeleton />,
   beforeLoad: authGuard,
   loader: async () => {
-    // Now loader only handles data fetching, auth is handled by beforeLoad
-    return getModelsServerFn();
+    return await getModelsServerFn();
   },
 });
 
 function ModelsComponent() {
   const loaderData = Route.useLoaderData();
   const models = loaderData || [];
-  // Since data is loaded in the loader, we don't need React Query here
-  // But we could keep it for cache management if needed
 
   return (
     <ErrorBoundaryWrapper

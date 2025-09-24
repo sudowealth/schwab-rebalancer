@@ -80,9 +80,7 @@ export const Route = createFileRoute('/')({
     schwabConnected: search.schwabConnected as string | undefined,
   }),
   loader: async ({ context: _context }) => {
-    // Load all dashboard data atomically in a single server function call
-    // This eliminates waterfalls by loading everything in parallel on the server
-    return getCompleteDashboardDataServerFn();
+    return await getCompleteDashboardDataServerFn();
   },
 });
 

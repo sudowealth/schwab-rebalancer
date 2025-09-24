@@ -239,7 +239,7 @@ async function createSyncLogDetails(
 
 // Server function to get Schwab OAuth URL
 export const getSchwabOAuthUrlServerFn = createServerFn({ method: 'POST' })
-  .validator(getSchwabOAuthUrlSchema)
+  .inputValidator(getSchwabOAuthUrlSchema)
   .handler(async ({ data }) => {
     console.log('🚀 [ServerFn] getSchwabOAuthUrl started');
     console.log('📋 [ServerFn] Request data:', data);
@@ -272,7 +272,7 @@ export const getSchwabOAuthUrlServerFn = createServerFn({ method: 'POST' })
 export const handleSchwabOAuthCallbackServerFn = createServerFn({
   method: 'POST',
 })
-  .validator((data: { code: string; redirectUri: string }) => data)
+  .inputValidator((data: { code: string; redirectUri: string }) => data)
 
   .handler(async ({ data }) => {
     console.log('🔄 [ServerFn] handleSchwabOAuthCallback started');
@@ -437,7 +437,7 @@ async function syncTransactionsCore(
 
 // Server function to sync Schwab holdings - orchestrates auth, logging, and cache management
 export const syncSchwabHoldingsServerFn = createServerFn({ method: 'POST' })
-  .validator(syncSchwabHoldingsSchema)
+  .inputValidator(syncSchwabHoldingsSchema)
   .handler(async ({ data }): Promise<SyncResult> => {
     return orchestrateSchwabSync(
       'Schwab holdings sync',
@@ -449,7 +449,7 @@ export const syncSchwabHoldingsServerFn = createServerFn({ method: 'POST' })
 
 // Server function to sync Schwab transactions - orchestrates auth, logging, and cache management
 export const syncSchwabTransactionsServerFn = createServerFn({ method: 'POST' })
-  .validator(syncSchwabTransactionsSchema)
+  .inputValidator(syncSchwabTransactionsSchema)
   .handler(async ({ data }): Promise<SyncResult> => {
     return orchestrateSchwabSync(
       'Schwab transactions sync',
@@ -588,7 +588,7 @@ export const getHeldAndSleeveTickersServerFn = createServerFn({
 export const getGroupSecuritiesNeedingPriceUpdatesServerFn = createServerFn({
   method: 'POST',
 })
-  .validator((data: { groupId: string }) => data)
+  .inputValidator((data: { groupId: string }) => data)
   .handler(async ({ data }): Promise<string[]> => {
     console.log('🔄 [ServerFn] Getting securities needing price updates for group:', data.groupId);
 
@@ -718,7 +718,7 @@ export const getGroupSecuritiesNeedingPriceUpdatesServerFn = createServerFn({
 export const syncGroupPricesIfNeededServerFn = createServerFn({
   method: 'POST',
 })
-  .validator((data: { groupId: string }) => data)
+  .inputValidator((data: { groupId: string }) => data)
   .handler(
     async ({ data }): Promise<{ synced: boolean; message: string; updatedCount?: number }> => {
       console.log('🔄 [ServerFn] Checking if group prices need syncing:', data.groupId);
@@ -779,7 +779,7 @@ export const syncGroupPricesIfNeededServerFn = createServerFn({
 
 // Server function to sync prices from Schwab
 export const syncSchwabPricesServerFn = createServerFn({ method: 'POST' })
-  .validator(syncSchwabPricesSchema)
+  .inputValidator(syncSchwabPricesSchema)
 
   .handler(
     async ({
@@ -968,7 +968,7 @@ export const revokeSchwabCredentialsServerFn = createServerFn({
 
 // Server function to delete a sync log
 export const deleteSyncLogServerFn = createServerFn({ method: 'POST' })
-  .validator(deleteSyncLogSchema)
+  .inputValidator(deleteSyncLogSchema)
   .handler(async ({ data }) => {
     const { logId } = data;
     try {
@@ -1044,7 +1044,7 @@ export const getSyncLogsServerFn = createServerFn({ method: 'GET' }).handler(asy
 export const addGroupTradesToBlotterServerFn = createServerFn({
   method: 'POST',
 })
-  .validator(
+  .inputValidator(
     (data: {
       groupId: string;
       trades: Array<{
@@ -1094,7 +1094,7 @@ export const addGroupTradesToBlotterServerFn = createServerFn({
   });
 
 export const getGroupOrdersServerFn = createServerFn({ method: 'POST' })
-  .validator(getGroupOrdersSchema)
+  .inputValidator(getGroupOrdersSchema)
   .handler(async ({ data }) => {
     const { groupId } = data;
     if (!groupId) throw new Error('groupId required');
@@ -1124,7 +1124,7 @@ export const getGroupOrdersServerFn = createServerFn({ method: 'POST' })
   });
 
 export const updateOrderServerFn = createServerFn({ method: 'POST' })
-  .validator(updateOrderSchema)
+  .inputValidator(updateOrderSchema)
   .handler(async ({ data }) => {
     const { id, updates } = data;
     if (!id) throwServerError('id required', 400);
@@ -1151,7 +1151,7 @@ export const updateOrderServerFn = createServerFn({ method: 'POST' })
   });
 
 export const deleteOrderServerFn = createServerFn({ method: 'POST' })
-  .validator(deleteOrderSchema)
+  .inputValidator(deleteOrderSchema)
   .handler(async ({ data }) => {
     const { id } = data;
     if (!id) throwServerError('id required', 400);
@@ -1179,7 +1179,7 @@ export const deleteOrderServerFn = createServerFn({ method: 'POST' })
 
 // Preview an order with Schwab and persist preview results to the draft order
 export const previewOrderServerFn = createServerFn({ method: 'POST' })
-  .validator(previewOrderSchema)
+  .inputValidator(previewOrderSchema)
   .handler(async ({ data }) => {
     const { id } = data;
     if (!id) throwServerError('id required', 400);
@@ -1432,7 +1432,7 @@ export const previewOrderServerFn = createServerFn({ method: 'POST' })
 
 // Submit an order to Schwab after a successful preview
 export const submitOrderServerFn = createServerFn({ method: 'POST' })
-  .validator(submitOrderSchema)
+  .inputValidator(submitOrderSchema)
   .handler(async ({ data }) => {
     const { id } = data;
     if (!id) throwServerError('id required', 400);

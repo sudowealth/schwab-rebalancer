@@ -8,8 +8,6 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-import { createServerRootRoute } from '@tanstack/react-start/server'
-
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as RegisterRouteImport } from './routes/register'
@@ -27,13 +25,11 @@ import { Route as SchwabCallbackRouteImport } from './routes/schwab/callback'
 import { Route as RebalancingGroupsGroupIdRouteImport } from './routes/rebalancing-groups/$groupId'
 import { Route as ModelsModelIdRouteImport } from './routes/models/$modelId'
 import { Route as DataFeedsDataFeedsRouteImport } from './routes/data-feeds/data-feeds'
+import { Route as ApiHealthRouteImport } from './routes/api/health'
 import { Route as AdminAdminRouteImport } from './routes/admin/admin'
 import { Route as AdminUsersRouteRouteImport } from './routes/admin/users.route'
 import { Route as AdminStatsRouteRouteImport } from './routes/admin/stats.route'
-import { ServerRoute as ApiHealthServerRouteImport } from './routes/api/health'
-import { ServerRoute as ApiAuthSplatServerRouteImport } from './routes/api/auth/$'
-
-const rootServerRouteImport = createServerRootRoute()
+import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
@@ -116,6 +112,11 @@ const DataFeedsDataFeedsRoute = DataFeedsDataFeedsRouteImport.update({
   path: '/data-feeds/data-feeds',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiHealthRoute = ApiHealthRouteImport.update({
+  id: '/api/health',
+  path: '/api/health',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminAdminRoute = AdminAdminRouteImport.update({
   id: '/admin/admin',
   path: '/admin/admin',
@@ -131,15 +132,10 @@ const AdminStatsRouteRoute = AdminStatsRouteRouteImport.update({
   path: '/admin/stats',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiHealthServerRoute = ApiHealthServerRouteImport.update({
-  id: '/api/health',
-  path: '/api/health',
-  getParentRoute: () => rootServerRouteImport,
-} as any)
-const ApiAuthSplatServerRoute = ApiAuthSplatServerRouteImport.update({
+const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   id: '/api/auth/$',
   path: '/api/auth/$',
-  getParentRoute: () => rootServerRouteImport,
+  getParentRoute: () => rootRouteImport,
 } as any)
 
 export interface FileRoutesByFullPath {
@@ -151,6 +147,7 @@ export interface FileRoutesByFullPath {
   '/admin/stats': typeof AdminStatsRouteRoute
   '/admin/users': typeof AdminUsersRouteRoute
   '/admin/admin': typeof AdminAdminRoute
+  '/api/health': typeof ApiHealthRoute
   '/data-feeds/data-feeds': typeof DataFeedsDataFeedsRoute
   '/models/$modelId': typeof ModelsModelIdRoute
   '/rebalancing-groups/$groupId': typeof RebalancingGroupsGroupIdRoute
@@ -162,6 +159,7 @@ export interface FileRoutesByFullPath {
   '/models': typeof ModelsIndexRoute
   '/rebalancing-groups': typeof RebalancingGroupsIndexRoute
   '/sleeves': typeof SleevesIndexRoute
+  '/api/auth/$': typeof ApiAuthSplatRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -172,6 +170,7 @@ export interface FileRoutesByTo {
   '/admin/stats': typeof AdminStatsRouteRoute
   '/admin/users': typeof AdminUsersRouteRoute
   '/admin/admin': typeof AdminAdminRoute
+  '/api/health': typeof ApiHealthRoute
   '/data-feeds/data-feeds': typeof DataFeedsDataFeedsRoute
   '/models/$modelId': typeof ModelsModelIdRoute
   '/rebalancing-groups/$groupId': typeof RebalancingGroupsGroupIdRoute
@@ -183,6 +182,7 @@ export interface FileRoutesByTo {
   '/models': typeof ModelsIndexRoute
   '/rebalancing-groups': typeof RebalancingGroupsIndexRoute
   '/sleeves': typeof SleevesIndexRoute
+  '/api/auth/$': typeof ApiAuthSplatRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -194,6 +194,7 @@ export interface FileRoutesById {
   '/admin/stats': typeof AdminStatsRouteRoute
   '/admin/users': typeof AdminUsersRouteRoute
   '/admin/admin': typeof AdminAdminRoute
+  '/api/health': typeof ApiHealthRoute
   '/data-feeds/data-feeds': typeof DataFeedsDataFeedsRoute
   '/models/$modelId': typeof ModelsModelIdRoute
   '/rebalancing-groups/$groupId': typeof RebalancingGroupsGroupIdRoute
@@ -205,6 +206,7 @@ export interface FileRoutesById {
   '/models/': typeof ModelsIndexRoute
   '/rebalancing-groups/': typeof RebalancingGroupsIndexRoute
   '/sleeves/': typeof SleevesIndexRoute
+  '/api/auth/$': typeof ApiAuthSplatRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -217,6 +219,7 @@ export interface FileRouteTypes {
     | '/admin/stats'
     | '/admin/users'
     | '/admin/admin'
+    | '/api/health'
     | '/data-feeds/data-feeds'
     | '/models/$modelId'
     | '/rebalancing-groups/$groupId'
@@ -228,6 +231,7 @@ export interface FileRouteTypes {
     | '/models'
     | '/rebalancing-groups'
     | '/sleeves'
+    | '/api/auth/$'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -238,6 +242,7 @@ export interface FileRouteTypes {
     | '/admin/stats'
     | '/admin/users'
     | '/admin/admin'
+    | '/api/health'
     | '/data-feeds/data-feeds'
     | '/models/$modelId'
     | '/rebalancing-groups/$groupId'
@@ -249,6 +254,7 @@ export interface FileRouteTypes {
     | '/models'
     | '/rebalancing-groups'
     | '/sleeves'
+    | '/api/auth/$'
   id:
     | '__root__'
     | '/'
@@ -259,6 +265,7 @@ export interface FileRouteTypes {
     | '/admin/stats'
     | '/admin/users'
     | '/admin/admin'
+    | '/api/health'
     | '/data-feeds/data-feeds'
     | '/models/$modelId'
     | '/rebalancing-groups/$groupId'
@@ -270,6 +277,7 @@ export interface FileRouteTypes {
     | '/models/'
     | '/rebalancing-groups/'
     | '/sleeves/'
+    | '/api/auth/$'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -281,6 +289,7 @@ export interface RootRouteChildren {
   AdminStatsRouteRoute: typeof AdminStatsRouteRoute
   AdminUsersRouteRoute: typeof AdminUsersRouteRoute
   AdminAdminRoute: typeof AdminAdminRoute
+  ApiHealthRoute: typeof ApiHealthRoute
   DataFeedsDataFeedsRoute: typeof DataFeedsDataFeedsRoute
   ModelsModelIdRoute: typeof ModelsModelIdRoute
   RebalancingGroupsGroupIdRoute: typeof RebalancingGroupsGroupIdRoute
@@ -292,31 +301,7 @@ export interface RootRouteChildren {
   ModelsIndexRoute: typeof ModelsIndexRoute
   RebalancingGroupsIndexRoute: typeof RebalancingGroupsIndexRoute
   SleevesIndexRoute: typeof SleevesIndexRoute
-}
-export interface FileServerRoutesByFullPath {
-  '/api/health': typeof ApiHealthServerRoute
-  '/api/auth/$': typeof ApiAuthSplatServerRoute
-}
-export interface FileServerRoutesByTo {
-  '/api/health': typeof ApiHealthServerRoute
-  '/api/auth/$': typeof ApiAuthSplatServerRoute
-}
-export interface FileServerRoutesById {
-  __root__: typeof rootServerRouteImport
-  '/api/health': typeof ApiHealthServerRoute
-  '/api/auth/$': typeof ApiAuthSplatServerRoute
-}
-export interface FileServerRouteTypes {
-  fileServerRoutesByFullPath: FileServerRoutesByFullPath
-  fullPaths: '/api/health' | '/api/auth/$'
-  fileServerRoutesByTo: FileServerRoutesByTo
-  to: '/api/health' | '/api/auth/$'
-  id: '__root__' | '/api/health' | '/api/auth/$'
-  fileServerRoutesById: FileServerRoutesById
-}
-export interface RootServerRouteChildren {
-  ApiHealthServerRoute: typeof ApiHealthServerRoute
-  ApiAuthSplatServerRoute: typeof ApiAuthSplatServerRoute
+  ApiAuthSplatRoute: typeof ApiAuthSplatRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -433,6 +418,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DataFeedsDataFeedsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/health': {
+      id: '/api/health'
+      path: '/api/health'
+      fullPath: '/api/health'
+      preLoaderRoute: typeof ApiHealthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/admin': {
       id: '/admin/admin'
       path: '/admin/admin'
@@ -454,23 +446,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminStatsRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
-  }
-}
-declare module '@tanstack/react-start/server' {
-  interface ServerFileRoutesByPath {
-    '/api/health': {
-      id: '/api/health'
-      path: '/api/health'
-      fullPath: '/api/health'
-      preLoaderRoute: typeof ApiHealthServerRouteImport
-      parentRoute: typeof rootServerRouteImport
-    }
     '/api/auth/$': {
       id: '/api/auth/$'
       path: '/api/auth/$'
       fullPath: '/api/auth/$'
-      preLoaderRoute: typeof ApiAuthSplatServerRouteImport
-      parentRoute: typeof rootServerRouteImport
+      preLoaderRoute: typeof ApiAuthSplatRouteImport
+      parentRoute: typeof rootRouteImport
     }
   }
 }
@@ -484,6 +465,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminStatsRouteRoute: AdminStatsRouteRoute,
   AdminUsersRouteRoute: AdminUsersRouteRoute,
   AdminAdminRoute: AdminAdminRoute,
+  ApiHealthRoute: ApiHealthRoute,
   DataFeedsDataFeedsRoute: DataFeedsDataFeedsRoute,
   ModelsModelIdRoute: ModelsModelIdRoute,
   RebalancingGroupsGroupIdRoute: RebalancingGroupsGroupIdRoute,
@@ -495,14 +477,16 @@ const rootRouteChildren: RootRouteChildren = {
   ModelsIndexRoute: ModelsIndexRoute,
   RebalancingGroupsIndexRoute: RebalancingGroupsIndexRoute,
   SleevesIndexRoute: SleevesIndexRoute,
+  ApiAuthSplatRoute: ApiAuthSplatRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-const rootServerRouteChildren: RootServerRouteChildren = {
-  ApiHealthServerRoute: ApiHealthServerRoute,
-  ApiAuthSplatServerRoute: ApiAuthSplatServerRoute,
+
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
+  interface Register {
+    router: Awaited<ReturnType<typeof getRouter>>
+  }
 }
-export const serverRouteTree = rootServerRouteImport
-  ._addFileChildren(rootServerRouteChildren)
-  ._addFileTypes<FileServerRouteTypes>()

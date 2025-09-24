@@ -186,7 +186,7 @@ export const getRebalancingGroupsServerFn = createServerFn({
 
 // Server function to create a new rebalancing group - runs ONLY on server
 export const createRebalancingGroupServerFn = createServerFn({ method: 'POST' })
-  .validator((data: unknown) => validateCreateGroup(data))
+  .inputValidator((data: unknown) => validateCreateGroup(data))
 
   .handler(async ({ data }) => {
     const { user } = await requireAuth();
@@ -199,7 +199,7 @@ export const createRebalancingGroupServerFn = createServerFn({ method: 'POST' })
 
 // Server function to update a rebalancing group - runs ONLY on server
 export const updateRebalancingGroupServerFn = createServerFn({ method: 'POST' })
-  .validator((data: unknown) => validateUpdateGroup(data))
+  .inputValidator((data: unknown) => validateUpdateGroup(data))
   .handler(async ({ data }) => {
     const { user } = await requireAuth();
     const _db = getDb();
@@ -211,7 +211,7 @@ export const updateRebalancingGroupServerFn = createServerFn({ method: 'POST' })
 
 // Server function to delete a rebalancing group - runs ONLY on server
 export const deleteRebalancingGroupServerFn = createServerFn({ method: 'POST' })
-  .validator((data: unknown) => validateGroupId(data))
+  .inputValidator((data: unknown) => validateGroupId(data))
 
   .handler(async ({ data }) => {
     const { user } = await requireAuth();
@@ -226,7 +226,7 @@ export const deleteRebalancingGroupServerFn = createServerFn({ method: 'POST' })
 export const getRebalancingGroupByIdServerFn = createServerFn({
   method: 'POST',
 })
-  .validator((data: unknown) => validateGroupId(data))
+  .inputValidator((data: unknown) => validateGroupId(data))
 
   .handler(async ({ data }) => {
     const { user } = await requireAuth();
@@ -241,7 +241,7 @@ export const getRebalancingGroupByIdServerFn = createServerFn({
 export const getGroupAccountHoldingsServerFn = createServerFn({
   method: 'POST',
 })
-  .validator((data: unknown) => validateAccountIds(data))
+  .inputValidator((data: unknown) => validateAccountIds(data))
   .handler(async ({ data }): Promise<AccountHoldingsResult> => {
     try {
       const { user } = await requireAuth();
@@ -351,7 +351,7 @@ async function getAccountBalancesOnly(accountIds: string[]): Promise<Map<string,
 
 // Server function to get sleeve members (target securities) - runs ONLY on server
 export const getSleeveMembersServerFn = createServerFn({ method: 'POST' })
-  .validator((data: { sleeveIds: string[] }) => data)
+  .inputValidator((data: { sleeveIds: string[] }) => data)
   .handler(async ({ data }) => {
     await requireAuth();
     const _db = getDb();
@@ -369,7 +369,7 @@ export const getSleeveMembersServerFn = createServerFn({ method: 'POST' })
 const getRebalancingGroupAnalyticsServerFn = createServerFn({
   method: 'POST',
 })
-  .validator((data: unknown) => validateGroupId(data))
+  .inputValidator((data: unknown) => validateGroupId(data))
   .handler(async ({ data }) => {
     const { user } = await requireAuth();
     const { groupId } = data;
@@ -433,7 +433,7 @@ export type SleeveMember = RebalancingGroupPageData['sleeveMembers'][number];
 
 // Server function to assign a model to a rebalancing group - runs ONLY on server
 export const assignModelToGroupServerFn = createServerFn({ method: 'POST' })
-  .validator((data: unknown) => validateModelAssignment(data))
+  .inputValidator((data: unknown) => validateModelAssignment(data))
 
   .handler(async ({ data }) => {
     const { modelId, groupId } = data;
@@ -446,7 +446,7 @@ export const assignModelToGroupServerFn = createServerFn({ method: 'POST' })
 
 // Server function to unassign a model from a rebalancing group - runs ONLY on server
 export const unassignModelFromGroupServerFn = createServerFn({ method: 'POST' })
-  .validator((data: unknown) => validateModelAssignment(data))
+  .inputValidator((data: unknown) => validateModelAssignment(data))
   .handler(async ({ data }) => {
     const { modelId, groupId } = data;
 
@@ -473,7 +473,7 @@ export const unassignModelFromGroupServerFn = createServerFn({ method: 'POST' })
 export const getRebalancingGroupAllDataServerFn = createServerFn({
   method: 'POST',
 })
-  .validator((data: unknown) => validateGroupId(data))
+  .inputValidator((data: unknown) => validateGroupId(data))
   .handler(async ({ data: { groupId } }) => {
     const { user } = await requireAuth();
 

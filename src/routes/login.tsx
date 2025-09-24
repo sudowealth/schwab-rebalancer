@@ -9,6 +9,7 @@ import { useAuth } from '~/features/auth/hooks/useAuth';
 
 export const Route = createFileRoute('/login')({
   component: LoginPage,
+  errorComponent: () => <div>Something went wrong</div>,
   pendingComponent: AuthSkeleton,
   validateSearch: z.object({
     reset: z.string().optional(),

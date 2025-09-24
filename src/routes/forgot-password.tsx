@@ -8,6 +8,7 @@ import { authClient } from '~/features/auth/auth-client';
 
 export const Route = createFileRoute('/forgot-password')({
   component: ForgotPasswordPage,
+  errorComponent: () => <div>Something went wrong</div>,
   pendingComponent: AuthSkeleton,
   validateSearch: z.object({
     email: z

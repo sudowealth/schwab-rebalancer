@@ -1,5 +1,5 @@
 import { createServerFn } from '@tanstack/react-start';
-import { getWebRequest } from '@tanstack/react-start/server';
+import { getRequest } from '@tanstack/react-start/server';
 import { and, count, eq, inArray, isNull, ne, or, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import * as schema from '~/db/schema';
@@ -530,7 +530,7 @@ export const seedGlobalEquityModelServerFn = createServerFn({ method: 'POST' }).
 
 // Server function to import Nasdaq securities - runs ONLY on server
 export const importNasdaqSecuritiesServerFn = createServerFn({ method: 'POST' })
-  .validator(importNasdaqSecuritiesSchema)
+  .inputValidator(importNasdaqSecuritiesSchema)
   .handler(async ({ data }) => {
     await requireAuth();
     const { limit, skipExisting = true, feedType = 'all' } = data;
@@ -571,7 +571,7 @@ export const importNasdaqSecuritiesServerFn = createServerFn({ method: 'POST' })
 
 // Server function to truncate data - runs ONLY on server
 export const truncateDataServerFn = createServerFn({ method: 'POST' })
-  .validator(truncateDataSchema)
+  .inputValidator(truncateDataSchema)
   .handler(async ({ data: _data }) => {
     // Only admins can truncate data
     const { user } = await requireAdmin();
@@ -581,7 +581,7 @@ export const truncateDataServerFn = createServerFn({ method: 'POST' })
       if (!import.meta.env.SSR) {
         throwServerError('truncateDataServerFn is only available on the server', 500);
       }
-      const request = getWebRequest();
+      const request = getRequest();
 
       // Tables to truncate (all financial data and user-created content)
       // PRESERVE: user, session, auth_account, verification, audit_log (system-level)

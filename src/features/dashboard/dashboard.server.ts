@@ -76,7 +76,7 @@ const updateAccountSchema = z.object({
 
 // Server function to get securities data with optional filtering and pagination - runs ONLY on server
 export const getSecuritiesDataServerFn = createServerFn({ method: 'POST' })
-  .validator(getSecuritiesDataSchema)
+  .inputValidator(getSecuritiesDataSchema)
   .handler(async ({ data }) => {
     await requireAuth();
 
@@ -285,7 +285,7 @@ export const getProposedTradesServerFn = createServerFn({ method: 'GET' }).handl
 });
 
 export const getGroupTransactionsServerFn = createServerFn({ method: 'POST' })
-  .validator(getGroupTransactionsSchema)
+  .inputValidator(getGroupTransactionsSchema)
   .handler(async ({ data }) => {
     const { accountIds } = data;
     const { user } = await requireAuth();
@@ -320,7 +320,7 @@ export const getPortfolioMetricsServerFn = createServerFn({ method: 'GET' }).han
 
 // Server function to generate allocation data for rebalancing groups
 export const generateAllocationDataServerFn = createServerFn({ method: 'POST' })
-  .validator(generateAllocationDataSchema)
+  .inputValidator(generateAllocationDataSchema)
   .handler(async ({ data }) => {
     const { user } = await requireAuth();
 
@@ -355,7 +355,7 @@ export const generateAllocationDataServerFn = createServerFn({ method: 'POST' })
 
 // Server function to generate top holdings data for rebalancing groups
 export const generateTopHoldingsDataServerFn = createServerFn({ method: 'POST' })
-  .validator(generateTopHoldingsDataSchema)
+  .inputValidator(generateTopHoldingsDataSchema)
   .handler(async ({ data }) => {
     const { user } = await requireAuth();
 
@@ -430,7 +430,7 @@ export const getAvailableAccountsServerFn = createServerFn({
 
 // Server function to get accounts for rebalancing groups with assignment status
 export const getAccountsForRebalancingGroupsServerFn = createServerFn({ method: 'GET' })
-  .validator(getAccountsForRebalancingGroupsSchema)
+  .inputValidator(getAccountsForRebalancingGroupsSchema)
 
   .handler(async ({ data }) => {
     const { user } = await requireAuth();
@@ -441,7 +441,7 @@ export const getAccountsForRebalancingGroupsServerFn = createServerFn({ method: 
 
 // Server function to update account details - runs ONLY on server
 export const updateAccountServerFn = createServerFn({ method: 'POST' })
-  .validator(updateAccountSchema)
+  .inputValidator(updateAccountSchema)
 
   .handler(async ({ data }) => {
     const { accountId, name, type } = data;
@@ -474,7 +474,7 @@ export const getIndicesServerFn = createServerFn({
 });
 
 export const getSecuritiesByIndexServerFn = createServerFn({ method: 'GET' })
-  .validator(z.object({ indexId: z.string().optional() }))
+  .inputValidator(z.object({ indexId: z.string().optional() }))
   .handler(async ({ data }) => {
     await requireAuth();
 

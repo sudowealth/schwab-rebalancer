@@ -26,7 +26,7 @@ const rebalancePortfolioSchema = z.object({
 
 // Server function to rebalance a portfolio - orchestrates the rebalancing process
 export const rebalancePortfolioServerFn = createServerFn({ method: 'POST' })
-  .validator(rebalancePortfolioSchema)
+  .inputValidator(rebalancePortfolioSchema)
   .handler(async ({ data }) => {
     const {
       portfolioId,
@@ -376,7 +376,7 @@ export type RebalancePortfolioServerFnResult = Awaited<
 
 // Server function to update manual cash for an account - runs ONLY on server
 export const updateManualCashServerFn = createServerFn({ method: 'POST' })
-  .validator((data: { accountId: string; amount: number }) => data)
+  .inputValidator((data: { accountId: string; amount: number }) => data)
   .handler(async ({ data }) => {
     const { accountId, amount } = data;
 
@@ -453,7 +453,7 @@ export const updateManualCashServerFn = createServerFn({ method: 'POST' })
 
 // Server function to get manual cash amount for an account - runs ONLY on server
 export const getManualCashServerFn = createServerFn({ method: 'POST' })
-  .validator((data: { accountId: string }) => data)
+  .inputValidator((data: { accountId: string }) => data)
   .handler(async ({ data }) => {
     const { accountId } = data;
 
@@ -628,7 +628,7 @@ const calculateTradeMetrics = {
 
 // Server function to calculate trade metrics - runs ONLY on server
 export const calculateTradeMetricsServerFn = createServerFn({ method: 'POST' })
-  .validator(
+  .inputValidator(
     (data: {
       currentValue: number;
       targetValue?: number;

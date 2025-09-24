@@ -66,7 +66,7 @@ export const getSleevesServerFn = createServerFn({ method: 'GET' }).handler(asyn
 
 // Server function to create a new sleeve - runs ONLY on server
 export const createSleeveServerFn = createServerFn({ method: 'POST' })
-  .validator(createSleeveSchema)
+  .inputValidator(createSleeveSchema)
   .handler(async ({ data }) => {
     try {
       const { user } = await requireAuth();
@@ -106,7 +106,7 @@ export const createSleeveServerFn = createServerFn({ method: 'POST' })
 
 // Server function to update a sleeve - runs ONLY on server
 export const updateSleeveServerFn = createServerFn({ method: 'POST' })
-  .validator(updateSleeveSchema)
+  .inputValidator(updateSleeveSchema)
   .handler(async ({ data }) => {
     await requireAuth();
 
@@ -124,7 +124,7 @@ export const updateSleeveServerFn = createServerFn({ method: 'POST' })
 
 // Server function to delete a sleeve - runs ONLY on server
 export const deleteSleeveServerFn = createServerFn({ method: 'POST' })
-  .validator(sleeveIdOnlySchema)
+  .inputValidator(sleeveIdOnlySchema)
   .handler(async ({ data }) => {
     await requireAuth();
 
@@ -142,7 +142,7 @@ export const deleteSleeveServerFn = createServerFn({ method: 'POST' })
 
 // Server function to get sleeve by ID - runs ONLY on server
 export const getSleeveByIdServerFn = createServerFn({ method: 'POST' })
-  .validator(sleeveIdOnlySchema)
+  .inputValidator(sleeveIdOnlySchema)
   .handler(async ({ data }) => {
     const { user } = await requireAuth();
 
@@ -160,7 +160,7 @@ export const getSleeveByIdServerFn = createServerFn({ method: 'POST' })
 
 // Server function to get sleeve holdings info - runs ONLY on server
 export const getSleeveHoldingsInfoServerFn = createServerFn({ method: 'POST' })
-  .validator(sleeveIdOnlySchema)
+  .inputValidator(sleeveIdOnlySchema)
   .handler(async ({ data }) => {
     await requireAuth();
 

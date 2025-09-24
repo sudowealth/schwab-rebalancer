@@ -28,7 +28,7 @@ async function resolveRequest(): Promise<Request | undefined> {
 
   if (!getWebRequestFn) {
     const mod = await import('@tanstack/react-start/server');
-    getWebRequestFn = mod.getWebRequest;
+    getWebRequestFn = mod.getRequest;
   }
 
   return getWebRequestFn();

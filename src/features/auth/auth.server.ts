@@ -62,7 +62,7 @@ export const getAllUsersServerFn = createServerFn({ method: 'GET' }).handler(asy
 
 // Update user role (admin only)
 export const updateUserRoleServerFn = createServerFn({ method: 'POST' })
-  .validator(setUserRoleSchema)
+  .inputValidator(setUserRoleSchema)
   .handler(async ({ data }) => {
     const { userId, role } = data;
 
@@ -95,7 +95,7 @@ export const updateUserRoleServerFn = createServerFn({ method: 'POST' })
 
 // Delete user and all associated data (admin only)
 export const deleteUserServerFn = createServerFn({ method: 'POST' })
-  .validator(deleteUserSchema)
+  .inputValidator(deleteUserSchema)
   .handler(async ({ data }) => {
     const { userId, confirmation } = data;
 
@@ -134,7 +134,7 @@ export const deleteUserServerFn = createServerFn({ method: 'POST' })
 
 // Get all data for a specific user (admin only)
 export const getUserDataServerFn = createServerFn({ method: 'GET' })
-  .validator(userIdOnlySchema)
+  .inputValidator(userIdOnlySchema)
   .handler(async ({ data }) => {
     const { userId } = data;
 
@@ -182,7 +182,7 @@ export const getUserDataServerFn = createServerFn({ method: 'GET' })
 
 // Custom signup server function that assigns admin role to first user
 export const signUpWithFirstAdminServerFn = createServerFn({ method: 'POST' })
-  .validator(signUpWithFirstAdminSchema)
+  .inputValidator(signUpWithFirstAdminSchema)
   .handler(async ({ data }) => {
     const { email, password, name } = data;
 
@@ -332,7 +332,7 @@ export const getActiveSessionsServerFn = createServerFn({
 });
 
 export const invalidateSessionServerFn = createServerFn({ method: 'POST' })
-  .validator(invalidateSessionSchema)
+  .inputValidator(invalidateSessionSchema)
   .handler(async ({ data }) => {
     const { user } = await requireAuth();
     const { sessionId, reason } = data;
@@ -347,7 +347,7 @@ export const invalidateSessionServerFn = createServerFn({ method: 'POST' })
   });
 
 export const logoutAllSessionsServerFn = createServerFn({ method: 'POST' })
-  .validator(logoutAllSessionsSchema)
+  .inputValidator(logoutAllSessionsSchema)
   .handler(async ({ data }) => {
     const { user } = await requireAuth();
     const { currentSessionId } = data || {};

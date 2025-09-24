@@ -46,7 +46,7 @@ export const getAllUsersServerFn = createServerFn({ method: 'GET' }).handler(asy
 
 // Update user role (admin only)
 export const updateUserRoleServerFn = createServerFn({ method: 'POST' })
-  .validator(updateUserRoleSchema)
+  .inputValidator(updateUserRoleSchema)
   .handler(async ({ data }) => {
     const { userId, role } = data;
 
@@ -114,7 +114,7 @@ export const getSystemStatsServerFn = createServerFn({ method: 'GET' }).handler(
 
 // Get audit logs (admin only)
 export const getAuditLogsServerFn = createServerFn({ method: 'GET' })
-  .validator(getUserActivitySchema)
+  .inputValidator(getUserActivitySchema)
   .handler(async ({ data = {} }) => {
     await requireAdmin();
     const { limit = 100, offset = 0, userId } = data;
@@ -146,7 +146,7 @@ export const getAuditLogsServerFn = createServerFn({ method: 'GET' })
 
 // Get all data for a specific user (admin only)
 export const getUserDataServerFn = createServerFn({ method: 'GET' })
-  .validator(deleteUserByIdSchema)
+  .inputValidator(deleteUserByIdSchema)
   .handler(async ({ data }) => {
     const { userId } = data;
 

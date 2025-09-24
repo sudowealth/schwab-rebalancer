@@ -36,7 +36,7 @@ const normalizeChangeValue = (value: unknown): FieldChangeValue => {
 
 // Yahoo Finance Integration - Update security fundamentals and price
 export const syncYahooFundamentalsServerFn = createServerFn({ method: 'POST' })
-  .validator(
+  .inputValidator(
     (data: {
       scope?:
         | 'all-securities'

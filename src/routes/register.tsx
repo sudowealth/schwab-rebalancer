@@ -12,6 +12,7 @@ import {
 } from '~/lib/server-functions';
 
 export const Route = createFileRoute('/register')({
+  errorComponent: () => <div>Something went wrong</div>,
   loader: async () => {
     const [firstUserCheck, userCreationCheck] = await Promise.all([
       checkIsFirstUserServerFn(),

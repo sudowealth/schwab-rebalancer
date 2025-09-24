@@ -55,7 +55,7 @@ export const getModelsServerFn = createServerFn({ method: 'GET' }).handler(async
 
 // Server function to create a new model - runs ONLY on server
 export const createModelServerFn = createServerFn({ method: 'POST' })
-  .validator(createModelSchema)
+  .inputValidator(createModelSchema)
   .handler(async ({ data }) => {
     const { user } = await requireAuth();
 
@@ -81,7 +81,7 @@ export const createModelServerFn = createServerFn({ method: 'POST' })
 
 // Server function to update a model - runs ONLY on server
 export const updateModelServerFn = createServerFn({ method: 'POST' })
-  .validator(updateModelSchema)
+  .inputValidator(updateModelSchema)
   .handler(async ({ data }) => {
     await requireAuth();
 
@@ -99,7 +99,7 @@ export const updateModelServerFn = createServerFn({ method: 'POST' })
 
 // Server function to delete a model - runs ONLY on server
 export const deleteModelServerFn = createServerFn({ method: 'POST' })
-  .validator(modelIdOnlySchema)
+  .inputValidator(modelIdOnlySchema)
   .handler(async ({ data }) => {
     await requireAuth();
 
@@ -117,7 +117,7 @@ export const deleteModelServerFn = createServerFn({ method: 'POST' })
 
 // Server function to get model by ID - runs ONLY on server
 export const getModelByIdServerFn = createServerFn({ method: 'POST' })
-  .validator(modelIdOnlySchema)
+  .inputValidator(modelIdOnlySchema)
   .handler(async ({ data }) => {
     await requireAuth();
 
