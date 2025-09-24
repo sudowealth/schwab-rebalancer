@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { lazy, Suspense, useEffect } from 'react';
+import { lazy, Suspense } from 'react';
 import { OnboardingTracker } from '~/components/OnboardingTracker';
 import { DashboardErrorBoundary } from '~/components/RouteErrorBoundaries';
 import { ExportButton } from '~/components/ui/export-button';
@@ -8,6 +8,8 @@ import { DashboardMetrics } from '~/features/dashboard/components/dashboard-metr
 import { PositionsTable } from '~/features/dashboard/components/positions-table';
 import { RebalancingGroupsTab } from '~/features/dashboard/components/rebalancing-groups-tab';
 import { TransactionsTable } from '~/features/dashboard/components/transactions-table';
+import { usePerformanceMonitoring } from '~/hooks/use-performance-monitoring';
+import type { RouterAuthContext } from '~/router';
 
 // Lazy load heavy modal components for better bundle splitting
 const SecurityModal = lazy(() =>
@@ -79,6 +81,10 @@ export const Route = createFileRoute('/')({
   validateSearch: (search: Record<string, unknown>) => ({
     schwabConnected: search.schwabConnected as string | undefined,
   }),
+  // Pass auth context to child components
+  context: ({ context }: { context: RouterAuthContext }) => ({
+    auth: context,
+  }),
   loader: async ({ context: _context }) => {
     return await getCompleteDashboardDataServerFn();
   },
@@ -87,31 +93,8 @@ export const Route = createFileRoute('/')({
 function DashboardComponent() {
   const loaderData = Route.useLoaderData();
 
-  // Performance monitoring - measure dashboard route load time
-  useEffect(() => {
-    if (typeof window !== 'undefined' && 'performance' in window) {
-      const navigation = performance.getEntriesByType(
-        'navigation',
-      )[0] as PerformanceNavigationTiming;
-      const loadTime = navigation.loadEventEnd - navigation.fetchStart;
-      console.log(`🚀 [Performance] Dashboard route load time: ${loadTime.toFixed(2)}ms`);
-
-      // Log additional performance metrics
-      const domContentLoaded = navigation.domContentLoadedEventEnd - navigation.fetchStart;
-      const firstPaint = performance.getEntriesByName('first-paint')[0] as PerformanceEntry;
-      const firstContentfulPaint = performance.getEntriesByName(
-        'first-contentful-paint',
-      )[0] as PerformanceEntry;
-
-      console.log(`📊 [Performance] DOM Content Loaded: ${domContentLoaded.toFixed(2)}ms`);
-      if (firstPaint)
-        console.log(`🎨 [Performance] First Paint: ${firstPaint.startTime.toFixed(2)}ms`);
-      if (firstContentfulPaint)
-        console.log(
-          `📝 [Performance] First Contentful Paint: ${firstContentfulPaint.startTime.toFixed(2)}ms`,
-        );
-    }
-  }, []);
+  // Use dedicated performance monitoring hook
+  usePerformanceMonitoring('Dashboard');
 
   // Note: loaderData.user is available as fallback for session?.user if needed
   // Note: Server-side auth check in loader ensures user is authenticated

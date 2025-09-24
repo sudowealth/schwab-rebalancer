@@ -3,6 +3,12 @@ import { DefaultCatchBoundary } from './components/DefaultCatchBoundary';
 import { NotFound } from './components/NotFound';
 import { routeTree } from './routeTree.gen';
 
+// Auth context type for route-level caching
+export type RouterAuthContext = {
+  user: { id: string; email: string; name?: string; role: string } | null;
+  authenticated: boolean;
+};
+
 export function getRouter() {
   const router = createTanStackRouter({
     routeTree,
@@ -12,6 +18,11 @@ export function getRouter() {
     defaultErrorComponent: DefaultCatchBoundary,
     defaultNotFoundComponent: () => <NotFound />,
     scrollRestoration: true,
+    // Provide default auth context
+    context: {
+      user: null,
+      authenticated: false,
+    },
   });
 
   return router;

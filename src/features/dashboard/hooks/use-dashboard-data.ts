@@ -141,15 +141,16 @@ export function useDashboardData(loaderData: LoaderData) {
 
   // Rebalancing groups status is now handled reactively in OnboardingTracker
 
-  // Execute queries with optimized financial data settings to reduce server load
+  // Execute queries with focus-based refetching instead of polling for better performance
   const positionsResult = useQuery({
     queryKey: queryKeys.dashboard.positions(),
     queryFn: getPositionsServerFn,
     initialData: loaderData.positions,
     enabled: shouldShowRebalancingSection,
-    refetchOnWindowFocus: false, // Reduce unnecessary refetching
-    refetchInterval: 5 * 60 * 1000, // Check every 5 minutes for financial data
-    staleTime: 2 * 60 * 1000, // Consider fresh for 2 minutes
+    refetchOnWindowFocus: true, // Refetch when user returns to tab
+    refetchOnMount: false, // Use initial data from loader
+    refetchOnReconnect: true, // Refetch when connection restored
+    staleTime: 5 * 60 * 1000, // Consider fresh for 5 minutes
     gcTime: 30 * 60 * 1000, // Keep in cache for 30 minutes
   });
 
@@ -158,9 +159,10 @@ export function useDashboardData(loaderData: LoaderData) {
     queryFn: getPortfolioMetricsServerFn,
     initialData: loaderData.metrics,
     enabled: shouldShowRebalancingSection,
-    refetchOnWindowFocus: false, // Reduce unnecessary refetching
-    refetchInterval: 5 * 60 * 1000, // Check every 5 minutes for financial data
-    staleTime: 2 * 60 * 1000, // Consider fresh for 2 minutes
+    refetchOnWindowFocus: true, // Refetch when user returns to tab
+    refetchOnMount: false, // Use initial data from loader
+    refetchOnReconnect: true, // Refetch when connection restored
+    staleTime: 5 * 60 * 1000, // Consider fresh for 5 minutes
     gcTime: 30 * 60 * 1000, // Keep in cache for 30 minutes
   });
 
@@ -169,9 +171,10 @@ export function useDashboardData(loaderData: LoaderData) {
     queryFn: getTransactionsServerFn,
     initialData: loaderData.transactions,
     enabled: shouldShowRebalancingSection,
-    refetchOnWindowFocus: false, // Reduce unnecessary refetching
-    refetchInterval: 5 * 60 * 1000, // Check every 5 minutes for financial data
-    staleTime: 2 * 60 * 1000, // Consider fresh for 2 minutes
+    refetchOnWindowFocus: true, // Refetch when user returns to tab
+    refetchOnMount: false, // Use initial data from loader
+    refetchOnReconnect: true, // Refetch when connection restored
+    staleTime: 5 * 60 * 1000, // Consider fresh for 5 minutes
     gcTime: 30 * 60 * 1000, // Keep in cache for 30 minutes
   });
 

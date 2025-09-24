@@ -26,10 +26,12 @@ import {
 } from '~/components/ui/navigation-menu';
 import { signOut } from '~/features/auth/auth-client';
 import { useSchwabConnection } from '~/features/schwab/hooks/use-schwab-connection';
+import { getCachedAuth, setCachedAuth } from '~/lib/auth-cache';
 import { queryInvalidators } from '~/lib/query-keys';
 import { seo } from '~/lib/seo';
 import { getCurrentUserServerFn } from '~/lib/server-functions';
 import { cn } from '~/lib/utils';
+import type { RouterAuthContext } from '~/router';
 import appCss from '~/styles/app.css?url';
 
 export const Route = createRootRoute({
@@ -72,10 +74,35 @@ export const Route = createRootRoute({
     ],
     scripts: [],
   }),
+  // Use cached auth state to avoid redundant fetches
   loader: async () => {
-    // Fetch auth data on the server and provide it to the entire app
-    return await getCurrentUserServerFn();
+    // Check cache first
+    const cachedAuth = getCachedAuth();
+    if (cachedAuth) {
+      console.log('🚀 [Auth] Using cached auth state');
+      return cachedAuth;
+    }
+
+    // Fetch fresh auth data and cache it
+    console.log('🔄 [Auth] Fetching fresh auth state');
+    try {
+      const auth = await getCurrentUserServerFn();
+      setCachedAuth(auth);
+      return auth;
+    } catch {
+      // Cache the unauthenticated state too
+      const unauthenticatedState = {
+        user: null,
+        authenticated: false,
+      };
+      setCachedAuth(unauthenticatedState);
+      return unauthenticatedState;
+    }
   },
+  // Pass auth context to child routes
+  context: ({ context }: { context: RouterAuthContext }) => ({
+    auth: context,
+  }),
   errorComponent: DefaultCatchBoundary,
   notFoundComponent: () => <NotFound />,
   shellComponent: RootDocument,
@@ -83,8 +110,17 @@ export const Route = createRootRoute({
 
 // Global hooks that need to run inside Providers (after QueryClient is available)
 function GlobalHooks() {
-  // Global Schwab connection hook - runs on all routes for 12-hour sync checks
-  useSchwabConnection();
+  const location = useLocation();
+
+  // Only enable Schwab connection sync triggering on dashboard and related routes
+  const shouldRunSchwabConnection =
+    location.pathname === '/' ||
+    location.pathname.startsWith('/rebalancing-groups/') ||
+    location.pathname.startsWith('/settings/') ||
+    location.pathname.startsWith('/data-feeds');
+
+  // Always call the hook, but conditionally enable sync triggering
+  useSchwabConnection(undefined, undefined, shouldRunSchwabConnection);
 
   // This component doesn't render anything visible
   return null;
@@ -214,8 +250,8 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 }
 
 function AdminSettingsLink() {
-  const sessionData = Route.useLoaderData();
-  const user = sessionData?.user;
+  const { auth } = Route.useRouteContext();
+  const user = auth?.user;
   const isAdmin = user?.role === 'admin';
 
   if (!isAdmin) {
@@ -238,9 +274,9 @@ function AdminSettingsLink() {
 }
 
 function AuthNav({ currentPath }: { currentPath: string }) {
-  // Use loader data from root route instead of client-side fetching
-  const sessionData = Route.useLoaderData();
-  const user = sessionData?.user || null;
+  // Use cached auth context from router instead of loader data
+  const { auth } = Route.useRouteContext();
+  const user = auth?.user || null;
   const isAuthenticated = !!user;
   const navigate = useNavigate();
   const queryClient = useQueryClient();
