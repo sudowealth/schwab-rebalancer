@@ -788,18 +788,12 @@ export const checkSecuritiesExistServerFn = createServerFn({ method: 'GET' }).ha
   const { user: _user } = await requireAuth();
   const _db = getDb();
 
-  // Get count of securities (excluding cash and S&P 500 index members)
-  // This ensures the automatic import triggers when only basic cash securities and S&P 500 exist
+  // Get count of securities (excluding only cash securities)
+  // Securities import is complete when there are equity securities available
   const securitiesCount = await getDb()
     .select({ count: count() })
     .from(schema.security)
-    .leftJoin(schema.indexMember, eq(schema.security.ticker, schema.indexMember.securityId))
-    .where(
-      and(
-        ne(schema.security.ticker, CASH_TICKER),
-        or(isNull(schema.indexMember.indexId), ne(schema.indexMember.indexId, 'sp500')),
-      ),
-    );
+    .where(ne(schema.security.ticker, CASH_TICKER));
 
   return {
     hasSecurities: Number(securitiesCount[0]?.count ?? 0) > 0,

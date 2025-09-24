@@ -1,3 +1,4 @@
+import { useQueryClient } from '@tanstack/react-query';
 import { useRouter } from '@tanstack/react-router';
 import { AlertTriangle } from 'lucide-react';
 import { useState } from 'react';
@@ -11,13 +12,14 @@ import {
   DialogTitle,
 } from '~/components/ui/dialog';
 import type { RebalancingGroup } from '~/features/auth/schemas';
+import { queryInvalidators } from '~/lib/query-keys';
 import { deleteRebalancingGroupServerFn } from '~/lib/server-functions';
 
 interface DeleteRebalancingGroupModalProps {
   group: RebalancingGroup;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onClose: () => void;
+  onClose?: () => void;
 }
 
 export function DeleteRebalancingGroupModal({
@@ -29,6 +31,7 @@ export function DeleteRebalancingGroupModal({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const router = useRouter();
+  const queryClient = useQueryClient();
 
   const handleDelete = async () => {
     setIsLoading(true);
@@ -41,8 +44,16 @@ export function DeleteRebalancingGroupModal({
         },
       });
 
-      onClose();
+      // Invalidate all queries affected by group deletion
+      queryInvalidators.composites.afterRebalancingGroupDelete(queryClient);
+
+      // Invalidate route loader data to ensure dashboard refreshes
       router.invalidate();
+
+      onClose?.();
+
+      // Navigate to groups list page to avoid errors on deleted group page
+      router.navigate({ to: '/rebalancing-groups' });
     } catch (err: unknown) {
       console.error('Failed to delete rebalancing group:', err);
       setError(err instanceof Error ? err.message : 'Failed to delete rebalancing group');
@@ -55,7 +66,7 @@ export function DeleteRebalancingGroupModal({
     onOpenChange(open);
     if (!open) {
       setError('');
-      onClose();
+      onClose?.();
     }
   };
 

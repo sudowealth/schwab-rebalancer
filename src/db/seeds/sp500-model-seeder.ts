@@ -152,7 +152,7 @@ export async function seedSP500Securities() {
         .insert(schema.security)
         .values(chunk)
         .onConflictDoNothing({ target: schema.security.ticker })
-        .returning({ ticker: schema.security.ticker });
+        .returning();
 
       insertedCount += inserted.length;
       skippedCount += chunk.length - inserted.length;
@@ -171,7 +171,7 @@ export async function seedSP500Securities() {
       updatedAt: now,
     })
     .onConflictDoNothing({ target: schema.indexTable.id })
-    .returning({ id: schema.indexTable.id });
+    .returning();
 
   if (indexInsert.length > 0) {
     console.log('✅ Created S&P 500 index');
@@ -197,7 +197,7 @@ export async function seedSP500Securities() {
         .insert(schema.indexMember)
         .values(chunk)
         .onConflictDoNothing({ target: schema.indexMember.id })
-        .returning({ id: schema.indexMember.id });
+        .returning();
 
       membersInsertedCount += inserted.length;
       membersSkippedCount += chunk.length - inserted.length;

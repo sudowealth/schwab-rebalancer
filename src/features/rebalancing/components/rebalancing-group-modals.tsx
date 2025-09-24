@@ -1,6 +1,8 @@
 import { useRebalancingActions } from '../contexts/rebalancing-actions-context';
 import { useRebalancingData } from '../contexts/rebalancing-data-context';
 import { useRebalancingUI } from '../contexts/rebalancing-ui-context';
+import { DeleteRebalancingGroupModal } from './delete-rebalancing-group-modal';
+import { EditRebalancingGroupModal } from './edit-rebalancing-group-modal';
 import { RebalanceModal } from './rebalance-modal';
 
 /**
@@ -9,7 +11,7 @@ import { RebalanceModal } from './rebalance-modal';
  */
 export function RebalancingGroupModals() {
   const { data, availableCash } = useRebalancingData();
-  const { ui, setRebalanceModal } = useRebalancingUI();
+  const { ui, setRebalanceModal, closeEditModal, closeDeleteModal } = useRebalancingUI();
   const { handleRebalance, handlePriceSync, isRebalancing, isSyncingPrices } =
     useRebalancingActions();
 
@@ -39,8 +41,19 @@ export function RebalancingGroupModals() {
         }
       />
 
-      {/* Other modals can be added here as needed */}
-      {/* Group edit/delete modals, security modals, sleeve modals, etc. */}
+      {/* Edit Group Modal */}
+      <EditRebalancingGroupModal
+        open={ui.editGroup}
+        onOpenChange={closeEditModal}
+        group={data.group}
+      />
+
+      {/* Delete Group Modal */}
+      <DeleteRebalancingGroupModal
+        open={ui.deleteGroup}
+        onOpenChange={closeDeleteModal}
+        group={data.group}
+      />
     </>
   );
 }

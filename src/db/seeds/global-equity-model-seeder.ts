@@ -285,7 +285,7 @@ export async function seedGlobalEquitySleeves(userId?: string) {
   };
 }
 
-const getGlobalEquityModelData = async (userId?: string) => {
+const getGlobalEquityModelData = async (modelId: string, userId?: string) => {
   // Determine the correct user ID to use
   let actualUserId = userId || 'demo-user';
 
@@ -306,7 +306,7 @@ const getGlobalEquityModelData = async (userId?: string) => {
 
   return [
     {
-      id: 'model_global_equity',
+      id: modelId,
       userId: actualUserId,
       name: 'Global Equity Model',
       description: 'Diversified global equity allocation with tax-loss harvesting sleeves',
@@ -387,8 +387,12 @@ async function generateGlobalEquityModelMembers(modelId: string, userId?: string
 export async function seedGlobalEquityModelData(userId?: string) {
   console.log('🌱 Starting Global Equity model seeding...');
 
+  // Use a consistent, deterministic UUID for the Global Equity model
+  // This ensures the same ID is used across functions and seeding runs
+  const modelId = '550e8400-e29b-41d4-a716-446655440000'; // Deterministic UUID for Global Equity Model
+
   // Get model data to insert
-  const modelData = await getGlobalEquityModelData(userId);
+  const modelData = await getGlobalEquityModelData(modelId, userId);
   const modelIdsToInsert = modelData.map((m) => m.id);
 
   // Only delete models that have the same ID as the Global Equity model we're creating
@@ -424,7 +428,7 @@ export async function seedGlobalEquityModelData(userId?: string) {
   }
 
   // Generate and insert model members
-  const modelMembersData = await generateGlobalEquityModelMembers('model_global_equity', userId);
+  const modelMembersData = await generateGlobalEquityModelMembers(modelId, userId);
 
   for (const member of modelMembersData) {
     await getDb().insert(schema.modelMember).values(member);

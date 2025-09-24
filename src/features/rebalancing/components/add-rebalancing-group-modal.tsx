@@ -100,10 +100,20 @@ export function AddRebalancingGroupModal({
       );
       setModels(modelsData);
 
+      // Debug: log available models
+      console.log(
+        'Available models:',
+        modelsData.map((m) => ({ id: m.id, name: m.name })),
+      );
+
       // Check if user has no accounts (likely hasn't connected Schwab)
       if (accountsData.length === 0) {
         setError(
           'No accounts found. Please connect your Schwab account first by going to the homepage and clicking "Connect to Schwab".',
+        );
+      } else if (modelsData.length === 0) {
+        setError(
+          'No investment models found. Please create a model first by going to the Models page.',
         );
       }
     } catch (err) {
@@ -174,6 +184,16 @@ export function AddRebalancingGroupModal({
   };
 
   const handleSubmit = async () => {
+    if (accounts.length === 0) {
+      setError('No accounts available. Please connect your Schwab account first.');
+      return;
+    }
+
+    if (models.length === 0) {
+      setError('No investment models available. Please create a model first.');
+      return;
+    }
+
     if (!groupName.trim()) {
       setError('Group name is required');
       return;
@@ -186,6 +206,12 @@ export function AddRebalancingGroupModal({
 
     if (!selectedModelId) {
       setError('Please select a model for this group');
+      return;
+    }
+
+    // Additional validation: ensure selectedModelId is a valid UUID
+    if (!selectedModelId.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
+      setError(`Invalid model selected: ${selectedModelId}`);
       return;
     }
 
@@ -206,6 +232,13 @@ export function AddRebalancingGroupModal({
 
       // Assign model (now required)
       if (selectedModelId && result.groupId) {
+        // Validate that selectedModelId is a valid UUID before sending
+        if (
+          !selectedModelId.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)
+        ) {
+          throw new Error(`Invalid model ID format: ${selectedModelId}`);
+        }
+
         await assignModelToGroupServerFn({
           data: {
             modelId: selectedModelId,
@@ -229,7 +262,11 @@ export function AddRebalancingGroupModal({
       // Set navigating state and navigate to the newly created group
       setIsNavigating(true);
       if (result.groupId) {
+        console.log('🎯 Navigating to newly created group:', result.groupId);
+        console.log('🚀 Navigation target:', `/rebalancing-groups/${result.groupId}`);
         router.navigate({ to: `/rebalancing-groups/${result.groupId}` });
+      } else {
+        console.error('❌ No groupId returned from creation');
       }
     } catch (err: unknown) {
       console.error('Failed to create rebalancing group:', err);
@@ -291,6 +328,12 @@ export function AddRebalancingGroupModal({
               disabled={isLoading || isNavigating || accounts.length === 0}
             />
           </div>
+          {models.length === 0 && accounts.length > 0 && (
+            <div className="text-sm text-amber-600 bg-amber-50 p-3 rounded-lg border border-amber-200">
+              No investment models available. Please create a model first by going to the Models
+              page.
+            </div>
+          )}
           <div className="space-y-2">
             <Label>Accounts</Label>
 
@@ -393,7 +436,7 @@ export function AddRebalancingGroupModal({
           </Button>
           <Button
             onClick={handleSubmit}
-            disabled={isLoading || isNavigating || accounts.length === 0}
+            disabled={isLoading || isNavigating || accounts.length === 0 || models.length === 0}
           >
             {isNavigating ? 'Redirecting...' : isLoading ? 'Creating...' : 'Create Group'}
           </Button>

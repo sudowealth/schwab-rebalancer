@@ -1,12 +1,14 @@
 import { neon } from '@neondatabase/serverless';
-// Type definitions
-import { drizzle } from 'drizzle-orm/neon-http';
+import { drizzle as drizzleNeon } from 'drizzle-orm/neon-http';
+import { drizzle as drizzlePg } from 'drizzle-orm/postgres-js';
+import postgres from 'postgres';
 import * as schema from '~/db/schema';
 
 // Database configuration for TanStack Start + Netlify + Neon
 
 /**
  * Create database client - unified instance for all database operations
+ * Automatically chooses between Neon (production) and postgres-js (local development)
  * Drizzle handles connection pooling and lazy connections automatically
  */
 function createDatabaseClient() {
@@ -15,9 +17,22 @@ function createDatabaseClient() {
     throw new Error('DATABASE_URL or NETLIFY_DATABASE_URL environment variable is required');
   }
 
-  // Create database instance - Drizzle handles connection pooling and lazy connections
-  const neonClient = neon(connectionString);
-  return drizzle(neonClient, { schema });
+  // Choose driver based on connection string
+  // Neon databases typically contain 'neon.tech' or use WebSocket connections
+  const isNeonDatabase =
+    connectionString.includes('neon.tech') ||
+    connectionString.includes('vercel-postgres') ||
+    connectionString.includes('supabase');
+
+  if (isNeonDatabase) {
+    // Production: Use Neon driver
+    const neonClient = neon(connectionString);
+    return drizzleNeon(neonClient, { schema });
+  } else {
+    // Local development: Use postgres-js driver
+    const pgClient = postgres(connectionString);
+    return drizzlePg(pgClient, { schema });
+  }
 }
 
 /**

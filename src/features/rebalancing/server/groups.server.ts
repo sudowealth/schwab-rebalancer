@@ -7,7 +7,7 @@ import {
   generateAllocationData,
   generateSleeveTableData,
   generateTopHoldingsData,
-  transformAccountHoldingsForClient,
+  type transformAccountHoldingsForClient,
   transformSleeveAllocationDataForClient,
   transformSleeveTableDataForClient,
 } from '~/features/rebalancing/utils/rebalancing-utils';
@@ -39,13 +39,25 @@ import {
 } from '~/lib/runtime-validation';
 import { requireAuth } from '../../auth/auth-utils';
 
+// Consistent error handling for server functions
+function handleServerFunctionError(error: unknown, context: string): never {
+  if (process.env.NODE_ENV === 'development') {
+    // Fail fast in development to surface real issues
+    throw error;
+  }
+
+  // In production, log and throw a user-friendly error
+  console.error(`${context}:`, error);
+  throw new Error(`Failed to load ${context.toLowerCase()}. Please try again.`);
+}
+
 // Helper functions for focused responsibilities
 
 /**
  * Calculates analytics data for a rebalancing group
  * Separated from data fetching for better separation of concerns
  */
-function calculateRebalancingGroupAnalytics(
+export function calculateRebalancingGroupAnalytics(
   group: NonNullable<Awaited<ReturnType<typeof getRebalancingGroupById>>>,
   accountHoldings: AccountHoldingsResult,
   sp500Data: Awaited<ReturnType<typeof getSnP500Data>>,
@@ -86,19 +98,16 @@ function calculateRebalancingGroupAnalytics(
 export const getRebalancingGroupsServerFn = createServerFn({
   method: 'GET',
 }).handler(async () => {
-  // Handle unauthenticated requests gracefully during SSR
-
   try {
     const { user } = await requireAuth();
-    const _db = getDb();
     const groups = await getRebalancingGroups(user.id);
     return groups;
   } catch (error) {
-    // Handle authentication errors gracefully during SSR
-    console.warn('Rebalancing groups load failed during SSR, returning empty data:', error);
-    return [];
+    handleServerFunctionError(error, 'Rebalancing Groups');
   }
 });
+
+export type GetRebalancingGroupsResult = Awaited<ReturnType<typeof getRebalancingGroupsServerFn>>;
 
 // Server function to create a new rebalancing group - runs ONLY on server
 export const createRebalancingGroupServerFn = createServerFn({ method: 'POST' })
@@ -113,6 +122,10 @@ export const createRebalancingGroupServerFn = createServerFn({ method: 'POST' })
     return { success: true, groupId };
   });
 
+export type CreateRebalancingGroupResult = Awaited<
+  ReturnType<typeof createRebalancingGroupServerFn>
+>;
+
 // Server function to update a rebalancing group - runs ONLY on server
 export const updateRebalancingGroupServerFn = createServerFn({ method: 'POST' })
   .validator((data: unknown) => validateUpdateGroup(data))
@@ -124,6 +137,10 @@ export const updateRebalancingGroupServerFn = createServerFn({ method: 'POST' })
     await updateRebalancingGroup(groupId, { name, members }, user.id);
     return { success: true };
   });
+
+export type UpdateRebalancingGroupResult = Awaited<
+  ReturnType<typeof updateRebalancingGroupServerFn>
+>;
 
 // Server function to delete a rebalancing group - runs ONLY on server
 export const deleteRebalancingGroupServerFn = createServerFn({ method: 'POST' })
@@ -137,6 +154,10 @@ export const deleteRebalancingGroupServerFn = createServerFn({ method: 'POST' })
     await deleteRebalancingGroup(groupId, user.id);
     return { success: true };
   });
+
+export type DeleteRebalancingGroupResult = Awaited<
+  ReturnType<typeof deleteRebalancingGroupServerFn>
+>;
 
 // Server function to get rebalancing group by ID - runs ONLY on server
 export const getRebalancingGroupByIdServerFn = createServerFn({
@@ -153,21 +174,21 @@ export const getRebalancingGroupByIdServerFn = createServerFn({
     return group;
   });
 
+export type GetRebalancingGroupByIdResult = Awaited<
+  ReturnType<typeof getRebalancingGroupByIdServerFn>
+>;
+
 // Server function to get account holdings for rebalancing group - runs ONLY on server
 export const getGroupAccountHoldingsServerFn = createServerFn({
   method: 'POST',
 })
   .validator((data: unknown) => validateAccountIds(data))
   .handler(async ({ data }): Promise<AccountHoldingsResult> => {
-    const { accountIds } = data;
-
-    // Handle unauthenticated requests gracefully during SSR
-
     try {
       const { user } = await requireAuth();
-      const _db = getDb();
-      // Verify that all accountIds belong to the authenticated user
+      const { accountIds } = data;
 
+      // Verify that all accountIds belong to the authenticated user
       const ownedAccounts = await getDb()
         .select({ id: schema.account.id })
         .from(schema.account)
@@ -180,32 +201,98 @@ export const getGroupAccountHoldingsServerFn = createServerFn({
       const result = await getAccountHoldings(accountIds);
       return result;
     } catch (error) {
-      // Handle authentication errors gracefully during SSR
-      console.warn('Group account holdings load failed during SSR, returning empty data:', error);
-      return [];
+      handleServerFunctionError(error, 'Group Account Holdings');
     }
   });
 
-export type GroupAccountHoldingsResult = AccountHoldingsResult;
+export type GetGroupAccountHoldingsResult = Awaited<
+  ReturnType<typeof getGroupAccountHoldingsServerFn>
+>;
 
-// Server function to get holdings for multiple rebalancing groups - runs ONLY on server
-export const getHoldingsForMultipleGroupsServerFn = createServerFn({
+// Server function to get rebalancing groups with balances for list display - runs ONLY on server
+export const getRebalancingGroupsListDataServerFn = createServerFn({
   method: 'GET',
-}).handler(async (): Promise<{ groups: RebalancingGroup[]; holdings: AccountHoldingsResult }> => {
-  const { user } = await requireAuth();
-  const _db = getDb();
+}).handler(
+  async (): Promise<{ groups: RebalancingGroup[]; accountBalances: Record<string, number> }> => {
+    const { user } = await requireAuth();
+    const _db = getDb();
 
-  // Get all groups for the user
-  const groups = await getRebalancingGroups(user.id);
+    // Get all groups for the user with member accounts in a single optimized query
+    const groups = await getRebalancingGroups(user.id);
 
-  // Collect all account IDs from all groups
-  const allAccountIds = groups.flatMap((group) => group.members.map((member) => member.accountId));
+    // Collect all account IDs from all groups
+    const allAccountIds = groups.flatMap((group) =>
+      group.members.map((member) => member.accountId),
+    );
 
-  // Get holdings for all accounts in a single query
-  const holdings = allAccountIds.length > 0 ? await getAccountHoldings(allAccountIds) : [];
+    if (allAccountIds.length === 0) {
+      return { groups, accountBalances: {} };
+    }
 
-  return { groups, holdings };
-});
+    // Get account balances efficiently without loading full holdings data
+    // This is much more efficient than getAccountHoldings() for list display
+    const accountBalancesMap = await getAccountBalancesOnly(allAccountIds);
+    const accountBalances = Object.fromEntries(accountBalancesMap);
+
+    return { groups, accountBalances };
+  },
+);
+
+export type GetRebalancingGroupsListDataResult = Awaited<
+  ReturnType<typeof getRebalancingGroupsListDataServerFn>
+>;
+
+// Helper function to get only account balances without full holdings data
+async function getAccountBalancesOnly(accountIds: string[]): Promise<Map<string, number>> {
+  const balances = new Map<string, number>();
+
+  // Get S&P 500 data for current prices
+  const sp500Data = await getSnP500Data();
+  const priceMap = new Map<string, number>(sp500Data.map((stock) => [stock.ticker, stock.price]));
+
+  // Get holdings aggregated by account for balance calculation only
+  const holdingsData = await getDb()
+    .select({
+      accountId: schema.account.id,
+      ticker: schema.holding.ticker,
+      qty: schema.holding.qty,
+      averageCost: schema.holding.averageCost,
+    })
+    .from(schema.holding)
+    .innerJoin(schema.account, eq(schema.holding.accountId, schema.account.id))
+    .where(inArray(schema.account.id, accountIds));
+
+  // Calculate balances by account
+  const accountHoldings = new Map<
+    string,
+    Array<{ ticker: string; qty: number; averageCost: number }>
+  >();
+  holdingsData.forEach((holding) => {
+    if (!accountHoldings.has(holding.accountId)) {
+      accountHoldings.set(holding.accountId, []);
+    }
+    const holdings = accountHoldings.get(holding.accountId);
+    if (holdings) {
+      holdings.push({
+        ticker: holding.ticker,
+        qty: holding.qty,
+        averageCost: holding.averageCost,
+      });
+    }
+  });
+
+  // Calculate total balance for each account
+  accountHoldings.forEach((holdings, accountId) => {
+    let totalBalance = 0;
+    holdings.forEach((holding) => {
+      const currentPrice = priceMap.get(holding.ticker) || 0;
+      totalBalance += holding.qty * currentPrice;
+    });
+    balances.set(accountId, totalBalance);
+  });
+
+  return balances;
+}
 
 // Server function to get sleeve members (target securities) - runs ONLY on server
 export const getSleeveMembersServerFn = createServerFn({ method: 'POST' })
@@ -223,15 +310,14 @@ export const getSleeveMembersServerFn = createServerFn({ method: 'POST' })
     return sleeveMembers;
   });
 
+export type GetSleeveMembersResult = Awaited<ReturnType<typeof getSleeveMembersServerFn>>;
+
 // Server function to get rebalancing groups with calculated balances - runs ONLY on server
 export const getRebalancingGroupsWithBalancesServerFn = createServerFn({
   method: 'GET',
 }).handler(async (): Promise<RebalancingGroup[]> => {
-  // Handle unauthenticated requests gracefully during SSR
-
   try {
     const { user } = await requireAuth();
-    const _db = getDb();
 
     // Get all rebalancing groups for the user
     const groups = await getRebalancingGroups(user.id);
@@ -262,14 +348,13 @@ export const getRebalancingGroupsWithBalancesServerFn = createServerFn({
 
     return updatedGroups;
   } catch (error) {
-    // Handle authentication errors gracefully during SSR
-    console.warn(
-      'Rebalancing groups with balances load failed during SSR, returning empty data:',
-      error,
-    );
-    return [];
+    handleServerFunctionError(error, 'Rebalancing Groups with Balances');
   }
 });
+
+export type GetRebalancingGroupsWithBalancesResult = Awaited<
+  ReturnType<typeof getRebalancingGroupsWithBalancesServerFn>
+>;
 
 // Server function to get rebalancing group analytics data - runs ONLY on server
 export const getRebalancingGroupAnalyticsServerFn = createServerFn({
@@ -309,6 +394,10 @@ export const getRebalancingGroupAnalyticsServerFn = createServerFn({
       holdingsData,
     };
   });
+
+export type GetRebalancingGroupAnalyticsResult = Awaited<
+  ReturnType<typeof getRebalancingGroupAnalyticsServerFn>
+>;
 
 // Server function to get rebalancing group sleeve data - runs ONLY on server
 export const getRebalancingGroupSleeveDataServerFn = createServerFn({
@@ -373,6 +462,10 @@ export const getRebalancingGroupSleeveDataServerFn = createServerFn({
     };
   });
 
+export type GetRebalancingGroupSleeveDataResult = Awaited<
+  ReturnType<typeof getRebalancingGroupSleeveDataServerFn>
+>;
+
 // Server function to get rebalancing group market data - runs ONLY on server
 export const getRebalancingGroupMarketDataServerFn = createServerFn({
   method: 'POST',
@@ -387,7 +480,57 @@ export const getRebalancingGroupMarketDataServerFn = createServerFn({
     };
   });
 
+export type GetRebalancingGroupMarketDataResult = Awaited<
+  ReturnType<typeof getRebalancingGroupMarketDataServerFn>
+>;
+
 // Server function to get rebalancing group trades and positions data - runs ONLY on server
+// Combined server function to get all rebalancing group data in one efficient call
+export const getRebalancingGroupCompleteDataServerFn = createServerFn({
+  method: 'POST',
+})
+  .validator((data: unknown) => validateGroupId(data))
+  .handler(async ({ data }) => {
+    const { user } = await requireAuth();
+    const { groupId } = data;
+
+    // Get the group first (single fetch)
+    const group = await getRebalancingGroupById(groupId, user.id);
+    if (!group) {
+      throwServerError('Rebalancing group not found', 404);
+    }
+
+    const safeGroup = group as NonNullable<typeof group>;
+    const accountIds = safeGroup.members.map((member) => member.accountId);
+
+    // Fetch all required data in parallel (single round-trip for core data)
+    const [accountHoldingsResult, sp500DataResult] = await Promise.allSettled([
+      accountIds.length > 0 ? getAccountHoldings(accountIds) : Promise.resolve([]),
+      getSnP500Data(),
+    ]);
+
+    const accountHoldings =
+      accountHoldingsResult.status === 'fulfilled' ? accountHoldingsResult.value : [];
+    const sp500Data = sp500DataResult.status === 'fulfilled' ? sp500DataResult.value : [];
+
+    // Calculate analytics data using the already-fetched data
+    const { updatedGroupMembers, allocationData, holdingsData } =
+      calculateRebalancingGroupAnalytics(safeGroup, accountHoldings, sp500Data);
+
+    return {
+      group: safeGroup,
+      accountHoldings,
+      sp500Data,
+      updatedGroupMembers,
+      allocationData,
+      holdingsData,
+    };
+  });
+
+export type GetRebalancingGroupCompleteDataResult = Awaited<
+  ReturnType<typeof getRebalancingGroupCompleteDataServerFn>
+>;
+
 export const getRebalancingGroupTradesDataServerFn = createServerFn({
   method: 'POST',
 })
@@ -432,111 +575,43 @@ export const getRebalancingGroupTradesDataServerFn = createServerFn({
     };
   });
 
-// Server function to get complete rebalancing group data with all related information - runs ONLY on server
-export const getRebalancingGroupPageDataServerFn = createServerFn({
-  method: 'POST',
-})
-  .validator((data: unknown) => validateGroupId(data))
-  .handler(async ({ data }) => {
-    const { user } = await requireAuth();
-    const { groupId } = data;
-
-    // Get the group first
-    const group = await getRebalancingGroupById(groupId, user.id);
-    if (!group) {
-      throwServerError('Rebalancing group not found', 404);
-    }
-
-    const safeGroup = group as NonNullable<typeof group>;
-    const accountIds = safeGroup.members.map((member) => member.accountId);
-
-    // Phase 1: Load critical data first (group + holdings + analytics)
-    const [groupResult, holdingsResult, analyticsResult] = await Promise.allSettled([
-      getRebalancingGroupByIdServerFn({ data: { groupId } }),
-      getGroupAccountHoldingsServerFn({ data: { accountIds } }),
-      getRebalancingGroupAnalyticsServerFn({ data: { groupId } }),
-    ]);
-
-    // Phase 2: Load secondary data in parallel (sleeve + market + trades)
-    const [sleeveDataResult, marketDataResult, tradesDataResult] = await Promise.allSettled([
-      getRebalancingGroupSleeveDataServerFn({ data: { groupId } }),
-      getRebalancingGroupMarketDataServerFn({ data: { groupId } }),
-      getRebalancingGroupTradesDataServerFn({ data: { groupId } }),
-    ]);
-
-    // Extract results with fallbacks
-    const groupData = groupResult.status === 'fulfilled' ? groupResult.value : null;
-    if (!groupData) {
-      throwServerError('Rebalancing group not found', 404);
-    }
-
-    // TypeScript doesn't understand that groupData is not null after the check above
-    const safeGroupData = groupData as NonNullable<typeof groupData>;
-
-    const accountHoldings = holdingsResult.status === 'fulfilled' ? holdingsResult.value : [];
-    const analyticsData =
-      analyticsResult.status === 'fulfilled'
-        ? analyticsResult.value
-        : { updatedGroupMembers: [], allocationData: [], holdingsData: [] };
-    const sleeveData =
-      sleeveDataResult.status === 'fulfilled'
-        ? sleeveDataResult.value
-        : { sleeveMembers: [], sleeveTableData: [], sleeveAllocationData: [] };
-    const marketData =
-      marketDataResult.status === 'fulfilled' ? marketDataResult.value : { sp500Data: [] };
-    const tradesData =
-      tradesDataResult.status === 'fulfilled'
-        ? tradesDataResult.value
-        : {
-            transactions: [],
-            positions: [],
-            proposedTrades: [],
-            groupOrders: [],
-          };
-
-    // Transform account holdings for client (keeping existing logic)
-    const transformedAccountHoldings = accountHoldings.flatMap((account) =>
-      account.holdings.map((holding) => ({
-        accountId: account.accountId,
-        ticker: holding.ticker,
-        qty: holding.qty,
-        costBasis: holding.costBasisTotal,
-        marketValue: holding.marketValue,
-        unrealizedGain: holding.unrealizedGain || 0,
-        isTaxable: account.accountType === 'taxable',
-        purchaseDate: holding.openedAt,
-      })),
-    );
-
-    return {
-      group: {
-        id: safeGroupData.id,
-        name: safeGroupData.name,
-        isActive: safeGroupData.isActive,
-        members: analyticsData.updatedGroupMembers,
-        assignedModel: safeGroupData.assignedModel,
-        createdAt: safeGroupData.createdAt as Date,
-        updatedAt: safeGroupData.updatedAt as Date,
-      },
-      accountHoldings: transformAccountHoldingsForClient(accountHoldings),
-      sleeveMembers: sleeveData.sleeveMembers,
-      sp500Data: marketData.sp500Data,
-      transactions: tradesData.transactions,
-      positions: tradesData.positions,
-      proposedTrades: tradesData.proposedTrades,
-      allocationData: analyticsData.allocationData,
-      holdingsData: analyticsData.holdingsData,
-      sleeveTableData: sleeveData.sleeveTableData,
-      sleeveAllocationData: sleeveData.sleeveAllocationData,
-      groupOrders: tradesData.groupOrders,
-      transformedAccountHoldings,
-    };
-  });
-
-// Derive types from actual server function return values for perfect type safety
-export type RebalancingGroupPageData = Awaited<
-  ReturnType<typeof getRebalancingGroupPageDataServerFn>
+export type GetRebalancingGroupTradesDataResult = Awaited<
+  ReturnType<typeof getRebalancingGroupTradesDataServerFn>
 >;
+
+// Type for rebalancing group page data - derived from route loader
+export type RebalancingGroupPageData = {
+  group: {
+    id: string;
+    name: string;
+    isActive: boolean;
+    members: GetRebalancingGroupAnalyticsResult['updatedGroupMembers'];
+    assignedModel: RebalancingGroup['assignedModel'];
+    createdAt: Date;
+    updatedAt: Date;
+  };
+  accountHoldings: Awaited<ReturnType<typeof transformAccountHoldingsForClient>>;
+  sleeveMembers: Awaited<ReturnType<typeof getSleeveMembers>>;
+  sp500Data: Awaited<ReturnType<typeof getSnP500Data>>;
+  transactions: Awaited<ReturnType<typeof getGroupTransactions>>;
+  positions: Awaited<ReturnType<typeof getPositions>>;
+  proposedTrades: Awaited<ReturnType<typeof getProposedTrades>>;
+  allocationData: Awaited<ReturnType<typeof generateAllocationData>>;
+  holdingsData: Awaited<ReturnType<typeof generateTopHoldingsData>>;
+  sleeveTableData: Awaited<ReturnType<typeof generateSleeveTableData>>;
+  sleeveAllocationData: Awaited<ReturnType<typeof transformSleeveAllocationDataForClient>>;
+  groupOrders: Awaited<ReturnType<typeof getOrdersForAccounts>>;
+  transformedAccountHoldings: Array<{
+    accountId: string;
+    ticker: string;
+    qty: number;
+    costBasis: number;
+    marketValue: number;
+    unrealizedGain: number;
+    isTaxable: boolean;
+    purchaseDate: Date;
+  }>;
+};
 
 // Export component data types derived from server functions
 export type SleeveTableData = RebalancingGroupPageData['sleeveTableData'][number];
@@ -564,6 +639,8 @@ export const assignModelToGroupServerFn = createServerFn({ method: 'POST' })
     return { success: true };
   });
 
+export type AssignModelToGroupResult = Awaited<ReturnType<typeof assignModelToGroupServerFn>>;
+
 // Server function to unassign a model from a rebalancing group - runs ONLY on server
 export const unassignModelFromGroupServerFn = createServerFn({ method: 'POST' })
   .validator((data: unknown) => validateModelAssignment(data))
@@ -587,3 +664,108 @@ export const unassignModelFromGroupServerFn = createServerFn({ method: 'POST' })
     await unassignModelFromGroup(modelId, groupId);
     return { success: true };
   });
+
+export type UnassignModelFromGroupResult = Awaited<
+  ReturnType<typeof unassignModelFromGroupServerFn>
+>;
+
+// Server function to get ALL rebalancing group data in a single consolidated call
+// This replaces the need for 3 separate server function calls in the route loader
+export const getRebalancingGroupAllDataServerFn = createServerFn({
+  method: 'POST',
+})
+  .validator((data: unknown) => validateGroupId(data))
+  .handler(async ({ data: { groupId } }) => {
+    const { user } = await requireAuth();
+
+    // 1. Get group data (single call)
+    const group = await getRebalancingGroupById(groupId, user.id);
+    if (!group) {
+      throwServerError('Rebalancing group not found', 404);
+    }
+
+    const safeGroup = group as NonNullable<typeof group>;
+    const accountIds = safeGroup.members.map((member) => member.accountId);
+
+    // 2. Fetch ALL required data in parallel (single round-trip)
+    const [
+      accountHoldingsResult,
+      sp500DataResult,
+      transactionsResult,
+      positionsResult,
+      proposedTradesResult,
+      groupOrdersResult,
+      sleeveMembersResult,
+    ] = await Promise.allSettled([
+      accountIds.length > 0 ? getAccountHoldings(accountIds) : Promise.resolve([]),
+      getSnP500Data(),
+      accountIds.length > 0 ? getGroupTransactions(accountIds) : Promise.resolve([]),
+      getPositions(),
+      getProposedTrades(),
+      getOrdersForAccounts(accountIds),
+
+      // Conditional: only fetch if model assigned
+      safeGroup.assignedModel?.members && safeGroup.assignedModel.members.length > 0
+        ? getSleeveMembers(safeGroup.assignedModel.members.map((member) => member.sleeveId))
+        : Promise.resolve([]),
+    ]);
+
+    // 3. Extract results with error handling
+    const accountHoldings =
+      accountHoldingsResult.status === 'fulfilled' ? accountHoldingsResult.value : [];
+    const sp500Data = sp500DataResult.status === 'fulfilled' ? sp500DataResult.value : [];
+    const transactions = transactionsResult.status === 'fulfilled' ? transactionsResult.value : [];
+    const positions = positionsResult.status === 'fulfilled' ? positionsResult.value : [];
+    const proposedTrades =
+      proposedTradesResult.status === 'fulfilled' ? proposedTradesResult.value : [];
+    const groupOrders = groupOrdersResult.status === 'fulfilled' ? groupOrdersResult.value : [];
+    const sleeveMembers =
+      sleeveMembersResult.status === 'fulfilled' ? sleeveMembersResult.value : [];
+
+    // 4. Calculate derived data using shared data
+    const { updatedGroupMembers, allocationData, holdingsData } =
+      calculateRebalancingGroupAnalytics(safeGroup, accountHoldings, sp500Data);
+
+    const rawSleeveAllocationData = calculateSleeveAllocations(
+      safeGroup,
+      accountHoldings,
+      sleeveMembers,
+      transactions,
+    );
+
+    const totalValue = updatedGroupMembers.reduce((sum, member) => sum + (member.balance || 0), 0);
+    const rawSleeveTableData = generateSleeveTableData(rawSleeveAllocationData, 'all', totalValue);
+
+    // 5. Transform for client
+    const sleeveTableData = transformSleeveTableDataForClient(rawSleeveTableData);
+    const sleeveAllocationData = transformSleeveAllocationDataForClient(rawSleeveAllocationData);
+
+    return {
+      // Complete data (original function 1)
+      group: safeGroup,
+      accountHoldings,
+      sp500Data,
+      updatedGroupMembers,
+      allocationData,
+      holdingsData,
+
+      // Sleeve data (original function 2)
+      sleeveMembers,
+      sleeveTableData,
+      sleeveAllocationData,
+
+      // Trades data (original function 3)
+      transactions,
+      positions,
+      proposedTrades,
+      groupOrders: groupOrders.map((order) => ({
+        ...order,
+        avgFillPrice: order.avgFillPrice || undefined,
+        batchLabel: order.batchLabel || undefined,
+      })),
+    };
+  });
+
+export type GetRebalancingGroupAllDataResult = Awaited<
+  ReturnType<typeof getRebalancingGroupAllDataServerFn>
+>;

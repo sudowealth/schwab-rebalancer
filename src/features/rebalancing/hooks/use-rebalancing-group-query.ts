@@ -3,35 +3,86 @@ import type { RebalancingGroupPageData } from '~/features/rebalancing/server/gro
 import {
   getGroupAccountHoldingsServerFn,
   getRebalancingGroupAnalyticsServerFn,
+  getRebalancingGroupCompleteDataServerFn,
   getRebalancingGroupMarketDataServerFn,
-  getRebalancingGroupPageDataServerFn,
   getRebalancingGroupSleeveDataServerFn,
   getRebalancingGroupTradesDataServerFn,
 } from '~/features/rebalancing/server/groups.server';
+import { transformAccountHoldingsForClient } from '~/features/rebalancing/utils/rebalancing-utils';
 import { queryKeys } from '~/lib/query-keys';
 
 /**
  * React Query hook for rebalancing group data (full data structure)
  *
  * Provides caching and invalidation capabilities for rebalancing group data.
- * Uses server function for actual data fetching when needed.
+ * When initialData is provided (from route loader), acts as a simple data provider.
+ * When no initialData, fetches data using the optimized combined server function.
  */
 export function useRebalancingGroupQuery(groupId: string, initialData?: RebalancingGroupPageData) {
   return useQuery({
     queryKey: queryKeys.rebalancing.groups.detail(groupId),
     queryFn: async () => {
-      const result = await getRebalancingGroupPageDataServerFn({
-        data: { groupId },
-      });
-      return result;
+      // Use the optimized combined server function
+      const completeData = await getRebalancingGroupCompleteDataServerFn({ data: { groupId } });
+      const {
+        group,
+        accountHoldings,
+        sp500Data,
+        updatedGroupMembers,
+        allocationData,
+        holdingsData,
+      } = completeData;
+
+      // Load remaining data in parallel (sleeve and trades data)
+      const [sleeveData, tradesData] = await Promise.all([
+        getRebalancingGroupSleeveDataServerFn({ data: { groupId } }),
+        getRebalancingGroupTradesDataServerFn({ data: { groupId } }),
+      ]);
+
+      // Transform account holdings for client (keeping existing logic)
+      const transformedAccountHoldings = accountHoldings.flatMap((account) =>
+        account.holdings.map((holding) => ({
+          accountId: account.accountId,
+          ticker: holding.ticker,
+          qty: holding.qty,
+          costBasis: holding.costBasisTotal,
+          marketValue: holding.marketValue,
+          unrealizedGain: holding.unrealizedGain || 0,
+          isTaxable: account.accountType === 'taxable',
+          purchaseDate: holding.openedAt,
+        })),
+      );
+
+      return {
+        group: {
+          id: group.id,
+          name: group.name,
+          isActive: group.isActive,
+          members: updatedGroupMembers,
+          assignedModel: group.assignedModel,
+          createdAt: group.createdAt as Date,
+          updatedAt: group.updatedAt as Date,
+        },
+        accountHoldings: transformAccountHoldingsForClient(accountHoldings),
+        sleeveMembers: sleeveData.sleeveMembers,
+        sp500Data,
+        transactions: tradesData.transactions,
+        positions: tradesData.positions,
+        proposedTrades: tradesData.proposedTrades,
+        allocationData,
+        holdingsData,
+        sleeveTableData: sleeveData.sleeveTableData,
+        sleeveAllocationData: sleeveData.sleeveAllocationData,
+        groupOrders: tradesData.groupOrders,
+        transformedAccountHoldings,
+      } as RebalancingGroupPageData;
     },
     initialData,
+    enabled: !initialData, // Only fetch if no initial data provided
     staleTime: 5 * 60 * 1000, // Data becomes stale after 5 minutes
     gcTime: 30 * 60 * 1000, // Keep in cache for 30 minutes
     refetchOnWindowFocus: false, // Don't refetch on window focus
     refetchOnReconnect: false, // Don't refetch on reconnect
-    refetchOnMount: 'always', // Always refetch on mount to ensure fresh data
-    enabled: !!groupId, // Only run query if groupId is provided
   });
 }
 

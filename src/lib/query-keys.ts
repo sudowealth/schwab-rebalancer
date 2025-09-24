@@ -260,6 +260,10 @@ export const queryInvalidators = {
       queryInvalidators.dashboard.transactions(queryClient);
       queryInvalidators.dashboard.metrics(queryClient);
       queryInvalidators.onboarding.schwab(queryClient);
+      // Also invalidate active credentials status after OAuth/sync
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.integrations.schwab.activeCredentials(),
+      });
     },
 
     // Invalidate all data that changes after model operations

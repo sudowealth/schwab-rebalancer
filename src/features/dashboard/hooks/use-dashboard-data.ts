@@ -14,6 +14,7 @@ import { useSchwabConnection } from '~/features/schwab/hooks/use-schwab-connecti
 import { queryInvalidators, queryKeys } from '~/lib/query-keys';
 import {
   checkModelsExistServerFn,
+  checkRebalancingGroupsExistServerFn,
   checkSchwabCredentialsServerFn,
   checkSecuritiesExistServerFn,
   getPortfolioMetricsServerFn,
@@ -99,7 +100,16 @@ export function useDashboardData(loaderData: LoaderData) {
   );
 
   // Show rebalancing section only when rebalancing groups exist
-  const shouldShowRebalancingSection = loaderData.rebalancingGroupsStatus.hasGroups;
+  // Use reactive query to ensure updates when groups are deleted
+  const { data: reactiveGroupsStatus } = useQuery({
+    queryKey: queryKeys.onboarding.groups(),
+    queryFn: () => checkRebalancingGroupsExistServerFn(),
+    staleTime: 30 * 1000, // 30 seconds - more reactive for UI state
+    gcTime: 5 * 60 * 1000, // 5 minutes cache
+  });
+
+  const shouldShowRebalancingSection =
+    reactiveGroupsStatus?.hasGroups || loaderData.rebalancingGroupsStatus.hasGroups;
 
   // Use onboarding queries with optimized settings
   const { data: reactiveSecuritiesStatus } = useQuery({
@@ -129,12 +139,7 @@ export function useDashboardData(loaderData: LoaderData) {
     refetchOnMount: false, // Use loader data initially
   });
 
-  // Use fresh route loader data for rebalancing groups and onboarding status
-  // Route loader provides up-to-date data on every navigation
-  const reactiveRebalancingGroupsStatus: { hasGroups: boolean; groupsCount: number } = {
-    hasGroups: loaderData.rebalancingGroups.length > 0,
-    groupsCount: loaderData.rebalancingGroups.length,
-  };
+  // Rebalancing groups status is now handled reactively in OnboardingTracker
 
   // Execute queries with optimized financial data settings to reduce server load
   const positionsResult = useQuery({
@@ -217,7 +222,6 @@ export function useDashboardData(loaderData: LoaderData) {
     reactiveSecuritiesStatus,
     reactiveModelsStatus,
     reactiveSchwabCredentialsStatus,
-    reactiveRebalancingGroupsStatus,
 
     // Data
     positions,

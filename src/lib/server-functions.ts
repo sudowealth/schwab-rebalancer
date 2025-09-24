@@ -92,7 +92,7 @@ export {
   updateModelServerFn,
 } from '~/features/models/model.server';
 export type {
-  GroupAccountHoldingsResult,
+  GetGroupAccountHoldingsResult,
   SleeveMember,
 } from '~/features/rebalancing/server/groups.server';
 // Rebalancing group operations
@@ -101,7 +101,6 @@ export {
   createRebalancingGroupServerFn,
   deleteRebalancingGroupServerFn,
   getGroupAccountHoldingsServerFn,
-  getHoldingsForMultipleGroupsServerFn,
   getRebalancingGroupByIdServerFn,
   getRebalancingGroupsServerFn,
   getSleeveMembersServerFn,
@@ -128,7 +127,6 @@ export {
   getGroupOrdersServerFn,
   getGroupSecuritiesNeedingPriceUpdatesServerFn,
   getHeldAndSleeveTickersServerFn,
-  getHeldPositionTickersServerFn,
   getSchwabCredentialsStatusServerFn,
   getSchwabOAuthUrlServerFn,
   getSleeveTargetTickersServerFn,

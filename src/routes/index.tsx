@@ -213,7 +213,6 @@ function DashboardComponent() {
       <OnboardingTracker
         schwabCredentialsStatusProp={reactiveSchwabCredentialsStatus}
         schwabOAuthStatusProp={{ hasCredentials: schwabOAuthComplete }}
-        rebalancingGroupsStatus={loaderData.rebalancingGroupsStatus}
         securitiesStatusProp={reactiveSecuritiesStatus}
         modelsStatusProp={reactiveModelsStatus}
         securitiesSeedingState={{ isSeeding, hasError, seedResult, showSuccessMessage }}

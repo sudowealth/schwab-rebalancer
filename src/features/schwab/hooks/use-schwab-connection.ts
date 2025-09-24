@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { SyncYahooFundamentalsResult } from '~/features/data-feeds/yahoo.server';
 import { queryInvalidators, queryKeys } from '~/lib/query-keys';
 import {
-  getHeldPositionTickersServerFn,
+  getHeldAndSleeveTickersServerFn,
   getSchwabCredentialsStatusServerFn,
   getSchwabOAuthUrlServerFn,
   syncSchwabAccountsServerFn,
@@ -149,20 +149,20 @@ export function useSchwabConnection(
       }
       console.log('✅ [UI] Holdings sync completed successfully');
 
-      // 3) Get held tickers and sync prices
+      // 3) Get all relevant tickers (held positions + sleeve securities) and sync prices
       setSyncStep('Syncing prices...');
-      console.log('💰 [UI] Step 3: Getting held position tickers...');
+      console.log('💰 [UI] Step 3: Getting all relevant tickers (held + sleeves)...');
       console.log('💰 [UI] Current time:', new Date().toISOString());
-      const heldTickers = await getHeldPositionTickersServerFn();
-      console.log('💰 [UI] Held position tickers result:', {
-        count: heldTickers.length,
-        tickers: heldTickers,
+      const allRelevantTickers = await getHeldAndSleeveTickersServerFn();
+      console.log('💰 [UI] All relevant tickers result:', {
+        count: allRelevantTickers.length,
+        tickers: allRelevantTickers,
         timestamp: new Date().toISOString(),
       });
 
-      if (heldTickers.length > 0) {
-        console.log('💰 [UI] Starting price sync for held securities...');
-        const pricesResult = await syncPricesMutation.mutateAsync(heldTickers);
+      if (allRelevantTickers.length > 0) {
+        console.log('💰 [UI] Starting price sync for all relevant securities (held + sleeves)...');
+        const pricesResult = await syncPricesMutation.mutateAsync(allRelevantTickers);
         console.log('💰 [UI] Prices sync result:', {
           success: pricesResult?.success,
           recordsProcessed: pricesResult?.recordsProcessed,
@@ -337,11 +337,10 @@ export function useSchwabConnection(
 
       if (
         shouldTriggerSync &&
-        isConnected &&
-        shouldSync &&
+        (isConnected || justConnected) && // Allow sync if connected OR just connected (credentials may not be updated yet)
         !isSyncing &&
-        !activeCredentialsLoading && // Don't trigger while still loading
-        (!justConnected || !localStorage.getItem('schwab-initial-sync-completed')) && // Allow sync if just connected AND no previous sync data
+        (!activeCredentialsLoading || justConnected) && // Don't trigger while still loading, unless we just connected
+        (justConnected || shouldSync) && // Always sync if just connected, or if regular sync is needed
         !returnUrl
       ) {
         const reason =

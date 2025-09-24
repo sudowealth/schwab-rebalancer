@@ -50,7 +50,7 @@ interface EditRebalancingGroupModalProps {
   group: RebalancingGroup;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onClose: () => void;
+  onClose?: () => void;
 }
 
 export function EditRebalancingGroupModal({
@@ -164,7 +164,7 @@ export function EditRebalancingGroupModal({
         }
       }
 
-      onClose();
+      onClose?.();
       router.invalidate();
     } catch (err: unknown) {
       console.error('Failed to update rebalancing group:', err);
@@ -191,7 +191,7 @@ export function EditRebalancingGroupModal({
     onOpenChange(open);
     if (!open) {
       resetForm();
-      onClose();
+      onClose?.();
     }
   };
 

@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, sql } from 'drizzle-orm';
+import { and, desc, eq, gt, inArray, sql } from 'drizzle-orm';
 import * as schema from '~/db/schema';
 import {
   type CreateModel,
@@ -668,7 +668,7 @@ export const getRestrictedSecurities = async (): Promise<RestrictedSecurity[]> =
     })
     .from(schema.restrictedSecurity)
     .innerJoin(schema.sleeve, eq(schema.restrictedSecurity.sleeveId, schema.sleeve.id))
-    .where(sql`${schema.restrictedSecurity.blockedUntil} > ${new Date()}`);
+    .where(gt(schema.restrictedSecurity.blockedUntil, new Date()));
 
   const formattedRestrictedSecurities: RestrictedSecurity[] = restrictedSecurities.map((rs) => {
     const soldAt = rs.soldAt;

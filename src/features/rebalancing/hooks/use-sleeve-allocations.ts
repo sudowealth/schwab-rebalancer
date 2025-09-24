@@ -71,13 +71,16 @@ export function useTransformedSleeveTableData(
 }
 
 export function useTransformedSleeveAllocationData(
-  sleeveAllocationData: Record<string, unknown>[],
+  sleeveAllocationData: Array<{
+    sleeves: Record<string, unknown>[];
+    [key: string]: unknown;
+  }>,
 ): SleeveAllocationData[] {
   return useMemo(
     () =>
       sleeveAllocationData.map((account) => ({
         ...account,
-        sleeves: (account.sleeves as Record<string, unknown>[]).map((sleeve) => ({
+        sleeves: account.sleeves.map((sleeve) => ({
           ...sleeve,
           targetPercent:
             'targetPercent' in sleeve && typeof sleeve.targetPercent === 'number'

@@ -7,7 +7,7 @@ import { Badge } from '~/components/ui/badge';
 import type { RebalancingGroup, RebalancingGroupMember } from '~/features/auth/schemas';
 import { AddRebalancingGroupModal } from '~/features/rebalancing/components/add-rebalancing-group-modal';
 // Static import for server function
-import { getHoldingsForMultipleGroupsServerFn } from '~/features/rebalancing/server/groups.server';
+import { getRebalancingGroupsListDataServerFn } from '~/features/rebalancing/server/groups.server';
 import { authGuard } from '~/lib/route-guards';
 
 // Rebalancing groups skeleton component for route-level loading states
@@ -63,18 +63,12 @@ export const Route = createFileRoute('/rebalancing-groups/')({
   beforeLoad: authGuard,
   loader: async () => {
     // Auth is handled by beforeLoad, loader only fetches data
-    const { groups, holdings } = await getHoldingsForMultipleGroupsServerFn();
+    const { groups, accountBalances } = await getRebalancingGroupsListDataServerFn();
 
-    // Create a map of account balances for efficient lookup
-    const accountBalanceMap = new Map<string, number>();
-    holdings.forEach((account) => {
-      accountBalanceMap.set(account.accountId, account.accountBalance);
-    });
-
-    // Update group members with calculated balances from holdings
+    // Update group members with calculated balances
     const updatedGroups = groups.map((group: RebalancingGroup) => {
       const updatedMembers = group.members.map((member: RebalancingGroupMember) => {
-        const balance = accountBalanceMap.get(member.accountId);
+        const balance = accountBalances[member.accountId];
         return {
           ...member,
           balance: balance ?? member.balance ?? 0,

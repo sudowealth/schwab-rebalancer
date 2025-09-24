@@ -1,3 +1,6 @@
+// Polyfills for Node.js built-ins
+import { NodeGlobalsPolyfillPlugin } from '@esbuild-plugins/node-globals-polyfill';
+import { NodeModulesPolyfillPlugin } from '@esbuild-plugins/node-modules-polyfill';
 import tailwindcss from '@tailwindcss/vite';
 import { tanstackStart } from '@tanstack/react-start/plugin/vite';
 import react from '@vitejs/plugin-react';
@@ -33,6 +36,20 @@ export default defineConfig((_env) => {
       port: 3000,
       host: '0.0.0.0',
       allowedHosts: ['localhost', '127.0.0.1'],
+    },
+    define: {
+      global: 'globalThis',
+    },
+    optimizeDeps: {
+      esbuildOptions: {
+        plugins: [
+          NodeGlobalsPolyfillPlugin({
+            buffer: true,
+            process: true,
+          }),
+          NodeModulesPolyfillPlugin(),
+        ],
+      },
     },
     plugins: [
       tsConfigPaths({ projects: ['./tsconfig.json'] }),

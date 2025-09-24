@@ -563,7 +563,7 @@ export const getHeldAndSleeveTickersServerFn = createServerFn({
       .select({ ticker: schema.sleeveMember.ticker })
       .from(schema.sleeveMember)
       .innerJoin(schema.sleeve, eq(schema.sleeveMember.sleeveId, schema.sleeve.id))
-      .where(eq(schema.sleeve.userId, user.id));
+      .where(and(eq(schema.sleeve.userId, user.id), eq(schema.sleeveMember.isActive, true)));
 
     const sleeveTickers = sleeveRows
       .map((row) => row.ticker?.trim())

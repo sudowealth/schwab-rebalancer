@@ -17,6 +17,10 @@ interface RebalancingUIContextValue {
     sortDirection: 'asc' | 'desc' | null;
     isAllExpanded: boolean;
     rebalanceModalOpen: boolean;
+    editGroup: boolean;
+    deleteGroup: boolean;
+    security: { ticker: string } | null;
+    sleeve: { sleeveId: string } | null;
   };
 
   // UI Actions
@@ -48,14 +52,17 @@ interface RebalancingUIProviderProps {
 }
 
 export function RebalancingUIProvider({ children, groupId }: RebalancingUIProviderProps) {
-  const { uiState, uiActions } = useRebalancingGroupState(groupId);
+  const { uiState, modalState, uiActions } = useRebalancingGroupState(groupId);
 
   const contextValue = useMemo(
     () => ({
-      ui: uiState,
+      ui: {
+        ...uiState,
+        ...modalState,
+      },
       ...uiActions,
     }),
-    [uiState, uiActions],
+    [uiState, modalState, uiActions],
   );
 
   return (

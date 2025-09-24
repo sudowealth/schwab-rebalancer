@@ -1,5 +1,5 @@
 import { createServerFn } from '@tanstack/react-start';
-import { and, eq, inArray } from 'drizzle-orm';
+import { and, count, eq, inArray, ne } from 'drizzle-orm';
 import { z } from 'zod';
 import * as schema from '~/db/schema';
 // Static imports for rebalancing utilities
@@ -181,10 +181,14 @@ export const getCompleteDashboardDataServerFn = createServerFn({
     // Compute status counts from main queries (no additional DB queries needed)
     const accountsCount = new Set(positions.map((pos) => pos.accountId).filter(Boolean)).size;
 
-    const securitiesCount = positions.filter((pos) => pos.ticker !== '$$$' && pos.ticker).length;
+    // Check if securities exist in the database (not just positions)
+    const securitiesCount = await getDb()
+      .select({ count: count() })
+      .from(schema.security)
+      .where(ne(schema.security.ticker, '$$$'));
     const securitiesStatus = {
-      hasSecurities: securitiesCount > 0,
-      securitiesCount,
+      hasSecurities: Number(securitiesCount[0]?.count ?? 0) > 0,
+      securitiesCount: Number(securitiesCount[0]?.count ?? 0),
     };
 
     const modelsStatus = {

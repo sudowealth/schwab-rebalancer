@@ -19,7 +19,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '~/components/ui/tabs';
 import { useModelCreation } from '~/features/models/hooks/use-model-creation';
 import { useSchwabConnection } from '~/features/schwab/hooks/use-schwab-connection';
 import { queryKeys } from '~/lib/query-keys';
-import { checkModelsExistServerFn, checkSchwabCredentialsServerFn } from '~/lib/server-functions';
+import {
+  checkModelsExistServerFn,
+  checkRebalancingGroupsExistServerFn,
+  checkSchwabCredentialsServerFn,
+} from '~/lib/server-functions';
 
 interface OnboardingTask {
   id: string;
@@ -58,7 +62,7 @@ interface SecuritiesSeedingState {
 interface OnboardingTrackerProps {
   schwabCredentialsStatusProp?: { hasCredentials: boolean };
   schwabOAuthStatusProp?: { hasCredentials: boolean };
-  rebalancingGroupsStatus?: { hasGroups: boolean; groupsCount: number };
+  // rebalancingGroupsStatus removed - now queried reactively
   securitiesStatusProp?: { hasSecurities: boolean; securitiesCount: number };
   modelsStatusProp?: { hasModels: boolean; modelsCount: number };
   securitiesSeedingState?: SecuritiesSeedingState;
@@ -67,7 +71,6 @@ interface OnboardingTrackerProps {
 export function OnboardingTracker({
   schwabCredentialsStatusProp,
   schwabOAuthStatusProp,
-  rebalancingGroupsStatus,
   securitiesStatusProp,
   modelsStatusProp,
   securitiesSeedingState,
@@ -104,7 +107,14 @@ export function OnboardingTracker({
     refetchOnWindowFocus: true,
   });
 
-  // Use the reactive groups status passed from dashboard hook (now properly refetches)
+  // Query for reactive rebalancing groups status
+  const { data: reactiveGroupsStatus } = useQuery({
+    queryKey: queryKeys.onboarding.groups(),
+    queryFn: () => checkRebalancingGroupsExistServerFn(),
+    staleTime: 1000 * 60 * 2, // 2 minutes - reactive but prevents immediate refetch
+    gcTime: 1000 * 60 * 10, // 10 minutes cache
+    refetchOnWindowFocus: true,
+  });
 
   // Use securities seeding state passed from parent
   const { isSeeding, hasError, seedResult, showSuccessMessage } = securitiesSeedingState || {
@@ -150,7 +160,7 @@ export function OnboardingTracker({
       id: 'create-rebalancing-group',
       title: 'Create a Rebalancing Group',
       description: 'Group your accounts together for portfolio rebalancing',
-      completed: rebalancingGroupsStatus?.hasGroups || false,
+      completed: reactiveGroupsStatus?.hasGroups || false,
       icon: Users,
     },
   ];

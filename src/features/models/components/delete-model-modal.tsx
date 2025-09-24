@@ -12,6 +12,7 @@ import {
   DialogTitle,
 } from '~/components/ui/dialog';
 import type { Model } from '~/features/auth/schemas';
+import { queryInvalidators } from '~/lib/query-keys';
 import { deleteModelServerFn } from '~/lib/server-functions';
 
 interface DeleteModelModalProps {
@@ -50,8 +51,8 @@ export function DeleteModelModal({
         },
       });
 
-      // Invalidate models query to refresh the UI immediately
-      queryClient.invalidateQueries({ queryKey: ['models'] });
+      // Invalidate all queries affected by model deletion
+      queryInvalidators.composites.afterModelOperation(queryClient);
 
       // Navigate to models list page
       navigate({ to: '/models' });
