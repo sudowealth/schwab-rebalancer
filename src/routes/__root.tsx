@@ -1,4 +1,6 @@
 /// <reference types="vite/client" />
+
+import { useQueryClient } from '@tanstack/react-query';
 import {
   createRootRoute,
   HeadContent,
@@ -23,9 +25,10 @@ import {
   navigationMenuTriggerStyle,
 } from '~/components/ui/navigation-menu';
 import { signOut } from '~/features/auth/auth-client';
-import { useAuth } from '~/features/auth/hooks/useAuth';
 import { useSchwabConnection } from '~/features/schwab/hooks/use-schwab-connection';
+import { queryInvalidators } from '~/lib/query-keys';
 import { seo } from '~/lib/seo';
+import { getCurrentUserServerFn } from '~/lib/server-functions';
 import { cn } from '~/lib/utils';
 import appCss from '~/styles/app.css?url';
 
@@ -69,6 +72,10 @@ export const Route = createRootRoute({
     ],
     scripts: [],
   }),
+  loader: async () => {
+    // Fetch auth data on the server and provide it to the entire app
+    return await getCurrentUserServerFn();
+  },
   errorComponent: DefaultCatchBoundary,
   notFoundComponent: () => <NotFound />,
   shellComponent: RootDocument,
@@ -207,7 +214,9 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 }
 
 function AdminSettingsLink() {
-  const { isAdmin } = useAuth();
+  const sessionData = Route.useLoaderData();
+  const user = sessionData?.user;
+  const isAdmin = user?.role === 'admin';
 
   if (!isAdmin) {
     return null;
@@ -229,13 +238,18 @@ function AdminSettingsLink() {
 }
 
 function AuthNav({ currentPath }: { currentPath: string }) {
-  const { user, isAuthenticated, isPending: isLoading } = useAuth();
-  const session = { user: isAuthenticated ? user : null };
+  // Use loader data from root route instead of client-side fetching
+  const sessionData = Route.useLoaderData();
+  const user = sessionData?.user || null;
+  const isAuthenticated = !!user;
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   const handleSignOut = async () => {
     try {
       await signOut();
+      // Invalidate auth query cache after sign out
+      queryInvalidators.auth.session(queryClient);
       // Navigate to login page after successful sign out
       navigate({ to: '/login', search: { reset: '', redirect: currentPath } });
     } catch (error) {
@@ -245,16 +259,9 @@ function AuthNav({ currentPath }: { currentPath: string }) {
     }
   };
 
-  if (isLoading) {
-    return <div className="text-sm text-gray-500">Loading...</div>;
-  }
-
-  if (session?.user) {
+  if (isAuthenticated) {
     return (
       <div className="flex items-center space-x-4">
-        <span className="text-sm text-gray-700">
-          Welcome, {session.user.name || session.user.email}
-        </span>
         <button
           type="button"
           onClick={handleSignOut}

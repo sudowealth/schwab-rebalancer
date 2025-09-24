@@ -4,7 +4,8 @@ import { useSession } from '~/features/auth/auth-client';
 export type UserRole = 'user' | 'admin';
 
 export function useAuth() {
-  const { data: session, isPending, error } = useSession();
+  const sessionData = useSession();
+  const { data: session, isPending, error } = sessionData;
 
   const user = useMemo(() => {
     return session?.user

@@ -76,6 +76,11 @@ export const queryKeys = {
     },
   },
 
+  // Auth - all authentication-related queries
+  auth: {
+    session: () => ['auth', 'session'] as const,
+  },
+
   // System and environment
   system: {
     environment: () => ['system', 'environment'] as const,
@@ -241,6 +246,13 @@ export const queryInvalidators = {
           queryKey: queryKeys.rebalancing.groups.topHoldings(groupId),
         });
       },
+    },
+  },
+
+  // Auth invalidation helpers
+  auth: {
+    session: (queryClient: import('@tanstack/react-query').QueryClient) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.auth.session() });
     },
   },
 

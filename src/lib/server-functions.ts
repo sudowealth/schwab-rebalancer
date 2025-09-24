@@ -27,6 +27,28 @@ export const checkAdminServerFn = createServerFn({ method: 'GET' }).handler(asyn
   return { authenticated: true, isAdmin: true };
 });
 
+// Get current user session data for client-side auth state
+export const getCurrentUserServerFn = createServerFn({ method: 'GET' }).handler(async () => {
+  try {
+    const { user } = await requireAuth();
+    return {
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+      },
+      authenticated: true,
+    };
+  } catch (_error) {
+    // Return null user for unauthenticated state
+    return {
+      user: null,
+      authenticated: false,
+    };
+  }
+});
+
 // Auth server functions
 export {
   checkIsFirstUserServerFn,
