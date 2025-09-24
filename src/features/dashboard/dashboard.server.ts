@@ -27,6 +27,7 @@ import {
   getRebalancingGroupById,
   getRebalancingGroupsWithBalances,
   getRestrictedSecurities,
+  getSecuritiesByIndex,
   getSleeves,
   getSnP500Data,
   getTransactions,
@@ -462,3 +463,30 @@ export const updateAccountServerFn = createServerFn({ method: 'POST' })
     await updateAccount(accountId, { name: name.trim(), type }, user.id);
     return { success: true };
   });
+
+export const getIndicesServerFn = createServerFn({
+  method: 'GET',
+}).handler(async () => {
+  await requireAuth();
+
+  const indices = await getIndices();
+  return indices;
+});
+
+export const getSecuritiesByIndexServerFn = createServerFn({ method: 'GET' })
+  .validator(z.object({ indexId: z.string().optional() }))
+  .handler(async ({ data }) => {
+    await requireAuth();
+
+    const securities = await getSecuritiesByIndex(data.indexId);
+    return securities;
+  });
+
+export const getIndexMembersServerFn = createServerFn({
+  method: 'GET',
+}).handler(async () => {
+  await requireAuth();
+
+  const members = await getIndexMembers();
+  return members;
+});
