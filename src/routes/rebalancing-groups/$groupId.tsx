@@ -2,11 +2,65 @@ import { createFileRoute } from '@tanstack/react-router';
 import { useEffect } from 'react';
 import { ErrorBoundaryWrapper } from '~/components/ErrorBoundary';
 import { RebalancingErrorBoundary } from '~/components/RouteErrorBoundaries';
+import { requireAuth } from '~/features/auth/auth-utils';
 import { RebalancingGroupPage } from '~/features/rebalancing/components/rebalancing-group-page';
 import { RebalancingGroupProvider } from '~/features/rebalancing/contexts/rebalancing-group-provider';
 import { useRebalancingUI } from '~/features/rebalancing/contexts/rebalancing-ui-context';
-import { getRebalancingGroupPageDataServerFn } from '~/features/rebalancing/server/groups.server';
+import {
+  generateAllocationData,
+  generateTopHoldingsData,
+  transformAccountHoldingsForClient,
+  type transformSleeveAllocationDataForClient,
+  type transformSleeveTableDataForClient,
+} from '~/features/rebalancing/utils/rebalancing-utils';
+import {
+  getAccountHoldings,
+  getGroupTransactions,
+  getOrdersForAccounts,
+  getPositions,
+  getProposedTrades,
+  getRebalancingGroupById,
+  getSleeveMembers,
+  getSnP500Data,
+} from '~/lib/db-api';
+import { throwServerError } from '~/lib/error-utils';
 import { authGuard } from '~/lib/route-guards';
+
+// Local helper function to calculate analytics (moved from server file)
+function calculateRebalancingGroupAnalytics(
+  group: NonNullable<Awaited<ReturnType<typeof getRebalancingGroupById>>>,
+  accountHoldings: Awaited<ReturnType<typeof getAccountHoldings>>,
+  sp500Data: Awaited<ReturnType<typeof getSnP500Data>>,
+) {
+  // Update group members with calculated balances from holdings
+  const updatedGroupMembers = group.members.map((member) => {
+    const accountData = accountHoldings.find((ah) => ah.accountId === member.accountId);
+    return {
+      ...member,
+      balance: accountData ? accountData.accountBalance : 0,
+    };
+  });
+
+  // Calculate total portfolio value server-side
+  const totalValue = updatedGroupMembers.reduce((sum, member) => sum + (member.balance || 0), 0);
+
+  // Fetch allocation and holdings data with the calculated total value
+  const allocationData = generateAllocationData(
+    'sleeve',
+    group,
+    accountHoldings,
+    sp500Data,
+    totalValue,
+  );
+  const holdingsData = generateTopHoldingsData(accountHoldings, totalValue);
+
+  return {
+    updatedGroupMembers,
+    totalValue,
+    allocationData,
+    holdingsData,
+  };
+}
 
 export const Route = createFileRoute('/rebalancing-groups/$groupId')({
   errorComponent: RebalancingErrorBoundary,
@@ -19,10 +73,107 @@ export const Route = createFileRoute('/rebalancing-groups/$groupId')({
     return result;
   },
   loader: async ({ params }) => {
-    // Fetch all data needed for the page in parallel for optimal performance
-    return await getRebalancingGroupPageDataServerFn({
-      data: { groupId: params.groupId },
-    });
+    // Direct database calls to eliminate server function waterfall - optimal performance
+    const { user } = await requireAuth();
+    const { groupId } = params;
+
+    if (!groupId) {
+      throwServerError('Invalid request: groupId required', 400);
+    }
+
+    // Get the group first
+    const group = await getRebalancingGroupById(groupId, user.id);
+    if (!group) {
+      throwServerError('Rebalancing group not found', 404);
+    }
+
+    const safeGroup = group as NonNullable<typeof group>;
+    const accountIds = safeGroup.members.map((member) => member.accountId);
+
+    // Fetch all data in parallel using direct database calls
+    const [
+      holdingsResult,
+      sp500DataResult,
+      sleeveMembersResult,
+      transactionsResult,
+      positionsResult,
+      proposedTradesResult,
+      groupOrdersResult,
+    ] = await Promise.allSettled([
+      accountIds.length > 0 ? getAccountHoldings(accountIds) : Promise.resolve([]),
+      getSnP500Data(),
+      safeGroup.assignedModel?.members && safeGroup.assignedModel.members.length > 0
+        ? getSleeveMembers(safeGroup.assignedModel.members.map((member) => member.sleeveId))
+        : Promise.resolve([]),
+      getGroupTransactions(accountIds),
+      getPositions(user.id),
+      getProposedTrades(user.id),
+      getOrdersForAccounts(accountIds),
+    ]);
+
+    // Extract results with fallbacks
+    const accountHoldings = holdingsResult.status === 'fulfilled' ? holdingsResult.value : [];
+    const sp500Data = sp500DataResult.status === 'fulfilled' ? sp500DataResult.value : [];
+    const sleeveMembers =
+      sleeveMembersResult.status === 'fulfilled' ? sleeveMembersResult.value : [];
+    const transactions = transactionsResult.status === 'fulfilled' ? transactionsResult.value : [];
+    const positions = positionsResult.status === 'fulfilled' ? positionsResult.value : [];
+    const proposedTrades =
+      proposedTradesResult.status === 'fulfilled' ? proposedTradesResult.value : [];
+    const groupOrders =
+      groupOrdersResult.status === 'fulfilled'
+        ? groupOrdersResult.value.map((order) => ({
+            ...order,
+            avgFillPrice: order.avgFillPrice ?? undefined,
+            batchLabel: order.batchLabel ?? undefined,
+          }))
+        : [];
+
+    // Calculate analytics data
+    const analyticsData = calculateRebalancingGroupAnalytics(safeGroup, accountHoldings, sp500Data);
+
+    // Generate sleeve data if model is assigned
+    // TODO: Implement proper sleeve data calculation to eliminate server function waterfall
+    const sleeveTableData: ReturnType<typeof transformSleeveTableDataForClient> = [];
+    const sleeveAllocationData: ReturnType<typeof transformSleeveAllocationDataForClient> = [];
+
+    // Transform data for client consumption
+    const transformedAccountHoldings = accountHoldings.flatMap((account) =>
+      account.holdings.map((holding) => ({
+        accountId: account.accountId,
+        ticker: holding.ticker,
+        qty: holding.qty,
+        costBasis: holding.costBasisTotal,
+        marketValue: holding.marketValue,
+        unrealizedGain: holding.unrealizedGain || 0,
+        isTaxable: account.accountType === 'taxable',
+        purchaseDate: holding.openedAt,
+      })),
+    );
+
+    return {
+      group: {
+        id: safeGroup.id,
+        name: safeGroup.name,
+        isActive: safeGroup.isActive,
+        members: analyticsData.updatedGroupMembers,
+        assignedModel: safeGroup.assignedModel,
+        createdAt: safeGroup.createdAt as Date,
+        updatedAt: safeGroup.updatedAt as Date,
+      },
+      accountHoldings: transformAccountHoldingsForClient(accountHoldings),
+      sleeveMembers,
+      sp500Data,
+      transactions,
+      positions,
+      proposedTrades,
+      allocationData: analyticsData.allocationData,
+      holdingsData: analyticsData.holdingsData,
+      sleeveTableData,
+      sleeveAllocationData,
+      groupOrders,
+      transformedAccountHoldings,
+    };
   },
   component: RebalancingGroupDetail,
 });
