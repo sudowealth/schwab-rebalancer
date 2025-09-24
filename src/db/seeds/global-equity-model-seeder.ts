@@ -439,7 +439,10 @@ export async function seedGlobalEquityModelData(userId?: string) {
   );
 
   // Clear cache for this user to ensure fresh data
-  clearCache(`models-${userId || 'demo-user'}`);
+  const cacheKey = `models-${userId || 'demo-user'}`;
+  console.log(`🧹 Clearing cache for key: ${cacheKey}`);
+  clearCache(cacheKey);
+  console.log(`✅ Cache cleared for ${cacheKey}`);
 
   return {
     models: modelData.length,

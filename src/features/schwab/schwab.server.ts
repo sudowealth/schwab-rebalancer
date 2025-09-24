@@ -172,6 +172,11 @@ function clearPositionsCache(userId: string) {
   clearCache(`metrics-${userId}`); // Clear metrics cache since holdings affect portfolio metrics
 }
 
+function clearAccountsCache(userId: string) {
+  clearCache(`available-accounts-${userId}`); // Clear available accounts cache
+  clearCache(`accounts-for-rebalancing-${userId}-all`); // Clear accounts for rebalancing cache
+}
+
 // Utility functions for sync logging
 async function createSyncLog(userId: string, syncType: string, logId: string) {
   const startLog = {
@@ -329,6 +334,39 @@ export const handleSchwabOAuthCallbackServerFn = createServerFn({
       await schwabApi.handleOAuthCallback(data.code, data.redirectUri, user.id);
 
       console.log('✅ [ServerFn] OAuth callback handled successfully');
+
+      // Automatically sync accounts and holdings after successful OAuth
+      console.log('🏦 [ServerFn] Starting automatic account sync after OAuth...');
+      try {
+        const accountSyncResult = await syncAccountsCore(user.id);
+        console.log('✅ [ServerFn] Automatic account sync completed:', accountSyncResult);
+
+        // Clear accounts cache after sync
+        if (accountSyncResult.success && accountSyncResult.recordsProcessed > 0) {
+          console.log('🧹 [ServerFn] Clearing accounts cache after OAuth sync');
+          clearAccountsCache(user.id);
+
+          // Now sync holdings automatically
+          console.log('📊 [ServerFn] Starting automatic holdings sync after accounts...');
+          try {
+            const holdingsSyncResult = await syncHoldingsCore(user.id);
+            console.log('✅ [ServerFn] Automatic holdings sync completed:', holdingsSyncResult);
+
+            // Clear holdings-related caches
+            if (holdingsSyncResult.success && holdingsSyncResult.recordsProcessed > 0) {
+              console.log('🧹 [ServerFn] Clearing holdings cache after OAuth sync');
+              clearPositionsCache(user.id);
+            }
+          } catch (holdingsError) {
+            console.warn('⚠️ [ServerFn] Automatic holdings sync failed after OAuth:', holdingsError);
+            // Don't fail the OAuth callback if holdings sync fails
+          }
+        }
+      } catch (syncError) {
+        console.warn('⚠️ [ServerFn] Automatic account sync failed after OAuth:', syncError);
+        // Don't fail the OAuth callback if account sync fails
+      }
+
       return { success: true };
     } catch (error) {
       // Check if credentials became valid despite the error
@@ -408,7 +446,12 @@ async function syncAccountsCore(userId: string): Promise<SyncResult> {
 export const syncSchwabAccountsServerFn = createServerFn({
   method: 'POST',
 }).handler(async (): Promise<SyncResult> => {
-  return orchestrateSchwabSync('Schwab accounts sync', syncAccountsCore);
+  return orchestrateSchwabSync(
+    'Schwab accounts sync',
+    syncAccountsCore,
+    undefined,
+    clearAccountsCache,
+  );
 });
 
 // Core sync function for holdings - single responsibility: just sync holdings

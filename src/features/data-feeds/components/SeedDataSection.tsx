@@ -92,8 +92,9 @@ export function SeedDataSection() {
     mutationFn: seedModelsDataServerFn,
     onSuccess: (data: SeedModelsResult) => {
       setModelsResult(data);
-      // Invalidate models query specifically - this will trigger a refetch
+      // Invalidate models and dashboard queries since model seeding may include price syncs
       queryClient.invalidateQueries({ queryKey: ['models'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.all() });
       // Also clear any cached models data
       queryClient.removeQueries({ queryKey: ['models'] });
     },
@@ -107,8 +108,9 @@ export function SeedDataSection() {
     mutationFn: seedGlobalEquityModelServerFn,
     onSuccess: (data: SeedModelsResult) => {
       setGlobalEquityResult(data);
-      // Invalidate models query specifically - this will trigger a refetch
+      // Invalidate models and dashboard queries since Global Equity seeding includes price syncs
       queryClient.invalidateQueries({ queryKey: ['models'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.all() });
       // Also clear any cached models data
       queryClient.removeQueries({ queryKey: ['models'] });
     },

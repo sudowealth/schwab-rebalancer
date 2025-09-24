@@ -108,8 +108,9 @@ export function useDashboardData(loaderData: LoaderData) {
     gcTime: 5 * 60 * 1000, // 5 minutes cache
   });
 
-  const shouldShowRebalancingSection =
-    reactiveGroupsStatus?.hasGroups || loaderData.rebalancingGroupsStatus.hasGroups;
+  const shouldShowRebalancingSection = reactiveGroupsStatus
+    ? reactiveGroupsStatus.hasGroups
+    : loaderData.rebalancingGroupsStatus.hasGroups;
 
   // Use onboarding queries with optimized settings for status checking
   // Onboarding status changes are user-driven, so slightly more reactive refetching
@@ -227,6 +228,7 @@ export function useDashboardData(loaderData: LoaderData) {
     reactiveSecuritiesStatus,
     reactiveModelsStatus,
     reactiveSchwabCredentialsStatus,
+    reactiveGroupsStatus,
 
     // Data
     positions,

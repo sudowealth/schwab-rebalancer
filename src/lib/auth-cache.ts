@@ -39,3 +39,7 @@ export function setCachedAuth(auth: RouterAuthContext): void {
     ttl: AUTH_CACHE_TTL,
   };
 }
+
+export function clearCachedAuth(): void {
+  authCache = null;
+}

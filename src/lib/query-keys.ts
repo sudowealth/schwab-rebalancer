@@ -305,6 +305,8 @@ export const queryInvalidators = {
     afterRebalancingGroupCreate: (queryClient: import('@tanstack/react-query').QueryClient) => {
       queryInvalidators.dashboard.groups(queryClient);
       queryInvalidators.onboarding.groups(queryClient);
+      // When first rebalancing group is created, dashboard should show portfolio data
+      queryInvalidators.dashboard.all(queryClient);
     },
 
     afterRebalancingGroupUpdate: (
@@ -315,11 +317,13 @@ export const queryInvalidators = {
       queryInvalidators.rebalancing.groups.analytics(queryClient, groupId);
       queryInvalidators.rebalancing.groups.sleeveData(queryClient, groupId);
       queryInvalidators.dashboard.groups(queryClient);
+      queryInvalidators.dashboard.metrics(queryClient);
     },
 
     afterRebalancingGroupDelete: (queryClient: import('@tanstack/react-query').QueryClient) => {
       queryInvalidators.dashboard.groups(queryClient);
       queryInvalidators.onboarding.groups(queryClient);
+      queryInvalidators.dashboard.metrics(queryClient);
     },
 
     afterModelAssignment: (

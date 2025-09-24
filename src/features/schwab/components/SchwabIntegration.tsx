@@ -29,7 +29,7 @@ import {
   syncSchwabPricesServerFn,
   syncSchwabTransactionsServerFn,
 } from '~/features/schwab/schwab.server';
-import { queryKeys } from '~/lib/query-keys';
+import { queryInvalidators, queryKeys } from '~/lib/query-keys';
 
 interface ImportResult {
   success: boolean;
@@ -101,11 +101,20 @@ export function SchwabIntegration() {
     },
     onSuccess: (data) => {
       console.log('✅ [UI] Accounts sync completed successfully:', data);
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.integrations.schwab.credentials(),
-      });
+      // Use centralized invalidation for Schwab sync
+      queryInvalidators.composites.afterSchwabSync(queryClient);
       // Re-run route loaders so dashboard status updates without manual refresh
       router.invalidate();
+
+      // If this was triggered by OAuth callback, automatically start equities import
+      const urlParams = new URLSearchParams(window.location.search);
+      const justConnected = urlParams.has('schwabConnected');
+      if (justConnected && data?.success) {
+        console.log(
+          '🔄 [UI] Accounts sync completed after OAuth, triggering automatic equities import',
+        );
+        importEquitiesMutation.mutate();
+      }
     },
     onError: (error) => {
       console.error('❌ [UI] Accounts sync failed:', error);
@@ -155,9 +164,8 @@ export function SchwabIntegration() {
         // Don't fail the holdings sync if price sync fails
       }
 
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.integrations.schwab.credentials(),
-      });
+      // Use centralized invalidation for Schwab sync
+      queryInvalidators.composites.afterSchwabSync(queryClient);
       router.invalidate();
     },
     onError: (error) => {
@@ -175,16 +183,8 @@ export function SchwabIntegration() {
     },
     onSuccess: (data) => {
       console.log('✅ [UI] Prices sync completed successfully:', data);
-      // Invalidate all dashboard queries to refresh price data
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.integrations.schwab.credentials(),
-      });
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.dashboard.positions(),
-      });
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.dashboard.metrics(),
-      });
+      // Use centralized invalidation for Schwab sync
+      queryInvalidators.composites.afterSchwabSync(queryClient);
       // Force refetch of positions since staleTime might prevent immediate refresh
       queryClient.refetchQueries({
         queryKey: queryKeys.dashboard.positions(),
@@ -204,12 +204,8 @@ export function SchwabIntegration() {
     },
     onSuccess: () => {
       console.log('✅ [UI] Transactions sync completed successfully');
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.integrations.schwab.credentials(),
-      });
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.dashboard.transactions(),
-      });
+      // Use centralized invalidation for Schwab sync
+      queryInvalidators.composites.afterSchwabSync(queryClient);
       router.invalidate();
     },
     onError: (error) => {
@@ -262,19 +258,8 @@ export function SchwabIntegration() {
     },
     onSuccess: (data) => {
       console.log('✅ [UI] Full Schwab sync completed successfully:', data);
-      // Invalidate all dashboard queries to refresh data after full sync
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.integrations.schwab.credentials(),
-      });
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.dashboard.positions(),
-      });
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.dashboard.metrics(),
-      });
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.dashboard.transactions(),
-      });
+      // Use centralized invalidation for Schwab sync
+      queryInvalidators.composites.afterSchwabSync(queryClient);
       // Force refetch of positions since staleTime might prevent immediate refresh
       queryClient.refetchQueries({
         queryKey: queryKeys.dashboard.positions(),
@@ -426,7 +411,7 @@ export function SchwabIntegration() {
     },
   });
 
-  // Effect to handle automatic equities import after Schwab connection
+  // Effect to handle automatic account sync and equities import after Schwab connection
   useEffect(() => {
     // Check if we just completed OAuth (safe parameter from callback route)
     const urlParams = new URLSearchParams(window.location.search);
@@ -437,20 +422,28 @@ export function SchwabIntegration() {
       credentialsStatus?.hasCredentials &&
       justConnected &&
       !hasTriggeredAutoImport &&
-      !importEquitiesMutation.isPending
+      !importEquitiesMutation.isPending &&
+      !syncAccountsMutation.isPending
     ) {
-      console.log('🔄 [UI] Detected fresh Schwab connection, triggering automatic equities import');
+      console.log(
+        '🔄 [UI] Detected fresh Schwab connection, triggering automatic account sync and import',
+      );
 
       // Clean up the connection parameter from URL
       const url = new URL(window.location.href);
       url.searchParams.delete('schwabConnected');
       window.history.replaceState({}, document.title, url.pathname + url.hash);
 
-      // Trigger automatic import
+      // Trigger automatic account sync first, then equities import will be handled by the mutation success callback
       setHasTriggeredAutoImport(true);
-      importEquitiesMutation.mutate();
+      syncAccountsMutation.mutate();
     }
-  }, [credentialsStatus?.hasCredentials, hasTriggeredAutoImport, importEquitiesMutation]);
+  }, [
+    credentialsStatus?.hasCredentials,
+    hasTriggeredAutoImport,
+    importEquitiesMutation,
+    syncAccountsMutation,
+  ]);
 
   const handleConnect = async () => {
     console.log('🔗 [UI] User clicked Connect Schwab Account button');

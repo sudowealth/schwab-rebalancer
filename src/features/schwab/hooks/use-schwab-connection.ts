@@ -116,6 +116,15 @@ export function useSchwabConnection(
         data: { symbols },
       });
     },
+    onSuccess: () => {
+      console.log('✅ [SchwabConnection] Price sync completed, invalidating dashboard caches');
+      // Invalidate dashboard queries that depend on price data
+      queryInvalidators.dashboard.all(queryClient);
+      router.invalidate();
+    },
+    onError: (error) => {
+      console.error('❌ [SchwabConnection] Price sync failed:', error);
+    },
   });
 
   // Function to run full Schwab sync sequentially

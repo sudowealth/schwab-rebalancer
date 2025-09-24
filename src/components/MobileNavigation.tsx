@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '~/components/ui/sheet';
 import { signOut } from '~/features/auth/auth-client';
 import { useAuth } from '~/features/auth/hooks/useAuth';
+import { clearCachedAuth } from '~/lib/auth-cache';
 import { cn } from '~/lib/utils';
 
 export function MobileNavigation() {
@@ -27,11 +28,13 @@ export function MobileNavigation() {
   const handleSignOut = async () => {
     try {
       await signOut();
+      clearCachedAuth();
       handleLinkClick(); // Close the mobile menu
       // Navigate to login page after successful sign out
       navigate({ to: '/login', search: { reset: '', redirect: window.location.pathname } });
     } catch (error) {
       console.error('Error signing out:', error);
+      clearCachedAuth();
       handleLinkClick(); // Close the mobile menu
       // Still navigate to login even if there's an error
       navigate({ to: '/login', search: { reset: '', redirect: window.location.pathname } });

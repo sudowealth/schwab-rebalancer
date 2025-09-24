@@ -1713,7 +1713,7 @@ export const clearCache = (key?: string): void => {
   }
 };
 
-const clearCacheByPattern = (pattern: string): void => {
+export const clearCacheByPattern = (pattern: string): void => {
   for (const key of cache.keys()) {
     if (key.startsWith(pattern)) {
       cache.delete(key);
@@ -2268,6 +2268,36 @@ export const getRebalancingGroupsWithBalances = async (
   setCache(cacheKey, validatedData);
 
   return validatedData;
+};
+
+// Helper that calculates account balances without loading full holdings payloads
+export const getAccountBalancesOnly = async (
+  accountIds: string[],
+): Promise<Map<string, number>> => {
+  if (accountIds.length === 0) {
+    return new Map();
+  }
+
+  const holdingsWithPrices = await getDb()
+    .select({
+      accountId: schema.holding.accountId,
+      quantity: schema.holding.qty,
+      securityPrice: schema.security.price,
+    })
+    .from(schema.holding)
+    .innerJoin(schema.account, eq(schema.holding.accountId, schema.account.id))
+    .leftJoin(schema.security, eq(schema.holding.ticker, schema.security.ticker))
+    .where(inArray(schema.account.id, accountIds));
+
+  const accountBalances = new Map<string, number>();
+  for (const holding of holdingsWithPrices) {
+    const price = holding.securityPrice ?? 0;
+    const holdingValue = holding.quantity * price;
+    const currentBalance = accountBalances.get(holding.accountId) ?? 0;
+    accountBalances.set(holding.accountId, currentBalance + holdingValue);
+  }
+
+  return accountBalances;
 };
 
 // Get rebalancing group by ID

@@ -84,15 +84,13 @@ export const Route = createRootRoute({
 
 // Root document component that renders the full HTML structure
 function RootDocument() {
-  const { auth } = Route.useRouteContext();
-
   return (
     <html lang="en">
       <head>
         <HeadContent />
       </head>
       <body>
-        <AppShell auth={auth} />
+        <AppShell />
         <Scripts />
       </body>
     </html>

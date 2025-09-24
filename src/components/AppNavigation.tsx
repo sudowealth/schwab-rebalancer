@@ -11,16 +11,16 @@ import {
   navigationMenuTriggerStyle,
 } from '~/components/ui/navigation-menu';
 import { signOut } from '~/features/auth/auth-client';
+import { useAuth } from '~/features/auth/hooks/useAuth';
+import { clearCachedAuth } from '~/lib/auth-cache';
 import { queryInvalidators } from '~/lib/query-keys';
 import { cn } from '~/lib/utils';
-import type { RouterAuthContext } from '~/router';
 
 /**
  * Admin Settings Link - Only renders for admin users
  */
-function AdminSettingsLink({ auth }: { auth: RouterAuthContext }) {
-  const user = auth?.user;
-  const isAdmin = user?.role === 'admin';
+function AdminSettingsLink() {
+  const { isAdmin } = useAuth();
 
   if (!isAdmin) {
     return null;
@@ -44,24 +44,25 @@ function AdminSettingsLink({ auth }: { auth: RouterAuthContext }) {
 /**
  * Authentication Navigation - Sign in/out links
  */
-function AuthNavigation({ currentPath, auth }: { currentPath: string; auth: RouterAuthContext }) {
-  const user = auth?.user || null;
-  const isAuthenticated = !!user;
+function AuthNavigation({ currentPath }: { currentPath: string }) {
+  const { isAuthenticated, isPending } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
   const handleSignOut = async () => {
     try {
       await signOut();
+      clearCachedAuth();
       queryInvalidators.auth.session(queryClient);
       navigate({ to: '/login', search: { reset: '', redirect: currentPath } });
     } catch (error) {
       console.error('Error signing out:', error);
+      clearCachedAuth();
       navigate({ to: '/login', search: { reset: '', redirect: currentPath } });
     }
   };
 
-  if (isAuthenticated) {
+  if (isAuthenticated || isPending) {
     return (
       <div className="flex items-center space-x-4">
         <button
@@ -97,7 +98,7 @@ function AuthNavigation({ currentPath, auth }: { currentPath: string; auth: Rout
 /**
  * Main Application Navigation Component
  */
-export function AppNavigation({ auth }: { auth: RouterAuthContext }) {
+export function AppNavigation() {
   const location = useLocation();
 
   return (
@@ -140,7 +141,7 @@ export function AppNavigation({ auth }: { auth: RouterAuthContext }) {
                     <NavigationMenuTrigger>Settings</NavigationMenuTrigger>
                     <NavigationMenuContent>
                       <ul className="grid w-[200px] gap-3 p-4">
-                        <AdminSettingsLink auth={auth} />
+                        <AdminSettingsLink />
                         <li>
                           <NavigationMenuLink asChild>
                             <Link
@@ -181,7 +182,7 @@ export function AppNavigation({ auth }: { auth: RouterAuthContext }) {
           <div className="flex items-center space-x-4">
             {/* Hide auth nav on mobile since it's in the mobile menu */}
             <div className="hidden md:block">
-              <AuthNavigation currentPath={location.pathname} auth={auth} />
+              <AuthNavigation currentPath={location.pathname} />
             </div>
           </div>
         </div>

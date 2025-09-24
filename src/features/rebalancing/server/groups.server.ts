@@ -14,8 +14,10 @@ import {
 import type { AccountHoldingsResult } from '~/lib/db-api';
 import {
   assignModelToGroup,
+  clearCacheByPattern,
   createRebalancingGroup,
   deleteRebalancingGroup,
+  getAccountBalancesOnly,
   getAccountHoldings,
   getGroupTransactions,
   getOrdersForAccounts,
@@ -194,6 +196,10 @@ export const createRebalancingGroupServerFn = createServerFn({ method: 'POST' })
     const { name, members, updateExisting } = data;
 
     const groupId = await createRebalancingGroup({ name, members, updateExisting }, user.id);
+
+    // Clear server-side cache for rebalancing groups to ensure fresh data
+    clearCacheByPattern('rebalancing-groups-with-balances-');
+
     return { success: true, groupId };
   });
 
@@ -206,6 +212,10 @@ export const updateRebalancingGroupServerFn = createServerFn({ method: 'POST' })
     const { groupId, name, members } = data;
 
     await updateRebalancingGroup(groupId, { name, members }, user.id);
+
+    // Clear server-side cache for rebalancing groups to ensure fresh data
+    clearCacheByPattern('rebalancing-groups-with-balances-');
+
     return { success: true };
   });
 
@@ -219,6 +229,10 @@ export const deleteRebalancingGroupServerFn = createServerFn({ method: 'POST' })
     const { groupId } = data;
 
     await deleteRebalancingGroup(groupId, user.id);
+
+    // Clear server-side cache for rebalancing groups to ensure fresh data
+    clearCacheByPattern('rebalancing-groups-with-balances-');
+
     return { success: true };
   });
 
@@ -296,32 +310,6 @@ export const getRebalancingGroupsListDataServerFn = createServerFn({
     return { groups, accountBalances };
   },
 );
-
-// Helper function to get only account balances without full holdings data
-async function getAccountBalancesOnly(accountIds: string[]): Promise<Map<string, number>> {
-  // Get holdings with their security prices in a single query
-  const holdingsWithPrices = await getDb()
-    .select({
-      accountId: schema.account.id,
-      ticker: schema.holding.ticker,
-      qty: schema.holding.qty,
-      securityPrice: schema.security.price,
-    })
-    .from(schema.holding)
-    .innerJoin(schema.account, eq(schema.holding.accountId, schema.account.id))
-    .innerJoin(schema.security, eq(schema.holding.ticker, schema.security.ticker))
-    .where(inArray(schema.account.id, accountIds));
-
-  // Calculate balances by account - sum (qty * security_price) for each holding
-  const accountBalances = new Map<string, number>();
-  holdingsWithPrices.forEach((holding) => {
-    const positionValue = holding.qty * (holding.securityPrice || 0);
-    const currentBalance = accountBalances.get(holding.accountId) || 0;
-    accountBalances.set(holding.accountId, currentBalance + positionValue);
-  });
-
-  return accountBalances;
-}
 
 // Server function to get sleeve members (target securities) - runs ONLY on server
 export const getSleeveMembersServerFn = createServerFn({ method: 'POST' })
@@ -415,6 +403,10 @@ export const assignModelToGroupServerFn = createServerFn({ method: 'POST' })
     const { user } = await requireAuth();
     const _db = getDb();
     await assignModelToGroup(modelId, groupId, user.id);
+
+    // Clear server-side cache for rebalancing groups to ensure fresh data
+    clearCacheByPattern('rebalancing-groups-with-balances-');
+
     return { success: true };
   });
 
@@ -439,6 +431,10 @@ export const unassignModelFromGroupServerFn = createServerFn({ method: 'POST' })
     }
 
     await unassignModelFromGroup(modelId, groupId);
+
+    // Clear server-side cache for rebalancing groups to ensure fresh data
+    clearCacheByPattern('rebalancing-groups-with-balances-');
+
     return { success: true };
   });
 

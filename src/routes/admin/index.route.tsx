@@ -58,6 +58,7 @@ function AdminDashboardIndex() {
       if (result.invalidateAllCaches) {
         console.log('🔄 Invalidating relevant React Query caches after data truncation');
         queryInvalidators.composites.completeRefresh(queryClient);
+        queryInvalidators.dashboard.all(queryClient);
       }
 
       setShowTruncateModal(false);

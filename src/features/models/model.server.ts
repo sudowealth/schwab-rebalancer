@@ -2,6 +2,7 @@ import { createServerFn } from '@tanstack/react-start';
 import { z } from 'zod';
 import { throwServerError } from '~/lib/error-utils';
 import { createModel, deleteModel, getModelById, getModels, updateModel } from '../../lib/db-api';
+import { queryInvalidators } from '../../lib/query-keys';
 import { requireAuth } from '../auth/auth-utils';
 
 // Zod schemas for type safety

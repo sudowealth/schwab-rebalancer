@@ -88,10 +88,20 @@ export function AddRebalancingGroupModal({
 
   const loadData = useCallback(async () => {
     try {
+      console.log('🔄 [RebalancingModal] Loading data...');
+
       const [accountsData, modelsData] = await Promise.all([
         getAccountsForRebalancingGroupsServerFn({ data: {} }),
         getModelsServerFn(),
       ]);
+
+      console.log('📊 [RebalancingModal] Loaded data:', {
+        accountsCount: accountsData.length,
+        modelsCount: modelsData.length,
+        accounts: accountsData.map((a) => ({ id: a.id, name: a.name, dataSource: a.dataSource })),
+        models: modelsData.map((m) => ({ id: m.id, name: m.name })),
+      });
+
       setAccounts(
         accountsData.map((account) => ({
           ...account,
@@ -99,12 +109,6 @@ export function AddRebalancingGroupModal({
         })),
       );
       setModels(modelsData);
-
-      // Debug: log available models
-      console.log(
-        'Available models:',
-        modelsData.map((m) => ({ id: m.id, name: m.name })),
-      );
 
       // Check if user has no accounts (likely hasn't connected Schwab)
       if (accountsData.length === 0) {
@@ -146,9 +150,18 @@ export function AddRebalancingGroupModal({
   // Load data when modal opens
   useEffect(() => {
     if (isOpen) {
+      // Clear cache to ensure fresh data
+      queryClient.invalidateQueries({
+        queryKey: ['accounts-for-rebalancing'],
+        exact: false,
+      });
+      queryClient.invalidateQueries({
+        queryKey: ['models'],
+        exact: false,
+      });
       loadData();
     }
-  }, [isOpen, loadData]);
+  }, [isOpen, loadData, queryClient, externalIsOpen, internalIsOpen]);
 
   // Auto-select single options when data is loaded and autoSelectSingleOptions is enabled
   useEffect(() => {

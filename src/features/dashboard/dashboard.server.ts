@@ -13,6 +13,7 @@ import { throwServerError } from '~/lib/error-utils';
 // Static imports for database operations
 import {
   clearCache,
+  getAccountBalancesOnly,
   getAccountHoldings,
   getAccountsForRebalancingGroups,
   getAvailableAccounts,
@@ -161,21 +162,27 @@ export const getCompleteDashboardDataServerFn = createServerFn({
       })(),
     ]);
 
-    // Calculate account balances from positions
-    const accountBalances = new Map<string, number>();
-    for (const position of positions) {
-      if (position.accountId && typeof position.marketValue === 'number') {
-        const currentBalance = accountBalances.get(position.accountId) || 0;
-        accountBalances.set(position.accountId, currentBalance + position.marketValue);
+    // Calculate account balances for group members without loading full holdings payloads
+    const groupAccountIds = new Set<string>();
+    for (const group of rebalancingGroups) {
+      for (const member of group.members) {
+        if (member.accountId) {
+          groupAccountIds.add(member.accountId);
+        }
       }
     }
 
-    // Update rebalancing group member balances
+    const accountBalancesMap =
+      groupAccountIds.size > 0
+        ? await getAccountBalancesOnly(Array.from(groupAccountIds))
+        : new Map<string, number>();
+
+    // Update rebalancing group member balances with accurate totals
     const updatedRebalancingGroups = rebalancingGroups.map((group) => ({
       ...group,
       members: group.members.map((member) => ({
         ...member,
-        balance: accountBalances.get(member.accountId) ?? 0,
+        balance: accountBalancesMap.get(member.accountId) ?? 0,
       })),
     }));
 
@@ -192,9 +199,15 @@ export const getCompleteDashboardDataServerFn = createServerFn({
       securitiesCount: Number(securitiesCount[0]?.count ?? 0),
     };
 
+    // Get models count separately from sleeves
+    const modelsCount = await getDb()
+      .select({ count: count() })
+      .from(schema.model)
+      .where(eq(schema.model.userId, userId));
+
     const modelsStatus = {
-      hasModels: sleeves.length > 0,
-      modelsCount: sleeves.length,
+      hasModels: Number(modelsCount[0]?.count ?? 0) > 0,
+      modelsCount: Number(modelsCount[0]?.count ?? 0),
     };
 
     const rebalancingGroupsStatus = {
@@ -433,10 +446,14 @@ export const getAccountsForRebalancingGroupsServerFn = createServerFn({ method: 
   .inputValidator(getAccountsForRebalancingGroupsSchema)
 
   .handler(async ({ data }) => {
-    const { user } = await requireAuth();
-
-    const accounts = await getAccountsForRebalancingGroups(user.id, data.excludeGroupId);
-    return accounts;
+    try {
+      const { user } = await requireAuth();
+      const accounts = await getAccountsForRebalancingGroups(user.id, data.excludeGroupId);
+      return accounts;
+    } catch (error) {
+      console.error('❌ [ServerFn] getAccountsForRebalancingGroupsServerFn ERROR:', error);
+      throw error;
+    }
   });
 
 // Server function to update account details - runs ONLY on server

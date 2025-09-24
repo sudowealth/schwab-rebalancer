@@ -125,6 +125,7 @@ function DashboardComponent() {
     transactions,
     sleeves,
     rebalancingGroups,
+    reactiveGroupsStatus,
   } = useDashboardData(loaderData);
 
   // Use the securities seeding hook with data from the dashboard hook
@@ -197,6 +198,7 @@ function DashboardComponent() {
         securitiesStatusProp={reactiveSecuritiesStatus}
         modelsStatusProp={reactiveModelsStatus}
         rebalancingGroupsStatusProp={loaderData.rebalancingGroupsStatus}
+        reactiveGroupsStatus={reactiveGroupsStatus}
         securitiesSeedingState={{ isSeeding, hasError, seedResult, showSuccessMessage }}
       />
 

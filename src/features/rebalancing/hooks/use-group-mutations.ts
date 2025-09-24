@@ -79,9 +79,7 @@ export function useGroupMutations({
     onSuccess: () => {
       console.log('🔄 [GroupComponent] Price sync completed successfully, updating UI...');
       // ✅ USE GRANULAR INVALIDATION - only invalidate what price sync affects
-      queryInvalidators.rebalancing.groups.analytics(queryClient, groupId);
-      queryInvalidators.rebalancing.groups.sleeveData(queryClient, groupId);
-      queryInvalidators.rebalancing.groups.tradesData(queryClient, groupId);
+      queryInvalidators.rebalancing.groups.all(queryClient);
     },
     onError: (error) => {
       console.error('❌ [GroupComponent] Price sync failed:', error);

@@ -59,6 +59,7 @@ interface OnboardingTrackerProps {
   modelsStatusProp?: { hasModels: boolean; modelsCount: number };
   rebalancingGroupsStatusProp?: { hasGroups: boolean; groupsCount: number };
   securitiesSeedingState?: SecuritiesSeedingState;
+  reactiveGroupsStatus?: { hasGroups: boolean; groupsCount: number } | undefined;
 }
 
 export function OnboardingTracker({
@@ -68,6 +69,7 @@ export function OnboardingTracker({
   modelsStatusProp,
   rebalancingGroupsStatusProp,
   securitiesSeedingState,
+  reactiveGroupsStatus,
 }: OnboardingTrackerProps) {
   const navigate = useNavigate();
 
@@ -85,7 +87,8 @@ export function OnboardingTracker({
   // Use props directly instead of making queries to prevent flash during refresh
   const reactiveModelsStatus = modelsStatusProp;
   const schwabCredentialsStatus = schwabCredentialsStatusProp;
-  const reactiveGroupsStatus = rebalancingGroupsStatusProp;
+  // Use reactive groups status if available, otherwise fall back to prop
+  const effectiveGroupsStatus = reactiveGroupsStatus || rebalancingGroupsStatusProp;
 
   // Use securities seeding state passed from parent
   const { isSeeding, hasError, seedResult, showSuccessMessage } = securitiesSeedingState || {
@@ -131,7 +134,7 @@ export function OnboardingTracker({
       id: 'create-rebalancing-group',
       title: 'Create a Rebalancing Group',
       description: 'Group your accounts together for portfolio rebalancing',
-      completed: reactiveGroupsStatus?.hasGroups || false,
+      completed: effectiveGroupsStatus?.hasGroups || false,
       icon: Users,
     },
   ];

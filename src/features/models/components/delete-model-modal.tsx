@@ -1,5 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { useNavigate } from '@tanstack/react-router';
+import { useNavigate, useRouter } from '@tanstack/react-router';
 import { AlertTriangle, Users } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '~/components/ui/button';
@@ -34,6 +34,7 @@ export function DeleteModelModal({
   const [error, setError] = useState('');
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const router = useRouter();
 
   const handleDelete = async () => {
     if (!model) {
@@ -54,8 +55,11 @@ export function DeleteModelModal({
       // Invalidate all queries affected by model deletion
       queryInvalidators.composites.afterModelOperation(queryClient);
 
+      // Invalidate route loaders that depend on models
+      router.invalidate();
+
       // Navigate to models list page
-      navigate({ to: '/models' });
+      navigate({ to: '/models', replace: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete model');
     } finally {
