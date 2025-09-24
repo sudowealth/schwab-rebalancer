@@ -366,7 +366,7 @@ export const getSleeveMembersServerFn = createServerFn({ method: 'POST' })
   });
 
 // Server function to get rebalancing group analytics data - runs ONLY on server
-export const getRebalancingGroupAnalyticsServerFn = createServerFn({
+const getRebalancingGroupAnalyticsServerFn = createServerFn({
   method: 'POST',
 })
   .validator((data: unknown) => validateGroupId(data))
@@ -391,118 +391,6 @@ export const getRebalancingGroupAnalyticsServerFn = createServerFn({
 export type GetRebalancingGroupAnalyticsResult = Awaited<
   ReturnType<typeof getRebalancingGroupAnalyticsServerFn>
 >;
-
-// Server function to get rebalancing group sleeve data - runs ONLY on server
-export const getRebalancingGroupSleeveDataServerFn = createServerFn({
-  method: 'POST',
-})
-  .validator((data: unknown) => validateGroupId(data))
-  .handler(async ({ data }) => {
-    const { user } = await requireAuth();
-    const { groupId } = data;
-
-    // Use base data fetcher to get core data
-    const { group, accountHoldings, accountIds } = await fetchBaseGroupData(groupId, user.id);
-
-    // Get sleeve members if there's an assigned model
-    let sleeveMembers: Awaited<ReturnType<typeof getSleeveMembersServerFn>> = [];
-    if (group.assignedModel?.members && group.assignedModel.members.length > 0) {
-      const sleeveIds = group.assignedModel.members.map((member) => member.sleeveId);
-      if (sleeveIds.length > 0) {
-        sleeveMembers = await getSleeveMembers(sleeveIds);
-      }
-    }
-
-    // Get transactions data (additional data needed for sleeve calculations)
-    const transactionsResult = await Promise.allSettled([
-      accountIds.length > 0 ? getGroupTransactions(accountIds) : Promise.resolve([]),
-    ]);
-    const transactions =
-      transactionsResult[0].status === 'fulfilled' ? transactionsResult[0].value : [];
-
-    // Calculate sleeve allocation data using shared base data
-    const rawSleeveAllocationData = calculateSleeveAllocations(
-      group,
-      accountHoldings,
-      sleeveMembers,
-      transactions,
-    );
-
-    // Calculate sleeve table data
-    const totalValue = group.members.reduce(
-      (sum: number, member) => sum + (member.balance || 0),
-      0,
-    );
-    const rawSleeveTableData = generateSleeveTableData(rawSleeveAllocationData, 'all', totalValue);
-
-    // Apply transformations
-    const sleeveTableData = transformSleeveTableDataForClient(rawSleeveTableData);
-    const sleeveAllocationData = transformSleeveAllocationDataForClient(rawSleeveAllocationData);
-
-    return {
-      sleeveMembers,
-      sleeveTableData,
-      sleeveAllocationData,
-    };
-  });
-
-// Server function to get rebalancing group market data - runs ONLY on server
-export const getRebalancingGroupMarketDataServerFn = createServerFn({
-  method: 'POST',
-})
-  .validator((data: unknown) => validateGroupId(data))
-  .handler(async () => {
-    // Get S&P 500 data
-    const sp500Data = await getSnP500Data();
-
-    return {
-      sp500Data,
-    };
-  });
-
-export const getRebalancingGroupTradesDataServerFn = createServerFn({
-  method: 'POST',
-})
-  .validator((data: unknown) => validateGroupId(data))
-  .handler(async ({ data }) => {
-    const { user } = await requireAuth();
-    const { groupId } = data;
-
-    // Get the group to extract account IDs
-    const group = await getRebalancingGroupById(groupId, user.id);
-    if (!group) {
-      throwServerError('Rebalancing group not found', 404);
-    }
-
-    const safeGroup = group as NonNullable<typeof group>;
-    const accountIds = safeGroup.members.map((member) => member.accountId);
-
-    // Get trades, positions, and orders data
-    const [transactionsResult, positionsResult, proposedTradesResult, groupOrdersResult] =
-      await Promise.allSettled([
-        accountIds.length > 0 ? getGroupTransactions(accountIds) : Promise.resolve([]),
-        getPositions(),
-        getProposedTrades(),
-        getOrdersForAccounts(accountIds),
-      ]);
-
-    const transactions = transactionsResult.status === 'fulfilled' ? transactionsResult.value : [];
-    const positions = positionsResult.status === 'fulfilled' ? positionsResult.value : [];
-    const proposedTrades =
-      proposedTradesResult.status === 'fulfilled' ? proposedTradesResult.value : [];
-    const groupOrders = groupOrdersResult.status === 'fulfilled' ? groupOrdersResult.value : [];
-
-    return {
-      transactions,
-      positions,
-      proposedTrades,
-      groupOrders: groupOrders.map((order) => ({
-        ...order,
-        avgFillPrice: order.avgFillPrice || undefined,
-        batchLabel: order.batchLabel || undefined,
-      })),
-    };
-  });
 
 // Type for rebalancing group page data - derived from route loader
 export type RebalancingGroupPageData = {
