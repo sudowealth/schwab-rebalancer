@@ -1,6 +1,6 @@
 [build]
   command = "echo '🏗️ Starting build process...' && echo '🗄️ Setting up database schema...' && pnpm run db:push:prod && echo '✅ Database schema applied' && echo '🏗️ Building application...' && pnpm build && echo '🎉 Build completed successfully'"
-  publish = ".tanstack/start/build/client-dist"
+  publish = "dist/client"
 
 [build.environment]
   NODE_VERSION = "20"
