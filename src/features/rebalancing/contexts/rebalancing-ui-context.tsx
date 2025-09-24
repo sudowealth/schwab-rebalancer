@@ -25,7 +25,7 @@ interface RebalancingUIContextValue {
   toggleAccountExpansion: (accountId: string) => void;
   toggleExpandAll: () => void;
   setSelectedAccount: (accountId: string | null) => void;
-  setSort: (field: SortField) => void;
+  setSort: (field: SortField, direction: 'asc' | 'desc' | null) => void;
   setRebalanceModal: (open: boolean) => void;
 
   // Modal Actions

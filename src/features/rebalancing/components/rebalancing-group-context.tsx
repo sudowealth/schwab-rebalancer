@@ -1,11 +1,11 @@
 import { createContext, type ReactNode, useContext } from 'react';
 import type { SortField } from '~/features/rebalancing/components/sleeve-allocation/sleeve-allocation-table-headers';
-import type { RebalancingGroupData } from '~/features/rebalancing/server/groups.server';
+import type { RebalancingGroupPageData } from '~/features/rebalancing/server/groups.server';
 import { useRebalancingGroupFeature } from '../hooks/use-rebalancing-group-feature';
 
 interface RebalancingGroupFeature {
   // State
-  data: RebalancingGroupData | null;
+  data: RebalancingGroupPageData | null;
   ui: {
     allocationView: 'account' | 'sector' | 'industry' | 'sleeve';
     groupingMode: 'sleeve' | 'account';
@@ -54,7 +54,7 @@ interface RebalancingGroupFeature {
   isSyncingPrices: boolean;
 
   // Actions
-  loadData: (data: RebalancingGroupData) => void;
+  loadData: (data: RebalancingGroupPageData) => void;
   setAllocationView: (view: 'account' | 'sector' | 'industry' | 'sleeve') => void;
   setGroupingMode: (mode: 'sleeve' | 'account') => void;
   toggleSleeveExpansion: (sleeveId: string) => void;
@@ -86,7 +86,7 @@ const RebalancingGroupContext = createContext<RebalancingGroupFeature | null>(nu
 interface RebalancingGroupProviderProps {
   children: ReactNode;
   groupId: string;
-  initialData?: RebalancingGroupData;
+  initialData?: RebalancingGroupPageData;
 }
 
 export function RebalancingGroupProvider({

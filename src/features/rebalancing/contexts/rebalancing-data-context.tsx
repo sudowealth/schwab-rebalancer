@@ -1,16 +1,15 @@
 import { createContext, type ReactNode, useContext } from 'react';
-import type { RebalancingGroupData } from '~/features/rebalancing/server/groups.server';
+import type { RebalancingGroupPageData } from '~/features/rebalancing/server/groups.server';
 
 /**
  * Data context for rebalancing group data
- * Contains server data and computed values
+ * Contains server data from React Query
  */
 interface RebalancingDataContextValue {
-  data: RebalancingGroupData | null;
+  data: RebalancingGroupPageData | undefined;
   availableCash: number;
   isLoading: boolean;
-  loadData: (data: RebalancingGroupData) => void;
-  refreshData: () => void;
+  error: unknown;
 }
 
 const RebalancingDataContext = createContext<RebalancingDataContextValue | null>(null);

@@ -13,12 +13,21 @@ interface UseGroupMutationsProps {
   sleeveMembers: Array<{
     members: Array<{ ticker: string }>;
   }>;
+  onTradesUpdate?: (trades: Array<{
+    accountId: string;
+    securityId: string;
+    action: 'BUY' | 'SELL';
+    qty: number;
+    estPrice: number;
+    estValue: number;
+  }>) => void;
 }
 
 export function useGroupMutations({
   groupId,
   accountHoldings,
   sleeveMembers,
+  onTradesUpdate,
 }: UseGroupMutationsProps) {
   const queryClient = useQueryClient();
   const isAnyMutationRunning = useIsMutating() > 0;
@@ -33,9 +42,12 @@ export function useGroupMutations({
           cashAmount: params.cashAmount,
         },
       }),
-    onSuccess: (_result, _variables) => {
+    onSuccess: (result, _variables) => {
       console.log('📊 [GroupComponent] Rebalance completed successfully');
-      // Update trade data in UI state will be handled by the component using this hook
+      // Update trade data in UI state
+      if (result?.trades && onTradesUpdate) {
+        onTradesUpdate(result.trades);
+      }
       // Invalidate related queries to refresh data
       queryInvalidators.rebalancing.groups.detail(queryClient, groupId);
     },

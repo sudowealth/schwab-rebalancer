@@ -1,10 +1,11 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useReducer } from 'react';
 import type { SortField } from '~/features/rebalancing/components/sleeve-allocation/sleeve-allocation-table-headers';
-import type { RebalancingGroupData } from '~/features/rebalancing/server/groups.server';
+import type { RebalancingGroupPageData } from '~/features/rebalancing/server/groups.server';
 import type { RebalancePortfolioServerFnResult } from '~/features/rebalancing/server/portfolio.server';
 import { queryInvalidators } from '~/lib/query-keys';
 import { rebalancePortfolioServerFn, syncSchwabPricesServerFn } from '~/lib/server-functions';
+import { useRebalancingGroupQuery } from './use-rebalancing-group-query';
 
 // State machine types
 interface RebalancingGroupUIState {
@@ -20,7 +21,7 @@ interface RebalancingGroupUIState {
 }
 
 interface RebalancingGroupFeatureState {
-  data: RebalancingGroupData | null;
+  data: RebalancingGroupPageData | null;
   ui: RebalancingGroupUIState;
   mutations: {
     rebalance: {
@@ -54,7 +55,7 @@ interface RebalancingGroupFeatureState {
 }
 
 type RebalancingGroupAction =
-  | { type: 'LOAD_DATA'; payload: RebalancingGroupData }
+  | { type: 'LOAD_DATA'; payload: RebalancingGroupPageData }
   | { type: 'SET_ALLOCATION_VIEW'; payload: RebalancingGroupUIState['allocationView'] }
   | { type: 'SET_GROUPING_MODE'; payload: RebalancingGroupUIState['groupingMode'] }
   | { type: 'TOGGLE_SLEEVE_EXPANSION'; payload: string }
@@ -456,11 +457,15 @@ export function useRebalancingGroupFeature(groupId: string) {
   const [state, dispatch] = useReducer(rebalancingGroupReducer, initialState);
   const queryClient = useQueryClient();
 
-  // Load initial data from route loader
+  // Use React Query for server state management
+  const query = useRebalancingGroupQuery(groupId);
+
+  // Sync React Query data with reducer state
   useEffect(() => {
-    // This would be called when the route data is available
-    // For now, we'll assume the data is passed in or loaded elsewhere
-  }, []);
+    if (query.data) {
+      dispatch({ type: 'LOAD_DATA', payload: query.data });
+    }
+  }, [query.data]);
 
   // Handle rebalance mutation effects
   useEffect(() => {
@@ -498,7 +503,7 @@ export function useRebalancingGroupFeature(groupId: string) {
 
   // Action creators
   const actions = {
-    loadData: useCallback((data: RebalancingGroupData) => {
+    loadData: useCallback((data: RebalancingGroupPageData) => {
       dispatch({ type: 'LOAD_DATA', payload: data });
     }, []),
 
@@ -612,9 +617,12 @@ export function useRebalancingGroupFeature(groupId: string) {
     trades: state.trades,
     modals: state.modals,
 
+    // React Query state
+    query,
+
     // Computed values
     availableCash,
-    isLoading: false, // Would be derived from data loading state
+    isLoading: query.isLoading,
     isRebalancing: state.mutations.rebalance.isPending,
     isSyncingPrices: state.mutations.syncPrices.isPending,
 

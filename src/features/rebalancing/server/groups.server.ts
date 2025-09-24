@@ -309,6 +309,290 @@ export const getRebalancingGroupsWithBalancesServerFn = createServerFn({
 
 export type SleeveMember = Awaited<ReturnType<typeof getSleeveMembersServerFn>>[number];
 
+// Server function to get rebalancing group analytics data - runs ONLY on server
+export const getRebalancingGroupAnalyticsServerFn = createServerFn({
+  method: 'POST',
+})
+  .validator((data: { groupId: string }) => data)
+  .handler(async ({ data }) => {
+    const { user } = await requireAuth();
+    const { groupId } = data;
+
+    if (!groupId) {
+      throwServerError('Invalid request: groupId required', 400);
+    }
+
+    // Get the group first
+    const group = await getRebalancingGroupById(groupId, user.id);
+    if (!group) {
+      throwServerError('Rebalancing group not found', 404);
+    }
+
+    const safeGroup = group as NonNullable<typeof group>;
+    const accountIds = safeGroup.members.map((member) => member.accountId);
+
+    // Get required data for analytics
+    const [accountHoldingsResult, sp500DataResult] = await Promise.allSettled([
+      accountIds.length > 0 ? getAccountHoldings(accountIds) : Promise.resolve([]),
+      getSnP500Data(),
+    ]);
+
+    const accountHoldings =
+      accountHoldingsResult.status === 'fulfilled' ? accountHoldingsResult.value : [];
+    const sp500Data = sp500DataResult.status === 'fulfilled' ? sp500DataResult.value : [];
+
+    // Calculate analytics data
+    const { updatedGroupMembers, allocationData, holdingsData } =
+      calculateRebalancingGroupAnalytics(safeGroup, accountHoldings, sp500Data);
+
+    return {
+      updatedGroupMembers,
+      allocationData,
+      holdingsData,
+    };
+  });
+
+// Server function to get rebalancing group sleeve data - runs ONLY on server
+export const getRebalancingGroupSleeveDataServerFn = createServerFn({
+  method: 'POST',
+})
+  .validator((data: { groupId: string }) => data)
+  .handler(async ({ data }) => {
+    const { user } = await requireAuth();
+    const { groupId } = data;
+
+    if (!groupId) {
+      throwServerError('Invalid request: groupId required', 400);
+    }
+
+    // Get the group first
+    const group = await getRebalancingGroupById(groupId, user.id);
+    if (!group) {
+      throwServerError('Rebalancing group not found', 404);
+    }
+
+    const safeGroup = group as NonNullable<typeof group>;
+    const accountIds = safeGroup.members.map((member) => member.accountId);
+
+    // Get sleeve members if there's an assigned model
+    let sleeveMembers: Awaited<ReturnType<typeof getSleeveMembersServerFn>> = [];
+    if (safeGroup.assignedModel?.members && safeGroup.assignedModel.members.length > 0) {
+      const sleeveIds = safeGroup.assignedModel.members.map((member) => member.sleeveId);
+      if (sleeveIds.length > 0) {
+        sleeveMembers = await getSleeveMembers(sleeveIds);
+      }
+    }
+
+    // Get required data for sleeve calculations
+    const [accountHoldingsResult, transactionsResult] = await Promise.allSettled([
+      accountIds.length > 0 ? getAccountHoldings(accountIds) : Promise.resolve([]),
+      accountIds.length > 0 ? getGroupTransactions(accountIds) : Promise.resolve([]),
+    ]);
+
+    const accountHoldings =
+      accountHoldingsResult.status === 'fulfilled' ? accountHoldingsResult.value : [];
+    const transactions = transactionsResult.status === 'fulfilled' ? transactionsResult.value : [];
+
+    // Calculate sleeve allocation data
+    const rawSleeveAllocationData = calculateSleeveAllocations(
+      safeGroup,
+      accountHoldings,
+      sleeveMembers,
+      transactions,
+    );
+
+    // Calculate sleeve table data
+    const totalValue = safeGroup.members.reduce(
+      (sum: number, member) => sum + (member.balance || 0),
+      0,
+    );
+    const rawSleeveTableData = generateSleeveTableData(rawSleeveAllocationData, 'all', totalValue);
+
+    // Apply transformations
+    const sleeveTableData = transformSleeveTableDataForClient(rawSleeveTableData);
+    const sleeveAllocationData = transformSleeveAllocationDataForClient(rawSleeveAllocationData);
+
+    return {
+      sleeveMembers,
+      sleeveTableData,
+      sleeveAllocationData,
+    };
+  });
+
+// Server function to get rebalancing group market data - runs ONLY on server
+export const getRebalancingGroupMarketDataServerFn = createServerFn({
+  method: 'POST',
+})
+  .validator((data: { groupId: string }) => data)
+  .handler(async ({ data }) => {
+    const { groupId } = data;
+
+    if (!groupId) {
+      throwServerError('Invalid request: groupId required', 400);
+    }
+
+    // Get S&P 500 data
+    const sp500Data = await getSnP500Data();
+
+    return {
+      sp500Data,
+    };
+  });
+
+// Server function to get rebalancing group trades and positions data - runs ONLY on server
+export const getRebalancingGroupTradesDataServerFn = createServerFn({
+  method: 'POST',
+})
+  .validator((data: { groupId: string }) => data)
+  .handler(async ({ data }) => {
+    const { user } = await requireAuth();
+    const { groupId } = data;
+
+    if (!groupId) {
+      throwServerError('Invalid request: groupId required', 400);
+    }
+
+    // Get the group to extract account IDs
+    const group = await getRebalancingGroupById(groupId, user.id);
+    if (!group) {
+      throwServerError('Rebalancing group not found', 404);
+    }
+
+    const safeGroup = group as NonNullable<typeof group>;
+    const accountIds = safeGroup.members.map((member) => member.accountId);
+
+    // Get trades, positions, and orders data
+    const [transactionsResult, positionsResult, proposedTradesResult, groupOrdersResult] =
+      await Promise.allSettled([
+        accountIds.length > 0 ? getGroupTransactions(accountIds) : Promise.resolve([]),
+        getPositions(),
+        getProposedTrades(),
+        getOrdersForAccounts(accountIds),
+      ]);
+
+    const transactions = transactionsResult.status === 'fulfilled' ? transactionsResult.value : [];
+    const positions = positionsResult.status === 'fulfilled' ? positionsResult.value : [];
+    const proposedTrades =
+      proposedTradesResult.status === 'fulfilled' ? proposedTradesResult.value : [];
+    const groupOrders = groupOrdersResult.status === 'fulfilled' ? groupOrdersResult.value : [];
+
+    return {
+      transactions,
+      positions,
+      proposedTrades,
+      groupOrders: groupOrders.map((order) => ({
+        ...order,
+        avgFillPrice: order.avgFillPrice || undefined,
+        batchLabel: order.batchLabel || undefined,
+      })),
+    };
+  });
+
+// Server function to get complete rebalancing group data with all related information - runs ONLY on server
+export const getRebalancingGroupPageDataServerFn = createServerFn({
+  method: 'POST',
+})
+  .validator((data: { groupId: string }) => data)
+  .handler(async ({ data }) => {
+    const { user } = await requireAuth();
+    const { groupId } = data;
+
+    if (!groupId) {
+      throwServerError('Invalid request: groupId required', 400);
+    }
+
+    // Get the group first
+    const group = await getRebalancingGroupById(groupId, user.id);
+    if (!group) {
+      throwServerError('Rebalancing group not found', 404);
+    }
+
+    const safeGroup = group as NonNullable<typeof group>;
+    const accountIds = safeGroup.members.map((member) => member.accountId);
+
+    // Fetch all data in parallel using focused server functions
+    const [
+      groupResult,
+      holdingsResult,
+      analyticsResult,
+      sleeveDataResult,
+      marketDataResult,
+      tradesDataResult,
+    ] = await Promise.allSettled([
+      getRebalancingGroupByIdServerFn({ data: { groupId } }),
+      getGroupAccountHoldingsServerFn({ data: { accountIds } }),
+      getRebalancingGroupAnalyticsServerFn({ data: { groupId } }),
+      getRebalancingGroupSleeveDataServerFn({ data: { groupId } }),
+      getRebalancingGroupMarketDataServerFn({ data: { groupId } }),
+      getRebalancingGroupTradesDataServerFn({ data: { groupId } }),
+    ]);
+
+    // Extract results with fallbacks
+    const groupData = groupResult.status === 'fulfilled' ? groupResult.value : null;
+    if (!groupData) {
+      throwServerError('Rebalancing group not found', 404);
+    }
+
+    const accountHoldings = holdingsResult.status === 'fulfilled' ? holdingsResult.value : [];
+    const analyticsData =
+      analyticsResult.status === 'fulfilled'
+        ? analyticsResult.value
+        : { updatedGroupMembers: [], allocationData: [], holdingsData: [] };
+    const sleeveData =
+      sleeveDataResult.status === 'fulfilled'
+        ? sleeveDataResult.value
+        : { sleeveMembers: [], sleeveTableData: [], sleeveAllocationData: [] };
+    const marketData =
+      marketDataResult.status === 'fulfilled' ? marketDataResult.value : { sp500Data: [] };
+    const tradesData =
+      tradesDataResult.status === 'fulfilled'
+        ? tradesDataResult.value
+        : {
+            transactions: [],
+            positions: [],
+            proposedTrades: [],
+            groupOrders: [],
+          };
+
+    // Transform account holdings for client (keeping existing logic)
+    const transformedAccountHoldings = accountHoldings.flatMap((account) =>
+      account.holdings.map((holding) => ({
+        accountId: account.accountId,
+        ticker: holding.ticker,
+        qty: holding.qty,
+        costBasis: holding.costBasisTotal,
+        marketValue: holding.marketValue,
+        unrealizedGain: holding.unrealizedGain || 0,
+        isTaxable: account.accountType === 'taxable',
+        purchaseDate: holding.openedAt,
+      })),
+    );
+
+    return {
+      group: {
+        id: groupData!.id,
+        name: groupData!.name,
+        isActive: groupData!.isActive,
+        members: analyticsData.updatedGroupMembers,
+        assignedModel: groupData!.assignedModel,
+        createdAt: groupData!.createdAt as Date,
+        updatedAt: groupData!.updatedAt as Date,
+      },
+      accountHoldings: transformAccountHoldingsForClient(accountHoldings),
+      sleeveMembers: sleeveData.sleeveMembers,
+      sp500Data: marketData.sp500Data,
+      transactions: tradesData.transactions,
+      positions: tradesData.positions,
+      proposedTrades: tradesData.proposedTrades,
+      allocationData: analyticsData.allocationData,
+      holdingsData: analyticsData.holdingsData,
+      sleeveTableData: sleeveData.sleeveTableData,
+      sleeveAllocationData: sleeveData.sleeveAllocationData,
+      groupOrders: tradesData.groupOrders,
+      transformedAccountHoldings,
+    };
+  });
+
 // Server function to get complete rebalancing group data with all related information - runs ONLY on server
 export const getRebalancingGroupDataServerFn = createServerFn({
   method: 'POST',
@@ -434,6 +718,9 @@ export const getRebalancingGroupDataServerFn = createServerFn({
   });
 
 export type RebalancingGroupData = Awaited<ReturnType<typeof getRebalancingGroupDataServerFn>>;
+export type RebalancingGroupPageData = Awaited<
+  ReturnType<typeof getRebalancingGroupPageDataServerFn>
+>;
 
 // Server function to assign a model to a rebalancing group - runs ONLY on server
 export const assignModelToGroupServerFn = createServerFn({ method: 'POST' })

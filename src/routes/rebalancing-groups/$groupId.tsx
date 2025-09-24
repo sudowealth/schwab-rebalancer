@@ -5,8 +5,8 @@ import { RebalancingErrorBoundary } from '~/components/RouteErrorBoundaries';
 import { RebalancingGroupPage } from '~/features/rebalancing/components/rebalancing-group-page';
 import { RebalancingGroupProvider } from '~/features/rebalancing/contexts/rebalancing-group-provider';
 import { useRebalancingUI } from '~/features/rebalancing/contexts/rebalancing-ui-context';
+import { getRebalancingGroupPageDataServerFn } from '~/features/rebalancing/server/groups.server';
 import { authGuard } from '~/lib/route-guards';
-import { getRebalancingGroupDataServerFn } from '~/lib/server-functions';
 
 export const Route = createFileRoute('/rebalancing-groups/$groupId')({
   errorComponent: RebalancingErrorBoundary,
@@ -19,24 +19,24 @@ export const Route = createFileRoute('/rebalancing-groups/$groupId')({
     return result;
   },
   loader: async ({ params }) => {
-    // Single server function call eliminates waterfall loading
-    const result = await getRebalancingGroupDataServerFn({ data: { groupId: params.groupId } });
-    return result;
+    // Fetch all data needed for the page in parallel for optimal performance
+    return await getRebalancingGroupPageDataServerFn({
+      data: { groupId: params.groupId },
+    });
   },
   component: RebalancingGroupDetail,
 });
 
 function RebalancingGroupDetail() {
-  const data = Route.useLoaderData();
+  const initialData = Route.useLoaderData();
   const searchParams = Route.useSearch();
-  const { groupId } = Route.useParams();
 
   return (
     <ErrorBoundaryWrapper
       title="Rebalancing Group Error"
       description="Failed to load rebalancing group details. This might be due to a temporary data issue."
     >
-      <RebalancingGroupProvider groupId={groupId} initialData={data}>
+      <RebalancingGroupProvider groupId={initialData.group?.id || ''} initialData={initialData}>
         <RebalancingGroupDetailWithProvider searchParams={searchParams} />
       </RebalancingGroupProvider>
     </ErrorBoundaryWrapper>

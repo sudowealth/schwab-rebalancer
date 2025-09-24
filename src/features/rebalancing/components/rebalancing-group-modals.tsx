@@ -27,7 +27,7 @@ export function RebalancingGroupModals() {
           await handleRebalance('allocation');
         }}
         onFetchPrices={() => {
-          handlePriceSync().catch(console.error);
+          handlePriceSync();
         }}
         isLoading={isRebalancing}
         availableCash={availableCash}

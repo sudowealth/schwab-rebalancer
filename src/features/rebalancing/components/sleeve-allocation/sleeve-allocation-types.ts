@@ -33,9 +33,11 @@ export interface Security extends Record<string, unknown> {
   accountId?: string;
 }
 
-export type SleeveTableData = RebalancingGroupData['sleeveTableData'][number];
+import type { RebalancingGroupPageData } from '~/features/rebalancing/server/groups.server';
 
-export type SleeveAllocationData = RebalancingGroupData['sleeveAllocationData'][number];
+export type SleeveTableData = RebalancingGroupPageData['sleeveTableData'][number];
+
+export type SleeveAllocationData = RebalancingGroupPageData['sleeveAllocationData'][number];
 
 import type { RebalancingGroupsResult } from '~/lib/db-api';
 export type GroupMember = RebalancingGroupsResult[number]['members'][number] & {
@@ -43,7 +45,6 @@ export type GroupMember = RebalancingGroupsResult[number]['members'][number] & {
   balance?: number; // Make balance optional
 };
 
-import type { RebalancingGroupData } from '~/features/rebalancing/server/groups.server';
 // Import base types from central location
 import type { AccountHolding as BaseAccountHolding, Trade as BaseTrade } from '~/types/rebalance';
 
@@ -73,7 +74,7 @@ export interface SleeveAllocationTableProps {
   trades?: Trade[];
   sortField?: SortField;
   sortDirection?: SortDirection;
-  onSort?: (field: SortField) => void;
+  onSort?: (field: SortField, direction: 'asc' | 'desc' | null) => void;
   onTradeQtyChange?: (ticker: string, newQty: number, isPreview?: boolean) => void;
   accountHoldings?: AccountHolding[];
   renderSummaryCards?: () => ReactNode;

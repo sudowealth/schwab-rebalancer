@@ -1,4 +1,5 @@
 import { createContext, type ReactNode, useContext } from 'react';
+import type { RebalanceMethod } from '~/types/rebalance';
 
 /**
  * Actions context for rebalancing group mutations and business logic
@@ -6,19 +7,25 @@ import { createContext, type ReactNode, useContext } from 'react';
  */
 interface RebalancingActionsContextValue {
   mutations: {
-    rebalance: {
+    rebalanceMutation: {
       isPending: boolean;
       isSuccess: boolean;
       isError: boolean;
       error: unknown;
       data?: unknown;
     };
-    syncPrices: {
+    syncPricesMutation: {
       isPending: boolean;
       isSuccess: boolean;
       isError: boolean;
       error: unknown;
     };
+    handleGenerateTrades: (
+      method: RebalanceMethod,
+      cashAmount?: number,
+      fetchPricesSelected?: boolean,
+    ) => Promise<unknown>;
+    handleFetchPrices: () => void;
   };
 
   trades: Array<{
@@ -40,7 +47,7 @@ interface RebalancingActionsContextValue {
     cashAmount?: number,
   ) => Promise<unknown>;
 
-  handlePriceSync: () => Promise<unknown>;
+  handlePriceSync: () => void;
   updateTrades: (trades: RebalancingActionsContextValue['trades']) => void;
   handleTradeQtyChange: (ticker: string, qty: number) => void;
 }

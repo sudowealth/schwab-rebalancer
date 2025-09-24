@@ -5,8 +5,9 @@ type SortableHeaderProps = {
   field: SortField;
   children: React.ReactNode;
   className?: string;
-  onSort?: (field: SortField) => void;
-  getSortIcon: (field: SortField) => React.ReactNode;
+  onSort?: (field: SortField, direction: 'asc' | 'desc' | null) => void;
+  sortField?: SortField;
+  sortDirection?: 'asc' | 'desc' | null;
 };
 
 function SortableHeader({
@@ -14,14 +15,46 @@ function SortableHeader({
   children,
   className = 'text-right p-2',
   onSort,
-  getSortIcon,
+  sortField,
+  sortDirection,
 }: SortableHeaderProps) {
+  const getSortIcon = (field: SortField) => {
+    if (sortField !== field) {
+      return <ChevronsUpDown className="h-3 w-3 text-gray-400" />;
+    }
+    if (sortDirection === 'asc') {
+      return <ChevronUp className="h-3 w-3 text-blue-600" />;
+    }
+    if (sortDirection === 'desc') {
+      return <ChevronDown className="h-3 w-3 text-blue-600" />;
+    }
+    return <ChevronsUpDown className="h-3 w-3 text-gray-400" />;
+  };
+
+  const handleSort = () => {
+    if (!onSort) return;
+
+    // Cycle through: asc -> desc -> null -> asc
+    let nextDirection: 'asc' | 'desc' | null = 'asc';
+    if (sortField === field) {
+      if (sortDirection === 'asc') {
+        nextDirection = 'desc';
+      } else if (sortDirection === 'desc') {
+        nextDirection = null;
+      } else {
+        nextDirection = 'asc';
+      }
+    }
+
+    onSort(field, nextDirection);
+  };
+
   return (
     <th className={className}>
       {onSort ? (
         <button
           type="button"
-          onClick={() => onSort(field)}
+          onClick={handleSort}
           className="flex items-center gap-1 hover:text-blue-600 transition-colors w-full justify-end"
         >
           {children}
@@ -67,7 +100,7 @@ interface TableHeadersProps {
   isAllExpanded?: boolean;
   sortField?: SortField;
   sortDirection?: SortDirection;
-  onSort?: (field: SortField) => void;
+  onSort?: (field: SortField, direction: 'asc' | 'desc' | null) => void;
   visibleColumns?: ColumnConfig[];
   columnOrder?: string[];
 }
@@ -83,19 +116,6 @@ export const TableHeaders: React.FC<TableHeadersProps> = ({
   visibleColumns,
   columnOrder,
 }) => {
-  const getSortIcon = (field: SortField) => {
-    if (sortField !== field) {
-      return <ChevronsUpDown className="h-3 w-3 text-gray-400" />;
-    }
-    if (sortDirection === 'asc') {
-      return <ChevronUp className="h-3 w-3 text-blue-600" />;
-    }
-    if (sortDirection === 'desc') {
-      return <ChevronDown className="h-3 w-3 text-blue-600" />;
-    }
-    return <ChevronsUpDown className="h-3 w-3 text-gray-400" />;
-  };
-
   // (SortableHeader moved to top-level)
 
   // Define all possible columns with their configurations
@@ -126,11 +146,33 @@ export const TableHeaders: React.FC<TableHeadersProps> = ({
             {onSort ? (
               <button
                 type="button"
-                onClick={() => onSort('name')}
+                onClick={() =>
+                  onSort(
+                    'name',
+                    sortField === 'name'
+                      ? sortDirection === 'asc'
+                        ? 'desc'
+                        : sortDirection === 'desc'
+                          ? null
+                          : 'asc'
+                      : 'asc',
+                  )
+                }
                 className="flex items-center gap-1 hover:text-blue-600 transition-colors"
               >
                 <span>{groupingMode === 'sleeve' ? 'Sleeve' : 'Account'}</span>
-                {getSortIcon('name')}
+                {(() => {
+                  if (sortField !== 'name') {
+                    return <ChevronsUpDown className="h-3 w-3 text-gray-400" />;
+                  }
+                  if (sortDirection === 'asc') {
+                    return <ChevronUp className="h-3 w-3 text-blue-600" />;
+                  }
+                  if (sortDirection === 'desc') {
+                    return <ChevronDown className="h-3 w-3 text-blue-600" />;
+                  }
+                  return <ChevronsUpDown className="h-3 w-3 text-gray-400" />;
+                })()}
               </button>
             ) : (
               <span>{groupingMode === 'sleeve' ? 'Sleeve' : 'Account'}</span>
@@ -144,7 +186,12 @@ export const TableHeaders: React.FC<TableHeadersProps> = ({
       field: 'currentValue' as SortField,
       label: 'Current $',
       render: () => (
-        <SortableHeader field="currentValue" onSort={onSort} getSortIcon={getSortIcon}>
+        <SortableHeader
+          field="currentValue"
+          onSort={onSort}
+          sortField={sortField}
+          sortDirection={sortDirection}
+        >
           Current $
         </SortableHeader>
       ),
@@ -154,7 +201,12 @@ export const TableHeaders: React.FC<TableHeadersProps> = ({
       field: 'currentPercent' as SortField,
       label: 'Current %',
       render: () => (
-        <SortableHeader field="currentPercent" onSort={onSort} getSortIcon={getSortIcon}>
+        <SortableHeader
+          field="currentPercent"
+          onSort={onSort}
+          sortField={sortField}
+          sortDirection={sortDirection}
+        >
           Current %
         </SortableHeader>
       ),
@@ -169,7 +221,12 @@ export const TableHeaders: React.FC<TableHeadersProps> = ({
       field: 'costBasis' as SortField,
       label: 'Cost Basis',
       render: () => (
-        <SortableHeader field="costBasis" onSort={onSort} getSortIcon={getSortIcon}>
+        <SortableHeader
+          field="costBasis"
+          onSort={onSort}
+          sortField={sortField}
+          sortDirection={sortDirection}
+        >
           Cost Basis
         </SortableHeader>
       ),
@@ -184,7 +241,12 @@ export const TableHeaders: React.FC<TableHeadersProps> = ({
       field: 'targetValue' as SortField,
       label: 'Target $',
       render: () => (
-        <SortableHeader field="targetValue" onSort={onSort} getSortIcon={getSortIcon}>
+        <SortableHeader
+          field="targetValue"
+          onSort={onSort}
+          sortField={sortField}
+          sortDirection={sortDirection}
+        >
           Target $
         </SortableHeader>
       ),
@@ -194,7 +256,12 @@ export const TableHeaders: React.FC<TableHeadersProps> = ({
       field: 'targetPercent' as SortField,
       label: 'Target %',
       render: () => (
-        <SortableHeader field="targetPercent" onSort={onSort} getSortIcon={getSortIcon}>
+        <SortableHeader
+          field="targetPercent"
+          onSort={onSort}
+          sortField={sortField}
+          sortDirection={sortDirection}
+        >
           Target %
         </SortableHeader>
       ),
@@ -209,7 +276,12 @@ export const TableHeaders: React.FC<TableHeadersProps> = ({
       field: 'difference' as SortField,
       label: 'Diff $',
       render: () => (
-        <SortableHeader field="difference" onSort={onSort} getSortIcon={getSortIcon}>
+        <SortableHeader
+          field="difference"
+          onSort={onSort}
+          sortField={sortField}
+          sortDirection={sortDirection}
+        >
           Diff $
         </SortableHeader>
       ),
@@ -219,7 +291,12 @@ export const TableHeaders: React.FC<TableHeadersProps> = ({
       field: 'percentDistance' as SortField,
       label: 'Diff %',
       render: () => (
-        <SortableHeader field="percentDistance" onSort={onSort} getSortIcon={getSortIcon}>
+        <SortableHeader
+          field="percentDistance"
+          onSort={onSort}
+          sortField={sortField}
+          sortDirection={sortDirection}
+        >
           Diff %
         </SortableHeader>
       ),
@@ -229,7 +306,12 @@ export const TableHeaders: React.FC<TableHeadersProps> = ({
       field: 'openedAt' as SortField,
       label: 'Opened At',
       render: () => (
-        <SortableHeader field="openedAt" onSort={onSort} getSortIcon={getSortIcon}>
+        <SortableHeader
+          field="openedAt"
+          onSort={onSort}
+          sortField={sortField}
+          sortDirection={sortDirection}
+        >
           Opened At
         </SortableHeader>
       ),
@@ -239,7 +321,12 @@ export const TableHeaders: React.FC<TableHeadersProps> = ({
       field: 'totalGainLoss' as SortField,
       label: 'Total G/L',
       render: () => (
-        <SortableHeader field="totalGainLoss" onSort={onSort} getSortIcon={getSortIcon}>
+        <SortableHeader
+          field="totalGainLoss"
+          onSort={onSort}
+          sortField={sortField}
+          sortDirection={sortDirection}
+        >
           Total G/L
         </SortableHeader>
       ),
@@ -249,7 +336,12 @@ export const TableHeaders: React.FC<TableHeadersProps> = ({
       field: 'longTermGainLoss' as SortField,
       label: 'LT G/L',
       render: () => (
-        <SortableHeader field="longTermGainLoss" onSort={onSort} getSortIcon={getSortIcon}>
+        <SortableHeader
+          field="longTermGainLoss"
+          onSort={onSort}
+          sortField={sortField}
+          sortDirection={sortDirection}
+        >
           LT G/L
         </SortableHeader>
       ),
@@ -259,7 +351,12 @@ export const TableHeaders: React.FC<TableHeadersProps> = ({
       field: 'shortTermGainLoss' as SortField,
       label: 'ST G/L',
       render: () => (
-        <SortableHeader field="shortTermGainLoss" onSort={onSort} getSortIcon={getSortIcon}>
+        <SortableHeader
+          field="shortTermGainLoss"
+          onSort={onSort}
+          sortField={sortField}
+          sortDirection={sortDirection}
+        >
           ST G/L
         </SortableHeader>
       ),
@@ -269,7 +366,12 @@ export const TableHeaders: React.FC<TableHeadersProps> = ({
       field: 'realizedGainLoss' as SortField,
       label: 'Realized G/L',
       render: () => (
-        <SortableHeader field="realizedGainLoss" onSort={onSort} getSortIcon={getSortIcon}>
+        <SortableHeader
+          field="realizedGainLoss"
+          onSort={onSort}
+          sortField={sortField}
+          sortDirection={sortDirection}
+        >
           Realized G/L
         </SortableHeader>
       ),
@@ -279,7 +381,12 @@ export const TableHeaders: React.FC<TableHeadersProps> = ({
       field: 'realizedLongTermGainLoss' as SortField,
       label: 'Realized LT G/L',
       render: () => (
-        <SortableHeader field="realizedLongTermGainLoss" onSort={onSort} getSortIcon={getSortIcon}>
+        <SortableHeader
+          field="realizedLongTermGainLoss"
+          onSort={onSort}
+          sortField={sortField}
+          sortDirection={sortDirection}
+        >
           Realized LT G/L
         </SortableHeader>
       ),
@@ -289,7 +396,12 @@ export const TableHeaders: React.FC<TableHeadersProps> = ({
       field: 'realizedShortTermGainLoss' as SortField,
       label: 'Realized ST G/L',
       render: () => (
-        <SortableHeader field="realizedShortTermGainLoss" onSort={onSort} getSortIcon={getSortIcon}>
+        <SortableHeader
+          field="realizedShortTermGainLoss"
+          onSort={onSort}
+          sortField={sortField}
+          sortDirection={sortDirection}
+        >
           Realized ST G/L
         </SortableHeader>
       ),
@@ -305,7 +417,8 @@ export const TableHeaders: React.FC<TableHeadersProps> = ({
           field="action"
           className="text-center p-2"
           onSort={onSort}
-          getSortIcon={getSortIcon}
+          sortField={sortField}
+          sortDirection={sortDirection}
         >
           Action
         </SortableHeader>
@@ -317,7 +430,12 @@ export const TableHeaders: React.FC<TableHeadersProps> = ({
       label: 'Trade QTY',
       tradeDependant: true,
       render: () => (
-        <SortableHeader field="tradeQty" onSort={onSort} getSortIcon={getSortIcon}>
+        <SortableHeader
+          field="tradeQty"
+          onSort={onSort}
+          sortField={sortField}
+          sortDirection={sortDirection}
+        >
           Trade QTY
         </SortableHeader>
       ),
@@ -328,7 +446,12 @@ export const TableHeaders: React.FC<TableHeadersProps> = ({
       label: 'Trade $',
       tradeDependant: true,
       render: () => (
-        <SortableHeader field="tradeValue" onSort={onSort} getSortIcon={getSortIcon}>
+        <SortableHeader
+          field="tradeValue"
+          onSort={onSort}
+          sortField={sortField}
+          sortDirection={sortDirection}
+        >
           Trade $
         </SortableHeader>
       ),
@@ -339,7 +462,12 @@ export const TableHeaders: React.FC<TableHeadersProps> = ({
       label: 'Post-Trade %',
       tradeDependant: true,
       render: () => (
-        <SortableHeader field="postTradePercent" onSort={onSort} getSortIcon={getSortIcon}>
+        <SortableHeader
+          field="postTradePercent"
+          onSort={onSort}
+          sortField={sortField}
+          sortDirection={sortDirection}
+        >
           Post-Trade %
         </SortableHeader>
       ),
@@ -350,7 +478,12 @@ export const TableHeaders: React.FC<TableHeadersProps> = ({
       label: 'Post-Trade Diff $',
       tradeDependant: true,
       render: () => (
-        <SortableHeader field="postTradeDiff" onSort={onSort} getSortIcon={getSortIcon}>
+        <SortableHeader
+          field="postTradeDiff"
+          onSort={onSort}
+          sortField={sortField}
+          sortDirection={sortDirection}
+        >
           Post-Trade Diff $
         </SortableHeader>
       ),
@@ -361,7 +494,12 @@ export const TableHeaders: React.FC<TableHeadersProps> = ({
       label: 'Post-Trade Diff %',
       tradeDependant: true,
       render: () => (
-        <SortableHeader field="postTradeDiffPercent" onSort={onSort} getSortIcon={getSortIcon}>
+        <SortableHeader
+          field="postTradeDiffPercent"
+          onSort={onSort}
+          sortField={sortField}
+          sortDirection={sortDirection}
+        >
           Post-Trade Diff %
         </SortableHeader>
       ),

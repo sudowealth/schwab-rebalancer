@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
-import type { RebalancingGroupData } from '~/features/rebalancing/server/groups.server';
-import { useRebalancingGroupFeature } from '../hooks/use-rebalancing-group-feature';
+import type { RebalancingGroupPageData } from '~/features/rebalancing/server/groups.server';
+import { useRebalancingGroup } from '../hooks/use-rebalancing-group';
 import { RebalancingActionsProvider } from './rebalancing-actions-context';
 import { RebalancingDataProvider } from './rebalancing-data-context';
 import { RebalancingUIProvider } from './rebalancing-ui-context';
@@ -8,7 +8,7 @@ import { RebalancingUIProvider } from './rebalancing-ui-context';
 interface RebalancingGroupProviderProps {
   children: ReactNode;
   groupId: string;
-  initialData?: RebalancingGroupData;
+  initialData?: RebalancingGroupPageData;
 }
 
 /**
@@ -20,51 +20,50 @@ export function RebalancingGroupProvider({
   groupId,
   initialData,
 }: RebalancingGroupProviderProps) {
-  const feature = useRebalancingGroupFeature(groupId);
+  const group = useRebalancingGroup(groupId, initialData);
 
-  // Load initial data if provided
-  if (initialData && !feature.data) {
-    feature.loadData(initialData);
-  }
-
-  // Split the feature data into three separate context values
+  // Split the group data into separate context values
   const dataContextValue = {
-    data: feature.data,
-    availableCash: feature.availableCash,
-    isLoading: feature.isLoading,
-    loadData: feature.loadData,
-    refreshData: feature.refreshData,
+    data: group.data,
+    availableCash: group.availableCash,
+    isLoading: group.isLoading,
+    error: group.error,
   };
 
   const uiContextValue = {
-    ui: feature.ui,
-    setAllocationView: feature.setAllocationView,
-    setGroupingMode: feature.setGroupingMode,
-    toggleSleeveExpansion: feature.toggleSleeveExpansion,
-    toggleAccountExpansion: feature.toggleAccountExpansion,
-    toggleExpandAll: feature.toggleExpandAll,
-    setSelectedAccount: feature.setSelectedAccount,
-    setSort: feature.setSort,
-    setRebalanceModal: feature.setRebalanceModal,
-    openEditModal: feature.openEditModal,
-    closeEditModal: feature.closeEditModal,
-    openDeleteModal: feature.openDeleteModal,
-    closeDeleteModal: feature.closeDeleteModal,
-    openSecurityModal: feature.openSecurityModal,
-    closeSecurityModal: feature.closeSecurityModal,
-    openSleeveModal: feature.openSleeveModal,
-    closeSleeveModal: feature.closeSleeveModal,
+    ui: group.ui,
+    setAllocationView: group.uiActions.setAllocationView,
+    setGroupingMode: group.uiActions.setGroupingMode,
+    toggleSleeveExpansion: group.uiActions.toggleSleeveExpansion,
+    toggleAccountExpansion: group.uiActions.toggleAccountExpansion,
+    toggleExpandAll: group.uiActions.toggleExpandAll,
+    setSelectedAccount: group.uiActions.setSelectedAccount,
+    setSort: group.uiActions.setSort,
+    setRebalanceModal: group.uiActions.setRebalanceModal,
+    openEditModal: group.uiActions.openEditModal,
+    closeEditModal: group.uiActions.closeEditModal,
+    openDeleteModal: group.uiActions.openDeleteModal,
+    closeDeleteModal: group.uiActions.closeDeleteModal,
+    openSecurityModal: group.uiActions.openSecurityModal,
+    closeSecurityModal: group.uiActions.closeSecurityModal,
+    openSleeveModal: group.uiActions.openSleeveModal,
+    closeSleeveModal: group.uiActions.closeSleeveModal,
   };
 
   const actionsContextValue = {
-    mutations: feature.mutations,
-    trades: feature.trades,
-    isRebalancing: feature.isRebalancing,
-    isSyncingPrices: feature.isSyncingPrices,
-    handleRebalance: feature.handleRebalance,
-    handlePriceSync: feature.handlePriceSync,
-    updateTrades: feature.updateTrades,
-    handleTradeQtyChange: feature.handleTradeQtyChange,
+    mutations: {
+      rebalanceMutation: group.mutations.rebalanceMutation,
+      syncPricesMutation: group.mutations.syncPricesMutation,
+      handleGenerateTrades: group.mutations.handleGenerateTrades,
+      handleFetchPrices: group.mutations.handleFetchPrices,
+    },
+    trades: group.trades,
+    isRebalancing: group.mutations.rebalanceMutation.isPending,
+    isSyncingPrices: group.mutations.syncPricesMutation.isPending,
+    handleRebalance: group.mutations.handleGenerateTrades,
+    handlePriceSync: group.mutations.handleFetchPrices,
+    updateTrades: group.tradeActions.updateTrades,
+    handleTradeQtyChange: group.tradeActions.handleTradeQtyChange,
   };
 
   return (
