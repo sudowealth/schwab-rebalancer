@@ -1,8 +1,14 @@
 import { neon } from '@neondatabase/serverless';
+import { config } from 'dotenv';
 import { drizzle as drizzleNeon } from 'drizzle-orm/neon-http';
 import { drizzle as drizzlePg } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import * as schema from '~/db/schema';
+
+// Load environment variables from .env.local in development
+if (process.env.NODE_ENV !== 'production') {
+  config({ path: '.env.local' });
+}
 
 // Database configuration for TanStack Start + Netlify + Neon
 
