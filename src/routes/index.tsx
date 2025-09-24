@@ -43,8 +43,8 @@ function DashboardSkeleton() {
 
         {/* Metrics Cards */}
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-3 mb-8">
-          {[...Array(3)].map(() => (
-            <div key="metric-card" className="bg-white overflow-hidden shadow rounded-lg">
+          {['metric-1', 'metric-2', 'metric-3'].map((id) => (
+            <div key={id} className="bg-white overflow-hidden shadow rounded-lg">
               <div className="p-5">
                 <div className="h-4 bg-gray-300 rounded mb-2 w-3/4" />
                 <div className="h-8 bg-gray-300 rounded w-1/2" />
@@ -57,8 +57,8 @@ function DashboardSkeleton() {
         <div className="bg-white shadow overflow-hidden sm:rounded-md">
           <div className="px-4 py-5 sm:p-6">
             <div className="space-y-4">
-              {[...Array(5)].map(() => (
-                <div key="content-row" className="flex space-x-4">
+              {['row-1', 'row-2', 'row-3', 'row-4', 'row-5'].map((id) => (
+                <div key={id} className="flex space-x-4">
                   <div className="h-4 bg-gray-300 rounded flex-1" />
                   <div className="h-4 bg-gray-300 rounded w-20" />
                   <div className="h-4 bg-gray-300 rounded w-16" />

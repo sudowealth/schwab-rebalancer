@@ -39,11 +39,3 @@ export function setCachedAuth(auth: RouterAuthContext): void {
     ttl: AUTH_CACHE_TTL,
   };
 }
-
-export function clearAuthCache(): void {
-  authCache = null;
-}
-
-export function isAuthCacheValid(): boolean {
-  return authCache !== null && Date.now() - authCache.timestamp <= authCache.ttl;
-}

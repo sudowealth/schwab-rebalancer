@@ -299,54 +299,28 @@ export const getRebalancingGroupsListDataServerFn = createServerFn({
 
 // Helper function to get only account balances without full holdings data
 async function getAccountBalancesOnly(accountIds: string[]): Promise<Map<string, number>> {
-  const balances = new Map<string, number>();
-
-  // Get S&P 500 data for current prices
-  const sp500Data = await getSnP500Data();
-  const priceMap = new Map<string, number>(sp500Data.map((stock) => [stock.ticker, stock.price]));
-
-  // Get holdings aggregated by account for balance calculation only
-  const holdingsData = await getDb()
+  // Get holdings with their security prices in a single query
+  const holdingsWithPrices = await getDb()
     .select({
       accountId: schema.account.id,
       ticker: schema.holding.ticker,
       qty: schema.holding.qty,
-      averageCost: schema.holding.averageCost,
+      securityPrice: schema.security.price,
     })
     .from(schema.holding)
     .innerJoin(schema.account, eq(schema.holding.accountId, schema.account.id))
+    .innerJoin(schema.security, eq(schema.holding.ticker, schema.security.ticker))
     .where(inArray(schema.account.id, accountIds));
 
-  // Calculate balances by account
-  const accountHoldings = new Map<
-    string,
-    Array<{ ticker: string; qty: number; averageCost: number }>
-  >();
-  holdingsData.forEach((holding) => {
-    if (!accountHoldings.has(holding.accountId)) {
-      accountHoldings.set(holding.accountId, []);
-    }
-    const holdings = accountHoldings.get(holding.accountId);
-    if (holdings) {
-      holdings.push({
-        ticker: holding.ticker,
-        qty: holding.qty,
-        averageCost: holding.averageCost,
-      });
-    }
+  // Calculate balances by account - sum (qty * security_price) for each holding
+  const accountBalances = new Map<string, number>();
+  holdingsWithPrices.forEach((holding) => {
+    const positionValue = holding.qty * (holding.securityPrice || 0);
+    const currentBalance = accountBalances.get(holding.accountId) || 0;
+    accountBalances.set(holding.accountId, currentBalance + positionValue);
   });
 
-  // Calculate total balance for each account
-  accountHoldings.forEach((holdings, accountId) => {
-    let totalBalance = 0;
-    holdings.forEach((holding) => {
-      const currentPrice = priceMap.get(holding.ticker) || 0;
-      totalBalance += holding.qty * currentPrice;
-    });
-    balances.set(accountId, totalBalance);
-  });
-
-  return balances;
+  return accountBalances;
 }
 
 // Server function to get sleeve members (target securities) - runs ONLY on server

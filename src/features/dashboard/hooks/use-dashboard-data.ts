@@ -111,13 +111,14 @@ export function useDashboardData(loaderData: LoaderData) {
   const shouldShowRebalancingSection =
     reactiveGroupsStatus?.hasGroups || loaderData.rebalancingGroupsStatus.hasGroups;
 
-  // Use onboarding queries with optimized settings
+  // Use onboarding queries with optimized settings for status checking
+  // Onboarding status changes are user-driven, so slightly more reactive refetching
   const { data: reactiveSecuritiesStatus } = useQuery({
     queryKey: queryKeys.onboarding.securities(),
     queryFn: checkSecuritiesExistServerFn,
     initialData: loaderData.securitiesStatus,
     staleTime: 2 * 60 * 1000, // 2 minutes for onboarding status
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: false, // Route loaders handle most refreshes
     refetchOnMount: false, // Use loader data initially
   });
 
@@ -126,7 +127,7 @@ export function useDashboardData(loaderData: LoaderData) {
     queryFn: checkModelsExistServerFn,
     initialData: loaderData.modelsStatus,
     staleTime: 2 * 60 * 1000, // 2 minutes for onboarding status
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: false, // Route loaders handle most refreshes
     refetchOnMount: false, // Use loader data initially
   });
 
@@ -135,22 +136,23 @@ export function useDashboardData(loaderData: LoaderData) {
     queryFn: checkSchwabCredentialsServerFn,
     initialData: loaderData.schwabCredentialsStatus,
     staleTime: 2 * 60 * 1000, // 2 minutes for onboarding status
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: false, // Route loaders handle most refreshes
     refetchOnMount: false, // Use loader data initially
   });
 
   // Rebalancing groups status is now handled reactively in OnboardingTracker
 
-  // Execute queries with focus-based refetching instead of polling for better performance
+  // Execute queries with optimized configuration for TanStack Start
+  // Route loaders provide fresh data, so minimize unnecessary refetching
   const positionsResult = useQuery({
     queryKey: queryKeys.dashboard.positions(),
     queryFn: getPositionsServerFn,
     initialData: loaderData.positions,
     enabled: shouldShowRebalancingSection,
-    refetchOnWindowFocus: true, // Refetch when user returns to tab
-    refetchOnMount: false, // Use initial data from loader
-    refetchOnReconnect: true, // Refetch when connection restored
-    staleTime: 5 * 60 * 1000, // Consider fresh for 5 minutes
+    refetchOnWindowFocus: false, // Route loaders handle data freshness
+    refetchOnMount: false, // Use loader data initially
+    refetchOnReconnect: true, // Only refetch on reconnection
+    staleTime: 3 * 60 * 1000, // Positions change moderately often
     gcTime: 30 * 60 * 1000, // Keep in cache for 30 minutes
   });
 
@@ -159,10 +161,10 @@ export function useDashboardData(loaderData: LoaderData) {
     queryFn: getPortfolioMetricsServerFn,
     initialData: loaderData.metrics,
     enabled: shouldShowRebalancingSection,
-    refetchOnWindowFocus: true, // Refetch when user returns to tab
-    refetchOnMount: false, // Use initial data from loader
-    refetchOnReconnect: true, // Refetch when connection restored
-    staleTime: 5 * 60 * 1000, // Consider fresh for 5 minutes
+    refetchOnWindowFocus: false, // Route loaders handle data freshness
+    refetchOnMount: false, // Use loader data initially
+    refetchOnReconnect: true, // Only refetch on reconnection
+    staleTime: 2 * 60 * 1000, // Metrics change more frequently
     gcTime: 30 * 60 * 1000, // Keep in cache for 30 minutes
   });
 
@@ -171,10 +173,10 @@ export function useDashboardData(loaderData: LoaderData) {
     queryFn: getTransactionsServerFn,
     initialData: loaderData.transactions,
     enabled: shouldShowRebalancingSection,
-    refetchOnWindowFocus: true, // Refetch when user returns to tab
-    refetchOnMount: false, // Use initial data from loader
-    refetchOnReconnect: true, // Refetch when connection restored
-    staleTime: 5 * 60 * 1000, // Consider fresh for 5 minutes
+    refetchOnWindowFocus: false, // Route loaders handle data freshness
+    refetchOnMount: false, // Use loader data initially
+    refetchOnReconnect: true, // Only refetch on reconnection
+    staleTime: 5 * 60 * 1000, // Transactions are relatively stable
     gcTime: 30 * 60 * 1000, // Keep in cache for 30 minutes
   });
 
@@ -183,9 +185,9 @@ export function useDashboardData(loaderData: LoaderData) {
     queryFn: getSleevesServerFn,
     initialData: loaderData.sleeves,
     enabled: shouldShowRebalancingSection,
-    staleTime: 30 * 60 * 1000, // 30 minutes for static data
-    gcTime: 60 * 60 * 1000, // 1 hour cache time
-    refetchOnWindowFocus: false,
+    staleTime: 60 * 60 * 1000, // Sleeves change very rarely
+    gcTime: 2 * 60 * 60 * 1000, // Keep in cache for 2 hours
+    refetchOnWindowFocus: false, // Static data, no need for focus refetching
     refetchOnMount: false,
   });
 

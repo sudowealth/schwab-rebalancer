@@ -1,36 +1,10 @@
-/// <reference types="vite/client" />
-
-import { useQueryClient } from '@tanstack/react-query';
-import {
-  createRootRoute,
-  HeadContent,
-  Link,
-  Scripts,
-  useLocation,
-  useNavigate,
-} from '@tanstack/react-router';
-import { TanStackRouterDevtools } from '@tanstack/react-router-devtools';
-import type * as React from 'react';
+import { createRootRoute, HeadContent, Scripts } from '@tanstack/react-router';
+import { AppShell } from '~/components/AppShell';
 import { DefaultCatchBoundary } from '~/components/DefaultCatchBoundary';
-import { MobileNavigation } from '~/components/MobileNavigation';
 import { NotFound } from '~/components/NotFound';
-import { Providers } from '~/components/Providers';
-import {
-  NavigationMenu,
-  NavigationMenuContent,
-  NavigationMenuItem,
-  NavigationMenuLink,
-  NavigationMenuList,
-  NavigationMenuTrigger,
-  navigationMenuTriggerStyle,
-} from '~/components/ui/navigation-menu';
-import { signOut } from '~/features/auth/auth-client';
-import { useSchwabConnection } from '~/features/schwab/hooks/use-schwab-connection';
 import { getCachedAuth, setCachedAuth } from '~/lib/auth-cache';
-import { queryInvalidators } from '~/lib/query-keys';
 import { seo } from '~/lib/seo';
 import { getCurrentUserServerFn } from '~/lib/server-functions';
-import { cn } from '~/lib/utils';
 import type { RouterAuthContext } from '~/router';
 import appCss from '~/styles/app.css?url';
 
@@ -99,38 +73,18 @@ export const Route = createRootRoute({
       return unauthenticatedState;
     }
   },
-  // Pass auth context to child routes
+  // Pass auth context to child routes and shell component
   context: ({ context }: { context: RouterAuthContext }) => ({
     auth: context,
   }),
   errorComponent: DefaultCatchBoundary,
   notFoundComponent: () => <NotFound />,
-  shellComponent: RootDocument,
+  component: RootDocument,
 });
 
-// Global hooks that need to run inside Providers (after QueryClient is available)
-function GlobalHooks() {
-  const location = useLocation();
-
-  // Only enable Schwab connection sync triggering on dashboard and related routes
-  const shouldRunSchwabConnection =
-    location.pathname === '/' ||
-    location.pathname.startsWith('/rebalancing-groups/') ||
-    location.pathname.startsWith('/settings/') ||
-    location.pathname.startsWith('/data-feeds');
-
-  // Always call the hook, but conditionally enable sync triggering
-  useSchwabConnection(undefined, undefined, shouldRunSchwabConnection);
-
-  // This component doesn't render anything visible
-  return null;
-}
-
-function RootDocument({ children }: { children: React.ReactNode }) {
-  const location = useLocation();
-
-  // Hide navigation on auth routes
-  const isAuthRoute = ['/login', '/register', '/forgot-password'].includes(location.pathname);
+// Root document component that renders the full HTML structure
+function RootDocument() {
+  const { auth } = Route.useRouteContext();
 
   return (
     <html lang="en">
@@ -138,192 +92,9 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <HeadContent />
       </head>
       <body>
-        <Providers>
-          <GlobalHooks />
-          <div className="min-h-screen bg-gray-50">
-            {!isAuthRoute && (
-              <nav className="bg-white shadow-sm border-b">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                  <div className="flex justify-between h-16 overflow-visible">
-                    {/* Mobile Navigation - Left side */}
-                    <div className="flex items-center md:hidden">
-                      <MobileNavigation />
-                    </div>
-
-                    {/* Desktop Navigation - Hidden on mobile */}
-                    <div className="hidden md:flex items-center space-x-1">
-                      <Link
-                        to="/"
-                        search={{ schwabConnected: undefined }}
-                        className={cn(navigationMenuTriggerStyle(), 'no-underline')}
-                        activeOptions={{ exact: true }}
-                      >
-                        Dashboard
-                      </Link>
-                      <Link
-                        to="/rebalancing-groups"
-                        className={cn(navigationMenuTriggerStyle(), 'no-underline')}
-                      >
-                        Rebalancing Groups
-                      </Link>
-                      <Link
-                        to="/models"
-                        className={cn(navigationMenuTriggerStyle(), 'no-underline')}
-                      >
-                        Models
-                      </Link>
-                      <Link
-                        to="/sleeves"
-                        className={cn(navigationMenuTriggerStyle(), 'no-underline')}
-                      >
-                        Sleeves
-                      </Link>
-
-                      {/* Settings Dropdown */}
-                      <div className="relative">
-                        <NavigationMenu>
-                          <NavigationMenuList>
-                            <NavigationMenuItem>
-                              <NavigationMenuTrigger>Settings</NavigationMenuTrigger>
-                              <NavigationMenuContent>
-                                <ul className="grid w-[200px] gap-3 p-4">
-                                  <AdminSettingsLink />
-                                  <li>
-                                    <NavigationMenuLink asChild>
-                                      <Link
-                                        to="/data-feeds"
-                                        className="block text-sm leading-none px-2 py-1.5 rounded-sm hover:bg-accent hover:text-accent-foreground"
-                                      >
-                                        Data Feeds
-                                      </Link>
-                                    </NavigationMenuLink>
-                                  </li>
-                                  <li>
-                                    <NavigationMenuLink asChild>
-                                      <Link
-                                        to="/settings/securities"
-                                        search={{
-                                          page: 1,
-                                          pageSize: 100,
-                                          sortBy: 'ticker',
-                                          sortOrder: 'asc',
-                                          search: '',
-                                          index: '',
-                                        }}
-                                        className="block text-sm leading-none px-2 py-1.5 rounded-sm hover:bg-accent hover:text-accent-foreground"
-                                      >
-                                        Securities
-                                      </Link>
-                                    </NavigationMenuLink>
-                                  </li>
-                                </ul>
-                              </NavigationMenuContent>
-                            </NavigationMenuItem>
-                          </NavigationMenuList>
-                        </NavigationMenu>
-                      </div>
-                    </div>
-
-                    {/* Right side - Auth and Demo badge */}
-                    <div className="flex items-center space-x-4">
-                      {/* Hide auth nav on mobile since it's in the mobile menu */}
-                      <div className="hidden md:block">
-                        <AuthNav currentPath={location.pathname} />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </nav>
-            )}
-            <main
-              className={`max-w-7xl mx-auto py-6 sm:px-6 lg:px-8 ${isAuthRoute ? 'pt-12' : ''}`}
-            >
-              {children}
-            </main>
-          </div>
-        </Providers>
-        <TanStackRouterDevtools position="bottom-right" />
+        <AppShell auth={auth} />
         <Scripts />
       </body>
     </html>
-  );
-}
-
-function AdminSettingsLink() {
-  const { auth } = Route.useRouteContext();
-  const user = auth?.user;
-  const isAdmin = user?.role === 'admin';
-
-  if (!isAdmin) {
-    return null;
-  }
-
-  return (
-    <li>
-      <NavigationMenuLink asChild>
-        <Link
-          to="/admin"
-          search={{ showTruncate: false }}
-          className="block text-sm leading-none px-2 py-1.5 rounded-sm hover:bg-accent text-red-600 hover:text-red-700"
-        >
-          Admin
-        </Link>
-      </NavigationMenuLink>
-    </li>
-  );
-}
-
-function AuthNav({ currentPath }: { currentPath: string }) {
-  // Use cached auth context from router instead of loader data
-  const { auth } = Route.useRouteContext();
-  const user = auth?.user || null;
-  const isAuthenticated = !!user;
-  const navigate = useNavigate();
-  const queryClient = useQueryClient();
-
-  const handleSignOut = async () => {
-    try {
-      await signOut();
-      // Invalidate auth query cache after sign out
-      queryInvalidators.auth.session(queryClient);
-      // Navigate to login page after successful sign out
-      navigate({ to: '/login', search: { reset: '', redirect: currentPath } });
-    } catch (error) {
-      console.error('Error signing out:', error);
-      // Still navigate to login even if there's an error
-      navigate({ to: '/login', search: { reset: '', redirect: currentPath } });
-    }
-  };
-
-  if (isAuthenticated) {
-    return (
-      <div className="flex items-center space-x-4">
-        <button
-          type="button"
-          onClick={handleSignOut}
-          className="text-sm text-gray-500 hover:text-gray-700"
-        >
-          Sign out
-        </button>
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex items-center space-x-4">
-      <Link
-        to="/login"
-        search={{ reset: '', redirect: currentPath }}
-        className="text-sm text-gray-500 hover:text-gray-700"
-      >
-        Sign in
-      </Link>
-      <Link
-        to="/register"
-        className="text-sm bg-indigo-600 text-white px-3 py-2 rounded-md hover:bg-indigo-700"
-      >
-        Sign up
-      </Link>
-    </div>
   );
 }
