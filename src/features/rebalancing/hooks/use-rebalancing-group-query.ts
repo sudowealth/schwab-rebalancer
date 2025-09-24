@@ -175,8 +175,3 @@ export function useRebalancingGroupTradesDataQuery(groupId: string) {
     enabled: !!groupId,
   });
 }
-
-/**
- * Type for the rebalancing group query result
- */
-export type UseRebalancingGroupQueryResult = ReturnType<typeof useRebalancingGroupQuery>;

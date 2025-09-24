@@ -11,7 +11,7 @@ interface State {
   error?: Error;
 }
 
-export class RebalancingErrorBoundary extends Component<Props, State> {
+class RebalancingErrorBoundary extends Component<Props, State> {
   constructor(props: Props) {
     super(props);
     this.state = { hasError: false };
@@ -102,18 +102,8 @@ export class RebalancingErrorBoundary extends Component<Props, State> {
 }
 
 // Convenience wrapper for common rebalancing features
-export function SleeveAllocationErrorBoundary({ children }: { children: ReactNode }) {
-  return (
-    <RebalancingErrorBoundary feature="Sleeve Allocation">{children}</RebalancingErrorBoundary>
-  );
-}
-
 export function ChartsErrorBoundary({ children }: { children: ReactNode }) {
   return (
     <RebalancingErrorBoundary feature="Charts & Analytics">{children}</RebalancingErrorBoundary>
   );
-}
-
-export function AccountSummaryErrorBoundary({ children }: { children: ReactNode }) {
-  return <RebalancingErrorBoundary feature="Account Summary">{children}</RebalancingErrorBoundary>;
 }

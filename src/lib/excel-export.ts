@@ -125,7 +125,7 @@ async function exportTableToExcel<T extends Record<string, unknown>>(
   await downloadExcelFile(workbook, fullFilename);
 }
 
-export async function exportPositionsToExcel(positions: Position[], filename = 'positions') {
+async function exportPositionsToExcel(positions: Position[], filename = 'positions') {
   const columns = [
     { header: 'Ticker', accessor: 'ticker' as const },
     { header: 'Sleeve', accessor: 'sleeveName' as const },
@@ -178,10 +178,7 @@ export async function exportPositionsToExcel(positions: Position[], filename = '
   });
 }
 
-export async function exportTransactionsToExcel(
-  transactions: Transaction[],
-  filename = 'transactions',
-) {
+async function exportTransactionsToExcel(transactions: Transaction[], filename = 'transactions') {
   const columns = [
     { header: 'Type', accessor: 'type' as const },
     { header: 'Ticker', accessor: 'ticker' as const },
@@ -201,7 +198,7 @@ export async function exportTransactionsToExcel(
   });
 }
 
-export async function exportSP500ToExcel(stocks: Stock[], filename = 'sp500-stocks') {
+async function exportSP500ToExcel(stocks: Stock[], filename = 'sp500-stocks') {
   const columns = [
     { header: 'Ticker', accessor: 'ticker' as const },
     { header: 'Company Name', accessor: 'name' as const },
@@ -214,7 +211,7 @@ export async function exportSP500ToExcel(stocks: Stock[], filename = 'sp500-stoc
   await exportTableToExcel(stocks, columns, { filename, sheetName: 'S&P 500' });
 }
 
-export async function exportSleeveAllocationToExcel(
+async function exportSleeveAllocationToExcel(
   sleeveTableData: ExcelSleeveData[],
   sleeveAllocationData: SleeveAllocationData[],
   groupingMode: 'sleeve' | 'account',

@@ -19,7 +19,7 @@ interface ErrorBoundaryProps {
   description?: string;
 }
 
-export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
   constructor(props: ErrorBoundaryProps) {
     super(props);
     this.state = { hasError: false };
@@ -136,20 +136,8 @@ export function ErrorBoundaryWrapper({
   );
 }
 
-// Hook for error reporting (can be extended with error reporting services)
-export function useErrorReporting() {
-  const reportError = (error: Error, context?: string) => {
-    console.error(`Error in ${context || 'unknown context'}:`, error);
-
-    // TODO: Send to error reporting service (Sentry, etc.)
-    // Example: Sentry.captureException(error, { tags: { context } });
-  };
-
-  return { reportError };
-}
-
 // Higher-order component for wrapping features with consistent error boundaries
-export function withErrorBoundary<P extends object>(
+function withErrorBoundary<P extends object>(
   Component: React.ComponentType<P>,
   options: {
     title?: string;
@@ -204,12 +192,4 @@ export const withDataFeedsErrorBoundary = <P extends object>(Component: React.Co
   withErrorBoundary(Component, {
     title: 'Data Feeds Error',
     description: 'Failed to load data feeds. This might be due to a temporary connection issue.',
-  });
-
-export const withAdminErrorBoundary = <P extends object>(Component: React.ComponentType<P>) =>
-  withErrorBoundary(Component, {
-    title: 'Admin Error',
-    description:
-      'Failed to load admin functionality. This might be due to a temporary system issue.',
-    showDetails: true, // Show more details for admin features
   });

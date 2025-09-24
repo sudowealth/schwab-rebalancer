@@ -70,19 +70,6 @@ interface AccountItem {
 // Discriminated union for trade items
 export type TradeItem = SleeveItem | SecurityItem | AccountItem;
 
-// Type predicates for discriminated unions (backward compatible)
-export function isSleeveItem(item: TradeItem): item is SleeveItem {
-  return 'securities' in item && Array.isArray((item as SleeveItem).securities);
-}
-
-export function isSecurityItem(item: TradeItem): item is SecurityItem {
-  return 'ticker' in item && !('securities' in item) && !('accountId' in item);
-}
-
-export function isAccountItem(item: TradeItem): item is AccountItem {
-  return 'accountId' in item && !('securities' in item) && !('ticker' in item);
-}
-
 interface TradeCellProps extends CellProps {
   item: TradeItem;
   trades: Trade[];
