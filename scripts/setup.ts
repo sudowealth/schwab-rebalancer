@@ -81,8 +81,12 @@ NODE_ENV=development
 # DATABASE (Configure for Local Development)
 # ==========================================
 
-# For local development: Set this to your Neon branch connection string
-# Get this by running: neonctl branches create --project-id YOUR_PROJECT_ID --name local
+# Option 1: Local PostgreSQL with Homebrew (Recommended)
+# Install PostgreSQL: brew install postgresql && brew services start postgresql && createdb schwab_rebalancer_dev
+# NETLIFY_DATABASE_URL=postgresql://localhost:5432/schwab_rebalancer_dev
+
+# Option 2: Neon PostgreSQL with database branching
+# Create branch: neonctl branches create --project-id YOUR_PROJECT_ID --name local
 # NETLIFY_DATABASE_URL=postgresql://neondb_owner:your_password@ep-your-endpoint.neon.tech/neondb?sslmode=require
 
 # For production: Netlify will automatically set NETLIFY_DATABASE_URL when deploying

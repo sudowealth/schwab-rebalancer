@@ -75,7 +75,64 @@ pnpm dev
 
 #### Database Setup
 
-This project uses **Neon PostgreSQL** with database branching for safe local development.
+Choose one of the following database setup options:
+
+### Option 1: Local PostgreSQL with Homebrew (Recommended for Local Development)
+
+For local development with a traditional PostgreSQL database using Homebrew:
+
+##### 1. Install PostgreSQL
+
+```bash
+# Install PostgreSQL using Homebrew
+brew install postgresql
+
+# Start PostgreSQL service
+brew services start postgresql
+
+# Create a database for the project
+createdb schwab_rebalancer_dev
+```
+
+##### 2. Configure Database Connection
+
+Add the local PostgreSQL connection string to your `.env.local`:
+
+```bash
+# Add to .env.local (created by pnpm run setup)
+# For local PostgreSQL development:
+NETLIFY_DATABASE_URL=postgresql://localhost:5432/schwab_rebalancer_dev
+```
+
+##### 3. Push Schema and Seed Data
+
+```bash
+# Push database schema to your local PostgreSQL database
+pnpm run db:push
+
+# Seed with sample data
+pnpm run seed
+```
+
+##### 4. Database Management (Optional)
+
+```bash
+# Stop PostgreSQL service
+brew services stop postgresql
+
+# Start PostgreSQL service manually
+brew services start postgresql
+
+# Access PostgreSQL shell
+psql schwab_rebalancer_dev
+
+# View running services
+brew services list
+```
+
+### Option 2: Neon PostgreSQL with Database Branching
+
+This project supports **Neon PostgreSQL** with database branching for cloud-based development.
 
 ##### 1. Authenticate with Neon
 
