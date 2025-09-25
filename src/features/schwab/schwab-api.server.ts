@@ -692,8 +692,8 @@ export class SchwabApiService {
         );
       });
       if (!positionsData) {
-        console.error('❌ [SchwabApi] Account not found:', accountIdentifier);
-        throw new Error(`Account not found: ${accountIdentifier}`);
+        console.error('❌ [SchwabApi] Account not found:', maskedIdentifier);
+        throw new Error(`Account not found: ${maskedIdentifier}`);
       }
 
       const positions: SchwabPosition[] = [];

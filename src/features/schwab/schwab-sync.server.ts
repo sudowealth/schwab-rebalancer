@@ -738,7 +738,12 @@ export class SchwabSyncService {
         lastSyncAt: new Date(),
         updatedAt: now,
       };
-      console.log('📝 [SchwabSync] Update data:', updateData);
+      console.log('📝 [SchwabSync] Update data:', {
+        ...updateData,
+        accountNumber: updateData.accountNumber
+          ? sanitizeAccountNumber(updateData.accountNumber)
+          : undefined,
+      });
 
       await this.getDb()
         .update(schema.account)
@@ -772,7 +777,10 @@ export class SchwabSyncService {
       console.log('✅ [SchwabSync] Successfully updated existing account');
     } else {
       // Create new account
-      console.log('🆕 [SchwabSync] Creating new account for Schwab ID:', schwabAccount.accountId);
+      console.log(
+        '🆕 [SchwabSync] Creating new account for Schwab ID:',
+        sanitizeSchwabAccountId(schwabAccount.accountId),
+      );
       const newAccountId = crypto.randomUUID();
       const insertData = {
         id: newAccountId,
@@ -786,7 +794,15 @@ export class SchwabSyncService {
         createdAt: now,
         updatedAt: now,
       };
-      console.log('📝 [SchwabSync] Insert data:', insertData);
+      console.log('📝 [SchwabSync] Insert data:', {
+        ...insertData,
+        accountNumber: insertData.accountNumber
+          ? sanitizeAccountNumber(insertData.accountNumber)
+          : undefined,
+        schwabAccountId: insertData.schwabAccountId
+          ? sanitizeSchwabAccountId(insertData.schwabAccountId)
+          : undefined,
+      });
 
       await this.getDb().insert(schema.account).values(insertData);
       console.log('✅ [SchwabSync] Successfully created new account:', newAccountId);
