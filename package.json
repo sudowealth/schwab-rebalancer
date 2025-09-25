@@ -5,7 +5,7 @@
   "type": "module",
   "license": "MIT",
   "author": "Daniel Yeoman",
-  "version": "0.1.0-alpha.0",
+  "version": "1.0.0",
   "description": "A comprehensive portfolio management platform built for sophisticated tax-loss harvesting and asset allocation with Charles Schwab.",
   "homepage": "https://github.com/sudowealth/schwab-rebalancer",
   "repository": {
