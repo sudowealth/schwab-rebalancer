@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from '@tanstack/react-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useAuth } from '~/features/auth/hooks/useAuth';
 import type { SyncYahooFundamentalsResult } from '~/features/data-feeds/yahoo.server';
 import { queryInvalidators, queryKeys } from '~/lib/query-keys';
 import {
@@ -24,6 +25,7 @@ export function useSchwabConnection(
   initialActiveCredentialsStatus?: { hasCredentials: boolean },
   enableSyncTriggering: boolean = true,
 ) {
+  const { isAuthenticated } = useAuth();
   const instanceId = useRef(++globalSyncCoordinator.instanceCount);
   const isPrimarySyncTrigger = useRef(false);
 
@@ -71,6 +73,7 @@ export function useSchwabConnection(
     initialData: initialCredentialsStatus,
     staleTime: 1000 * 60 * 5, // 5 minutes - environment vars don't change often
     refetchOnMount: false, // Don't refetch immediately if we have initial data
+    enabled: isAuthenticated, // Only run when user is authenticated
   });
 
   // Mutation to start OAuth flow
@@ -271,7 +274,7 @@ export function useSchwabConnection(
       }
     },
     initialData: initialActiveCredentialsStatus,
-    enabled: !!credentialsStatus?.hasCredentials, // Only run if env vars are set
+    enabled: isAuthenticated && !!credentialsStatus?.hasCredentials, // Only run when authenticated and env vars are set
     staleTime: 1000 * 60 * 2, // 2 minutes
     refetchOnMount: false, // Don't refetch immediately on mount to avoid triggering sync
   });
@@ -345,6 +348,7 @@ export function useSchwabConnection(
       });
 
       if (
+        isAuthenticated && // Only sync when user is authenticated
         shouldTriggerSync &&
         (isConnected || justConnected) && // Allow sync if connected OR just connected (credentials may not be updated yet)
         !isSyncing &&
@@ -375,6 +379,7 @@ export function useSchwabConnection(
       }
     }
   }, [
+    isAuthenticated,
     isConnected,
     isSyncing,
     activeCredentialsLoading,

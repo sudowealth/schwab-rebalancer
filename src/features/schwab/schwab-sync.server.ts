@@ -1033,7 +1033,9 @@ export class SchwabSyncService {
       .from(schema.security)
       .where(eq(schema.security.ticker, symbol))
       .limit(1);
+
     if (existingSec.length === 0) {
+      console.log('💰 [SchwabSync] Creating $$$ security');
       await this.getDb().insert(schema.security).values({
         ticker: symbol,
         name: 'Cash',
@@ -1067,12 +1069,12 @@ export class SchwabSyncService {
     } as const;
 
     if (existingHolding.length > 0) {
-      this.getDb()
+      await this.getDb()
         .update(schema.holding)
         .set(holdingData)
         .where(eq(schema.holding.id, existingHolding[0].id));
       try {
-        this.getDb()
+        await this.getDb()
           .insert(schema.syncLogDetail)
           .values({
             id: crypto.randomUUID(),
@@ -1089,10 +1091,11 @@ export class SchwabSyncService {
         // Ignore logging failure - transaction remains valid
       }
     } else {
-      this.getDb()
+      const newHoldingId = crypto.randomUUID();
+      await this.getDb()
         .insert(schema.holding)
         .values({
-          id: crypto.randomUUID(),
+          id: newHoldingId,
           accountId,
           ticker: symbol,
           ...holdingData,
@@ -1101,7 +1104,7 @@ export class SchwabSyncService {
           createdAt: now,
         });
       try {
-        this.getDb()
+        await this.getDb()
           .insert(schema.syncLogDetail)
           .values({
             id: crypto.randomUUID(),

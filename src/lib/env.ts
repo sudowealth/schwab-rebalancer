@@ -6,6 +6,8 @@ export const EnvSchema = z.object({
   ALLOWED_ORIGINS: z.string().optional(),
   ENABLE_STRICT_CSP: z.string().optional(),
   NODE_ENV: z.enum(['development', 'production', 'test']).optional(),
+  RESEND_API_KEY: z.string().optional(),
+  RESEND_EMAIL_SENDER: z.string().optional().default('onboarding@resend.dev'),
 });
 
 export function getEnv() {

@@ -11,7 +11,9 @@ export function AppShell() {
   const location = useLocation();
 
   // Hide navigation on auth routes
-  const isAuthRoute = ['/login', '/register', '/forgot-password'].includes(location.pathname);
+  const isAuthRoute = ['/login', '/register', '/forgot-password', '/reset-password'].includes(
+    location.pathname,
+  );
 
   return (
     <Providers>

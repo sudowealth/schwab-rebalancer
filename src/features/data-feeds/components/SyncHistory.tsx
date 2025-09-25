@@ -38,7 +38,7 @@ async function exportSyncToExcel(log: unknown) {
     const logData = log as Record<string, unknown>;
 
     const workbook = new ExcelJS.Workbook();
-    workbook.creator = 'Schwab Rebalancer';
+    workbook.creator = 'Rebalancer';
     workbook.created = new Date();
 
     // Summary sheet

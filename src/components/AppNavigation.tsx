@@ -1,5 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { Link, useLocation, useNavigate } from '@tanstack/react-router';
+import { Link, useLocation, useNavigate, useRouter } from '@tanstack/react-router';
 import { MobileNavigation } from '~/components/MobileNavigation';
 import {
   NavigationMenu,
@@ -48,16 +48,21 @@ function AuthNavigation({ currentPath }: { currentPath: string }) {
   const { isAuthenticated, isPending } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const router = useRouter();
 
   const handleSignOut = async () => {
     try {
       await signOut();
       clearCachedAuth();
       queryInvalidators.auth.session(queryClient);
+      // Invalidate the root route loader which caches auth state
+      await router.invalidate();
       navigate({ to: '/login', search: { reset: '', redirect: currentPath } });
     } catch (error) {
       console.error('Error signing out:', error);
       clearCachedAuth();
+      // Still try to invalidate even on error
+      await router.invalidate();
       navigate({ to: '/login', search: { reset: '', redirect: currentPath } });
     }
   };

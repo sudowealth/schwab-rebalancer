@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { AuthSkeleton } from '~/components/AuthSkeleton';
 import { ClientOnly } from '~/components/ClientOnly';
 import { authClient } from '~/features/auth/auth-client';
+import { useEmailService } from '~/features/auth/hooks/use-email-service';
 
 export const Route = createFileRoute('/forgot-password')({
   component: ForgotPasswordPage,
@@ -24,6 +25,7 @@ function ForgotPasswordPage() {
   const [submittedEmail, setSubmittedEmail] = useState('');
   const [error, setError] = useState('');
   const emailId = useId();
+  const { data: emailServiceStatus, isLoading: isEmailServiceLoading } = useEmailService();
 
   const form = useForm({
     defaultValues: {
@@ -36,10 +38,11 @@ function ForgotPasswordPage() {
       try {
         await authClient.forgetPassword({
           email: value.email,
-          redirectTo: 'http://localhost:3000/reset-password',
+          redirectTo: `${window.location.origin}/reset-password`,
         });
         setIsSubmitted(true);
-      } catch {
+      } catch (error) {
+        console.error('Forgot password error:', error);
         setError('Failed to send reset email. Please try again.');
       }
     },
@@ -78,6 +81,47 @@ function ForgotPasswordPage() {
           <p className="mt-2 text-center text-sm text-gray-600">
             Enter your email address and we'll send you a link to reset your password.
           </p>
+          {!isEmailServiceLoading && emailServiceStatus && !emailServiceStatus.isConfigured && (
+            <div className="mt-4 bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded">
+              <div className="font-medium mb-2">Email service not configured</div>
+              <div className="text-sm space-y-2">
+                <p>
+                  Password reset functionality requires the{' '}
+                  <code className="bg-yellow-200 px-1 rounded text-xs">RESEND_API_KEY</code>{' '}
+                  environment variable to be set.
+                </p>
+                <div className="space-y-1">
+                  <p className="font-medium">To fix this:</p>
+                  <ol className="list-decimal list-inside space-y-1 text-left ml-4">
+                    <li>
+                      Go to{' '}
+                      <a
+                        href="https://resend.com"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="underline hover:text-yellow-800"
+                      >
+                        resend.com
+                      </a>{' '}
+                      and create an account
+                    </li>
+                    <li>Create a new API key</li>
+                    <li>
+                      Add{' '}
+                      <code className="bg-yellow-200 px-1 rounded text-xs">
+                        RESEND_API_KEY=your_api_key_here
+                      </code>{' '}
+                      to your <code className="bg-yellow-200 px-1 rounded text-xs">.env.local</code>{' '}
+                      file (local development)
+                    </li>
+                    <li>
+                      For production: Add the same variable to your Netlify environment variables
+                    </li>
+                  </ol>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
         <ClientOnly
           fallback={
@@ -142,17 +186,22 @@ function ForgotPasswordPage() {
               )}
             </form.Field>
             <form.Subscribe selector={(state) => [state.canSubmit, state.isSubmitting]}>
-              {([canSubmit, isSubmitting]) => (
-                <div>
-                  <button
-                    type="submit"
-                    disabled={!canSubmit}
-                    className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
-                  >
-                    {isSubmitting ? 'Sending...' : 'Send reset link'}
-                  </button>
-                </div>
-              )}
+              {([canSubmit, isSubmitting]) => {
+                const isEmailConfigured = emailServiceStatus?.isConfigured ?? true; // Default to true while loading
+                const isDisabled = !canSubmit || !isEmailConfigured;
+
+                return (
+                  <div>
+                    <button
+                      type="submit"
+                      disabled={isDisabled}
+                      className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {isSubmitting ? 'Sending...' : 'Send reset link'}
+                    </button>
+                  </div>
+                );
+              }}
             </form.Subscribe>
             <div className="text-center">
               <a href="/login" className="font-medium text-indigo-600 hover:text-indigo-500">

@@ -3,6 +3,7 @@ import { desc, eq, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import * as schema from '~/db/schema';
 import { requireAdmin } from '~/features/auth/auth-utils';
+import { testEmailServerFn } from '~/features/auth/email.server';
 import { getDb } from '~/lib/db-config';
 import { throwServerError } from '~/lib/error-utils';
 
@@ -10,6 +11,16 @@ import { throwServerError } from '~/lib/error-utils';
 const updateUserRoleSchema = z.object({
   userId: z.string().min(1, 'User ID is required'),
   role: z.enum(['user', 'admin']),
+});
+
+const updateUserProfileSchema = z.object({
+  userId: z.string().min(1, 'User ID is required'),
+  name: z
+    .string()
+    .trim()
+    .min(1, 'Name is required')
+    .max(100, 'Name must be less than 100 characters'),
+  email: z.string().email('Invalid email format').min(1, 'Email is required'),
 });
 
 const getUserActivitySchema = z
@@ -73,6 +84,51 @@ export const updateUserRoleServerFn = createServerFn({ method: 'POST' })
       .where(eq(schema.user.id, userId));
 
     return { success: true, message: `User role updated to ${role}` };
+  });
+
+// Update user profile (name and email) (admin only)
+export const updateUserProfileServerFn = createServerFn({ method: 'POST' })
+  .inputValidator(updateUserProfileSchema)
+  .handler(async ({ data }) => {
+    const { userId, name, email } = data;
+
+    await requireAdmin();
+
+    // Verify user exists
+    const existingUser = await getDb()
+      .select({ id: schema.user.id, email: schema.user.email })
+      .from(schema.user)
+      .where(eq(schema.user.id, userId))
+      .limit(1);
+
+    if (existingUser.length === 0) {
+      throwServerError('User not found', 404);
+    }
+
+    // Check if email is already taken by another user
+    if (email !== existingUser[0].email) {
+      const emailCheck = await getDb()
+        .select({ id: schema.user.id })
+        .from(schema.user)
+        .where(eq(schema.user.email, email))
+        .limit(1);
+
+      if (emailCheck.length > 0) {
+        throwServerError('Email address is already in use by another user', 400);
+      }
+    }
+
+    // Update user profile
+    await getDb()
+      .update(schema.user)
+      .set({
+        name: name.trim(),
+        email: email.toLowerCase().trim(),
+        updatedAt: new Date(),
+      })
+      .where(eq(schema.user.id, userId));
+
+    return { success: true, message: 'User profile updated successfully' };
   });
 
 // Get system statistics (admin only)
@@ -189,3 +245,6 @@ export const getUserDataServerFn = createServerFn({ method: 'GET' })
       rebalancingGroups,
     };
   });
+
+// Re-export email testing function for admin use
+export { testEmailServerFn };

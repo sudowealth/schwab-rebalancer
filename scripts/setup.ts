@@ -76,6 +76,7 @@ NODE_ENV=development
 
 # Email notifications (optional - get from https://resend.com)
 # RESEND_API_KEY=your-resend-api-key
+# RESEND_EMAIL_SENDER=onboarding@resend.dev
 
 # ==========================================
 # DATABASE (Configure for Local Development)

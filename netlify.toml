@@ -43,3 +43,9 @@ name = "RESEND_API_KEY"
 required = false
 default = ""
 description = "Resend API key for email notifications (optional)"
+
+[[template.environment]]
+name = "RESEND_EMAIL_SENDER"
+required = false
+default = "onboarding@resend.dev"
+description = "Sender email address for email notifications (defaults to onboarding@resend.dev)"

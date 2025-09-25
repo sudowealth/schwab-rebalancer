@@ -4,6 +4,7 @@ import { z } from 'zod';
 import * as schema from '~/db/schema';
 import { SessionManager } from '~/features/auth/session.server';
 import { getDb } from '~/lib/db-config';
+import { getEnv } from '~/lib/env';
 import { handleServerError, throwServerError } from '~/lib/error-utils';
 import { auth } from './auth';
 import { requireAdmin, requireAuth } from './auth-utils';
@@ -365,4 +366,19 @@ export const cleanupExpiredSessionsServerFn = createServerFn({
   const cleanedCount = await SessionManager.cleanupExpiredSessions();
 
   return { success: true, cleanedSessions: cleanedCount };
+});
+
+// Check if email service is configured (used by forgot password page)
+export const checkEmailServiceConfiguredServerFn = createServerFn({
+  method: 'GET',
+}).handler(async () => {
+  const env = getEnv();
+  const isConfigured = !!env.RESEND_API_KEY;
+
+  return {
+    isConfigured,
+    message: isConfigured
+      ? null
+      : 'Email service is not configured. Password reset functionality is unavailable.',
+  };
 });

@@ -5,6 +5,7 @@ import { AdminErrorBoundary } from '~/components/RouteErrorBoundaries';
 import {
   getAllUsersServerFn,
   getUserDataServerFn,
+  updateUserProfileServerFn,
   updateUserRoleServerFn,
 } from '~/features/dashboard/admin.server';
 import { queryInvalidators, queryKeys } from '~/lib/query-keys';
@@ -16,7 +17,7 @@ type Model = UserData['models'][number];
 type RebalancingGroup = UserData['rebalancingGroups'][number];
 
 import { Eye, Shield, Trash2, User } from 'lucide-react';
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { Badge } from '~/components/ui/badge';
 import { Button } from '~/components/ui/button';
 import {
@@ -56,11 +57,16 @@ export const Route = createFileRoute('/admin/users')({
 function UserManagement() {
   // Get initial data from loader
   const loaderData = Route.useLoaderData();
+  const nameId = useId();
+  const emailId = useId();
 
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showUserDataDialog, setShowUserDataDialog] = useState(false);
+  const [showEditDialog, setShowEditDialog] = useState(false);
   const [deleteConfirmation, setDeleteConfirmation] = useState('');
+  const [editName, setEditName] = useState('');
+  const [editEmail, setEditEmail] = useState('');
   const queryClient = useQueryClient();
 
   const { data: users, isPending: usersPending } = useQuery({
@@ -95,6 +101,19 @@ function UserManagement() {
     },
   });
 
+  const updateProfileMutation = useMutation({
+    mutationFn: (variables: { userId: string; name: string; email: string }) =>
+      updateUserProfileServerFn({ data: variables }),
+    onSuccess: () => {
+      // Explicitly refetch the users query to ensure UI updates
+      queryClient.refetchQueries({ queryKey: queryKeys.admin.users() });
+      setShowEditDialog(false);
+      setSelectedUserId(null);
+      setEditName('');
+      setEditEmail('');
+    },
+  });
+
   if (usersPending) {
     return <div>Loading...</div>;
   }
@@ -108,6 +127,23 @@ function UserManagement() {
       deleteUserMutation.mutate({
         userId: selectedUserId,
         confirmation: deleteConfirmation,
+      });
+    }
+  };
+
+  const handleEditUser = (user: AdminUser) => {
+    setSelectedUserId(user.id);
+    setEditName(user.name || '');
+    setEditEmail(user.email);
+    setShowEditDialog(true);
+  };
+
+  const handleUpdateProfile = () => {
+    if (selectedUserId && editName.trim() && editEmail.trim()) {
+      updateProfileMutation.mutate({
+        userId: selectedUserId,
+        name: editName.trim(),
+        email: editEmail.trim(),
       });
     }
   };
@@ -175,6 +211,9 @@ function UserManagement() {
                   <TableCell>{user.createdAt.toLocaleDateString()}</TableCell>
                   <TableCell>
                     <div className="flex gap-2">
+                      <Button variant="outline" size="sm" onClick={() => handleEditUser(user)}>
+                        <User className="h-4 w-4" />
+                      </Button>
                       <Button
                         variant="outline"
                         size="sm"
@@ -330,6 +369,52 @@ function UserManagement() {
           ) : null}
           <DialogFooter>
             <Button onClick={() => setShowUserDataDialog(false)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit User Dialog */}
+      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit User Profile</DialogTitle>
+            <DialogDescription>Update the user's name and email address</DialogDescription>
+          </DialogHeader>
+          <div className="py-4 space-y-4">
+            <div>
+              <label htmlFor={nameId} className="block text-sm font-medium text-gray-700 mb-1">
+                Name
+              </label>
+              <Input
+                id={nameId}
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                placeholder="Enter user name"
+              />
+            </div>
+            <div>
+              <label htmlFor={emailId} className="block text-sm font-medium text-gray-700 mb-1">
+                Email
+              </label>
+              <Input
+                id={emailId}
+                type="email"
+                value={editEmail}
+                onChange={(e) => setEditEmail(e.target.value)}
+                placeholder="Enter email address"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowEditDialog(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleUpdateProfile}
+              disabled={!editName.trim() || !editEmail.trim() || updateProfileMutation.isPending}
+            >
+              {updateProfileMutation.isPending ? 'Updating...' : 'Update Profile'}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -34,7 +34,9 @@ function ResetPasswordPage() {
   useEffect(() => {
     if (!token) {
       setError('Invalid or missing reset token. Please request a new password reset.');
+      return;
     }
+    // Token validation is handled by Better Auth internally
   }, [token]);
 
   // Check if user is already logged in after password reset
@@ -105,7 +107,7 @@ function ResetPasswordPage() {
     setIsLoading(true);
 
     try {
-      // Reset the password
+      // Reset the password using Better Auth
       await authClient.resetPassword({
         token,
         newPassword: password,
@@ -177,7 +179,7 @@ function ResetPasswordPage() {
               Password Reset Successful
             </h2>
             <p className="mt-2 text-center text-sm text-gray-600">
-              Your password has been successfully updated. Signing you in...
+              Your password has been successfully updated. Redirecting to login...
             </p>
           </div>
         </div>
