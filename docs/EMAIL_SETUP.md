@@ -20,7 +20,7 @@ Add your Resend API key and optional email sender configuration to your `.env.lo
 
 ```bash
 # Email notifications
-RESEND_API_KEY=re_9v2WfM7x_NEWnHFvDLgZWAbLJEXXLBjmh
+RESEND_API_KEY=YOUR_RESEND_API_KEY
 
 # Optional: Custom sender email address (defaults to onboarding@resend.dev)
 # RESEND_EMAIL_SENDER=noreply@yourdomain.com
